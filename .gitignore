@@ -1,0 +1,13 @@
+# IDE
+.vs
+.vscode
+
+*.vcxproj*
+*.sln
+
+# Binaries
+Bin
+Bin-Int
+
+# Cache
+__pycache__
