@@ -39,12 +39,20 @@ namespace Eppo
 	public:
 		Application(const ApplicationSpecification& specification);
 
+		void Close();
+
+		Application& Get() const { return *s_Instance; }
+
 	private:
 		ApplicationSpecification m_Specification;
+
+		bool m_IsRunning = true;
+		bool m_IsMinimized = false;
 
 	private:
 		void Run();
 
+		static Application* s_Instance;
 		friend int ::main(int argc, char** argv);
 	};
 
