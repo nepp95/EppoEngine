@@ -17,8 +17,7 @@ workspace "EppoEngine"
     OutputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
     group "Dependencies"
-        --include "EppoEngine/Vendor/glad"
-        --include "EppoEngine/Vendor/glfw"
+        include "EppoEngine/Vendor/glfw"
         --include "EppoEngine/Vendor/imgui"
     group ""
 

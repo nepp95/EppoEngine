@@ -16,7 +16,16 @@ project "EppoEngine"
     }
 
     includedirs {
-        "Source"
+        "Source",
+        "%{IncludeDir.glfw}",
+        "%{IncludeDir.glm}",
+        "%{IncludeDir.vma}",
+        "%{IncludeDir.vulkan}"
+    }
+
+    links {
+        "glfw",
+        "%{Library.vulkan}"
     }
 
     filter "system:windows"
@@ -27,12 +36,30 @@ project "EppoEngine"
         runtime "Debug"
         symbols "On"
 
+        links {
+            "%{Library.shaderc_debug}",
+            "%{Library.spirv_cross_debug}",
+            "%{Library.spirv_cross_glsl_debug}",
+        }
+
     filter "configurations:Release"
         defines "EPPO_RELEASE"
         runtime "Release"
         optimize "On"
+
+        links {
+            "%{Library.shaderc_release}",
+            "%{Library.spirv_cross_release}",
+            "%{Library.spirv_cross_glsl_release}",
+        }
     
     filter "configurations:Dist"
         defines "EPPO_DIST"
         runtime "Release"
         optimize "On"
+
+        links {
+            "%{Library.shaderc_release}",
+            "%{Library.spirv_cross_release}",
+            "%{Library.spirv_cross_glsl_release}",
+        }

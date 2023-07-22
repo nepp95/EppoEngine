@@ -1,0 +1,6 @@
+[submodule "EppoEngine/Vendor/glfw"]
+	path = EppoEngine/Vendor/glfw
+	url = https://github.com/nepp95/glfw.git
+[submodule "EppoEngine/Vendor/glm"]
+	path = EppoEngine/Vendor/glm
+	url = https://github.com/nepp95/glm.git
