@@ -2,7 +2,7 @@
 
 #include "Core/Base.h"
 
-#ifdef ASSERTS_ENABLED
+#ifdef EPPO_ENABLE_ASSERTS
 	#define EPPO_ASSERT(condition) { if (!condition) __debugbreak(); }
 #else
 	#define EPPO_ASSERT(condition)

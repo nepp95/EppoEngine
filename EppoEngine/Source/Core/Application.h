@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Core/LayerStack.h"
+#include "Core/Window.h"
+
 #include <string>
 
 int main(int argc, char** argv);
@@ -38,16 +41,24 @@ namespace Eppo
 	{
 	public:
 		Application(const ApplicationSpecification& specification);
+		~Application();
 
 		void Close();
+
+		void PushLayer(Layer* layer, bool overlay = false);
+		void PopLayer(Layer* layer, bool overlay = false);
 
 		Application& Get() const { return *s_Instance; }
 
 	private:
 		ApplicationSpecification m_Specification;
 
+		Scope<Window> m_Window;
+		LayerStack m_LayerStack;
+
 		bool m_IsRunning = true;
 		bool m_IsMinimized = false;
+		float m_LastFrameTime = 0;
 
 	private:
 		void Run();

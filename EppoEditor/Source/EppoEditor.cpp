@@ -1,23 +1,28 @@
 #include <EppoEngine.h>
 #include <Core/Entrypoint.h>
 
-class Editor : public Eppo::Application
+#include "EditorLayer.h"
+
+namespace Eppo
 {
-public:
-	Editor(const Eppo::ApplicationSpecification& specification)
-		: Eppo::Application(specification)
+	class Editor : public Application
 	{
-		// TODO: Layers
+	public:
+		Editor(const Eppo::ApplicationSpecification& specification)
+			: Application(specification)
+		{
+			PushLayer(new EditorLayer());
+		}
+	
+		~Editor() = default;
+	};
+	
+	Application* CreateApplication(ApplicationCommandLineArgs args)
+	{
+		ApplicationSpecification spec;
+		spec.Name = "EppoEditor";
+		spec.CommandLineArgs = args;
+	
+		return new Editor(spec);
 	}
-
-	~Editor() = default;
-};
-
-Application* Eppo::CreateApplication(ApplicationCommandLineArgs args)
-{
-	ApplicationSpecification spec;
-	spec.Name = "EppoEditor";
-	spec.CommandLineArgs = args;
-
-	return new Editor(spec);
 }
