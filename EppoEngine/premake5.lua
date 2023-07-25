@@ -19,6 +19,7 @@ project "EppoEngine"
         "Source",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
+        "%{IncludeDir.spdlog}",
         "%{IncludeDir.vma}",
         "%{IncludeDir.vulkan}"
     }

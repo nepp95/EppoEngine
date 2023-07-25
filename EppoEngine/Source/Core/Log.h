@@ -1,8 +1,22 @@
 #pragma once
 
-#include <iostream>
+#include <spdlog/spdlog.h>
 
-#define EPPO_TRACE(var) { std::cout << var << std::endl; }
-#define EPPO_INFO(var) { std::cout << var << std::endl; }
-#define EPPO_WARN(var) { std::cout << var << std::endl; }
-#define EPPO_ERROR(var) { std::cout << var << std::endl; }
+namespace Eppo
+{
+	class Log
+	{
+	public:
+		static void Init();
+
+		static Ref<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
+
+	private:
+		static Ref<spdlog::logger> s_CoreLogger;
+	};
+}
+
+#define EPPO_TRACE(...)		::Eppo::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define EPPO_INFO(...)		::Eppo::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define EPPO_WARN(...)		::Eppo::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define EPPO_ERROR(...)		::Eppo::Log::GetCoreLogger()->error(__VA_ARGS__)

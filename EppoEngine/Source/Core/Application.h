@@ -48,7 +48,8 @@ namespace Eppo
 		void PushLayer(Layer* layer, bool overlay = false);
 		void PopLayer(Layer* layer, bool overlay = false);
 
-		Application& Get() const { return *s_Instance; }
+		static Application& Get() { return *s_Instance; }
+		Window& GetWindow() { return *m_Window; }
 
 	private:
 		ApplicationSpecification m_Specification;

@@ -18,6 +18,7 @@ workspace "EppoEngine"
 
     group "Dependencies"
         include "EppoEngine/Vendor/glfw"
+        include "EppoEngine/Vendor/spdlog"
         --include "EppoEngine/Vendor/imgui"
     group ""
 

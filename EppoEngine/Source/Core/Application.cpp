@@ -25,6 +25,7 @@ namespace Eppo
 		windowSpec.Title = m_Specification.Name;
 
 		m_Window = CreateScope<Window>(windowSpec);
+		m_Window->Init();
 	}
 
 	Application::~Application()
@@ -33,6 +34,8 @@ namespace Eppo
 
 		for (Layer* layer : m_LayerStack)
 			layer->OnDetach();
+
+		m_Window->Shutdown();
 	}
 
 	void Application::Close()

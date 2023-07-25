@@ -15,7 +15,10 @@ project "EppoEditor"
     includedirs {
         "Source",
         "%{wks.location}/EppoEngine/Source",
-        "%{wks.location}/EppoEngine/Vendor"
+        "%{wks.location}/EppoEngine/Vendor",
+
+        "%{IncludeDir.spdlog}",
+		"%{IncludeDir.vulkan}"
     }
 
     links {

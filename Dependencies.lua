@@ -9,6 +9,7 @@ IncludeDir = {}
 IncludeDir["glfw"] = "%{wks.location}/EppoEngine/Vendor/glfw/include"
 IncludeDir["glm"] = "%{wks.location}/EppoEngine/Vendor/glm"
 IncludeDir["imgui"] = "%{wks.location}/EppoEngine/Vendor/imgui"
+IncludeDir["spdlog"] = "%{wks.location}/EppoEngine/Vendor/spdlog/include"
 IncludeDir["stb"] = "%{wks.location}/EppoEngine/Vendor/stb"
 IncludeDir["vma"] = "%{wks.location}/EppoEngine/Vendor/vulkan-memory-allocator"
 IncludeDir["vulkan"] = "%{VulkanSdk}/Include"
