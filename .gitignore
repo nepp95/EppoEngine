@@ -10,4 +10,5 @@ Bin
 Bin-Int
 
 # Cache
+*.shadercache
 __pycache__

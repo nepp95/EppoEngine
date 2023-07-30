@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Window.h"
 
+#include "Events/ApplicationEvent.h"
+
 #include <glfw/glfw3.h>
 
 namespace Eppo
@@ -43,6 +45,15 @@ namespace Eppo
 		// Create renderer context
 		m_Context = CreateRef<RendererContext>(m_Window);
 		m_Context->Init();
+
+		glfwSetWindowUserPointer(m_Window, &m_Callback);
+
+		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
+		{
+			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			WindowCloseEvent e;
+			callback(e);
+		});
 	}
 
 	void Window::Shutdown()
@@ -51,5 +62,10 @@ namespace Eppo
 
 		glfwDestroyWindow(m_Window);
 		glfwTerminate();
+	}
+
+	void Window::ProcessEvents()
+	{
+		glfwPollEvents();
 	}
 }

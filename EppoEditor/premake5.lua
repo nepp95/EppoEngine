@@ -17,6 +17,7 @@ project "EppoEditor"
         "%{wks.location}/EppoEngine/Source",
         "%{wks.location}/EppoEngine/Vendor",
 
+		"%{IncludeDir.glm}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.vulkan}"
     }

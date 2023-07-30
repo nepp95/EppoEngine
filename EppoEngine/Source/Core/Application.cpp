@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Application.h"
 
+#include "Renderer/Renderer.h"
+
 #include <glfw/glfw3.h>
 
 namespace Eppo
@@ -26,11 +28,17 @@ namespace Eppo
 
 		m_Window = CreateScope<Window>(windowSpec);
 		m_Window->Init();
+		m_Window->SetEventCallback([this](Event& e) { Application::OnEvent(e);  });
+
+		// Initialize systems
+		Renderer::Init();
 	}
 
 	Application::~Application()
 	{
 		EPPO_INFO("Shutting down...");
+
+		Renderer::Shutdown();
 
 		for (Layer* layer : m_LayerStack)
 			layer->OnDetach();
@@ -41,6 +49,22 @@ namespace Eppo
 	void Application::Close()
 	{
 		m_IsRunning = false;
+	}
+
+	void Application::OnEvent(Event& e)
+	{
+		EventDispatcher dispatcher(e);
+
+		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::OnWindowClose));
+		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(Application::OnWindowResize));
+
+		for (Layer* layer : m_LayerStack)
+		{
+			if (e.Handled)
+				break;
+
+			layer->OnEvent(e);
+		}
 	}
 
 	void Application::PushLayer(Layer* layer, bool overlay)
@@ -67,14 +91,46 @@ namespace Eppo
 			float timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
 
+			m_Window->ProcessEvents();
+
 			for (Layer* layer : m_LayerStack)
 				layer->Update(timestep);
 
 			if (!m_IsMinimized)
 			{
+				// 1. Start command buffer
+				Renderer::BeginFrame();
+
+				// 2. Record commands
 				for (Layer* layer : m_LayerStack)
 					layer->Render();
+
+				// 3. End command buffer
+				Renderer::EndFrame();
+
+				// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
+				Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
+
+				swapchain->BeginFrame();
+				Renderer::ExecuteRenderCommands();
+				swapchain->Present();
 			}
 		}
+
+		RendererContext::Get()->WaitIdle();
+	}
+
+	bool Application::OnWindowClose(WindowCloseEvent& e)
+	{
+		Close();
+
+		return true;
+	}
+
+	bool Application::OnWindowResize(WindowResizeEvent& e)
+	{
+		EPPO_ASSERT(false);
+
+		return true;
 	}
 }

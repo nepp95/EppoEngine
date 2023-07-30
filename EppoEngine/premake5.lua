@@ -10,6 +10,10 @@ project "EppoEngine"
     pchheader "pch.h"
     pchsource "Source/pch.cpp"
 
+	defines {
+		"GLFW_INCLUDE_NONE"
+	}
+
     files {
         "Source/**.h",
         "Source/**.cpp"
@@ -40,7 +44,7 @@ project "EppoEngine"
         links {
             "%{Library.shaderc_debug}",
             "%{Library.spirv_cross_debug}",
-            "%{Library.spirv_cross_glsl_debug}",
+            "%{Library.spirv_cross_glsl_debug}"
         }
 
     filter "configurations:Release"
@@ -51,7 +55,7 @@ project "EppoEngine"
         links {
             "%{Library.shaderc_release}",
             "%{Library.spirv_cross_release}",
-            "%{Library.spirv_cross_glsl_release}",
+            "%{Library.spirv_cross_glsl_release}"
         }
     
     filter "configurations:Dist"
@@ -62,5 +66,5 @@ project "EppoEngine"
         links {
             "%{Library.shaderc_release}",
             "%{Library.spirv_cross_release}",
-            "%{Library.spirv_cross_glsl_release}",
+            "%{Library.spirv_cross_glsl_release}"
         }

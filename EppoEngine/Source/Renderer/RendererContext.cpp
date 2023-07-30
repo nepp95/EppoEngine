@@ -2,6 +2,7 @@
 #include "RendererContext.h"
 
 #include "Core/Application.h"
+#include "Renderer/Allocator.h"
 
 #include <glfw/glfw3.h>
 
@@ -67,6 +68,12 @@ namespace Eppo
 		// Devices
 		m_PhysicalDevice = CreateRef<PhysicalDevice>();
 		m_LogicalDevice = CreateRef<LogicalDevice>(m_PhysicalDevice);
+
+		// Allocator
+		Allocator::Init();
+
+		// Swapchain
+		m_Swapchain = CreateRef<Swapchain>();
 	}
 
 	void RendererContext::Shutdown()
@@ -81,6 +88,12 @@ namespace Eppo
 			DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
 	
 		vkDestroyInstance(m_VulkanInstance, nullptr);
+	}
+
+	void RendererContext::WaitIdle()
+	{
+		VkDevice device = m_LogicalDevice->GetNativeDevice();
+		vkDeviceWaitIdle(device);
 	}
 
 	void RendererContext::SubmitResourceFree(std::function<void()> fn)

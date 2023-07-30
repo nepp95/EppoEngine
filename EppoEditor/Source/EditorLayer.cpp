@@ -22,5 +22,11 @@ namespace Eppo
 	
 	void EditorLayer::Render()
 	{
+		Renderer::DrawSomething();
+	}
+
+	void EditorLayer::OnEvent(Event& e)
+	{
+
 	}
 }

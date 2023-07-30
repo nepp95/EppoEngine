@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Events/Event.h"
 #include "Renderer/RendererContext.h"
 
 struct GLFWwindow;
@@ -22,10 +23,15 @@ namespace Eppo
 	class Window
 	{
 	public:
+		using EventCallbackFn = std::function<void(Event&)>;
+
 		Window(const WindowSpecification& specification);
 
 		void Init();
 		void Shutdown();
+
+		void ProcessEvents();
+		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
 		Ref<RendererContext> GetRendererContext() { return m_Context; }
 
@@ -34,5 +40,7 @@ namespace Eppo
 		GLFWwindow* m_Window;
 
 		Ref<RendererContext> m_Context;
+
+		EventCallbackFn m_Callback;
 	};
 }

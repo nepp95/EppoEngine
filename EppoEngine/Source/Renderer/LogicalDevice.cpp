@@ -66,4 +66,54 @@ namespace Eppo
 			vkDestroyDevice(m_Device, nullptr);
 		});
 	}
+
+	VkCommandBuffer LogicalDevice::GetCommandBuffer(bool begin)
+	{
+		VkCommandBuffer commandBuffer;
+
+		VkCommandBufferAllocateInfo commandBufferInfo{};
+		commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		commandBufferInfo.commandPool = m_CommandPool;
+		commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		commandBufferInfo.commandBufferCount = 1;
+
+		VK_CHECK(vkAllocateCommandBuffers(m_Device, &commandBufferInfo, &commandBuffer), "Failed to allocate command buffer!");
+
+		if (begin)
+		{
+			VkCommandBufferBeginInfo beginInfo{};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+			VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "Failed to begin command buffer!");
+		}
+
+		return commandBuffer;
+	}
+
+	void LogicalDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer)
+	{
+		VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = 0;
+
+		// We need this to be done when this function end so we sync it
+		VkFence fence;
+		VK_CHECK(vkCreateFence(m_Device, &fenceInfo, nullptr, &fence), "Failed to create temporary fence!");
+
+		// Submit work
+		VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, fence), "Failed to submit queue!");
+		vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX);
+
+		// Clean up
+		vkDestroyFence(m_Device, fence, nullptr);
+		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
+	}
 }

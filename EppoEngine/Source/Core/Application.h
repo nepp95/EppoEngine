@@ -2,6 +2,7 @@
 
 #include "Core/LayerStack.h"
 #include "Core/Window.h"
+#include "Events/ApplicationEvent.h"
 
 #include <string>
 
@@ -44,12 +45,19 @@ namespace Eppo
 		~Application();
 
 		void Close();
+		void OnEvent(Event& e);
 
 		void PushLayer(Layer* layer, bool overlay = false);
 		void PopLayer(Layer* layer, bool overlay = false);
 
 		static Application& Get() { return *s_Instance; }
 		Window& GetWindow() { return *m_Window; }
+
+	private:
+		void Run();
+
+		bool OnWindowClose(WindowCloseEvent& e);
+		bool OnWindowResize(WindowResizeEvent& e);
 
 	private:
 		ApplicationSpecification m_Specification;
@@ -60,9 +68,6 @@ namespace Eppo
 		bool m_IsRunning = true;
 		bool m_IsMinimized = false;
 		float m_LastFrameTime = 0;
-
-	private:
-		void Run();
 
 		static Application* s_Instance;
 		friend int ::main(int argc, char** argv);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Events/Event.h"
+
 namespace Eppo
 {
 	class Layer
@@ -15,6 +17,7 @@ namespace Eppo
 		virtual void Render() {};
 
 		// Events
+		virtual void OnEvent(Event& e) {}
 		// GUI
 
 	private:

@@ -9,8 +9,10 @@ namespace Eppo
 	public:
 		LogicalDevice(Ref<PhysicalDevice> physicalDevice);
 
-		const Ref<PhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
+		VkCommandBuffer GetCommandBuffer(bool begin);
+		void FlushCommandBuffer(VkCommandBuffer commandBuffer);
 
+		const Ref<PhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
 		const VkDevice& GetNativeDevice() const { return m_Device; }
 		const VkQueue& GetGraphicsQueue() const { return m_GraphicsQueue; }
 
