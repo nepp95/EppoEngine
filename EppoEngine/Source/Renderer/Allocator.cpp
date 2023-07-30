@@ -33,6 +33,11 @@ namespace Eppo
 		createInfo.device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VK_CHECK(vmaCreateAllocator(&createInfo, &s_Data->Allocator), "Failed to create allocator!");
+
+		context->SubmitResourceFree([]()
+		{
+			Allocator::Shutdown();
+		});
 	}
 
 	void Allocator::Shutdown()

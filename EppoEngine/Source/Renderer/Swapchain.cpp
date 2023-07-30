@@ -180,17 +180,13 @@ namespace Eppo
 
 			VK_CHECK(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &m_Framebuffers[i]), "Failed to create framebuffer!");
 		}
-	}
 
-	Swapchain::~Swapchain()
-	{
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		for (auto& framebuffer : m_Framebuffers)
-			vkDestroyFramebuffer(device, framebuffer, nullptr);
-
-		for (auto& imageView : m_ImageViews)
-			vkDestroyImageView(device, imageView, nullptr);
+		// Cleanup
+		context->SubmitResourceFree([this]()
+		{
+			this->Cleanup();
+			this->Destroy();
+		});
 	}
 
 	void Swapchain::BeginFrame()
@@ -239,6 +235,41 @@ namespace Eppo
 		m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % VulkanConfig::MaxFramesInFlight;
 
 		vkWaitForFences(logicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
+	}
+
+	void Swapchain::Cleanup()
+	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		for (auto& framebuffer : m_Framebuffers)
+			vkDestroyFramebuffer(device, framebuffer, nullptr);
+
+		for (auto& imageView : m_ImageViews)
+			vkDestroyImageView(device, imageView, nullptr);
+
+		vkDestroySwapchainKHR(device, m_Swapchain, nullptr);
+	}
+
+	void Swapchain::Destroy()
+	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		vkDestroyRenderPass(device, m_RenderPass, nullptr);
+
+		for (auto& semaphore : m_PresentSemaphores)
+			vkDestroySemaphore(device, semaphore, nullptr);
+
+		for (auto& semaphore : m_RenderSemaphores)
+			vkDestroySemaphore(device, semaphore, nullptr);
+
+		for (auto& fence : m_Fences)
+			vkDestroyFence(device, fence, nullptr);
+
+		for (auto& commandPool : m_CommandPools)
+			vkDestroyCommandPool(device, commandPool, nullptr);
+
+		VkInstance instance = RendererContext::Get()->GetVulkanInstance();
+		vkDestroySurfaceKHR(instance, m_Surface, nullptr);
 	}
 
 	void Swapchain::OnResize()

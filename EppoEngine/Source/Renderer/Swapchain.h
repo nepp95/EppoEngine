@@ -17,10 +17,12 @@ namespace Eppo
 	{
 	public:
 		Swapchain();
-		~Swapchain();
 
 		void BeginFrame();
 		void Present();
+
+		void Cleanup();
+		void Destroy();
 
 		void OnResize();
 
