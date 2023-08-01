@@ -7,6 +7,8 @@ namespace Eppo
 	{
 		m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
 		m_LayerInsertIndex++;
+
+		layer->OnAttach();
 	}
 
 	void LayerStack::PopLayer(Layer* layer)

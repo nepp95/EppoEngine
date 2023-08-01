@@ -106,6 +106,61 @@ namespace Eppo
 		});
 	}
 
+	void Renderer::BeginScene()
+	{
+		s_Data->QuadIndexCount = 0;
+		s_Data->QuadVertexBuffer->Reset();
+	}
+
+	void Renderer::EndScene()
+	{
+		SubmitCommand([]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+
+			VkExtent2D extent = swapchain->GetExtent();
+
+			VkRenderPassBeginInfo renderPassInfo{};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo.renderPass = swapchain->GetRenderPass();
+			renderPassInfo.framebuffer = swapchain->GetCurrentFramebuffer();
+			renderPassInfo.renderArea.offset = { 0, 0 };
+			renderPassInfo.renderArea.extent = extent;
+
+			VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+			renderPassInfo.clearValueCount = 1;
+			renderPassInfo.pClearValues = &clearColor;
+
+			vkCmdBeginRenderPass(swapchain->GetCurrentRenderCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBindPipeline(swapchain->GetCurrentRenderCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->QuadPipeline->GetPipeline());
+
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = (float)extent.width;
+			viewport.height = (float)extent.height;
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+			vkCmdSetViewport(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &viewport);
+
+			VkRect2D scissor{};
+			scissor.offset = { 0, 0 };
+			scissor.extent = extent;
+			vkCmdSetScissor(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &scissor);
+
+			VkBuffer vbo[] = { s_Data->QuadVertexBuffer->GetBuffer() };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, vbo, offsets);
+			vkCmdBindIndexBuffer(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+			// Draw
+			vkCmdDrawIndexed(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexCount, 1, 0, 0, 0);
+
+			vkCmdEndRenderPass(swapchain->GetCurrentRenderCommandBuffer());
+		});
+	}
+
 	void Renderer::ExecuteRenderCommands()
 	{
 		s_Data->CommandQueue.Execute();
@@ -141,58 +196,5 @@ namespace Eppo
 
 		s_Data->QuadVertexBuffer->AddData(&vertice, sizeof(Vertex) * 4);
 		s_Data->QuadIndexCount += 6;
-	}
-
-	void Renderer::DrawSomething()
-	{
-		Renderer::DrawQuad({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
-		Renderer::DrawQuad({ 0.5f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f });
-		Renderer::DrawQuad({ 0.0f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f });
-
-		SubmitCommand([]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-
-			VkExtent2D extent = swapchain->GetExtent();
-
-			VkRenderPassBeginInfo renderPassInfo{};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = swapchain->GetRenderPass();
-			renderPassInfo.framebuffer = swapchain->GetCurrentFramebuffer();
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = extent;
-
-			VkClearValue clearColor = { {{ 0.0f, 0.0f, 0.0f, 1.0f }} }; // TODO: This is weird.
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
-
-			vkCmdBeginRenderPass(swapchain->GetCurrentRenderCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-			vkCmdBindPipeline(swapchain->GetCurrentRenderCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->QuadPipeline->GetPipeline());
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
-			vkCmdSetScissor(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &scissor);
-
-			VkBuffer vbo[] = { s_Data->QuadVertexBuffer->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, vbo, offsets);
-			vkCmdBindIndexBuffer(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-			// Draw
-			vkCmdDrawIndexed(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexCount, 1, 0, 0, 0);
-
-			vkCmdEndRenderPass(swapchain->GetCurrentRenderCommandBuffer());
-		});
 	}
 }

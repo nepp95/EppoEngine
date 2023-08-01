@@ -12,6 +12,7 @@ namespace Eppo
 		~VertexBuffer();
 
 		void AddData(void* data, uint32_t size);
+		void Reset();
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
 

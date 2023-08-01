@@ -19,5 +19,6 @@ namespace Eppo
 		void OnEvent(Event& e) override;
 	
 	private:
+		Ref<Scene> m_ActiveScene;
 	};
 }

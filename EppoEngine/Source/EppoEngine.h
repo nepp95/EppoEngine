@@ -15,3 +15,6 @@
 
 // Renderer
 #include "Renderer/Renderer.h"
+
+// Scene
+#include "Scene/Scene.h"

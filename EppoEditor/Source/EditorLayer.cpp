@@ -4,12 +4,11 @@ namespace Eppo
 {
 	EditorLayer::EditorLayer()
 		: Layer("EditorLayer")
-	{
-
-	}
+	{}
 
 	void EditorLayer::OnAttach()
 	{
+		m_ActiveScene = CreateRef<Scene>();
 	}
 	
 	void EditorLayer::OnDetach()
@@ -18,11 +17,12 @@ namespace Eppo
 	
 	void EditorLayer::Update(float timestep)
 	{
+		m_ActiveScene->OnUpdate(timestep);
 	}
 	
 	void EditorLayer::Render()
 	{
-		Renderer::DrawSomething();
+		m_ActiveScene->Render();
 	}
 
 	void EditorLayer::OnEvent(Event& e)
