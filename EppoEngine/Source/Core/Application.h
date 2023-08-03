@@ -22,7 +22,9 @@ namespace Eppo
 
 		const char* operator[](int index) const
 		{
-			// TODO: Assert index < count
+			EPPO_ASSERT(index < Count);
+			if (index >= Count)
+				return "";
 			return Args[index];
 		}
 	};
@@ -32,8 +34,8 @@ namespace Eppo
 		std::string Name = "Client";
 		std::string WorkingDirectory;
 
-		uint32_t WindowWidth = 1280;
-		uint32_t WindowHeight = 720;
+		uint32_t WindowWidth = 1600;
+		uint32_t WindowHeight = 900;
 
 		ApplicationCommandLineArgs CommandLineArgs;
 	};

@@ -52,6 +52,19 @@ namespace Eppo
 				case ShaderType::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
 				case ShaderType::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
 			}
+
+			EPPO_ASSERT(false);
+		}
+
+		static VkDescriptorType ShaderResourceTypeToVkDescriptorType(ShaderResourceType type)
+		{
+			switch (type)
+			{
+				case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			}
+
+			EPPO_ASSERT(false);
 		}
 	}
 
@@ -120,6 +133,7 @@ namespace Eppo
 			Reflect(type, data);
 
 		CreatePipelineShaderInfos();
+		CreateDescriptorSetLayout();
 	}
 
 	Shader::~Shader()
@@ -172,6 +186,62 @@ namespace Eppo
 		EPPO_TRACE("Shader::Reflect - {} {}", Utils::ShaderTypeToString(type), m_Specification.ShaderSources.at(type).string());
 		EPPO_TRACE("\t{} Uniform buffers", resources.uniform_buffers.size());
 		EPPO_TRACE("\t{} Sampled images", resources.sampled_images.size());
+
+		if (!resources.uniform_buffers.empty())
+		{
+			EPPO_TRACE("Uniform buffers:");
+
+			for (const auto& resource : resources.uniform_buffers)
+			{
+				const auto& bufferType = compiler.get_type(resource.base_type_id);
+				uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
+
+				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
+				size_t memberCount = bufferType.member_types.size();
+
+				ShaderResource shaderResource;
+				shaderResource.Type = type;
+				shaderResource.ResourceType = ShaderResourceType::UniformBuffer;
+				shaderResource.Binding = binding;
+				shaderResource.Size = bufferSize;
+				shaderResource.Name = resource.name;
+
+				m_ShaderResources[set].push_back(shaderResource);
+
+				EPPO_TRACE("\t{}", resource.name);
+				EPPO_TRACE("\t\tSize = {}", bufferSize);
+				EPPO_TRACE("\t\tSet = {}", set);
+				EPPO_TRACE("\t\tBinding = {}", binding);
+				EPPO_TRACE("\t\tMembers = {}", memberCount);
+			}
+		}
+
+		if (!resources.sampled_images.empty())
+		{
+			EPPO_TRACE("Sampled images:");
+
+			for (const auto& resource : resources.sampled_images)
+			{
+				const auto& bufferType = compiler.get_type(resource.base_type_id);
+
+				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
+				size_t memberCount = bufferType.member_types.size();
+
+				ShaderResource shaderResource;
+				shaderResource.Type = type;
+				shaderResource.ResourceType = ShaderResourceType::Sampler;
+				shaderResource.Binding = binding;
+				shaderResource.Name = resource.name;
+
+				m_ShaderResources[set].push_back(shaderResource);
+
+				EPPO_TRACE("\t\tSet = {}", set);
+				EPPO_TRACE("\t\tBinding = {}", binding);
+				EPPO_TRACE("\t\tMembers = {}", memberCount);
+			}
+		}
 	}
 
 	void Shader::CreatePipelineShaderInfos()
@@ -195,6 +265,37 @@ namespace Eppo
 			shaderStageInfo.pName = "main";
 
 			m_ShaderInfos.push_back(shaderStageInfo);
+		}
+	}
+
+	void Shader::CreateDescriptorSetLayout()
+	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		m_DescriptorSetLayouts.resize(m_ShaderResources.size());
+
+		for (const auto& [set, setResources] : m_ShaderResources)
+		{
+			std::vector<VkDescriptorSetLayoutBinding> bindings;
+
+			for (const auto& resource : setResources)
+			{
+				VkDescriptorSetLayoutBinding binding{};
+				binding.binding = resource.Binding;
+				binding.descriptorCount = 1;
+				binding.descriptorType = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
+				binding.stageFlags = Utils::ShaderTypeToVkShaderStage(resource.Type);
+				binding.pImmutableSamplers = nullptr;
+
+				bindings.push_back(binding);
+			}
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = (uint32_t)bindings.size();
+			layoutInfo.pBindings = bindings.data();
+
+			VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &m_DescriptorSetLayouts[set]), "Failed to create descriptor set layout!");
 		}
 	}
 }

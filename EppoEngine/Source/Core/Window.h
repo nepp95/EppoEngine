@@ -11,13 +11,13 @@ namespace Eppo
 	{
 		std::string Title;
 
-		uint32_t Width = 1280;
-		uint32_t Height = 720;
+		uint32_t Width = 1600;
+		uint32_t Height = 900;
 
 		uint32_t RefreshRate = 60.0f;
 		
 		// If this is set to true, glfw will override above information with information gathered from the primary monitor
-		bool OverrideSpecification = true;
+		bool OverrideSpecification = false;
 	};
 
 	class Window

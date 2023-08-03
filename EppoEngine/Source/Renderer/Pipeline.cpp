@@ -23,10 +23,6 @@ namespace Eppo
 		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 		vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
 		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-		//vertexInputInfo.vertexBindingDescriptionCount = 0;
-		//vertexInputInfo.pVertexBindingDescriptions = VK_NULL_HANDLE;
-		//vertexInputInfo.vertexAttributeDescriptionCount = 0;
-		//vertexInputInfo.pVertexAttributeDescriptions = VK_NULL_HANDLE;
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
@@ -102,7 +98,7 @@ namespace Eppo
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		// TODO: Descriptor set layouts from shader
 		pipelineLayoutInfo.setLayoutCount = 0;
-		pipelineLayoutInfo.pSetLayouts = VK_NULL_HANDLE;
+		pipelineLayoutInfo.pSetLayouts = VK_NULL_HANDLE; xxx
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 		pipelineLayoutInfo.pPushConstantRanges = VK_NULL_HANDLE;
 
