@@ -25,6 +25,13 @@ namespace Eppo
 			return result;
 		}
 
+		static Buffer Copy(uint8_t* data, uint64_t size)
+		{
+			Buffer result(size);
+			memcpy(result.Data, data, size);
+			return result;
+		}
+
 		void Allocate(uint64_t size)
 		{
 			Release();

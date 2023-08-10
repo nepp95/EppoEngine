@@ -94,11 +94,12 @@ namespace Eppo
 		dynamicState.pDynamicStates = dynamicStates.data();
 
 		// Pipeline layout
+		const auto& descriptorSetLayouts = m_Specification.Shader->GetDescriptorSetLayouts();
+
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		// TODO: Descriptor set layouts from shader
-		pipelineLayoutInfo.setLayoutCount = 0;
-		pipelineLayoutInfo.pSetLayouts = VK_NULL_HANDLE; xxx
+		pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+		pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 		pipelineLayoutInfo.pPushConstantRanges = VK_NULL_HANDLE;
 

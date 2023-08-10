@@ -22,6 +22,7 @@ namespace Eppo
 		ShaderResourceType ResourceType;
 		uint32_t Binding = 0;
 		uint32_t Size = 0;
+		uint32_t ArraySize = 0;
 		std::string Name;
 	};
 
@@ -37,12 +38,16 @@ namespace Eppo
 		~Shader();
 
 		const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageInfos() const { return m_ShaderInfos; }
+		const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts() const { return m_DescriptorSetLayouts; }
+		const VkDescriptorSetLayout& GetDescriptorSetLayout(uint32_t set) const;
+		const std::unordered_map<uint32_t, std::vector<ShaderResource>>& GetShaderResources() const { return m_ShaderResources; }
 
 	private:
 		void Compile(ShaderType type, const std::filesystem::path& filepath);
 		void Reflect(ShaderType type, const std::vector<uint32_t>& shaderBytes);
 		void CreatePipelineShaderInfos();
 		void CreateDescriptorSetLayout();
+		//void CreateDescriptorSets();
 
 	private:
 		ShaderSpecification m_Specification;
@@ -52,4 +57,18 @@ namespace Eppo
 		std::vector<VkPipelineShaderStageCreateInfo> m_ShaderInfos;
 		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
 	};
+
+	namespace Utils
+	{
+		static VkDescriptorType ShaderResourceTypeToVkDescriptorType(ShaderResourceType type)
+		{
+			switch (type)
+			{
+				case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			}
+
+			EPPO_ASSERT(false);
+		}
+	}
 }

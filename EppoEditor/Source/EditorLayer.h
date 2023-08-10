@@ -20,5 +20,7 @@ namespace Eppo
 	
 	private:
 		Ref<Scene> m_ActiveScene;
+
+		Ref<Texture> m_TestTexture;
 	};
 }

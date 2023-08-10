@@ -55,17 +55,6 @@ namespace Eppo
 
 			EPPO_ASSERT(false);
 		}
-
-		static VkDescriptorType ShaderResourceTypeToVkDescriptorType(ShaderResourceType type)
-		{
-			switch (type)
-			{
-				case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-				case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			}
-
-			EPPO_ASSERT(false);
-		}
 	}
 
 	Shader::Shader(const ShaderSpecification& specification)
@@ -134,14 +123,25 @@ namespace Eppo
 
 		CreatePipelineShaderInfos();
 		CreateDescriptorSetLayout();
+		//CreateDescriptorSets();
 	}
 
 	Shader::~Shader()
 	{
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
+		for (auto& layout : m_DescriptorSetLayouts)
+			vkDestroyDescriptorSetLayout(device, layout, nullptr);
+
 		for (auto& shaderInfo : m_ShaderInfos)
 			vkDestroyShaderModule(device, shaderInfo.module, nullptr);
+	}
+
+	const VkDescriptorSetLayout& Shader::GetDescriptorSetLayout(uint32_t set) const
+	{
+		EPPO_ASSERT(set < m_DescriptorSetLayouts.size());
+
+		return m_DescriptorSetLayouts.at(set);
 	}
 
 	void Shader::Compile(ShaderType type, const std::filesystem::path& filepath)
@@ -228,11 +228,14 @@ namespace Eppo
 				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 				size_t memberCount = bufferType.member_types.size();
+				auto& spirVtype = compiler.get_type(resource.type_id);
+				uint32_t arraySize = spirVtype.array[0];
 
 				ShaderResource shaderResource;
 				shaderResource.Type = type;
 				shaderResource.ResourceType = ShaderResourceType::Sampler;
 				shaderResource.Binding = binding;
+				shaderResource.ArraySize = arraySize;
 				shaderResource.Name = resource.name;
 
 				m_ShaderResources[set].push_back(shaderResource);
@@ -282,7 +285,7 @@ namespace Eppo
 			{
 				VkDescriptorSetLayoutBinding binding{};
 				binding.binding = resource.Binding;
-				binding.descriptorCount = 1;
+				binding.descriptorCount = resource.ArraySize == 0 ? 1 : resource.ArraySize;
 				binding.descriptorType = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
 				binding.stageFlags = Utils::ShaderTypeToVkShaderStage(resource.Type);
 				binding.pImmutableSamplers = nullptr;
@@ -298,4 +301,50 @@ namespace Eppo
 			VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &m_DescriptorSetLayouts[set]), "Failed to create descriptor set layout!");
 		}
 	}
+
+	//void Shader::CreateDescriptorSets()
+	//{
+	//	std::unordered_map<VkDescriptorType, uint32_t> shaderResourceTypes;
+
+	//	for (uint32_t set = 0; set < m_ShaderResources.size(); set++)
+	//	{
+	//		for (const auto& resource : m_ShaderResources[set])
+	//		{
+	//			VkDescriptorType type = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
+
+	//			if (shaderResourceTypes.find(type) == shaderResourceTypes.end())
+	//				shaderResourceTypes[type] = 0;
+
+	//			shaderResourceTypes[type]++;
+	//		}
+	//	}
+
+	//	VkDescriptorPoolSize poolSizes[] = {
+	//		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, shaderResourceTypes.at(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) },
+	//		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shaderResourceTypes.at(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) }
+	//	};
+
+	//	uint32_t poolSizeCount = ((int)(sizeof(poolSizes) / sizeof(*(poolSizes)))); // IM_ARRAYSIZE from imgui
+
+	//	VkDescriptorPoolCreateInfo createInfo{};
+	//	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	//	createInfo.poolSizeCount = poolSizeCount;
+	//	createInfo.pPoolSizes = poolSizes;
+	//	createInfo.maxSets = 1;
+	//	createInfo.pNext = nullptr;
+
+	//	VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+	//	VK_CHECK(vkCreateDescriptorPool(device, &createInfo, nullptr, &m_DescriptorPool), "Failed to create descriptor pool!");
+
+	//	m_DescriptorSets.resize(poolSizeCount);
+	//	for (size_t i = 0; i < m_DescriptorSets.size(); i++)
+	//	{
+	//		VkDescriptorSetAllocateInfo allocInfo{};
+	//		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	//		allocInfo.descriptorPool = m_DescriptorPool;
+	//		allocInfo.descriptorSetCount = m_DescriptorSetLayouts.size();
+	//		allocInfo.pSetLayouts = m_DescriptorSetLayouts.data();
+	//		allocInfo.pNext = nullptr;
+	//	}
+	//}
 }

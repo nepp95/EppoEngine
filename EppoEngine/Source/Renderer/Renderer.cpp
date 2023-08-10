@@ -16,6 +16,7 @@ namespace Eppo
 		static const uint32_t MaxQuads = 20000;
 		static const uint32_t MaxVertices = MaxQuads * 4;
 		static const uint32_t MaxIndices = MaxQuads * 6;
+		static const uint32_t MaxTextureSlots = 32;
 
 		RenderCommandQueue CommandQueue;
 
@@ -24,9 +25,16 @@ namespace Eppo
 		Ref<Pipeline> QuadPipeline;
 		Ref<VertexBuffer> QuadVertexBuffer;
 		Ref<IndexBuffer> QuadIndexBuffer;
+		Ref<Material> QuadMaterial;
 		uint32_t QuadIndexCount = 0;
 
 		glm::vec4 QuadVertexPositions[4];
+		glm::vec2 QuadVertexTexCoords[4];
+
+		// Textures
+		Ref<Texture> WhiteTexture;
+		std::array<Ref<Texture>, MaxTextureSlots> TextureSlots;
+		uint32_t TextureSlotIndex = 1;
 	};
 
 	static RendererData* s_Data;
@@ -56,6 +64,11 @@ namespace Eppo
 		s_Data->QuadVertexPositions[2] = {  0.5f,  0.5f, 0.0f, 1.0f };
 		s_Data->QuadVertexPositions[3] = { -0.5f,  0.5f, 0.0f, 1.0f };
 
+		s_Data->QuadVertexTexCoords[0] = { 0.0f, 0.0f };
+		s_Data->QuadVertexTexCoords[1] = { 1.0f, 0.0f };
+		s_Data->QuadVertexTexCoords[2] = { 1.0f, 1.0f };
+		s_Data->QuadVertexTexCoords[3] = { 0.0f, 1.0f };
+
 		// Index buffer
 		uint32_t* quadIndices = new uint32_t[RendererData::MaxIndices];
 		uint32_t offset = 0;
@@ -74,6 +87,11 @@ namespace Eppo
 
 		s_Data->QuadIndexBuffer = CreateRef<IndexBuffer>((void*)quadIndices, RendererData::MaxIndices);
 		delete[] quadIndices;
+
+		// Textures
+		uint32_t whiteTextureData = 0xfff000fff;
+		s_Data->WhiteTexture = CreateRef<Texture>(1, 1, ImageFormat::RGBA8, &whiteTextureData);
+		s_Data->TextureSlots[0] = s_Data->WhiteTexture;
 
 		// Descriptor pools
 		// TODO: Descriptor Abstraction
@@ -104,10 +122,17 @@ namespace Eppo
 
 			VK_CHECK(vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &s_Data->DescriptorPools[i]), "Failed to create descriptor pool!");
 		}
+
+		s_Data->QuadMaterial = CreateRef<Material>(s_Data->QuadPipeline->GetSpecification().Shader);
 	}
 
 	void Renderer::Shutdown()
 	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		for (auto& pool : s_Data->DescriptorPools)
+			vkDestroyDescriptorPool(device, pool, nullptr);
+
 		delete s_Data;
 	}
 
@@ -119,6 +144,9 @@ namespace Eppo
 			VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
 
 			uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+
+			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+			vkResetDescriptorPool(device, s_Data->DescriptorPools[imageIndex], 0);
 
 			VkCommandBufferBeginInfo beginInfo{};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -142,8 +170,11 @@ namespace Eppo
 
 	void Renderer::BeginScene()
 	{
-		s_Data->QuadIndexCount = 0;
-		s_Data->QuadVertexBuffer->Reset();
+		Renderer::SubmitCommand([]()
+		{
+			s_Data->QuadIndexCount = 0;
+			s_Data->QuadVertexBuffer->Reset();
+		});
 	}
 
 	void Renderer::EndScene()
@@ -153,6 +184,16 @@ namespace Eppo
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 
+			// Update descriptors
+			for (uint32_t i = 0; i < s_Data->TextureSlots.size(); i++)
+			{
+				if (s_Data->TextureSlots[i])
+					s_Data->QuadMaterial->Set("texSampler", s_Data->TextureSlots[i], i);
+				else
+					s_Data->QuadMaterial->Set("texSampler", s_Data->WhiteTexture, i);
+			}
+
+			// Render
 			VkExtent2D extent = swapchain->GetExtent();
 
 			VkRenderPassBeginInfo renderPassInfo{};
@@ -188,6 +229,18 @@ namespace Eppo
 			vkCmdBindVertexBuffers(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, vbo, offsets);
 			vkCmdBindIndexBuffer(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
+			VkDescriptorSet descriptorSet = s_Data->QuadMaterial->Get();
+			vkCmdBindDescriptorSets(
+				swapchain->GetCurrentRenderCommandBuffer(),
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				s_Data->QuadPipeline->GetPipelineLayout(),
+				0,
+				1,
+				&descriptorSet,
+				0,
+				nullptr
+			);
+
 			// Draw
 			vkCmdDrawIndexed(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexCount, 1, 0, 0, 0);
 
@@ -205,6 +258,49 @@ namespace Eppo
 		s_Data->CommandQueue.AddCommand(command);
 	}
 
+	VkDescriptorSet Renderer::AllocateDescriptorSet(const VkDescriptorSetLayout& layout)
+	{
+		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = s_Data->DescriptorPools[swapchain->GetCurrentImageIndex()];
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &layout;
+		allocInfo.pNext = nullptr;
+
+		VkDescriptorSet descriptorSet;
+
+		VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet), "Failed to allocate descriptor set!");
+
+		return descriptorSet;
+	}
+
+	void Renderer::UpdateDescriptorSet(Ref<Texture> texture, VkDescriptorSet descriptorSet, uint32_t arrayElement)
+	{
+		const auto& info = texture->GetImage()->GetImageInfo();
+		
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = info.ImageLayout;
+		imageInfo.imageView = info.ImageView;
+		imageInfo.sampler = info.Sampler;
+
+		VkWriteDescriptorSet writeDesc{};
+		writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDesc.dstSet = descriptorSet;
+		writeDesc.dstBinding = 1;
+		writeDesc.dstArrayElement = arrayElement;
+		writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDesc.descriptorCount = 1;
+		writeDesc.pBufferInfo = nullptr;
+		writeDesc.pImageInfo = &imageInfo;
+		writeDesc.pTexelBufferView = nullptr;
+
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		vkUpdateDescriptorSets(device, 1, &writeDesc, 0, nullptr);
+	}
+
 	void Renderer::DrawQuad(const glm::vec2& position, const glm::vec4& color)
 	{
 		DrawQuad({ position.x, position.y, 0.0f }, color);
@@ -218,17 +314,74 @@ namespace Eppo
 
 	void Renderer::DrawQuad(const glm::mat4& transform, const glm::vec4& color)
 	{
-		if (s_Data->QuadIndexCount + 6 >= RendererData::MaxIndices)
-			return; // TODO: Next batch
+		Renderer::SubmitCommand([=]()
+		{
+			if (s_Data->QuadIndexCount + 6 >= RendererData::MaxIndices)
+				return; // TODO: Next batch
 
-		Vertex vertice[4] = {
-			{ transform * s_Data->QuadVertexPositions[0], color },
-			{ transform * s_Data->QuadVertexPositions[1], color },
-			{ transform * s_Data->QuadVertexPositions[2], color },
-			{ transform * s_Data->QuadVertexPositions[3], color }
-		};
+			Vertex vertices[4];
+			for (uint32_t i = 0; i < 4; i++)
+			{
+				vertices[i].Position = transform * s_Data->QuadVertexPositions[i];
+				vertices[i].Color = color;
+				vertices[i].TexCoord = s_Data->QuadVertexTexCoords[i];
+				vertices[i].TexIndex = 0.0f;
+			}
 
-		s_Data->QuadVertexBuffer->AddData(&vertice, sizeof(Vertex) * 4);
-		s_Data->QuadIndexCount += 6;
+			s_Data->QuadVertexBuffer->AddData(&vertices, sizeof(Vertex) * 4);
+			s_Data->QuadIndexCount += 6;
+		});
+	}
+
+	void Renderer::DrawQuad(const glm::vec2& position, Ref<Texture> texture, const glm::vec4& tintColor)
+	{
+		DrawQuad({ position.x, position.y, 0.0f }, texture, tintColor);
+	}
+
+	void Renderer::DrawQuad(const glm::vec3& position, Ref<Texture> texture, const glm::vec4& tintColor)
+	{
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
+		DrawQuad(transform, texture, tintColor);
+	}
+
+	void Renderer::DrawQuad(const glm::mat4& transform, Ref<Texture> texture, const glm::vec4& tintColor)
+	{
+		Renderer::SubmitCommand([=]()
+		{
+			if (s_Data->QuadIndexCount + 6 >= RendererData::MaxIndices)
+				return; // TODO: Next batch
+
+			float textureIndex = 0.0f;
+			for (uint32_t i = 0; i < s_Data->TextureSlotIndex; i++)
+			{
+				if (s_Data->TextureSlots[i] == texture)
+				{
+					textureIndex = (float)i;
+					break;
+				}
+			}
+
+			if (textureIndex == 0.0f)
+			{
+				if (s_Data->TextureSlotIndex >= RendererData::MaxTextureSlots)
+					return; // TODO: Next batch
+
+				textureIndex = (float)s_Data->TextureSlotIndex;
+				s_Data->TextureSlots[s_Data->TextureSlotIndex] = texture;
+				s_Data->TextureSlotIndex++;
+			}
+
+			Vertex vertices[4];
+			for (uint32_t i = 0; i < 4; i++)
+			{
+				vertices[i].Position = transform * s_Data->QuadVertexPositions[i];
+				vertices[i].Color = tintColor;
+				vertices[i].TexCoord = s_Data->QuadVertexTexCoords[i];
+				vertices[i].TexIndex = textureIndex;
+			}
+
+			s_Data->QuadVertexBuffer->AddData(&vertices, sizeof(Vertex) * 4);
+			s_Data->QuadIndexCount += 6;
+		});
 	}
 }

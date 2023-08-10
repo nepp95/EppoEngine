@@ -15,6 +15,7 @@
 
 // Renderer
 #include "Renderer/Renderer.h"
+#include "Renderer/Texture.h"
 
 // Scene
 #include "Scene/Scene.h"

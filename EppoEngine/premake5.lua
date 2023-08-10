@@ -16,7 +16,10 @@ project "EppoEngine"
 
     files {
         "Source/**.h",
-        "Source/**.cpp"
+        "Source/**.cpp",
+
+		"%{IncludeDir.stb}/*.h",
+		"%{IncludeDir.stb}/*.cpp"
     }
 
     includedirs {
@@ -24,6 +27,7 @@ project "EppoEngine"
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
         "%{IncludeDir.spdlog}",
+		"%{IncludeDir.stb}",
         "%{IncludeDir.vma}",
         "%{IncludeDir.vulkan}"
     }

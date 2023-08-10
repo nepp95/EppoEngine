@@ -57,8 +57,8 @@ namespace Eppo
 		Allocator::UnmapMemory(stagingBufferAlloc);
 
 		// Get a command buffer to execute a copy command
-		auto& device = RendererContext::Get()->GetLogicalDevice();
-		VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
+		auto& logicalDevice = RendererContext::Get()->GetLogicalDevice();
+		VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 
 		// Do the copy to our GPU only memory
 		VkBufferCopy copyRegion{};
@@ -67,7 +67,7 @@ namespace Eppo
 		copyRegion.size = m_Offset;
 
 		vkCmdCopyBuffer(commandBuffer, stagingBuffer, m_Buffer, 1, &copyRegion);
-		device->FlushCommandBuffer(commandBuffer);
+		logicalDevice->FlushCommandBuffer(commandBuffer);
 
 		// Clean up
 		Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);

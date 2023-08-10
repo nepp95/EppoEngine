@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Image.h"
 
+#include "Renderer/Allocator.h"
 #include "Renderer/RendererContext.h"
 
 namespace Eppo
@@ -53,12 +54,12 @@ namespace Eppo
 		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageInfo.flags = 0;
 
-		m_Allocation = Allocator::AllocateImage(m_Image, imageInfo, VMA_MEMORY_USAGE_GPU_ONLY);
+		m_Info.Allocation = Allocator::AllocateImage(m_Info.Image, imageInfo, VMA_MEMORY_USAGE_GPU_ONLY);
 
 		// Image View
 		VkImageViewCreateInfo viewInfo{};
 		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		viewInfo.image = m_Image;
+		viewInfo.image = m_Info.Image;
 		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		viewInfo.format = Utils::ImageFormatToVkFormat(m_Specification.Format);
 		viewInfo.subresourceRange = {};
@@ -69,14 +70,37 @@ namespace Eppo
 		viewInfo.subresourceRange.layerCount = 1;
 
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr, &m_ImageView), "Failed to create image view!");
+		VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr, &m_Info.ImageView), "Failed to create image view!");
+
+		m_Info.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
 	Image::~Image()
 	{
+		Release();
+	}
+
+	void Image::Release()
+	{
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
-		vkDestroyImageView(device, m_ImageView, nullptr);
-		Allocator::DestroyImage(m_Image, m_Allocation);
+		if (m_Info.Sampler)
+		{
+			vkDestroySampler(device, m_Info.Sampler, nullptr);
+			m_Info.Sampler = nullptr;
+		}
+
+		if (m_Info.ImageView)
+		{
+			vkDestroyImageView(device, m_Info.ImageView, nullptr);
+			m_Info.ImageView = nullptr;
+		}
+
+		if (m_Info.Image)
+		{
+			Allocator::DestroyImage(m_Info.Image, m_Info.Allocation);
+			m_Info.Image = nullptr;
+			m_Info.Allocation = nullptr;
+		}
 	}
 }

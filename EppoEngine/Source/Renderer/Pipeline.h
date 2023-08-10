@@ -15,7 +15,10 @@ namespace Eppo
 		Pipeline(const PipelineSpecification& specification);
 		~Pipeline();
 
+		const PipelineSpecification& GetSpecification() const { return m_Specification; }
+
 		VkPipeline GetPipeline() const { return m_Pipeline; }
+		VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
 
 	private:
 		PipelineSpecification m_Specification;
