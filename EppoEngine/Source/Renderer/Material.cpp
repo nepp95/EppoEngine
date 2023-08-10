@@ -4,6 +4,8 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
 
+#define SET 2
+
 namespace Eppo
 {
 	Material::Material(Ref<Shader> shader)
@@ -12,42 +14,37 @@ namespace Eppo
 		const auto& resources = m_Shader->GetShaderResources();
 
 		std::unordered_map<uint32_t, std::vector<VkDescriptorPoolSize>> descriptorTypes;
-		for (const auto& [set, resource] : resources)
+		for (const auto& resource : resources.at(SET))
 		{
-			VkDescriptorPoolSize& poolSize = descriptorTypes[set].emplace_back();
+			VkDescriptorPoolSize& poolSize = descriptorTypes[SET].emplace_back();
 			uint32_t descriptorCount = 0;
-			for (const auto& innerResource : resource)
-				descriptorCount += innerResource.ArraySize;
-			poolSize.descriptorCount = descriptorCount * 2;
-			poolSize.type = Utils::ShaderResourceTypeToVkDescriptorType(resource[0].ResourceType);
+				descriptorCount += resource.ArraySize;
+			poolSize.descriptorCount = descriptorCount * VulkanConfig::MaxFramesInFlight;
+			poolSize.type = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
 		}
 
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
-		m_DescriptorPools.resize(descriptorTypes.size());
-		for (const auto& [set, types] : descriptorTypes)
+		VkDescriptorPoolCreateInfo poolCreateInfo{};
+		poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolCreateInfo.maxSets = VulkanConfig::MaxFramesInFlight;
+		poolCreateInfo.poolSizeCount = descriptorTypes.at(SET).size();
+		poolCreateInfo.pPoolSizes = descriptorTypes.at(SET).data();
+		poolCreateInfo.pNext = nullptr;
+
+		VK_CHECK(vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &m_DescriptorPool), "Failed to create descriptor pool!");
+
+		m_DescriptorSets.resize(VulkanConfig::MaxFramesInFlight);
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			VkDescriptorPoolCreateInfo poolCreateInfo{};
-			poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolCreateInfo.maxSets = 2;
-			poolCreateInfo.poolSizeCount = descriptorTypes.at(set).size();
-			poolCreateInfo.pPoolSizes = descriptorTypes.at(set).data();
-			poolCreateInfo.pNext = nullptr;
+			VkDescriptorSetAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.descriptorPool = m_DescriptorPool;
+			allocInfo.descriptorSetCount = 1;
+			allocInfo.pSetLayouts = &shader->GetDescriptorSetLayout(SET);
+			allocInfo.pNext = nullptr;
 
-			VK_CHECK(vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &m_DescriptorPools[set]), "Failed to create descriptor pool!");
-
-			m_DescriptorSets[set].resize(VulkanConfig::MaxFramesInFlight);
-			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-			{
-				VkDescriptorSetAllocateInfo allocInfo{};
-				allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-				allocInfo.descriptorPool = m_DescriptorPools[set];
-				allocInfo.descriptorSetCount = 1;
-				allocInfo.pSetLayouts = &shader->GetDescriptorSetLayout(set);
-				allocInfo.pNext = nullptr;
-
-				VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &m_DescriptorSets[set][i]), "Failed to allocate descriptor set!");
-			}
+			VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &m_DescriptorSets[i]), "Failed to allocate descriptor set!");
 		}
 	}
 
@@ -55,8 +52,7 @@ namespace Eppo
 	{
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
-		for (uint32_t i = 0; i < m_DescriptorPools.size(); i++)
-			vkDestroyDescriptorPool(device, m_DescriptorPools[i], nullptr);
+		vkDestroyDescriptorPool(device, m_DescriptorPool, nullptr);
 	}
 
 	void Material::Set(const std::string& name, const Ref<Texture>& texture, uint32_t arrayIndex)
@@ -64,11 +60,14 @@ namespace Eppo
 		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-		Renderer::UpdateDescriptorSet(texture, m_DescriptorSets[0][imageIndex], arrayIndex);
+		Renderer::UpdateDescriptorSet(texture, m_DescriptorSets[imageIndex], arrayIndex);
 	}
 
 	VkDescriptorSet Material::Get()
 	{
-		return m_DescriptorSets[0][0];
+		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
+		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+
+		return m_DescriptorSets[imageIndex];
 	}
 }

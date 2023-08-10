@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "Renderer.h"
 
-#include "Renderer/IndexBuffer.h"
+#include "Renderer/Buffers/IndexBuffer.h"
+#include "Renderer/Buffers/VertexBuffer.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/RendererContext.h"
 #include "Renderer/Vertex.h"
-#include "Renderer/VertexBuffer.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -234,7 +234,7 @@ namespace Eppo
 				swapchain->GetCurrentRenderCommandBuffer(),
 				VK_PIPELINE_BIND_POINT_GRAPHICS,
 				s_Data->QuadPipeline->GetPipelineLayout(),
-				0,
+				2,
 				1,
 				&descriptorSet,
 				0,

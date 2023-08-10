@@ -18,7 +18,7 @@ namespace Eppo
 		Ref<Shader> m_Shader;
 		Ref<Texture> m_Texture; // TODO: Can be multiple in case of meshes?
 
-		std::vector<VkDescriptorPool> m_DescriptorPools;
-		std::unordered_map<uint32_t, std::vector<VkDescriptorSet>> m_DescriptorSets;
+		VkDescriptorPool m_DescriptorPool;
+		std::vector<VkDescriptorSet> m_DescriptorSets;
 	};
 }

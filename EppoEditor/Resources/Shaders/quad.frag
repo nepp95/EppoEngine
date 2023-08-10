@@ -6,7 +6,7 @@ layout(location = 2) in float fTexIndex;
 
 layout(location = 0) out vec4 outColor;
 
-layout(binding = 1) uniform sampler2D texSampler[32];
+layout(set = 2, binding = 1) uniform sampler2D texSampler[32];
 
 void main()
 {

@@ -118,6 +118,11 @@ namespace Eppo
 			Filesystem::WriteBytes(fragmentCachePath, m_ShaderBytes.at(ShaderType::Fragment));
 		}
 
+		m_ShaderResources[0] = {};
+		m_ShaderResources[1] = {};
+		m_ShaderResources[2] = {};
+		m_ShaderResources[3] = {};
+
 		for (auto&& [type, data] : m_ShaderBytes)
 			Reflect(type, data);
 
@@ -139,7 +144,7 @@ namespace Eppo
 
 	const VkDescriptorSetLayout& Shader::GetDescriptorSetLayout(uint32_t set) const
 	{
-		EPPO_ASSERT(set < m_DescriptorSetLayouts.size());
+		EPPO_ASSERT((set < m_DescriptorSetLayouts.size()));
 
 		return m_DescriptorSetLayouts.at(set);
 	}
@@ -275,10 +280,11 @@ namespace Eppo
 	{
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
-		m_DescriptorSetLayouts.resize(m_ShaderResources.size());
-
 		for (const auto& [set, setResources] : m_ShaderResources)
 		{
+			if (set >= m_DescriptorSetLayouts.size())
+				m_DescriptorSetLayouts.resize(set + 1);
+
 			std::vector<VkDescriptorSetLayoutBinding> bindings;
 
 			for (const auto& resource : setResources)
@@ -300,51 +306,18 @@ namespace Eppo
 
 			VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &m_DescriptorSetLayouts[set]), "Failed to create descriptor set layout!");
 		}
+
+		for (uint32_t i = 0; i < m_DescriptorSetLayouts.size(); i++)
+		{
+			if (!m_DescriptorSetLayouts[i])
+			{
+				VkDescriptorSetLayoutCreateInfo layoutInfo{};
+				layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+				layoutInfo.bindingCount = 0;
+				layoutInfo.pBindings = nullptr;
+
+				VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &m_DescriptorSetLayouts[i]), "Failed to create descriptor set layout!");
+			}
+		}
 	}
-
-	//void Shader::CreateDescriptorSets()
-	//{
-	//	std::unordered_map<VkDescriptorType, uint32_t> shaderResourceTypes;
-
-	//	for (uint32_t set = 0; set < m_ShaderResources.size(); set++)
-	//	{
-	//		for (const auto& resource : m_ShaderResources[set])
-	//		{
-	//			VkDescriptorType type = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
-
-	//			if (shaderResourceTypes.find(type) == shaderResourceTypes.end())
-	//				shaderResourceTypes[type] = 0;
-
-	//			shaderResourceTypes[type]++;
-	//		}
-	//	}
-
-	//	VkDescriptorPoolSize poolSizes[] = {
-	//		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, shaderResourceTypes.at(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) },
-	//		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shaderResourceTypes.at(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) }
-	//	};
-
-	//	uint32_t poolSizeCount = ((int)(sizeof(poolSizes) / sizeof(*(poolSizes)))); // IM_ARRAYSIZE from imgui
-
-	//	VkDescriptorPoolCreateInfo createInfo{};
-	//	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	//	createInfo.poolSizeCount = poolSizeCount;
-	//	createInfo.pPoolSizes = poolSizes;
-	//	createInfo.maxSets = 1;
-	//	createInfo.pNext = nullptr;
-
-	//	VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-	//	VK_CHECK(vkCreateDescriptorPool(device, &createInfo, nullptr, &m_DescriptorPool), "Failed to create descriptor pool!");
-
-	//	m_DescriptorSets.resize(poolSizeCount);
-	//	for (size_t i = 0; i < m_DescriptorSets.size(); i++)
-	//	{
-	//		VkDescriptorSetAllocateInfo allocInfo{};
-	//		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	//		allocInfo.descriptorPool = m_DescriptorPool;
-	//		allocInfo.descriptorSetCount = m_DescriptorSetLayouts.size();
-	//		allocInfo.pSetLayouts = m_DescriptorSetLayouts.data();
-	//		allocInfo.pNext = nullptr;
-	//	}
-	//}
 }

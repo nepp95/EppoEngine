@@ -15,7 +15,7 @@ namespace Eppo
 	
 	void EditorLayer::OnDetach()
 	{
-		m_TestTexture = nullptr;
+		m_TestTexture.reset();
 	}
 	
 	void EditorLayer::Update(float timestep)
@@ -26,12 +26,6 @@ namespace Eppo
 	void EditorLayer::Render()
 	{
 		m_ActiveScene->Render();
-
-		Renderer::BeginScene();
-
-		Renderer::DrawQuad({ 0.0f, 0.0f, 0.0f }, m_TestTexture );
-
-		Renderer::EndScene();
 	}
 
 	void EditorLayer::OnEvent(Event& e)

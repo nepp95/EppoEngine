@@ -4,6 +4,13 @@
 
 namespace Eppo
 {
+	// For compatibility with all devices, we only use 4 different sets
+	// 
+	// Set 0 = Per frame global data
+	// Set 1 = Per frame scene data
+	// Set 2 = Per frame material data
+	// Set 3 = Per frame object data
+
 	enum class ShaderType
 	{
 		Vertex = 0,
@@ -47,7 +54,6 @@ namespace Eppo
 		void Reflect(ShaderType type, const std::vector<uint32_t>& shaderBytes);
 		void CreatePipelineShaderInfos();
 		void CreateDescriptorSetLayout();
-		//void CreateDescriptorSets();
 
 	private:
 		ShaderSpecification m_Specification;
