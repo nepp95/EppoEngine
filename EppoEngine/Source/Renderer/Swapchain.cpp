@@ -9,6 +9,8 @@ namespace Eppo
 {
 	Swapchain::Swapchain()
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::Swapchain");
+
 		Ref<RendererContext> context = RendererContext::Get();
 		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
 
@@ -191,6 +193,8 @@ namespace Eppo
 
 	void Swapchain::BeginFrame()
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::BeginFrame");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, m_PresentSemaphores[m_CurrentFrameIndex], VK_NULL_HANDLE, &m_CurrentImageIndex);
@@ -199,6 +203,8 @@ namespace Eppo
 
 	void Swapchain::Present()
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::Present");
+
 		Ref<LogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
 
 		VkResult result;
@@ -239,6 +245,8 @@ namespace Eppo
 
 	void Swapchain::Cleanup()
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::Cleanup");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto& framebuffer : m_Framebuffers)
@@ -252,6 +260,8 @@ namespace Eppo
 
 	void Swapchain::Destroy()
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::Destroy");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		vkDestroyRenderPass(device, m_RenderPass, nullptr);
@@ -274,11 +284,13 @@ namespace Eppo
 
 	void Swapchain::OnResize()
 	{
-
+		EPPO_PROFILE_FUNCTION("Swapchain::OnResize");
 	}
 
 	SwapchainSupportDetails Swapchain::QuerySwapchainSupport(Ref<RendererContext> context)
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::QuerySwapchainSupport");
+
 		VkPhysicalDevice physicalDevice = context->GetLogicalDevice()->GetPhysicalDevice()->GetNativeDevice();
 
 		SwapchainSupportDetails details;
@@ -311,6 +323,8 @@ namespace Eppo
 
 	VkSurfaceFormatKHR Swapchain::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::ChooseSwapSurfaceFormat");
+
 		for (const auto& format : availableFormats)
 		{
 			if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
@@ -323,8 +337,11 @@ namespace Eppo
 
 	VkPresentModeKHR Swapchain::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::ChooseSwapPresentMode");
+
 		for (const auto& presentMode : availablePresentModes)
 		{
+			//if (presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
 			if (presentMode == VK_PRESENT_MODE_FIFO_KHR)
 				return presentMode;
 		}
@@ -334,6 +351,8 @@ namespace Eppo
 
 	VkExtent2D Swapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 	{
+		EPPO_PROFILE_FUNCTION("Swapchain::ChooseSwapExtent");
+
 		if (capabilities.currentExtent.width != UINT32_MAX)
 			return capabilities.currentExtent;
 

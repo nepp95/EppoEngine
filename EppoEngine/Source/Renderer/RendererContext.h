@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Debug/Profiler.h"
 #include "Renderer/LogicalDevice.h"
 #include "Renderer/Swapchain.h"
 
@@ -25,6 +26,8 @@ namespace Eppo
 		Ref<Swapchain> GetSwapchain() { return m_Swapchain; }
 		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
 
+		TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
+
 		void SubmitResourceFree(std::function<void()> fn);
 
 		static Ref<RendererContext> Get();
@@ -44,8 +47,12 @@ namespace Eppo
 		Ref<LogicalDevice> m_LogicalDevice;
 		Ref<Swapchain> m_Swapchain;
 
+		// Vulkan resource management
 		std::deque<std::function<void()>> m_ResourceFreeCommands;
 		uint32_t m_ResourceFreeCommandCount = 0;
+
+		// Tracy profiler context
+		std::vector<TracyVkCtx> m_TracyContexts;
 
 		static RendererContext* s_Instance;
 	};

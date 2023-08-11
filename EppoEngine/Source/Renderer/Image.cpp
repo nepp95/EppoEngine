@@ -25,6 +25,8 @@ namespace Eppo
 	Image::Image(const ImageSpecification& specification)
 		: m_Specification(specification)
 	{
+		EPPO_PROFILE_FUNCTION("Image::Image");
+
 		VkImageUsageFlags usageFlags{};
 
 		if (m_Specification.Usage == ImageUsage::Texture)
@@ -77,11 +79,15 @@ namespace Eppo
 
 	Image::~Image()
 	{
+		EPPO_PROFILE_FUNCTION("Image::~Image");
+
 		Release();
 	}
 
 	void Image::Release()
 	{
+		EPPO_PROFILE_FUNCTION("Image::Release");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		if (m_Info.Sampler)

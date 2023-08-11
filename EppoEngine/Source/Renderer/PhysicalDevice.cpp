@@ -7,6 +7,8 @@ namespace Eppo
 {
 	PhysicalDevice::PhysicalDevice()
 	{
+		EPPO_PROFILE_FUNCTION("PhysicalDevice::PhysicalDevice");
+
 		VkInstance instance = RendererContext::Get()->GetVulkanInstance();
 	
 		// Select GPU
@@ -59,6 +61,8 @@ namespace Eppo
 
 	QueueFamilyIndices PhysicalDevice::FindQueueFamilyIndices()
 	{
+		EPPO_PROFILE_FUNCTION("PhysicalDevice::FindQueueFamilyIndices");
+
 		QueueFamilyIndices indices;
 
 		uint32_t queueFamilyCount = 0;
@@ -81,6 +85,8 @@ namespace Eppo
 
 	bool PhysicalDevice::IsExtensionSupported(const std::string& extension)
 	{
+		EPPO_PROFILE_FUNCTION("PhysicalDevice::IsExtensionSupported");
+
 		return std::find(m_SupportedExtensions.begin(), m_SupportedExtensions.end(), extension) != m_SupportedExtensions.end();
 	}
 }

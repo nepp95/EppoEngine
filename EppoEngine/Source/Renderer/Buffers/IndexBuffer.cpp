@@ -8,6 +8,8 @@ namespace Eppo
 	IndexBuffer::IndexBuffer(void* data, uint32_t size)
 		: m_Size(size)
 	{
+		EPPO_PROFILE_FUNCTION("IndexBuffer::IndexBuffer");
+
 		// To stage or not to stage (staging buffer)
 		VkBufferCreateInfo stagingBufferInfo{};
 		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -49,6 +51,8 @@ namespace Eppo
 
 	IndexBuffer::~IndexBuffer()
 	{
+		EPPO_PROFILE_FUNCTION("IndexBuffer::~IndexBuffer");
+
 		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 }

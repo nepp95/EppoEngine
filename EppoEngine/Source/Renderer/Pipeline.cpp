@@ -10,6 +10,8 @@ namespace Eppo
 	Pipeline::Pipeline(const PipelineSpecification& specification)
 		: m_Specification(specification)
 	{
+		EPPO_PROFILE_FUNCTION("Pipeline::Pipeline");
+
 		Ref<RendererContext> context = RendererContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
@@ -131,6 +133,8 @@ namespace Eppo
 
 	Pipeline::~Pipeline()
 	{
+		EPPO_PROFILE_FUNCTION("Pipeline::~Pipeline");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		vkDestroyPipeline(device, m_Pipeline, nullptr);

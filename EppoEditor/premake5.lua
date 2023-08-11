@@ -19,6 +19,7 @@ project "EppoEditor"
 
 		"%{IncludeDir.glm}",
         "%{IncludeDir.spdlog}",
+        "%{IncludeDir.tracy}",
 		"%{IncludeDir.vulkan}"
     }
 
@@ -34,10 +35,20 @@ project "EppoEditor"
         runtime "Debug"
         symbols "On"
 
+		defines {
+			"TRACY_ENABLE",
+			"EPPO_TRACK_MEMORY"
+		}
+
     filter "configurations:Release"
         defines "EPPO_RELEASE"
         runtime "Release"
         optimize "On"
+
+		defines {
+			"TRACY_ENABLE",
+			"EPPO_TRACK_MEMORY"
+		}
     
     filter "configurations:Dist"
         defines "EPPO_DIST"

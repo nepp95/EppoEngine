@@ -5,6 +5,8 @@ namespace Eppo
 {
 	void LayerStack::PushLayer(Layer* layer)
 	{
+		EPPO_PROFILE_FUNCTION("LayerStack::PushLayer");
+
 		m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
 		m_LayerInsertIndex++;
 
@@ -13,6 +15,8 @@ namespace Eppo
 
 	void LayerStack::PopLayer(Layer* layer)
 	{
+		EPPO_PROFILE_FUNCTION("LayerStack::PopLayer");
+
 		auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
 
 		if (it != m_Layers.begin() + m_LayerInsertIndex)
@@ -25,11 +29,15 @@ namespace Eppo
 
 	void LayerStack::PushOverlay(Layer* layer)
 	{
+		EPPO_PROFILE_FUNCTION("LayerStack::PushOverlay");
+
 		m_Layers.emplace_back(layer);
 	}
 
 	void LayerStack::PopOverlay(Layer* layer)
 	{
+		EPPO_PROFILE_FUNCTION("LayerStack::PopOverlay");
+
 		auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
 
 		if (it != m_Layers.end())

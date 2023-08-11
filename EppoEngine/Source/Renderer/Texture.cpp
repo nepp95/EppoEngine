@@ -12,6 +12,8 @@ namespace Eppo
 	Texture::Texture(const std::filesystem::path& filepath)
 		: m_Filepath(filepath)
 	{
+		EPPO_PROFILE_FUNCTION("Texture::Texture");
+
 		// Read pixels
 		int width, height, channels;
 		stbi_uc* data = nullptr;
@@ -131,6 +133,8 @@ namespace Eppo
 	Texture::Texture(uint32_t width, uint32_t height, ImageFormat format, void* data)
 		: m_Width(width), m_Height(height)
 	{
+		EPPO_PROFILE_FUNCTION("Texture::Texture");
+
 		uint32_t size = width * height * Utils::GetMemorySize(format);
 
 		if (data)
@@ -244,6 +248,8 @@ namespace Eppo
 
 	Texture::~Texture()
 	{
+		EPPO_PROFILE_FUNCTION("Texture::~Texture");
+
 		m_Image->Release();
 	}
 }

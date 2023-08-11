@@ -4,13 +4,31 @@
 
 #if defined(EPPO_DEBUG)
 	#define EPPO_ENABLE_ASSERTS
+	#define EPPO_ENABLE_PROFILING
 	#define EPPO_ENABLE_VERIFY
 #elif defined(EPPO_RELEASE)
 	#define EPPO_ENABLE_VERIFY
+	#define EPPO_ENABLE_PROFILING
 #endif
+
+#include <Debug/Profiler.h>
 
 #define BIT(x) (1 << x)
 #define BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+
+#if defined(EPPO_TRACK_MEMORY)
+
+	_NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size) _VCRT_ALLOCATOR
+	void* __CRTDECL operator new(size_t size);
+
+	_NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size) _VCRT_ALLOCATOR
+	void* __CRTDECL operator new[](size_t size);
+	
+	void __CRTDECL operator delete(void* block);
+	
+	void __CRTDECL operator delete[](void* block);
+	
+#endif
 
 namespace Eppo
 {
@@ -34,6 +52,8 @@ namespace Eppo
 		return std::make_shared<T>(std::forward<Args>(args)...);
 	}
 }
+
+
 
 #include "Core/Assert.h"
 #include "Core/Log.h"

@@ -7,7 +7,7 @@ namespace Eppo
 	// For compatibility with all devices, we only use 4 different sets
 	// 
 	// Set 0 = Per frame global data
-	// Set 1 = Per frame scene data
+	// Set 1 = Per frame render pass data
 	// Set 2 = Per frame material data
 	// Set 3 = Per frame object data
 

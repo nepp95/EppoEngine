@@ -60,6 +60,8 @@ namespace Eppo
 	Shader::Shader(const ShaderSpecification& specification)
 		: m_Specification(specification)
 	{
+		EPPO_PROFILE_FUNCTION("Shader::Shader");
+
 		std::filesystem::path cacheDir = Utils::GetCacheDirectory();
 
 		// Get filename i.e. shader
@@ -133,6 +135,8 @@ namespace Eppo
 
 	Shader::~Shader()
 	{
+		EPPO_PROFILE_FUNCTION("Shader::~Shader");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto& layout : m_DescriptorSetLayouts)
@@ -144,6 +148,7 @@ namespace Eppo
 
 	const VkDescriptorSetLayout& Shader::GetDescriptorSetLayout(uint32_t set) const
 	{
+		EPPO_PROFILE_FUNCTION("Shader::GetDescriptorSetLayout");
 		EPPO_ASSERT((set < m_DescriptorSetLayouts.size()));
 
 		return m_DescriptorSetLayouts.at(set);
@@ -151,6 +156,8 @@ namespace Eppo
 
 	void Shader::Compile(ShaderType type, const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("Shader::Compile");
+
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
@@ -185,6 +192,8 @@ namespace Eppo
 
 	void Shader::Reflect(ShaderType type, const std::vector<uint32_t>& shaderBytes)
 	{
+		EPPO_PROFILE_FUNCTION("Shader::Reflect");
+
 		spirv_cross::Compiler compiler(shaderBytes);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
@@ -247,13 +256,14 @@ namespace Eppo
 
 				EPPO_TRACE("\t\tSet = {}", set);
 				EPPO_TRACE("\t\tBinding = {}", binding);
-				EPPO_TRACE("\t\tMembers = {}", memberCount);
 			}
 		}
 	}
 
 	void Shader::CreatePipelineShaderInfos()
 	{
+		EPPO_PROFILE_FUNCTION("Shader::CreatePipelineShaderInfos");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		for (const auto& [type, shaderBytes] : m_ShaderBytes)
@@ -278,6 +288,8 @@ namespace Eppo
 
 	void Shader::CreateDescriptorSetLayout()
 	{
+		EPPO_PROFILE_FUNCTION("Shader::CreateDescriptorSetLayout");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		for (const auto& [set, setResources] : m_ShaderResources)

@@ -87,34 +87,45 @@ namespace Eppo
 	{
 		while (m_IsRunning)
 		{
-			float time = (float)glfwGetTime();
-			float timestep = time - m_LastFrameTime;
-			m_LastFrameTime = time;
+			{
+				EPPO_PROFILE_FUNCTION("CPU Update");
 
-			m_Window->ProcessEvents();
+				float time = (float)glfwGetTime();
+				float timestep = time - m_LastFrameTime;
+				m_LastFrameTime = time;
 
-			for (Layer* layer : m_LayerStack)
-				layer->Update(timestep);
+				m_Window->ProcessEvents();
+
+				for (Layer* layer : m_LayerStack)
+					layer->Update(timestep);
+			}
 
 			if (!m_IsMinimized)
 			{
-				// 1. Start command buffer
-				Renderer::BeginFrame();
-
-				// 2. Record commands
-				for (Layer* layer : m_LayerStack)
-					layer->Render();
-
-				// 3. End command buffer
-				Renderer::EndFrame();
-
-				// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
 				Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
+				{
+					EPPO_PROFILE_FUNCTION("CPU Render");
 
-				swapchain->BeginFrame();
-				Renderer::ExecuteRenderCommands();
-				swapchain->Present();
+					// 1. Start command buffer
+					Renderer::BeginFrame();
+
+					// 2. Record commands
+					for (Layer* layer : m_LayerStack)
+						layer->Render();
+
+					// 3. End command buffer
+					Renderer::EndFrame();
+				}
+				{
+					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
+					EPPO_PROFILE_FUNCTION("CPU Wait");
+					swapchain->BeginFrame();
+					Renderer::ExecuteRenderCommands();
+					swapchain->Present();
+				}
 			}
+
+			FrameMark;
 		}
 
 		RendererContext::Get()->WaitIdle();

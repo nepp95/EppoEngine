@@ -22,6 +22,8 @@ namespace Eppo
 
 		std::array<VkDescriptorPool, VulkanConfig::MaxFramesInFlight> DescriptorPools;
 
+		Vertex* QuadVertexBufferBase = nullptr;
+		Vertex* QuadVertexBufferPtr = nullptr;
 		Ref<Pipeline> QuadPipeline;
 		Ref<VertexBuffer> QuadVertexBuffer;
 		Ref<IndexBuffer> QuadIndexBuffer;
@@ -41,6 +43,8 @@ namespace Eppo
 
 	void Renderer::Init()
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::Init");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		s_Data = new RendererData();
@@ -58,6 +62,7 @@ namespace Eppo
 
 		// Vertex buffer
 		s_Data->QuadVertexBuffer = CreateRef<VertexBuffer>(sizeof(Vertex) * RendererData::MaxVertices);
+		s_Data->QuadVertexBufferBase = new Vertex[RendererData::MaxVertices];
 
 		s_Data->QuadVertexPositions[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
 		s_Data->QuadVertexPositions[1] = {  0.5f, -0.5f, 0.0f, 1.0f };
@@ -128,6 +133,8 @@ namespace Eppo
 
 	void Renderer::Shutdown()
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::Shutdown");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto& pool : s_Data->DescriptorPools)
@@ -140,6 +147,8 @@ namespace Eppo
 	{
 		SubmitCommand([]()
 		{
+			EPPO_PROFILE_FUNCTION("Renderer::BeginFrame");
+
 			Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 			VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
 
@@ -161,7 +170,10 @@ namespace Eppo
 	{
 		SubmitCommand([]()
 		{
-			Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
+			EPPO_PROFILE_FUNCTION("Renderer::EndFrame");
+
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
 			VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
 
 			VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
@@ -170,28 +182,22 @@ namespace Eppo
 
 	void Renderer::BeginScene()
 	{
-		Renderer::SubmitCommand([]()
-		{
-			s_Data->QuadIndexCount = 0;
-			s_Data->QuadVertexBuffer->Reset();
-		});
+		EPPO_PROFILE_FUNCTION("Renderer::BeginScene");
+
+		s_Data->QuadIndexCount = 0;
+		s_Data->QuadVertexBufferPtr = s_Data->QuadVertexBufferBase;
 	}
 
 	void Renderer::EndScene()
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::EndScene");
+
 		SubmitCommand([]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 
-			// Update descriptors
-			for (uint32_t i = 0; i < s_Data->TextureSlots.size(); i++)
-			{
-				if (s_Data->TextureSlots[i])
-					s_Data->QuadMaterial->Set("texSampler", s_Data->TextureSlots[i], i);
-				else
-					s_Data->QuadMaterial->Set("texSampler", s_Data->WhiteTexture, i);
-			}
+			EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), swapchain->GetCurrentRenderCommandBuffer(), "GPU End Scene");
 
 			// Render
 			VkExtent2D extent = swapchain->GetExtent();
@@ -208,58 +214,96 @@ namespace Eppo
 			renderPassInfo.pClearValues = &clearColor;
 
 			vkCmdBeginRenderPass(swapchain->GetCurrentRenderCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-			vkCmdBindPipeline(swapchain->GetCurrentRenderCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->QuadPipeline->GetPipeline());
+		});
 
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &viewport);
+		// Quads
+		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data->QuadVertexBufferPtr - (uint8_t*)s_Data->QuadVertexBufferBase);
+		if (dataSize)
+		{
+			SubmitCommand([dataSize]()
+			{
+				s_Data->QuadVertexBuffer->SetData(s_Data->QuadVertexBufferBase, dataSize);
+	
+				Ref<RendererContext> context = RendererContext::Get();
+				Ref<Swapchain> swapchain = context->GetSwapchain();
 
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
-			vkCmdSetScissor(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &scissor);
+				// Update descriptors
+				for (uint32_t i = 0; i < s_Data->TextureSlots.size(); i++)
+				{
+					if (s_Data->TextureSlots[i])
+						s_Data->QuadMaterial->Set("texSampler", s_Data->TextureSlots[i], i);
+					else
+						s_Data->QuadMaterial->Set("texSampler", s_Data->WhiteTexture, i);
+				}
+				vkCmdBindPipeline(swapchain->GetCurrentRenderCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->QuadPipeline->GetPipeline());
 
-			VkBuffer vbo[] = { s_Data->QuadVertexBuffer->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, vbo, offsets);
-			vkCmdBindIndexBuffer(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				VkExtent2D extent = swapchain->GetExtent();
 
-			VkDescriptorSet descriptorSet = s_Data->QuadMaterial->Get();
-			vkCmdBindDescriptorSets(
-				swapchain->GetCurrentRenderCommandBuffer(),
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				s_Data->QuadPipeline->GetPipelineLayout(),
-				2,
-				1,
-				&descriptorSet,
-				0,
-				nullptr
-			);
+				VkViewport viewport{};
+				viewport.x = 0.0f;
+				viewport.y = 0.0f;
+				viewport.width = (float)extent.width;
+				viewport.height = (float)extent.height;
+				viewport.minDepth = 0.0f;
+				viewport.maxDepth = 1.0f;
+				vkCmdSetViewport(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &viewport);
 
-			// Draw
-			vkCmdDrawIndexed(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexCount, 1, 0, 0, 0);
+				VkRect2D scissor{};
+				scissor.offset = { 0, 0 };
+				scissor.extent = extent;
+				vkCmdSetScissor(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &scissor);
+
+				VkBuffer vbo[] = { s_Data->QuadVertexBuffer->GetBuffer() };
+				VkDeviceSize offsets[] = { 0 };
+				vkCmdBindVertexBuffers(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, vbo, offsets);
+				vkCmdBindIndexBuffer(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+				VkDescriptorSet descriptorSet = s_Data->QuadMaterial->Get();
+				vkCmdBindDescriptorSets(
+					swapchain->GetCurrentRenderCommandBuffer(),
+					VK_PIPELINE_BIND_POINT_GRAPHICS,
+					s_Data->QuadPipeline->GetPipelineLayout(),
+					2,
+					1,
+					&descriptorSet,
+					0,
+					nullptr
+				);
+
+				// Draw
+				vkCmdDrawIndexed(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexCount, 1, 0, 0, 0);
+			});
+		}
+
+		SubmitCommand([]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
 
 			vkCmdEndRenderPass(swapchain->GetCurrentRenderCommandBuffer());
+
+			EPPO_PROFILE_GPU_END(context->GetCurrentProfilerContext(), swapchain->GetCurrentRenderCommandBuffer());
 		});
 	}
 
 	void Renderer::ExecuteRenderCommands()
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::ExecuteRenderCommands");
+
 		s_Data->CommandQueue.Execute();
 	}
 
 	void Renderer::SubmitCommand(RenderCommand command)
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::SubmitCommand");
+
 		s_Data->CommandQueue.AddCommand(command);
 	}
 
 	VkDescriptorSet Renderer::AllocateDescriptorSet(const VkDescriptorSetLayout& layout)
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::AllocateDescriptorSet");
+
 		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
@@ -279,6 +323,8 @@ namespace Eppo
 
 	void Renderer::UpdateDescriptorSet(Ref<Texture> texture, VkDescriptorSet descriptorSet, uint32_t arrayElement)
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::UpdateDescriptorSet");
+
 		const auto& info = texture->GetImage()->GetImageInfo();
 		
 		VkDescriptorImageInfo imageInfo{};
@@ -289,7 +335,7 @@ namespace Eppo
 		VkWriteDescriptorSet writeDesc{};
 		writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDesc.dstSet = descriptorSet;
-		writeDesc.dstBinding = 1;
+		writeDesc.dstBinding = 0;
 		writeDesc.dstArrayElement = arrayElement;
 		writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		writeDesc.descriptorCount = 1;
@@ -314,23 +360,21 @@ namespace Eppo
 
 	void Renderer::DrawQuad(const glm::mat4& transform, const glm::vec4& color)
 	{
-		Renderer::SubmitCommand([=]()
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
+		if (s_Data->QuadIndexCount + 6 >= RendererData::MaxIndices)
+			return; // TODO: Next batch
+
+		for (uint32_t i = 0; i < 4; i++)
 		{
-			if (s_Data->QuadIndexCount + 6 >= RendererData::MaxIndices)
-				return; // TODO: Next batch
-
-			Vertex vertices[4];
-			for (uint32_t i = 0; i < 4; i++)
-			{
-				vertices[i].Position = transform * s_Data->QuadVertexPositions[i];
-				vertices[i].Color = color;
-				vertices[i].TexCoord = s_Data->QuadVertexTexCoords[i];
-				vertices[i].TexIndex = 0.0f;
-			}
-
-			s_Data->QuadVertexBuffer->AddData(&vertices, sizeof(Vertex) * 4);
-			s_Data->QuadIndexCount += 6;
-		});
+			s_Data->QuadVertexBufferPtr->Position = transform * s_Data->QuadVertexPositions[i];
+			s_Data->QuadVertexBufferPtr->Color = color;
+			s_Data->QuadVertexBufferPtr->TexCoord = s_Data->QuadVertexTexCoords[i];
+			s_Data->QuadVertexBufferPtr->TexIndex = 0.0f;
+			s_Data->QuadVertexBufferPtr++;
+		}
+		const auto& data = s_Data;
+		s_Data->QuadIndexCount += 6;
 	}
 
 	void Renderer::DrawQuad(const glm::vec2& position, Ref<Texture> texture, const glm::vec4& tintColor)
@@ -346,42 +390,40 @@ namespace Eppo
 
 	void Renderer::DrawQuad(const glm::mat4& transform, Ref<Texture> texture, const glm::vec4& tintColor)
 	{
-		Renderer::SubmitCommand([=]()
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
+		if (s_Data->QuadIndexCount + 6 >= RendererData::MaxIndices)
+			return; // TODO: Next batch
+
+		float textureIndex = 0.0f;
+		for (uint32_t i = 0; i < s_Data->TextureSlotIndex; i++)
 		{
-			if (s_Data->QuadIndexCount + 6 >= RendererData::MaxIndices)
+			if (s_Data->TextureSlots[i] == texture)
+			{
+				textureIndex = (float)i;
+				break;
+			}
+		}
+
+		if (textureIndex == 0.0f)
+		{
+			if (s_Data->TextureSlotIndex >= RendererData::MaxTextureSlots)
 				return; // TODO: Next batch
 
-			float textureIndex = 0.0f;
-			for (uint32_t i = 0; i < s_Data->TextureSlotIndex; i++)
-			{
-				if (s_Data->TextureSlots[i] == texture)
-				{
-					textureIndex = (float)i;
-					break;
-				}
-			}
+			textureIndex = (float)s_Data->TextureSlotIndex;
+			s_Data->TextureSlots[s_Data->TextureSlotIndex] = texture;
+			s_Data->TextureSlotIndex++;
+		}
 
-			if (textureIndex == 0.0f)
-			{
-				if (s_Data->TextureSlotIndex >= RendererData::MaxTextureSlots)
-					return; // TODO: Next batch
+		for (uint32_t i = 0; i < 4; i++)
+		{
+			s_Data->QuadVertexBufferPtr->Position = transform * s_Data->QuadVertexPositions[i];
+			s_Data->QuadVertexBufferPtr->Color = tintColor;
+			s_Data->QuadVertexBufferPtr->TexCoord = s_Data->QuadVertexTexCoords[i];
+			s_Data->QuadVertexBufferPtr->TexIndex = textureIndex;
+			s_Data->QuadVertexBufferPtr++;
+		}
 
-				textureIndex = (float)s_Data->TextureSlotIndex;
-				s_Data->TextureSlots[s_Data->TextureSlotIndex] = texture;
-				s_Data->TextureSlotIndex++;
-			}
-
-			Vertex vertices[4];
-			for (uint32_t i = 0; i < 4; i++)
-			{
-				vertices[i].Position = transform * s_Data->QuadVertexPositions[i];
-				vertices[i].Color = tintColor;
-				vertices[i].TexCoord = s_Data->QuadVertexTexCoords[i];
-				vertices[i].TexIndex = textureIndex;
-			}
-
-			s_Data->QuadVertexBuffer->AddData(&vertices, sizeof(Vertex) * 4);
-			s_Data->QuadIndexCount += 6;
-		});
+		s_Data->QuadIndexCount += 6;
 	}
 }

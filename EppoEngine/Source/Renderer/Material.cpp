@@ -11,6 +11,8 @@ namespace Eppo
 	Material::Material(Ref<Shader> shader)
 		: m_Shader(shader)
 	{
+		EPPO_PROFILE_FUNCTION("Material::Material");
+
 		const auto& resources = m_Shader->GetShaderResources();
 
 		std::unordered_map<uint32_t, std::vector<VkDescriptorPoolSize>> descriptorTypes;
@@ -50,6 +52,8 @@ namespace Eppo
 
 	Material::~Material()
 	{
+		EPPO_PROFILE_FUNCTION("Material::~Material");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		vkDestroyDescriptorPool(device, m_DescriptorPool, nullptr);
@@ -57,6 +61,8 @@ namespace Eppo
 
 	void Material::Set(const std::string& name, const Ref<Texture>& texture, uint32_t arrayIndex)
 	{
+		EPPO_PROFILE_FUNCTION("Material::Set");
+
 		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
@@ -65,6 +71,8 @@ namespace Eppo
 
 	VkDescriptorSet Material::Get()
 	{
+		EPPO_PROFILE_FUNCTION("Material::Get");
+
 		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 

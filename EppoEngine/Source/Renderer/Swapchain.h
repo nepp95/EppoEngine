@@ -63,5 +63,7 @@ namespace Eppo
 		std::vector<VkSemaphore> m_PresentSemaphores;
 		std::vector<VkSemaphore> m_RenderSemaphores;
 		std::vector<VkFence> m_Fences;
+
+		friend class RendererContext;
 	};
 }

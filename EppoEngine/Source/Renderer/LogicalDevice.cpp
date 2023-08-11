@@ -8,6 +8,8 @@ namespace Eppo
 	LogicalDevice::LogicalDevice(Ref<PhysicalDevice> physicalDevice)
 		: m_PhysicalDevice(physicalDevice)
 	{
+		EPPO_PROFILE_FUNCTION("LogicalDevice::LogicalDevice");
+
 		// Check if all required extensions are supported by the device
 		bool extensionSupported = true;
 		for (const auto& extension : VulkanConfig::DeviceExtensions)
@@ -69,6 +71,8 @@ namespace Eppo
 
 	VkCommandBuffer LogicalDevice::GetCommandBuffer(bool begin)
 	{
+		EPPO_PROFILE_FUNCTION("LogicalDevice::GetCommandBuffer");
+
 		VkCommandBuffer commandBuffer;
 
 		VkCommandBufferAllocateInfo commandBufferInfo{};
@@ -93,6 +97,8 @@ namespace Eppo
 
 	void LogicalDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer)
 	{
+		EPPO_PROFILE_FUNCTION("LogicalDevice::FlushCommandBuffer");
+
 		VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
 
 		VkSubmitInfo submitInfo{};

@@ -12,6 +12,8 @@ namespace Eppo
 	
 	void Filesystem::Init()
 	{
+		EPPO_PROFILE_FUNCTION("Filesystem::Init");
+
 		s_Data = new FilesystemData();
 
 		s_Data->RootPath = std::filesystem::current_path();
@@ -19,16 +21,22 @@ namespace Eppo
 
 	void Filesystem::Shutdown()
 	{
+		EPPO_PROFILE_FUNCTION("Filesystem::Shutdown");
+
 		delete s_Data;
 	}
 
 	bool Filesystem::Exists(const std::filesystem::path& path)
 	{
+		EPPO_PROFILE_FUNCTION("Filesystem::ReadBytes");
+
 		return std::filesystem::exists(path);
 	}
 
 	Buffer Filesystem::ReadBytes(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("Filesystem::ReadBytes");
+
 		std::ifstream stream(filepath, std::ios::binary | std::ios::ate);
 		if (!stream)
 			return {};
@@ -49,6 +57,8 @@ namespace Eppo
 
 	void Filesystem::WriteBytes(const std::filesystem::path& filepath, Buffer buffer, bool overwrite)
 	{
+		EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
+
 		if (Exists(filepath) && !overwrite)
 			return;
 
@@ -61,6 +71,8 @@ namespace Eppo
 
 	void Filesystem::WriteBytes(const std::filesystem::path& filepath, const std::vector<uint32_t>& buffer, bool overwrite)
 	{
+		EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
+
 		if (Exists(filepath) && !overwrite)
 			return;
 

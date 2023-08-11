@@ -13,6 +13,8 @@ namespace Eppo
 	RendererContext::RendererContext(GLFWwindow* windowHandle)
 		: m_WindowHandle(windowHandle)
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::RendererContext");
+
 		EPPO_ASSERT(!s_Instance);
 		s_Instance = this;
 		EPPO_ASSERT(windowHandle);
@@ -20,6 +22,8 @@ namespace Eppo
 
 	void RendererContext::Init()
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::Init");
+
 		// Vulkan instance
 		if (VulkanConfig::EnableValidation)
 			EPPO_ASSERT(HasValidationSupport());
@@ -74,10 +78,23 @@ namespace Eppo
 
 		// Swapchain
 		m_Swapchain = CreateRef<Swapchain>();
+		
+		// Profiler
+		m_TracyContexts.resize(VulkanConfig::MaxFramesInFlight);
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			m_TracyContexts[i] = TracyVkContext(m_PhysicalDevice->GetNativeDevice(), m_LogicalDevice->GetNativeDevice(), m_LogicalDevice->GetGraphicsQueue(), m_Swapchain->m_CommandBuffers[i]);
+		
+		SubmitResourceFree([=]()
+		{
+			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+				TracyVkDestroy(m_TracyContexts[i]);
+		});
 	}
 
 	void RendererContext::Shutdown()
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::Shutdown");
+
 		for (uint32_t i = 0; i < m_ResourceFreeCommandCount; i++)
 		{
 			m_ResourceFreeCommands.back()();
@@ -92,23 +109,31 @@ namespace Eppo
 
 	void RendererContext::WaitIdle()
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::WaitIdle");
+
 		VkDevice device = m_LogicalDevice->GetNativeDevice();
 		vkDeviceWaitIdle(device);
 	}
 
 	void RendererContext::SubmitResourceFree(std::function<void()> fn)
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::SubmitResourceFree");
+
 		m_ResourceFreeCommands.push_back(fn);
 		m_ResourceFreeCommandCount++;
 	}
 
 	Ref<RendererContext> RendererContext::Get()
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::Get");
+
 		return Application::Get().GetWindow().GetRendererContext();
 	}
 
 	bool RendererContext::HasValidationSupport()
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::HasValidationSupport");
+
 		uint32_t layerCount = 0;
 		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -137,6 +162,8 @@ namespace Eppo
 
 	std::vector<const char*> RendererContext::GetRequiredExtensions()
 	{
+		EPPO_PROFILE_FUNCTION("RendererContext::GetRequiredExtensions");
+
 		uint32_t glfwExtensionCount{ 0 };
 		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 

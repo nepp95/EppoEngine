@@ -3,6 +3,7 @@ project "EppoEngine"
     language "C++"
     cppdialect "C++17"
     staticruntime "Off"
+	editandcontinue "Off" -- Necessary for tracy profiler
 
     targetdir ("%{wks.location}/Bin/" .. OutputDir .. "/%{prj.name}")
     objdir ("%{wks.location}/Bin-Int/" .. OutputDir .. "/%{prj.name}")
@@ -28,6 +29,7 @@ project "EppoEngine"
         "%{IncludeDir.glm}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
+		"%{IncludeDir.tracy}",
         "%{IncludeDir.vma}",
         "%{IncludeDir.vulkan}"
     }
@@ -45,6 +47,11 @@ project "EppoEngine"
         runtime "Debug"
         symbols "On"
 
+		defines {
+			"TRACY_ENABLE",
+			"EPPO_TRACK_MEMORY"
+		}
+
         links {
             "%{Library.shaderc_debug}",
             "%{Library.spirv_cross_debug}",
@@ -61,6 +68,11 @@ project "EppoEngine"
             "%{Library.spirv_cross_release}",
             "%{Library.spirv_cross_glsl_release}"
         }
+
+		defines {
+			"TRACY_ENABLE",
+			"EPPO_TRACK_MEMORY"
+		}
     
     filter "configurations:Dist"
         defines "EPPO_DIST"
