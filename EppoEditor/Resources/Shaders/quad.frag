@@ -10,8 +10,7 @@ layout(set = 2, binding = 0) uniform sampler2D texSampler[32];
 
 void main()
 {
-	outColor = fColor;
-	outColor *= texture(texSampler[int(fTexIndex)], fTexCoord) * fColor;
+	outColor = texture(texSampler[int(fTexIndex)], fTexCoord) * fColor;
 
 	if (outColor.a == 0)
 		discard;

@@ -13,60 +13,47 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Material::Material");
 
-		const auto& resources = m_Shader->GetShaderResources();
-
-		std::unordered_map<uint32_t, std::vector<VkDescriptorPoolSize>> descriptorTypes;
-		for (const auto& resource : resources.at(SET))
-		{
-			VkDescriptorPoolSize& poolSize = descriptorTypes[SET].emplace_back();
-			uint32_t descriptorCount = 0;
-				descriptorCount += resource.ArraySize;
-			poolSize.descriptorCount = descriptorCount * VulkanConfig::MaxFramesInFlight;
-			poolSize.type = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
-		}
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		VkDescriptorPoolCreateInfo poolCreateInfo{};
-		poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolCreateInfo.maxSets = VulkanConfig::MaxFramesInFlight;
-		poolCreateInfo.poolSizeCount = descriptorTypes.at(SET).size();
-		poolCreateInfo.pPoolSizes = descriptorTypes.at(SET).data();
-		poolCreateInfo.pNext = nullptr;
-
-		VK_CHECK(vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &m_DescriptorPool), "Failed to create descriptor pool!");
+		Ref<DescriptorAllocator> allocator = Renderer::GetDescriptorAllocator();
 
 		m_DescriptorSets.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-		{
-			VkDescriptorSetAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.descriptorPool = m_DescriptorPool;
-			allocInfo.descriptorSetCount = 1;
-			allocInfo.pSetLayouts = &shader->GetDescriptorSetLayout(SET);
-			allocInfo.pNext = nullptr;
-
-			VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &m_DescriptorSets[i]), "Failed to allocate descriptor set!");
-		}
+			allocator->Allocate(&m_DescriptorSets[i], m_Shader->GetDescriptorSetLayout(SET));
 	}
 
 	Material::~Material()
 	{
 		EPPO_PROFILE_FUNCTION("Material::~Material");
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		vkDestroyDescriptorPool(device, m_DescriptorPool, nullptr);
 	}
 
 	void Material::Set(const std::string& name, const Ref<Texture>& texture, uint32_t arrayIndex)
 	{
 		EPPO_PROFILE_FUNCTION("Material::Set");
+		
+		m_Texture = texture;
+
+		const auto& info = texture->GetImage()->GetImageInfo();
+
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = info.ImageLayout;
+		imageInfo.imageView = info.ImageView;
+		imageInfo.sampler = info.Sampler;
 
 		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-		Renderer::UpdateDescriptorSet(texture, m_DescriptorSets[imageIndex], arrayIndex);
+		VkWriteDescriptorSet writeDesc{};
+		writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDesc.dstSet = m_DescriptorSets[imageIndex];
+		writeDesc.dstBinding = 0;
+		writeDesc.dstArrayElement = arrayIndex;
+		writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDesc.descriptorCount = 1;
+		writeDesc.pBufferInfo = nullptr;
+		writeDesc.pImageInfo = &imageInfo;
+		writeDesc.pTexelBufferView = nullptr;
+
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		vkUpdateDescriptorSets(device, 1, &writeDesc, 0, nullptr);
 	}
 
 	VkDescriptorSet Material::Get()

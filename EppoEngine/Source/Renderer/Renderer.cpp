@@ -2,7 +2,9 @@
 #include "Renderer.h"
 
 #include "Renderer/Buffers/IndexBuffer.h"
+#include "Renderer/Buffers/UniformBuffer.h"
 #include "Renderer/Buffers/VertexBuffer.h"
+#include "Renderer/Descriptors/DescriptorBuilder.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/RendererContext.h"
 #include "Renderer/Vertex.h"
@@ -20,8 +22,10 @@ namespace Eppo
 
 		RenderCommandQueue CommandQueue;
 
-		std::array<VkDescriptorPool, VulkanConfig::MaxFramesInFlight> DescriptorPools;
+		Ref<DescriptorAllocator> DescriptorAllocator;
+		Ref<DescriptorLayoutCache> DescriptorCache;
 
+		// Quad
 		Vertex* QuadVertexBufferBase = nullptr;
 		Vertex* QuadVertexBufferPtr = nullptr;
 		Ref<Pipeline> QuadPipeline;
@@ -37,6 +41,14 @@ namespace Eppo
 		Ref<Texture> WhiteTexture;
 		std::array<Ref<Texture>, MaxTextureSlots> TextureSlots;
 		uint32_t TextureSlotIndex = 1;
+
+		// Camera
+		struct CameraData 
+		{
+			glm::mat4 ViewProjection;
+		};
+		CameraData CameraBuffer;
+		std::unordered_map<VkDescriptorSet, Ref<UniformBuffer>> CameraUniformBuffers;
 	};
 
 	static RendererData* s_Data;
@@ -48,6 +60,8 @@ namespace Eppo
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		s_Data = new RendererData();
+		s_Data->DescriptorAllocator = CreateRef<DescriptorAllocator>();
+		s_Data->DescriptorCache = CreateRef<DescriptorLayoutCache>();
 
 		ShaderSpecification quadShaderSpec;
 		quadShaderSpec.ShaderSources = {
@@ -56,7 +70,7 @@ namespace Eppo
 		};
 
 		PipelineSpecification quadPipelineSpec;
-		quadPipelineSpec.Shader = CreateRef<Shader>(quadShaderSpec);
+		quadPipelineSpec.Shader = CreateRef<Shader>(quadShaderSpec, s_Data->DescriptorCache);
 
 		s_Data->QuadPipeline = CreateRef<Pipeline>(quadPipelineSpec);
 
@@ -94,51 +108,22 @@ namespace Eppo
 		delete[] quadIndices;
 
 		// Textures
-		uint32_t whiteTextureData = 0xfff000fff;
+		uint32_t whiteTextureData = 0xffffffff;
 		s_Data->WhiteTexture = CreateRef<Texture>(1, 1, ImageFormat::RGBA8, &whiteTextureData);
 		s_Data->TextureSlots[0] = s_Data->WhiteTexture;
 
-		// Descriptor pools
-		// TODO: Descriptor Abstraction
-		VkDescriptorPoolSize poolSizes[] = {
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 }
-		};
-		
-		uint32_t poolSizeCount = ((int)(sizeof(poolSizes) / sizeof(*(poolSizes)))); // IM_ARRAYSIZE from imgui
-
-		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-		{
-			VkDescriptorPoolCreateInfo poolCreateInfo{};
-			poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolCreateInfo.maxSets = 1000 * poolSizeCount;
-			poolCreateInfo.poolSizeCount = poolSizeCount;
-			poolCreateInfo.pPoolSizes = poolSizes;
-			poolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-
-			VK_CHECK(vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &s_Data->DescriptorPools[i]), "Failed to create descriptor pool!");
-		}
-
 		s_Data->QuadMaterial = CreateRef<Material>(s_Data->QuadPipeline->GetSpecification().Shader);
+
+		//for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			//s_Data->CameraUniformBuffers[i] = CreateRef<UniformBuffer>(sizeof(RendererData::CameraBuffer));
 	}
 
 	void Renderer::Shutdown()
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Shutdown");
 
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		for (auto& pool : s_Data->DescriptorPools)
-			vkDestroyDescriptorPool(device, pool, nullptr);
+		s_Data->DescriptorCache->Shutdown();
+		s_Data->DescriptorAllocator->Shutdown();
 
 		delete s_Data;
 	}
@@ -154,8 +139,7 @@ namespace Eppo
 
 			uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-			vkResetDescriptorPool(device, s_Data->DescriptorPools[imageIndex], 0);
+			//s_Data->DescriptorAllocator->ResetPools();
 
 			VkCommandBufferBeginInfo beginInfo{};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -176,28 +160,23 @@ namespace Eppo
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 			VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
 
+			EPPO_PROFILE_GPU_END(context->GetCurrentProfilerContext(), commandBuffer);
+
 			VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
 		});
 	}
 
-	void Renderer::BeginScene()
-	{
-		EPPO_PROFILE_FUNCTION("Renderer::BeginScene");
 
-		s_Data->QuadIndexCount = 0;
-		s_Data->QuadVertexBufferPtr = s_Data->QuadVertexBufferBase;
-	}
-
-	void Renderer::EndScene()
+	void Renderer::BeginRenderPass()
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::EndScene");
+		EPPO_PROFILE_FUNCTION("Renderer::BeginRenderPass");
 
 		SubmitCommand([]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 
-			EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), swapchain->GetCurrentRenderCommandBuffer(), "GPU End Scene");
+			EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), swapchain->GetCurrentRenderCommandBuffer(), "Render pass");
 
 			// Render
 			VkExtent2D extent = swapchain->GetExtent();
@@ -215,6 +194,43 @@ namespace Eppo
 
 			vkCmdBeginRenderPass(swapchain->GetCurrentRenderCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		});
+	}
+
+
+	void Renderer::EndRenderPass()
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::EndRenderPass");
+
+		SubmitCommand([]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+
+			vkCmdEndRenderPass(swapchain->GetCurrentRenderCommandBuffer());
+		});
+	}
+
+	void Renderer::StartBatch()
+	{
+		s_Data->QuadIndexCount = 0;
+		s_Data->QuadVertexBufferPtr = s_Data->QuadVertexBufferBase;
+
+		s_Data->TextureSlotIndex = 1;
+	}
+
+
+	void Renderer::NextBatch()
+	{
+		Flush();
+		StartBatch();
+	}
+
+
+	void Renderer::Flush()
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::Flush");
+
+		BeginRenderPass();
 
 		// Quads
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data->QuadVertexBufferPtr - (uint8_t*)s_Data->QuadVertexBufferBase);
@@ -223,7 +239,7 @@ namespace Eppo
 			SubmitCommand([dataSize]()
 			{
 				s_Data->QuadVertexBuffer->SetData(s_Data->QuadVertexBufferBase, dataSize);
-	
+
 				Ref<RendererContext> context = RendererContext::Get();
 				Ref<Swapchain> swapchain = context->GetSwapchain();
 
@@ -275,15 +291,29 @@ namespace Eppo
 			});
 		}
 
-		SubmitCommand([]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
+		EndRenderPass();
+	}
 
-			vkCmdEndRenderPass(swapchain->GetCurrentRenderCommandBuffer());
+	void Renderer::BeginScene()
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::BeginScene");
 
-			EPPO_PROFILE_GPU_END(context->GetCurrentProfilerContext(), swapchain->GetCurrentRenderCommandBuffer());
-		});
+		Ref<RendererContext> context = RendererContext::Get();
+		Ref<Swapchain> swapchain = context->GetSwapchain();
+
+		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+
+		s_Data->CameraBuffer.ViewProjection = glm::mat4();
+		//s_Data->CameraUniformBuffers[imageIndex]->SetData(&s_Data->CameraBuffer, sizeof(RendererData::CameraBuffer));
+
+		StartBatch();
+	}
+
+	void Renderer::EndScene()
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::EndScene");
+
+		Flush();
 	}
 
 	void Renderer::ExecuteRenderCommands()
@@ -300,51 +330,14 @@ namespace Eppo
 		s_Data->CommandQueue.AddCommand(command);
 	}
 
-	VkDescriptorSet Renderer::AllocateDescriptorSet(const VkDescriptorSetLayout& layout)
+	Ref<DescriptorAllocator> Renderer::GetDescriptorAllocator()
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::AllocateDescriptorSet");
-
-		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		VkDescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = s_Data->DescriptorPools[swapchain->GetCurrentImageIndex()];
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &layout;
-		allocInfo.pNext = nullptr;
-
-		VkDescriptorSet descriptorSet;
-
-		VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet), "Failed to allocate descriptor set!");
-
-		return descriptorSet;
+		return s_Data->DescriptorAllocator;
 	}
 
-	void Renderer::UpdateDescriptorSet(Ref<Texture> texture, VkDescriptorSet descriptorSet, uint32_t arrayElement)
+	Ref<DescriptorLayoutCache> Renderer::GetDescriptorLayoutCache()
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::UpdateDescriptorSet");
-
-		const auto& info = texture->GetImage()->GetImageInfo();
-		
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = info.ImageLayout;
-		imageInfo.imageView = info.ImageView;
-		imageInfo.sampler = info.Sampler;
-
-		VkWriteDescriptorSet writeDesc{};
-		writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDesc.dstSet = descriptorSet;
-		writeDesc.dstBinding = 0;
-		writeDesc.dstArrayElement = arrayElement;
-		writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		writeDesc.descriptorCount = 1;
-		writeDesc.pBufferInfo = nullptr;
-		writeDesc.pImageInfo = &imageInfo;
-		writeDesc.pTexelBufferView = nullptr;
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		vkUpdateDescriptorSets(device, 1, &writeDesc, 0, nullptr);
+		return s_Data->DescriptorCache;
 	}
 
 	void Renderer::DrawQuad(const glm::vec2& position, const glm::vec4& color)

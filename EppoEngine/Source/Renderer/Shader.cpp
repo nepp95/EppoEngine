@@ -44,20 +44,9 @@ namespace Eppo
 			EPPO_ASSERT(false);
 			return "Invalid";
 		}
-
-		static VkShaderStageFlagBits ShaderTypeToVkShaderStage(ShaderType type)
-		{
-			switch (type)
-			{
-				case ShaderType::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
-				case ShaderType::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
-			}
-
-			EPPO_ASSERT(false);
-		}
 	}
 
-	Shader::Shader(const ShaderSpecification& specification)
+	Shader::Shader(const ShaderSpecification& specification, const Ref<DescriptorLayoutCache>& layoutCache)
 		: m_Specification(specification)
 	{
 		EPPO_PROFILE_FUNCTION("Shader::Shader");
@@ -129,8 +118,7 @@ namespace Eppo
 			Reflect(type, data);
 
 		CreatePipelineShaderInfos();
-		CreateDescriptorSetLayout();
-		//CreateDescriptorSets();
+		CreateDescriptorSetLayout(layoutCache);
 	}
 
 	Shader::~Shader()
@@ -138,9 +126,6 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Shader::~Shader");
 
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		for (auto& layout : m_DescriptorSetLayouts)
-			vkDestroyDescriptorSetLayout(device, layout, nullptr);
 
 		for (auto& shaderInfo : m_ShaderInfos)
 			vkDestroyShaderModule(device, shaderInfo.module, nullptr);
@@ -286,7 +271,7 @@ namespace Eppo
 		}
 	}
 
-	void Shader::CreateDescriptorSetLayout()
+	void Shader::CreateDescriptorSetLayout(const Ref<DescriptorLayoutCache>& layoutCache)
 	{
 		EPPO_PROFILE_FUNCTION("Shader::CreateDescriptorSetLayout");
 
@@ -297,26 +282,7 @@ namespace Eppo
 			if (set >= m_DescriptorSetLayouts.size())
 				m_DescriptorSetLayouts.resize(set + 1);
 
-			std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-			for (const auto& resource : setResources)
-			{
-				VkDescriptorSetLayoutBinding binding{};
-				binding.binding = resource.Binding;
-				binding.descriptorCount = resource.ArraySize == 0 ? 1 : resource.ArraySize;
-				binding.descriptorType = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
-				binding.stageFlags = Utils::ShaderTypeToVkShaderStage(resource.Type);
-				binding.pImmutableSamplers = nullptr;
-
-				bindings.push_back(binding);
-			}
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo{};
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.bindingCount = (uint32_t)bindings.size();
-			layoutInfo.pBindings = bindings.data();
-
-			VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &m_DescriptorSetLayouts[set]), "Failed to create descriptor set layout!");
+			m_DescriptorSetLayouts[set] = layoutCache->CreateLayout(setResources);
 		}
 
 		for (uint32_t i = 0; i < m_DescriptorSetLayouts.size(); i++)
@@ -328,7 +294,7 @@ namespace Eppo
 				layoutInfo.bindingCount = 0;
 				layoutInfo.pBindings = nullptr;
 
-				VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &m_DescriptorSetLayouts[i]), "Failed to create descriptor set layout!");
+				m_DescriptorSetLayouts[i] = layoutCache->CreateLayout(layoutInfo);
 			}
 		}
 	}

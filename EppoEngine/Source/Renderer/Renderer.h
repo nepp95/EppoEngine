@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Descriptors/DescriptorBuilder.h"
 #include "Renderer/Material.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Texture.h"
@@ -21,6 +22,15 @@ namespace Eppo
 		static void BeginFrame();
 		static void EndFrame();
 
+		// Render pass
+		static void BeginRenderPass();
+		static void EndRenderPass();
+
+		// Batch
+		static void StartBatch();
+		static void NextBatch();
+		static void Flush();
+
 		// Scene
 		static void BeginScene();
 		static void EndScene();
@@ -30,8 +40,8 @@ namespace Eppo
 		static void SubmitCommand(RenderCommand command);
 
 		// Descriptor Sets
-		static VkDescriptorSet AllocateDescriptorSet(const VkDescriptorSetLayout& layout);
-		static void UpdateDescriptorSet(Ref<Texture> texture, VkDescriptorSet descriptorSet, uint32_t arrayElement = 0);
+		static Ref<DescriptorAllocator> GetDescriptorAllocator();
+		static Ref<DescriptorLayoutCache> GetDescriptorLayoutCache();
 
 		// Primitives
 		static void DrawQuad(const glm::vec2& position, const glm::vec4& color = glm::vec4(1.0f));

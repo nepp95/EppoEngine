@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Descriptors/DescriptorLayoutCache.h"
 #include "Renderer/Vulkan.h"
 
 namespace Eppo
@@ -41,7 +42,7 @@ namespace Eppo
 	class Shader
 	{
 	public:
-		Shader(const ShaderSpecification& specification);
+		Shader(const ShaderSpecification& specification, const Ref<DescriptorLayoutCache>& layoutCache);
 		~Shader();
 
 		const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageInfos() const { return m_ShaderInfos; }
@@ -53,7 +54,7 @@ namespace Eppo
 		void Compile(ShaderType type, const std::filesystem::path& filepath);
 		void Reflect(ShaderType type, const std::vector<uint32_t>& shaderBytes);
 		void CreatePipelineShaderInfos();
-		void CreateDescriptorSetLayout();
+		void CreateDescriptorSetLayout(const Ref<DescriptorLayoutCache>& layoutCache);
 
 	private:
 		ShaderSpecification m_Specification;
@@ -72,6 +73,17 @@ namespace Eppo
 			{
 				case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 				case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			}
+
+			EPPO_ASSERT(false);
+		}
+
+		static VkShaderStageFlagBits ShaderTypeToVkShaderStage(ShaderType type)
+		{
+			switch (type)
+			{
+				case ShaderType::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
+				case ShaderType::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
 			}
 
 			EPPO_ASSERT(false);

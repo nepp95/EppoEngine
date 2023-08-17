@@ -46,7 +46,7 @@ namespace Eppo
 		delete s_Data;
 	}
 
-	VmaAllocation Allocator::AllocateBuffer(VkBuffer& buffer, VkBufferCreateInfo createInfo, VmaMemoryUsage usage)
+	VmaAllocation Allocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
 		VmaAllocationCreateInfo allocCreateInfo{};
 		allocCreateInfo.usage = usage;
@@ -61,7 +61,7 @@ namespace Eppo
 		return allocation;
 	}
 
-	VmaAllocation Allocator::AllocateImage(VkImage& image, VkImageCreateInfo createInfo, VmaMemoryUsage usage)
+	VmaAllocation Allocator::AllocateImage(VkImage& image, const VkImageCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
 		VmaAllocationCreateInfo allocCreateInfo{};
 		allocCreateInfo.usage = usage;
