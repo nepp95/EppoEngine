@@ -7,10 +7,12 @@
 
 namespace Eppo
 {
-	Camera::Camera()
+	Camera::Camera(float fieldOfView, float aspectRatio, float nearClip, float farClip)
+		: m_Fov(fieldOfView), m_AspectRatio(aspectRatio), m_NearClip(nearClip), m_FarClip(farClip)
 	{
 		m_Direction = glm::normalize(m_Position - m_FocalPoint);
 		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_Front, m_Up);
+		m_ProjectionMatrix = glm::perspective(glm::radians(m_Fov), m_AspectRatio, m_NearClip, m_FarClip);
 	}
 
 	void Camera::OnUpdate(float timestep)

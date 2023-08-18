@@ -326,7 +326,7 @@ namespace Eppo
 
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-		s_Data->CameraBuffer.ViewProjection = camera.GetViewMatrix();
+		s_Data->CameraBuffer.ViewProjection = camera.GetViewProjectionMatrix();
 		s_Data->CameraUniformBuffer->SetData(&s_Data->CameraBuffer, sizeof(RendererData::CameraBuffer));
 
 		StartBatch();
@@ -374,7 +374,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
 		DrawQuad(transform, color);
 	}
 
@@ -408,7 +408,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
 		DrawQuad(transform, texture, tintColor);
 	}
 
