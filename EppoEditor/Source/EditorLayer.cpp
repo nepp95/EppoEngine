@@ -20,6 +20,8 @@ namespace Eppo
 	
 	void EditorLayer::Update(float timestep)
 	{
+		m_EditorCamera.OnUpdate(timestep);
+
 		m_ActiveScene->OnUpdate(timestep);
 	}
 	
@@ -27,7 +29,7 @@ namespace Eppo
 	{
 		m_ActiveScene->Render();
 
-		Renderer::BeginScene();
+		Renderer::BeginScene(m_EditorCamera);
 
 		Renderer::DrawQuad({ -0.5f, -0.5f, 0.0f }, { 0.9f, 0.2f, 0.2f, 1.0f });
 		Renderer::DrawQuad({ 0.5f, 0.5f, 0.0f }, { 0.2f, 0.9f, 0.2f, 1.0f });

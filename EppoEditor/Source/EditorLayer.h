@@ -21,6 +21,8 @@ namespace Eppo
 	private:
 		Ref<Scene> m_ActiveScene;
 
+		EditorCamera m_EditorCamera;
+
 		Ref<Texture> m_TestTexture;
 	};
 }

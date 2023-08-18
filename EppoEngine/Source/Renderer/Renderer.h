@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Renderer/Descriptors/DescriptorBuilder.h"
+#include "Renderer/Descriptor/DescriptorBuilder.h"
+#include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Material.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Texture.h"
@@ -32,7 +33,7 @@ namespace Eppo
 		static void Flush();
 
 		// Scene
-		static void BeginScene();
+		static void BeginScene(const EditorCamera& camera);
 		static void EndScene();
 
 		// Render commands

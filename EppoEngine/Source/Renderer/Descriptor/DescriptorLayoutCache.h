@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Descriptors/DescriptorLayoutInfo.h"
+#include "Renderer/Descriptor/DescriptorLayoutInfo.h"
 
 namespace Eppo
 {

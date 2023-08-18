@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Descriptors/DescriptorLayoutCache.h"
+#include "Renderer/Descriptor/DescriptorLayoutCache.h"
 #include "Renderer/Vulkan.h"
 
 namespace Eppo

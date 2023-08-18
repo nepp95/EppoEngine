@@ -2,6 +2,7 @@
 #include "Window.h"
 
 #include "Events/ApplicationEvent.h"
+#include "Events/KeyEvent.h"
 
 #include <glfw/glfw3.h>
 
@@ -56,6 +57,49 @@ namespace Eppo
 		{
 			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
 			WindowCloseEvent e;
+			callback(e);
+		});
+
+		glfwSetWindowSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
+		{
+			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			WindowResizeEvent e(width, height);
+			callback(e);
+		});
+
+		glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
+		{
+			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+
+			switch (action)
+			{
+				case GLFW_PRESS:
+				{
+					KeyPressedEvent e(key);
+					callback(e);
+					break;
+				}
+
+				case GLFW_RELEASE:
+				{
+					KeyReleasedEvent e(key);
+					callback(e);
+					break;
+				}
+
+				case GLFW_REPEAT:
+				{
+					KeyPressedEvent e(key, true);
+					callback(e);
+					break;
+				}
+			}
+		});
+
+		glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int keycode)
+		{
+			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			KeyTypedEvent e(keycode);
 			callback(e);
 		});
 	}

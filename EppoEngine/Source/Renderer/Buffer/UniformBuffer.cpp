@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "UniformBuffer.h"
 
-#include "Renderer/Descriptors/DescriptorBuilder.h"
+#include "Renderer/Descriptor/DescriptorBuilder.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
 

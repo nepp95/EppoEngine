@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "Renderer.h"
 
-#include "Renderer/Buffers/IndexBuffer.h"
-#include "Renderer/Buffers/UniformBuffer.h"
-#include "Renderer/Buffers/VertexBuffer.h"
-#include "Renderer/Descriptors/DescriptorBuilder.h"
+#include "Renderer/Buffer/IndexBuffer.h"
+#include "Renderer/Buffer/UniformBuffer.h"
+#include "Renderer/Buffer/VertexBuffer.h"
+#include "Renderer/Descriptor/DescriptorBuilder.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/RendererContext.h"
 #include "Renderer/Vertex.h"
@@ -317,7 +317,7 @@ namespace Eppo
 		EndRenderPass();
 	}
 
-	void Renderer::BeginScene()
+	void Renderer::BeginScene(const EditorCamera& camera)
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::BeginScene");
 
@@ -326,7 +326,7 @@ namespace Eppo
 
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-		s_Data->CameraBuffer.ViewProjection = glm::mat4(1.0f);
+		s_Data->CameraBuffer.ViewProjection = camera.GetViewMatrix();
 		s_Data->CameraUniformBuffer->SetData(&s_Data->CameraBuffer, sizeof(RendererData::CameraBuffer));
 
 		StartBatch();
