@@ -11,8 +11,9 @@ namespace Eppo
 		Material(Ref<Shader> shader);
 		~Material();
 
-		void Set(const std::string& name, const Ref<Texture>& texture, uint32_t arrayIndex = 0);
-		VkDescriptorSet Get();
+		void Set(const std::string& name, Ref<Texture> texture, uint32_t arrayIndex = 0);
+		VkDescriptorSet GetDescriptorSet(uint32_t imageIndex);
+		VkDescriptorSet GetCurrentDescriptorSet();
 
 	private:
 		Ref<Shader> m_Shader;

@@ -7,6 +7,8 @@ namespace Eppo
 {
 	void DescriptorAllocator::Shutdown()
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorAllocator::Shutdown");
+
 		ResetPools();
 
 		Ref<RendererContext> context = RendererContext::Get();
@@ -21,6 +23,8 @@ namespace Eppo
 
 	void DescriptorAllocator::ResetPools()
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorAllocator::ResetPools");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto descriptorPool : m_UsedPools)
@@ -35,6 +39,8 @@ namespace Eppo
 
 	bool DescriptorAllocator::Allocate(VkDescriptorSet* descriptorSet, VkDescriptorSetLayout layout)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorAllocator::Allocate");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		if (m_CurrentPool == nullptr)
@@ -79,6 +85,8 @@ namespace Eppo
 
 	VkDescriptorPool DescriptorAllocator::CreatePool(const PoolSizes& poolSizes, uint32_t count, VkDescriptorPoolCreateFlags flags)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorAllocator::CreatePool");
+
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		std::vector<VkDescriptorPoolSize> sizes;
@@ -102,6 +110,8 @@ namespace Eppo
 
 	VkDescriptorPool DescriptorAllocator::GrabPool()
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorAllocator::GrabPool");
+
 		if (m_FreePools.empty())
 			return CreatePool(m_DescriptorSizes, 1000);
 

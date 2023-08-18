@@ -197,7 +197,11 @@ namespace Eppo
 
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
-		vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, m_PresentSemaphores[m_CurrentFrameIndex], VK_NULL_HANDLE, &m_CurrentImageIndex);
+		{
+			EPPO_PROFILE_FUNCTION("Swapchain::BeginFrame - Acquire Image");
+			vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, m_PresentSemaphores[m_CurrentFrameIndex], VK_NULL_HANDLE, &m_CurrentImageIndex);
+		}
+		
 		vkResetCommandPool(device, m_CommandPools[m_CurrentFrameIndex], 0);
 	}
 
@@ -223,16 +227,20 @@ namespace Eppo
 		VK_CHECK(vkResetFences(logicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex]), "Failed to reset fence!");
 		VK_CHECK(vkQueueSubmit(logicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[m_CurrentFrameIndex]), "Failed to submit queue!");
 
-		VkPresentInfoKHR presentInfo{};
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &m_RenderSemaphores[m_CurrentFrameIndex];
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = &m_Swapchain;
-		presentInfo.pImageIndices = &m_CurrentImageIndex;
-		presentInfo.pResults = nullptr;
+		{
+			EPPO_PROFILE_FUNCTION("Swapchain::Present - Queue Present");
 
-		result = vkQueuePresentKHR(logicalDevice->GetGraphicsQueue(), &presentInfo);
+			VkPresentInfoKHR presentInfo{};
+			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+			presentInfo.waitSemaphoreCount = 1;
+			presentInfo.pWaitSemaphores = &m_RenderSemaphores[m_CurrentFrameIndex];
+			presentInfo.swapchainCount = 1;
+			presentInfo.pSwapchains = &m_Swapchain;
+			presentInfo.pImageIndices = &m_CurrentImageIndex;
+			presentInfo.pResults = nullptr;
+
+			result = vkQueuePresentKHR(logicalDevice->GetGraphicsQueue(), &presentInfo);
+		}
 
 		// Resize
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)

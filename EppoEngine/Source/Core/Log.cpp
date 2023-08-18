@@ -9,6 +9,8 @@ namespace Eppo
 
 	void Log::Init()
 	{
+		EPPO_PROFILE_FUNCTION("Log::Init");
+
 		spdlog::set_pattern("%^[%T] [%n]: %v%$");
 
 		s_CoreLogger = spdlog::stdout_color_mt("Engine");

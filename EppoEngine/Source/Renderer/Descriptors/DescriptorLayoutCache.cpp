@@ -8,6 +8,8 @@ namespace Eppo
 {
 	void DescriptorLayoutCache::Shutdown()
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorLayoutCache::Shutdown");
+
 		Ref<RendererContext> context = RendererContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
@@ -17,6 +19,8 @@ namespace Eppo
 
 	VkDescriptorSetLayout DescriptorLayoutCache::CreateLayout(const VkDescriptorSetLayoutCreateInfo& createInfo)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorLayoutCache::CreateLayout");
+
 		uint32_t bindingCount = createInfo.bindingCount;
 
 		DescriptorLayoutInfo layoutInfo;
@@ -52,6 +56,8 @@ namespace Eppo
 
 	VkDescriptorSetLayout DescriptorLayoutCache::CreateLayout(const std::vector<ShaderResource>& shaderResources)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorLayoutCache::CreateLayout");
+
 		std::vector<VkDescriptorSetLayoutBinding> bindings;
 
 		for (const auto& resource : shaderResources)

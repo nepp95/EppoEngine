@@ -12,9 +12,7 @@ namespace Eppo
 		DescriptorBuilder(Ref<DescriptorAllocator> allocator, Ref<DescriptorLayoutCache> layoutCache);
 
 		DescriptorBuilder& BindBuffer(uint32_t binding, const VkDescriptorBufferInfo& bufferInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
-		DescriptorBuilder& BindBuffer(uint32_t binding, const std::vector<VkDescriptorBufferInfo>& bufferInfos, VkDescriptorType type, VkShaderStageFlags stageFlags);
 		DescriptorBuilder& BindImage(uint32_t binding, const VkDescriptorImageInfo& imageInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
-		DescriptorBuilder& BindImage(uint32_t binding, const std::vector<VkDescriptorImageInfo>& imageInfos, VkDescriptorType type, VkShaderStageFlags stageFlags);
 
 		bool Build(VkDescriptorSet& set);
 		bool Build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);

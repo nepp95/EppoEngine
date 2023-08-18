@@ -48,7 +48,7 @@ namespace Eppo
 			glm::mat4 ViewProjection;
 		};
 		CameraData CameraBuffer;
-		std::unordered_map<VkDescriptorSet, Ref<UniformBuffer>> CameraUniformBuffers;
+		Ref<UniformBuffer> CameraUniformBuffer;
 	};
 
 	static RendererData* s_Data;
@@ -112,10 +112,11 @@ namespace Eppo
 		s_Data->WhiteTexture = CreateRef<Texture>(1, 1, ImageFormat::RGBA8, &whiteTextureData);
 		s_Data->TextureSlots[0] = s_Data->WhiteTexture;
 
-		s_Data->QuadMaterial = CreateRef<Material>(s_Data->QuadPipeline->GetSpecification().Shader);
+		// Materials
+		s_Data->QuadMaterial = CreateRef<Material>(quadPipelineSpec.Shader);
 
-		//for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-			//s_Data->CameraUniformBuffers[i] = CreateRef<UniformBuffer>(sizeof(RendererData::CameraBuffer));
+		// Camera
+		s_Data->CameraUniformBuffer = CreateRef<UniformBuffer>(quadPipelineSpec.Shader, sizeof(RendererData::CameraBuffer));
 	}
 
 	void Renderer::Shutdown()
@@ -169,10 +170,10 @@ namespace Eppo
 
 	void Renderer::BeginRenderPass()
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::BeginRenderPass");
-
 		SubmitCommand([]()
 		{
+			EPPO_PROFILE_FUNCTION("Renderer::BeginRenderPass");
+
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 
@@ -199,10 +200,10 @@ namespace Eppo
 
 	void Renderer::EndRenderPass()
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::EndRenderPass");
-
 		SubmitCommand([]()
 		{
+			EPPO_PROFILE_FUNCTION("Renderer::EndRenderPass");
+
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 
@@ -212,6 +213,8 @@ namespace Eppo
 
 	void Renderer::StartBatch()
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::StartBatch");
+
 		s_Data->QuadIndexCount = 0;
 		s_Data->QuadVertexBufferPtr = s_Data->QuadVertexBufferBase;
 
@@ -221,6 +224,8 @@ namespace Eppo
 
 	void Renderer::NextBatch()
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::NextBatch");
+
 		Flush();
 		StartBatch();
 	}
@@ -243,6 +248,8 @@ namespace Eppo
 				Ref<RendererContext> context = RendererContext::Get();
 				Ref<Swapchain> swapchain = context->GetSwapchain();
 
+				VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
+
 				// Update descriptors
 				for (uint32_t i = 0; i < s_Data->TextureSlots.size(); i++)
 				{
@@ -251,7 +258,7 @@ namespace Eppo
 					else
 						s_Data->QuadMaterial->Set("texSampler", s_Data->WhiteTexture, i);
 				}
-				vkCmdBindPipeline(swapchain->GetCurrentRenderCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->QuadPipeline->GetPipeline());
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->QuadPipeline->GetPipeline());
 
 				VkExtent2D extent = swapchain->GetExtent();
 
@@ -262,32 +269,48 @@ namespace Eppo
 				viewport.height = (float)extent.height;
 				viewport.minDepth = 0.0f;
 				viewport.maxDepth = 1.0f;
-				vkCmdSetViewport(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &viewport);
+				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
 				VkRect2D scissor{};
 				scissor.offset = { 0, 0 };
 				scissor.extent = extent;
-				vkCmdSetScissor(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, &scissor);
+				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 				VkBuffer vbo[] = { s_Data->QuadVertexBuffer->GetBuffer() };
 				VkDeviceSize offsets[] = { 0 };
-				vkCmdBindVertexBuffers(swapchain->GetCurrentRenderCommandBuffer(), 0, 1, vbo, offsets);
-				vkCmdBindIndexBuffer(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbo, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, s_Data->QuadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-				VkDescriptorSet descriptorSet = s_Data->QuadMaterial->Get();
-				vkCmdBindDescriptorSets(
-					swapchain->GetCurrentRenderCommandBuffer(),
-					VK_PIPELINE_BIND_POINT_GRAPHICS,
-					s_Data->QuadPipeline->GetPipelineLayout(),
-					2,
-					1,
-					&descriptorSet,
-					0,
-					nullptr
-				);
+				{
+					VkDescriptorSet descriptorSet = s_Data->CameraUniformBuffer->GetCurrentDescriptorSet();
+					vkCmdBindDescriptorSets(
+						commandBuffer,
+						VK_PIPELINE_BIND_POINT_GRAPHICS,
+						s_Data->QuadPipeline->GetPipelineLayout(),
+						1,
+						1,
+						&descriptorSet,
+						0,
+						nullptr
+					);
+				}
+
+				{
+					VkDescriptorSet descriptorSet = s_Data->QuadMaterial->GetCurrentDescriptorSet();
+					vkCmdBindDescriptorSets(
+						commandBuffer,
+						VK_PIPELINE_BIND_POINT_GRAPHICS,
+						s_Data->QuadPipeline->GetPipelineLayout(),
+						2,
+						1,
+						&descriptorSet,
+						0,
+						nullptr
+					);
+				}
 
 				// Draw
-				vkCmdDrawIndexed(swapchain->GetCurrentRenderCommandBuffer(), s_Data->QuadIndexCount, 1, 0, 0, 0);
+				vkCmdDrawIndexed(commandBuffer, s_Data->QuadIndexCount, 1, 0, 0, 0);
 			});
 		}
 
@@ -303,8 +326,8 @@ namespace Eppo
 
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-		s_Data->CameraBuffer.ViewProjection = glm::mat4();
-		//s_Data->CameraUniformBuffers[imageIndex]->SetData(&s_Data->CameraBuffer, sizeof(RendererData::CameraBuffer));
+		s_Data->CameraBuffer.ViewProjection = glm::mat4(1.0f);
+		s_Data->CameraUniformBuffer->SetData(&s_Data->CameraBuffer, sizeof(RendererData::CameraBuffer));
 
 		StartBatch();
 	}
@@ -342,11 +365,15 @@ namespace Eppo
 
 	void Renderer::DrawQuad(const glm::vec2& position, const glm::vec4& color)
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
 		DrawQuad({ position.x, position.y, 0.0f }, color);
 	}
 	
 	void Renderer::DrawQuad(const glm::vec3& position, const glm::vec4& color)
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
 		DrawQuad(transform, color);
 	}
@@ -372,11 +399,15 @@ namespace Eppo
 
 	void Renderer::DrawQuad(const glm::vec2& position, Ref<Texture> texture, const glm::vec4& tintColor)
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
 		DrawQuad({ position.x, position.y, 0.0f }, texture, tintColor);
 	}
 
 	void Renderer::DrawQuad(const glm::vec3& position, Ref<Texture> texture, const glm::vec4& tintColor)
 	{
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
 		DrawQuad(transform, texture, tintColor);
 	}

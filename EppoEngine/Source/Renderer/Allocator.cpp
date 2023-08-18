@@ -22,6 +22,8 @@ namespace Eppo
 
 	void Allocator::Init()
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::Init");
+
 		Ref<RendererContext> context = RendererContext::Get();
 
 		s_Data = new VmaData();
@@ -42,12 +44,16 @@ namespace Eppo
 
 	void Allocator::Shutdown()
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::Shutdown");
+
 		vmaDestroyAllocator(s_Data->Allocator);
 		delete s_Data;
 	}
 
 	VmaAllocation Allocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::AllocateBuffer");
+
 		VmaAllocationCreateInfo allocCreateInfo{};
 		allocCreateInfo.usage = usage;
 
@@ -63,6 +69,8 @@ namespace Eppo
 
 	VmaAllocation Allocator::AllocateImage(VkImage& image, const VkImageCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::AllocateImage");
+
 		VmaAllocationCreateInfo allocCreateInfo{};
 		allocCreateInfo.usage = usage;
 
@@ -78,6 +86,8 @@ namespace Eppo
 
 	void Allocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::DestroyBuffer");
+
 		VmaAllocationInfo allocationInfo{};
 		vmaGetAllocationInfo(s_Data->Allocator, allocation, &allocationInfo);
 
@@ -88,6 +98,8 @@ namespace Eppo
 
 	void Allocator::DestroyImage(VkImage image, VmaAllocation allocation)
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::DestroyImage");
+
 		VmaAllocationInfo allocationInfo{};
 		vmaGetAllocationInfo(s_Data->Allocator, allocation, &allocationInfo);
 
@@ -98,6 +110,8 @@ namespace Eppo
 
 	void* Allocator::MapMemory(VmaAllocation allocation)
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::MapMemory");
+
 		void* data;
 		vmaMapMemory(s_Data->Allocator, allocation, &data);
 		return data;
@@ -105,6 +119,8 @@ namespace Eppo
 
 	void Allocator::UnmapMemory(VmaAllocation allocation)
 	{
+		EPPO_PROFILE_FUNCTION("Allocator::UnmapMemory");
+
 		vmaUnmapMemory(s_Data->Allocator, allocation);
 	}
 }

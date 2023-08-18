@@ -12,6 +12,8 @@ namespace Eppo
 	Application::Application(const ApplicationSpecification& specification)
 		: m_Specification(specification)
 	{
+		EPPO_PROFILE_FUNCTION("Application::Application");
+
 		// Set instance if not set. We can only have one instance!
 		EPPO_ASSERT(!s_Instance);
 		s_Instance = this;
@@ -36,6 +38,7 @@ namespace Eppo
 
 	Application::~Application()
 	{
+		EPPO_PROFILE_FUNCTION("Application::~Application");
 		EPPO_INFO("Shutting down...");
 
 		Renderer::Shutdown();
@@ -48,11 +51,15 @@ namespace Eppo
 
 	void Application::Close()
 	{
+		EPPO_PROFILE_FUNCTION("Application::Close");
+
 		m_IsRunning = false;
 	}
 
 	void Application::OnEvent(Event& e)
 	{
+		EPPO_PROFILE_FUNCTION("Application::OnEvent");
+
 		EventDispatcher dispatcher(e);
 
 		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::OnWindowClose));
@@ -69,6 +76,8 @@ namespace Eppo
 
 	void Application::PushLayer(Layer* layer, bool overlay)
 	{
+		EPPO_PROFILE_FUNCTION("Application::PushLayer");
+
 		if (overlay)
 			m_LayerStack.PushOverlay(layer);
 		else
@@ -77,6 +86,8 @@ namespace Eppo
 
 	void Application::PopLayer(Layer* layer, bool overlay)
 	{
+		EPPO_PROFILE_FUNCTION("Application::PopLayer");
+
 		if (overlay)
 			m_LayerStack.PopOverlay(layer);
 		else
@@ -106,7 +117,7 @@ namespace Eppo
 			if (!m_IsMinimized)
 			{
 				{
-					EPPO_PROFILE_FUNCTION("CPU Render");
+					EPPO_PROFILE_FUNCTION("CPU Prepare Render");
 
 					// 1. Start command buffer
 					Renderer::BeginFrame();
@@ -120,9 +131,12 @@ namespace Eppo
 				}
 				{
 					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
-					EPPO_PROFILE_FUNCTION("CPU Wait");
+					EPPO_PROFILE_FUNCTION("CPU Render");
 					swapchain->BeginFrame();
 					Renderer::ExecuteRenderCommands();
+				}
+				{
+					EPPO_PROFILE_FUNCTION("CPU Wait");
 					swapchain->Present();
 				}
 			}
@@ -135,6 +149,8 @@ namespace Eppo
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
 	{
+		EPPO_PROFILE_FUNCTION("Application::OnWindowClose");
+
 		Close();
 
 		return true;
@@ -142,6 +158,7 @@ namespace Eppo
 
 	bool Application::OnWindowResize(WindowResizeEvent& e)
 	{
+		EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
 		EPPO_ASSERT(false);
 
 		return true;

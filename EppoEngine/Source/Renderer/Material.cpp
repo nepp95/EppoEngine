@@ -4,8 +4,6 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
 
-#define SET 2
-
 namespace Eppo
 {
 	Material::Material(Ref<Shader> shader)
@@ -17,7 +15,7 @@ namespace Eppo
 
 		m_DescriptorSets.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-			allocator->Allocate(&m_DescriptorSets[i], m_Shader->GetDescriptorSetLayout(SET));
+			allocator->Allocate(&m_DescriptorSets[i], m_Shader->GetDescriptorSetLayout(2));
 	}
 
 	Material::~Material()
@@ -25,13 +23,13 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Material::~Material");
 	}
 
-	void Material::Set(const std::string& name, const Ref<Texture>& texture, uint32_t arrayIndex)
+	void Material::Set(const std::string& name, Ref<Texture> texture, uint32_t arrayIndex)
 	{
 		EPPO_PROFILE_FUNCTION("Material::Set");
 		
 		m_Texture = texture;
 
-		const auto& info = texture->GetImage()->GetImageInfo();
+		const auto& info = m_Texture->GetImage()->GetImageInfo();
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = info.ImageLayout;
@@ -56,13 +54,21 @@ namespace Eppo
 		vkUpdateDescriptorSets(device, 1, &writeDesc, 0, nullptr);
 	}
 
-	VkDescriptorSet Material::Get()
+	VkDescriptorSet Material::GetDescriptorSet(uint32_t imageIndex)
 	{
-		EPPO_PROFILE_FUNCTION("Material::Get");
+		EPPO_PROFILE_FUNCTION("Material::GetDescriptorSet");
+		EPPO_ASSERT((imageIndex < VulkanConfig::MaxFramesInFlight));
+
+		return m_DescriptorSets[imageIndex];
+	}
+
+	VkDescriptorSet Material::GetCurrentDescriptorSet()
+	{
+		EPPO_PROFILE_FUNCTION("Material::GetCurrentDescriptorSet");
 
 		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-		return m_DescriptorSets[imageIndex];
+		return GetDescriptorSet(imageIndex);
 	}
 }
