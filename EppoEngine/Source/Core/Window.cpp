@@ -3,6 +3,7 @@
 
 #include "Events/ApplicationEvent.h"
 #include "Events/KeyEvent.h"
+#include "Events/MouseEvent.h"
 
 #include <glfw/glfw3.h>
 
@@ -100,6 +101,42 @@ namespace Eppo
 		{
 			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
 			KeyTypedEvent e(keycode);
+			callback(e);
+		});
+
+		glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int mods)
+		{
+			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			
+			switch (action)
+			{
+				case GLFW_PRESS:
+				{
+					MouseButtonPressedEvent e(button);
+					callback(e);
+					break;
+				}
+
+				case GLFW_RELEASE:
+				{
+					MouseButtonReleasedEvent e(button);
+					callback(e);
+					break;
+				}
+			}
+		});
+		
+		glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
+		{
+			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			MouseScrolledEvent e(xOffset, yOffset);
+			callback(e);
+		});
+
+		glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double xPos, double yPos)
+		{
+			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			MouseMovedEvent e(xPos, yPos);
 			callback(e);
 		});
 	}
