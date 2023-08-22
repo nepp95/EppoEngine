@@ -2,7 +2,8 @@
 
 #include "Core/LayerStack.h"
 #include "Core/Window.h"
-#include "Events/ApplicationEvent.h"
+#include "Event/ApplicationEvent.h"
+#include "ImGui/ImGuiLayer.h"
 
 #include <string>
 
@@ -49,6 +50,8 @@ namespace Eppo
 		void Close();
 		void OnEvent(Event& e);
 
+		void RenderGui();
+
 		void PushLayer(Layer* layer, bool overlay = false);
 		void PopLayer(Layer* layer, bool overlay = false);
 
@@ -66,6 +69,8 @@ namespace Eppo
 
 		Scope<Window> m_Window;
 		LayerStack m_LayerStack;
+
+		ImGuiLayer* m_ImGuiLayer;
 
 		bool m_IsRunning = true;
 		bool m_IsMinimized = false;

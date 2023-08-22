@@ -34,6 +34,10 @@ namespace Eppo
 
 		// Initialize systems
 		Renderer::Init();
+
+		// Add GUI layer
+		m_ImGuiLayer = new ImGuiLayer();
+		PushLayer(m_ImGuiLayer, true);
 	}
 
 	Application::~Application()
@@ -72,6 +76,21 @@ namespace Eppo
 
 			layer->OnEvent(e);
 		}
+	}
+
+	void Application::RenderGui()
+	{
+		EPPO_PROFILE_FUNCTION("Application::RenderGui");
+
+		Renderer::SubmitCommand([this]()
+		{
+			m_ImGuiLayer->Begin();
+
+			for (Layer* layer : m_LayerStack)
+				layer->RenderGui();
+
+			m_ImGuiLayer->End();
+		});
 	}
 
 	void Application::PushLayer(Layer* layer, bool overlay)
@@ -125,6 +144,8 @@ namespace Eppo
 					// 2. Record commands
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
+
+					RenderGui();
 
 					// 3. End command buffer
 					Renderer::EndFrame();

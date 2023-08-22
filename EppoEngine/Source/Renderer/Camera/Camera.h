@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Events/MouseEvent.h"
+#include "Event/MouseEvent.h"
 
 #include <glm/glm.hpp>
 

@@ -11,6 +11,7 @@ namespace Eppo
 
 		VkCommandBuffer GetCommandBuffer(bool begin);
 		void FlushCommandBuffer(VkCommandBuffer commandBuffer);
+		VkCommandBuffer GetSecondaryCommandBuffer();
 
 		const Ref<PhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
 		const VkDevice& GetNativeDevice() const { return m_Device; }

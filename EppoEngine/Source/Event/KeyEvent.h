@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/KeyCodes.h"
-#include "Events/Event.h"
+#include "Event/Event.h"
 
 namespace Eppo
 {

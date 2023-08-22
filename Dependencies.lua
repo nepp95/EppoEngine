@@ -1,7 +1,3 @@
--- Copyright (c) 2023 Niels Eppenhof <niels@eppostudios.nl>
--- This software was distributed with a license file.
--- If you did not receive the license file, please contact the owner of the software on the email address above.
-
 VulkanSdk = os.getenv("VULKAN_SDK")
 
 -- Include directories

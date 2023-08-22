@@ -18,8 +18,8 @@ workspace "EppoEngine"
 
     group "Dependencies"
         include "EppoEngine/Vendor/glfw"
+        include "EppoEngine/Vendor/imgui"
         include "EppoEngine/Vendor/spdlog"
-        --include "EppoEngine/Vendor/imgui"
     group ""
 
     group "Core"

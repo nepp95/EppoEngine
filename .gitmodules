@@ -10,3 +10,6 @@
 [submodule "EppoEngine/Vendor/tracy"]
 	path = EppoEngine/Vendor/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "EppoEngine/Vendor/imgui"]
+	path = EppoEngine/Vendor/imgui
+	url = https://github.com/nepp95/imgui.git

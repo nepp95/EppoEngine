@@ -32,6 +32,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("LayerStack::PushOverlay");
 
 		m_Layers.emplace_back(layer);
+		layer->OnAttach();
 	}
 
 	void LayerStack::PopOverlay(Layer* layer)

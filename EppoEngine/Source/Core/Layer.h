@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Events/Event.h"
+#include "Event/Event.h"
 
 namespace Eppo
 {
@@ -15,10 +15,9 @@ namespace Eppo
 
 		virtual void Update(float timestep) {};
 		virtual void Render() {};
+		virtual void RenderGui() {}
 
-		// Events
 		virtual void OnEvent(Event& e) {}
-		// GUI
 
 	private:
 		std::string m_DebugName;

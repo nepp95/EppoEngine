@@ -1,5 +1,7 @@
 #include "EditorLayer.h"
 
+#include <imgui/imgui.h>
+
 namespace Eppo
 {
 	EditorLayer::EditorLayer()
@@ -38,6 +40,15 @@ namespace Eppo
 		Renderer::DrawQuad({ 0.0f, 0.0f, 0.0f }, m_TestTexture);
 
 		Renderer::EndScene();
+	}
+
+	void EditorLayer::RenderGui()
+	{
+		ImGui::Begin("Hello");
+
+		ImGui::Text("This is text");
+
+		ImGui::End();
 	}
 
 	void EditorLayer::OnEvent(Event& e)

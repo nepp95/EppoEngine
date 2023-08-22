@@ -42,21 +42,6 @@ namespace Eppo
 		VmaAllocation Allocation;
 	};
 
-	namespace Utils
-	{
-		inline uint32_t GetMemorySize(ImageFormat format)
-		{
-			switch (format)
-			{
-				case ImageFormat::RGBA8:		return 4;
-				case ImageFormat::RGBA8_UNORM:	return 4;
-			}
-
-			EPPO_ASSERT(false);
-			return 0;
-		}
-	}
-
 	class Image
 	{
 	public:
@@ -75,4 +60,19 @@ namespace Eppo
 		ImageSpecification m_Specification;
 		ImageInfo m_Info;
 	};
+
+	namespace Utils
+	{
+		inline uint32_t GetMemorySize(ImageFormat format)
+		{
+			switch (format)
+			{
+				case ImageFormat::RGBA8:		return 4;
+				case ImageFormat::RGBA8_UNORM:	return 4;
+			}
+
+			EPPO_ASSERT(false);
+			return 0;
+		}
+	}
 }

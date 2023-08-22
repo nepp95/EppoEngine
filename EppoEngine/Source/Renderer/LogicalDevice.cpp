@@ -122,4 +122,19 @@ namespace Eppo
 		vkDestroyFence(m_Device, fence, nullptr);
 		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
 	}
+
+	VkCommandBuffer LogicalDevice::GetSecondaryCommandBuffer()
+	{
+		VkCommandBuffer commandBuffer;
+
+		VkCommandBufferAllocateInfo commandBufferInfo{};
+		commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		commandBufferInfo.commandPool = m_CommandPool;
+		commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		commandBufferInfo.commandBufferCount = 1;
+
+		VK_CHECK(vkAllocateCommandBuffers(m_Device, &commandBufferInfo, &commandBuffer), "Failed to allocate command buffer!");
+
+		return commandBuffer;
+	}
 }

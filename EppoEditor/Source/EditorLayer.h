@@ -15,9 +15,10 @@ namespace Eppo
 	
 		void Update(float timestep) override;
 		void Render() override;
+		void RenderGui() override;
 
 		void OnEvent(Event& e) override;
-	
+
 	private:
 		Ref<Scene> m_ActiveScene;
 

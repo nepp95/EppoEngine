@@ -12,9 +12,9 @@
 #include "Core/MouseCodes.h"
 
 // Events
-#include "Events/ApplicationEvent.h"
-#include "Events/KeyEvent.h"
-#include "Events/MouseEvent.h"
+#include "Event/ApplicationEvent.h"
+#include "Event/KeyEvent.h"
+#include "Event/MouseEvent.h"
 
 // Renderer
 #include "Renderer/Camera/EditorCamera.h"

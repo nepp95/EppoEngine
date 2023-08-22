@@ -27,6 +27,7 @@ project "EppoEngine"
         "Source",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
+		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.tracy}",
@@ -36,6 +37,7 @@ project "EppoEngine"
 
     links {
         "glfw",
+		"imgui",
         "%{Library.vulkan}"
     }
 
