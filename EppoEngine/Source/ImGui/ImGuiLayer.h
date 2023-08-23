@@ -18,8 +18,5 @@ namespace Eppo
 
 		void Begin();
 		void End();
-
-	private:
-
 	};
 }

@@ -141,11 +141,12 @@ namespace Eppo
 					// 1. Start command buffer
 					Renderer::BeginFrame();
 
+					RenderGui();
+
 					// 2. Record commands
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
 
-					RenderGui();
 
 					// 3. End command buffer
 					Renderer::EndFrame();

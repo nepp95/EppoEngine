@@ -4,6 +4,7 @@ typedef struct VkImage_T* VkImage;
 typedef struct VkImageView_T* VkImageView;
 typedef struct VkSampler_T* VkSampler;
 typedef struct VmaAllocation_T* VmaAllocation;
+enum VkFormat;
 enum VkImageLayout;
 
 namespace Eppo
@@ -55,6 +56,7 @@ namespace Eppo
 		uint32_t GetHeight() const { return m_Specification.Height; }
 
 		ImageInfo& GetImageInfo() { return m_Info; }
+		VkImageView GetImageView() const { return m_Info.ImageView; }
 
 	private:
 		ImageSpecification m_Specification;
@@ -74,5 +76,8 @@ namespace Eppo
 			EPPO_ASSERT(false);
 			return 0;
 		}
+
+		VkFormat ImageFormatToVkFormat(ImageFormat format);
+		bool IsDepthFormat(ImageFormat format);
 	}
 }

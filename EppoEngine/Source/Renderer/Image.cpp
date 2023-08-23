@@ -20,6 +20,13 @@ namespace Eppo
 			EPPO_ASSERT(false);
 			return VK_FORMAT_UNDEFINED;
 		}
+
+		static bool IsDepthFormat(ImageFormat format)
+		{
+			if (format == ImageFormat::Depth)
+				return true;
+			return false;
+		}
 	}
 
 	Image::Image(const ImageSpecification& specification)
