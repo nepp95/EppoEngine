@@ -21,8 +21,10 @@ namespace Eppo
 
 	private:
 		Ref<Scene> m_ActiveScene;
-
 		EditorCamera m_EditorCamera = EditorCamera(30.0f, 1.778f);
+
+		uint32_t m_ViewportWidth;
+		uint32_t m_ViewportHeight;
 
 		Ref<Texture> m_TestTexture;
 	};

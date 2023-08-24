@@ -123,7 +123,7 @@ namespace Eppo
 		pipelineInfo.pColorBlendState = &colorBlendInfo;
 		pipelineInfo.pDynamicState = &dynamicState;
 		pipelineInfo.layout = m_PipelineLayout;
-		pipelineInfo.renderPass = context->GetSwapchain()->GetRenderPass();
+		pipelineInfo.renderPass = m_Specification.Framebuffer->GetRenderPass();
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineInfo.basePipelineIndex = -1;

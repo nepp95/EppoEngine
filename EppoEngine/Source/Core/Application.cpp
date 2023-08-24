@@ -89,8 +89,12 @@ namespace Eppo
 			for (Layer* layer : m_LayerStack)
 				layer->RenderGui();
 
-			m_ImGuiLayer->End();
+			m_ImGuiLayer->ImRender();
 		});
+
+		Renderer::BeginRenderPass();
+		m_ImGuiLayer->End();
+		Renderer::EndRenderPass();
 	}
 
 	void Application::PushLayer(Layer* layer, bool overlay)
@@ -141,12 +145,11 @@ namespace Eppo
 					// 1. Start command buffer
 					Renderer::BeginFrame();
 
-					RenderGui();
-
 					// 2. Record commands
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
 
+					RenderGui();
 
 					// 3. End command buffer
 					Renderer::EndFrame();

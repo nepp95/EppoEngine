@@ -2,10 +2,11 @@
 #include "ImGuiLayer.h"
 
 #include "Renderer/Framebuffer.h"
+#include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
 
 #include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_vulkan.h>
+#include <backends/imgui_impl_vulkan_custom.h>
 #include <glfw/glfw3.h>
 #include <imgui_internal.h>
 
@@ -13,7 +14,6 @@ namespace Eppo
 {
 	static std::vector<VkCommandBuffer> s_ImGuiCmds;
 	static VkDescriptorPool s_DescriptorPool = nullptr;
-	static VkRenderPass s_RenderPass = nullptr;
 
 	static void CheckVkResult(VkResult err)
 	{
@@ -73,47 +73,6 @@ namespace Eppo
 
 		VK_CHECK(vkCreateDescriptorPool(logicalDevice->GetNativeDevice(), &poolInfo, nullptr, &s_DescriptorPool), "Failed to create descriptor pool!");
 
-		// Render pass
-		FramebufferSpecification framebufferSpec;
-
-		/*VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = VK_FORMAT_R8G8B8A8_SRGB;
-		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		VkAttachmentReference colorAttachmentRef{};
-		colorAttachmentRef.attachment = 0;
-		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpassDescription{};
-		subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpassDescription.colorAttachmentCount = 1;
-		subpassDescription.pColorAttachments = &colorAttachmentRef;
-
-		VkSubpassDependency subpassDependency{};
-		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		subpassDependency.dstSubpass = 0;
-		subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependency.srcAccessMask = 0;
-		subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-		VkRenderPassCreateInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = 1;
-		renderPassInfo.pAttachments = &colorAttachment;
-		renderPassInfo.subpassCount = 1;
-		renderPassInfo.pSubpasses = &subpassDescription;
-		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies = &subpassDependency;
-
-		VK_CHECK(vkCreateRenderPass(logicalDevice->GetNativeDevice(), &renderPassInfo, nullptr, &s_RenderPass), "Failed to create render pass!");*/
-
 		// Init
 		ImGui_ImplVulkan_InitInfo initInfo{};
 		initInfo.Instance = context->GetVulkanInstance();
@@ -169,53 +128,21 @@ namespace Eppo
 		ImGui::NewFrame();
 	}
 
-	void ImGuiLayer::End()
+	void ImGuiLayer::ImRender()
 	{
 		ImGui::Render();
+	}
 
-		Ref<RendererContext> context = RendererContext::Get();
-		Ref<Swapchain> swapchain = context->GetSwapchain();
-		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
-		VkCommandBuffer swapCmd = swapchain->GetCurrentRenderCommandBuffer();
+	void ImGuiLayer::End()
+	{
+		Renderer::SubmitCommand([]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+			VkCommandBuffer swapCmd = swapchain->GetCurrentRenderCommandBuffer();
 
-		VkClearValue clearValue = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-		uint32_t width = swapchain->GetWidth();
-		uint32_t height = swapchain->GetHeight();
-
-		/*VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.pNext = nullptr;*/
-
-		VkRenderPassBeginInfo renderPassBeginInfo{};
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass = swapchain->GetRenderPass();
-		renderPassBeginInfo.framebuffer = swapchain->GetCurrentFramebuffer();
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent = { width, height };
-		renderPassBeginInfo.clearValueCount = 1;
-		renderPassBeginInfo.pClearValues = &clearValue;
-
-		vkCmdBeginRenderPass(swapCmd, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
-		VkCommandBufferInheritanceInfo inheritanceInfo{};
-		inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-		inheritanceInfo.renderPass = swapchain->GetRenderPass();
-		inheritanceInfo.framebuffer = swapchain->GetCurrentFramebuffer();
-
-		VkCommandBufferBeginInfo cmdBeginInfoImGui{};
-		cmdBeginInfoImGui.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmdBeginInfoImGui.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
-		cmdBeginInfoImGui.pInheritanceInfo = &inheritanceInfo;
-
-		VK_CHECK(vkBeginCommandBuffer(s_ImGuiCmds[imageIndex], &cmdBeginInfoImGui), "Failed to begin secondary command buffer!");
-
-		ImDrawData* data = ImGui::GetDrawData();
-		ImGui_ImplVulkan_RenderDrawData(data, s_ImGuiCmds[imageIndex]);
-
-		VK_CHECK(vkEndCommandBuffer(s_ImGuiCmds[imageIndex]), "Failed to end secondary command buffer!");
-
-		vkCmdExecuteCommands(swapCmd, 1, &s_ImGuiCmds[imageIndex]);
-		vkCmdEndRenderPass(swapCmd);
+			ImDrawData* data = ImGui::GetDrawData();
+			ImGui_ImplVulkan_RenderDrawData(data, swapCmd);
+		});
 	}
 }

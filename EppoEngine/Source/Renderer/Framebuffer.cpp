@@ -8,8 +8,9 @@ namespace Eppo
 	Framebuffer::Framebuffer(const FramebufferSpecification& specification)
 		: m_Specification(specification)
 	{
-		std::vector<Ref<Image>> imageAttachments;
+		
 		std::vector<VkAttachmentDescription> attachmentDescriptions;
+		std::vector<VkAttachmentReference> attachmentReferences;
 		std::vector<VkSubpassDescription> subpassDescriptions;
 		std::vector<VkSubpassDependency> subpassDependencies;
 
@@ -24,7 +25,7 @@ namespace Eppo
 			imageSpec.Width = GetWidth();
 			imageSpec.Height = GetHeight();
 
-			imageAttachments.emplace_back(CreateRef<Image>(imageSpec));
+			m_ImageAttachments.emplace_back(CreateRef<Image>(imageSpec));
 
 			VkAttachmentDescription& colorAttachment = attachmentDescriptions.emplace_back();
 			colorAttachment.format = Utils::ImageFormatToVkFormat(attachment);
@@ -36,22 +37,37 @@ namespace Eppo
 			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-			VkAttachmentReference colorAttachmentRef{};
-			colorAttachmentRef.attachment = 0;
-			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			VkAttachmentReference colorAttachmentRef = attachmentReferences.emplace_back(VkAttachmentReference{ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+		}
 
-			VkSubpassDescription& subpassDescription = subpassDescriptions.emplace_back();
-			subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpassDescription.colorAttachmentCount = 1;
-			subpassDescription.pColorAttachments = &colorAttachmentRef;
+		VkSubpassDescription& subpassDescription = subpassDescriptions.emplace_back();
+		subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpassDescription.colorAttachmentCount = attachmentReferences.size();
+		subpassDescription.pColorAttachments = attachmentReferences.data();
 
-			VkSubpassDependency& subpassDependency = subpassDependencies.emplace_back();
-			subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			subpassDependency.dstSubpass = 0;
-			subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			subpassDependency.srcAccessMask = 0;
-			subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		if (!m_ImageAttachments.empty())
+		{
+			{
+				VkSubpassDependency& subpassDependency = subpassDependencies.emplace_back();
+				subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				subpassDependency.dstSubpass = 0;
+				subpassDependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				subpassDependency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				subpassDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			}
+
+			{
+				VkSubpassDependency& subpassDependency = subpassDependencies.emplace_back();
+				subpassDependency.srcSubpass = 0;
+				subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+				subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				subpassDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				subpassDependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				subpassDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			}
 		}
 
 		VkRenderPassCreateInfo renderPassInfo{};
@@ -66,9 +82,9 @@ namespace Eppo
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 		VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_RenderPass), "Failed to create render pass!");
 
-		std::vector<VkImageView> attachments(imageAttachments.size());
-		for (size_t i = 0; i < imageAttachments.size(); i++)
-			attachments[i] = imageAttachments[i]->GetImageView();
+		std::vector<VkImageView> attachments(m_ImageAttachments.size());
+		for (size_t i = 0; i < m_ImageAttachments.size(); i++)
+			attachments[i] = m_ImageAttachments[i]->GetImageView();
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

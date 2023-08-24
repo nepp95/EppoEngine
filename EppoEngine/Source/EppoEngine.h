@@ -16,6 +16,9 @@
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
 
+// ImGui
+#include "ImGui/UI.h"
+
 // Renderer
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Renderer.h"

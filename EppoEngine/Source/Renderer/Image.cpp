@@ -6,38 +6,15 @@
 
 namespace Eppo
 {
-	namespace Utils
-	{
-		static VkFormat ImageFormatToVkFormat(ImageFormat format)
-		{
-			switch (format)
-			{
-				case ImageFormat::RGBA8:		return VK_FORMAT_R8G8B8A8_SRGB;
-				case ImageFormat::RGBA8_UNORM:	return VK_FORMAT_R8G8B8A8_UNORM;
-				case ImageFormat::Depth:		return VK_FORMAT_D32_SFLOAT;
-			}
-
-			EPPO_ASSERT(false);
-			return VK_FORMAT_UNDEFINED;
-		}
-
-		static bool IsDepthFormat(ImageFormat format)
-		{
-			if (format == ImageFormat::Depth)
-				return true;
-			return false;
-		}
-	}
-
 	Image::Image(const ImageSpecification& specification)
 		: m_Specification(specification)
 	{
 		EPPO_PROFILE_FUNCTION("Image::Image");
 
-		VkImageUsageFlags usageFlags{};
+		VkImageUsageFlags usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT;
 
 		if (m_Specification.Usage == ImageUsage::Texture)
-			usageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			usageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		else
 		{
 			if (m_Specification.Format == ImageFormat::Depth)
@@ -81,7 +58,30 @@ namespace Eppo
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 		VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr, &m_Info.ImageView), "Failed to create image view!");
 
-		m_Info.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// Create sampler
+		Ref<PhysicalDevice> physicalDevice = RendererContext::Get()->GetPhysicalDevice();
+
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = physicalDevice->GetDeviceProperties().limits.maxSamplerAnisotropy;
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &m_Info.Sampler), "Failed to create sampler!");
+
+		m_Info.ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
 	Image::~Image()

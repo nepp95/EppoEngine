@@ -1,6 +1,7 @@
 #include "EditorLayer.h"
 
 #include <imgui/imgui.h>
+#include <backends/imgui_impl_vulkan.h>
 
 namespace Eppo
 {
@@ -29,24 +30,21 @@ namespace Eppo
 	
 	void EditorLayer::Render()
 	{
-		m_ActiveScene->Render();
-
-		Renderer::BeginScene(m_EditorCamera);
-
-		Renderer::DrawQuad({ -0.5f, -0.5f, 0.0f }, { 0.9f, 0.2f, 0.2f, 1.0f });
-		Renderer::DrawQuad({ 0.5f, 0.5f, 0.0f }, { 0.2f, 0.9f, 0.2f, 1.0f });
-		Renderer::DrawQuad({ -0.5f, 0.5f, 0.0f }, { 0.2f, 0.2f, 0.9f, 1.0f });
-		Renderer::DrawQuad({ 0.5f, -0.5f, 0.0f }, { 0.2f, 0.5f, 0.5f, 1.0f });
-		Renderer::DrawQuad({ 0.0f, 0.0f, 0.0f }, m_TestTexture);
-
-		Renderer::EndScene();
+		m_ActiveScene->Render(m_EditorCamera);
 	}
 
 	void EditorLayer::RenderGui()
 	{
-		ImGui::Begin("Hello");
+		ImGui::Begin("Viewport");
+
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+
+		m_ViewportWidth = viewportSize.x;
+		m_ViewportHeight = viewportSize.y;
 
 		ImGui::Text("This is text");
+
+		UI::Image(m_ActiveScene->GetFinalImage(), ImGui::GetContentRegionAvail());
 
 		ImGui::End();
 	}

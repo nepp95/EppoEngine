@@ -1,16 +1,14 @@
 #pragma once
 
-typedef struct VkImage_T* VkImage;
-typedef struct VkImageView_T* VkImageView;
-typedef struct VkSampler_T* VkSampler;
+#include "Renderer/Vulkan.h"
 typedef struct VmaAllocation_T* VmaAllocation;
-enum VkFormat;
-enum VkImageLayout;
 
 namespace Eppo
 {
 	enum class ImageFormat
 	{
+		None = 0,
+
 		// Color
 		RGBA8,
 		RGBA8_UNORM,
@@ -77,7 +75,39 @@ namespace Eppo
 			return 0;
 		}
 
-		VkFormat ImageFormatToVkFormat(ImageFormat format);
-		bool IsDepthFormat(ImageFormat format);
+		inline VkFormat ImageFormatToVkFormat(ImageFormat format)
+		{
+			switch (format)
+			{
+				case ImageFormat::None:			return VK_FORMAT_UNDEFINED;
+				case ImageFormat::RGBA8:		return VK_FORMAT_R8G8B8A8_SRGB;
+				case ImageFormat::RGBA8_UNORM:	return VK_FORMAT_R8G8B8A8_UNORM;
+				case ImageFormat::Depth:		return VK_FORMAT_D32_SFLOAT;
+			}
+
+			EPPO_ASSERT(false);
+			return VK_FORMAT_UNDEFINED;
+		}
+
+		inline bool IsDepthFormat(ImageFormat format)
+		{
+			if (format == ImageFormat::Depth)
+				return true;
+			return false;
+		}
+
+		inline ImageFormat VkFormatToImageFormat(VkFormat format)
+		{
+			switch (format)
+			{
+				case VK_FORMAT_UNDEFINED:		return ImageFormat::None;
+				case VK_FORMAT_R8G8B8A8_SRGB:	return ImageFormat::RGBA8;
+				case VK_FORMAT_R8G8B8A8_UNORM:	return ImageFormat::RGBA8_UNORM;
+				case VK_FORMAT_D32_SFLOAT:		return ImageFormat::Depth;
+			}
+
+			EPPO_ASSERT(false);
+			return ImageFormat::None;
+		}
 	}
 }

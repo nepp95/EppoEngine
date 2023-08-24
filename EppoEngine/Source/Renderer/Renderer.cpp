@@ -57,7 +57,9 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Init");
 
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<RendererContext> context = RendererContext::Get();
+		Ref<Swapchain> swapchain = context->GetSwapchain();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		s_Data = new RendererData();
 		s_Data->DescriptorAllocator = CreateRef<DescriptorAllocator>();
@@ -69,7 +71,13 @@ namespace Eppo
 			{ ShaderType::Fragment, "Resources/Shaders/quad.frag" },
 		};
 
+		FramebufferSpecification framebufferSpec;
+		framebufferSpec.Attachments = { ImageFormat::RGBA8 };
+		framebufferSpec.Width = swapchain->GetWidth();
+		framebufferSpec.Height = swapchain->GetHeight();
+
 		PipelineSpecification quadPipelineSpec;
+		quadPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
 		quadPipelineSpec.Shader = CreateRef<Shader>(quadShaderSpec, s_Data->DescriptorCache);
 
 		s_Data->QuadPipeline = CreateRef<Pipeline>(quadPipelineSpec);
@@ -167,10 +175,9 @@ namespace Eppo
 		});
 	}
 
-
-	void Renderer::BeginRenderPass()
+	void Renderer::BeginRenderPass(Ref<Framebuffer> framebuffer)
 	{
-		SubmitCommand([]()
+		SubmitCommand([framebuffer]()
 		{
 			EPPO_PROFILE_FUNCTION("Renderer::BeginRenderPass");
 
@@ -179,24 +186,30 @@ namespace Eppo
 
 			EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), swapchain->GetCurrentRenderCommandBuffer(), "Render pass");
 
-			// Render
-			VkExtent2D extent = swapchain->GetExtent();
-
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = swapchain->GetRenderPass();
-			renderPassInfo.framebuffer = swapchain->GetCurrentFramebuffer();
 			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = extent;
 
 			VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 
+			if (!framebuffer)
+			{
+				renderPassInfo.renderPass = swapchain->GetRenderPass();
+				renderPassInfo.framebuffer = swapchain->GetCurrentFramebuffer();
+				renderPassInfo.renderArea.extent = swapchain->GetExtent();
+			}
+			else
+			{
+				renderPassInfo.renderPass = framebuffer->GetRenderPass();
+				renderPassInfo.framebuffer = framebuffer->GetFramebuffer();
+				renderPassInfo.renderArea.extent = framebuffer->GetExtent();
+			}
+
 			vkCmdBeginRenderPass(swapchain->GetCurrentRenderCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		});
 	}
-
 
 	void Renderer::EndRenderPass()
 	{
@@ -235,7 +248,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Flush");
 
-		BeginRenderPass();
+		BeginRenderPass(s_Data->QuadPipeline->GetSpecification().Framebuffer);
 
 		// Quads
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data->QuadVertexBufferPtr - (uint8_t*)s_Data->QuadVertexBufferBase);
@@ -337,6 +350,11 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Renderer::EndScene");
 
 		Flush();
+	}
+
+	Ref<Image> Renderer::GetFinalImage()
+	{
+		return s_Data->QuadPipeline->GetSpecification().Framebuffer->GetFinalImage();
 	}
 
 	void Renderer::ExecuteRenderCommands()

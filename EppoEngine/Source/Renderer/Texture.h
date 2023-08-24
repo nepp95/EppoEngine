@@ -15,8 +15,10 @@ namespace Eppo
 		~Texture();
 
 		Ref<Image> GetImage() const { return m_Image; }
-
 		VkDescriptorSet& GetDescriptorSet() { return m_DescriptorSet; }
+
+		uint32_t GetWidth() const { return m_Width; }
+		uint32_t GetHeight() const { return m_Height; }
 
 	private:
 		std::filesystem::path m_Filepath;

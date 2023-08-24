@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Renderer/Framebuffer.h"
 #include "Renderer/Shader.h"
 
 namespace Eppo
 {
 	struct PipelineSpecification
 	{
+		Ref<Framebuffer> Framebuffer;
 		Ref<Shader> Shader;
 	};
 

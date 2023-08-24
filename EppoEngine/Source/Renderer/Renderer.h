@@ -2,6 +2,7 @@
 
 #include "Renderer/Descriptor/DescriptorBuilder.h"
 #include "Renderer/Camera/EditorCamera.h"
+#include "Renderer/Framebuffer.h"
 #include "Renderer/Material.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Texture.h"
@@ -24,7 +25,7 @@ namespace Eppo
 		static void EndFrame();
 
 		// Render pass
-		static void BeginRenderPass();
+		static void BeginRenderPass(Ref<Framebuffer> framebuffer = nullptr);
 		static void EndRenderPass();
 
 		// Batch
@@ -35,6 +36,9 @@ namespace Eppo
 		// Scene
 		static void BeginScene(const EditorCamera& camera);
 		static void EndScene();
+
+		// Final image
+		static Ref<Image> GetFinalImage();
 
 		// Render commands
 		static void ExecuteRenderCommands();
