@@ -156,12 +156,12 @@ namespace Eppo
 				}
 				{
 					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
-					EPPO_PROFILE_FUNCTION("CPU Render");
+					EPPO_PROFILE_FUNCTION("CPU Wait");
 					swapchain->BeginFrame();
-					Renderer::ExecuteRenderCommands();
 				}
 				{
-					EPPO_PROFILE_FUNCTION("CPU Wait");
+					EPPO_PROFILE_FUNCTION("CPU Render");
+					Renderer::ExecuteRenderCommands();
 					swapchain->Present();
 				}
 			}

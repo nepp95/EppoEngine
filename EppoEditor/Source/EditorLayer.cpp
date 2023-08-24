@@ -86,8 +86,6 @@ namespace Eppo
 
 		style.WindowMinSize.x = minWinSizeX;
 
-
-
 		// Viewport
 		ImGui::Begin("Viewport");
 
