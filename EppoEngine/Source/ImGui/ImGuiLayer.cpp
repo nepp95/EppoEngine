@@ -36,7 +36,7 @@ namespace Eppo
 		ImGuiIO& io = ImGui::GetIO();
 
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable keyboard controls
-		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable docking
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable docking
 		//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable multi-viewport
 
 		ImGui::StyleColorsDark();
