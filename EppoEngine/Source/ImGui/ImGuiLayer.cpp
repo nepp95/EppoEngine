@@ -37,7 +37,7 @@ namespace Eppo
 
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable keyboard controls
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable docking
-		//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable multi-viewport
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable multi-viewport
 
 		ImGui::StyleColorsDark();
 
@@ -128,21 +128,79 @@ namespace Eppo
 		ImGui::NewFrame();
 	}
 
-	void ImGuiLayer::ImRender()
-	{
-		ImGui::Render();
-	}
-
 	void ImGuiLayer::End()
 	{
-		Renderer::SubmitCommand([]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer swapCmd = swapchain->GetCurrentRenderCommandBuffer();
+		ImGui::Render();
 
-			ImDrawData* data = ImGui::GetDrawData();
-			ImGui_ImplVulkan_RenderDrawData(data, swapCmd);
-		});
+		Ref<RendererContext> context = RendererContext::Get();
+		Ref<Swapchain> swapchain = context->GetSwapchain();
+		VkCommandBuffer swapCmd = swapchain->GetCurrentRenderCommandBuffer();
+
+		VkClearValue clearValue = { 0.1f, 0.1f, 0.1f, 1.0f };
+		uint32_t width = swapchain->GetWidth();
+		uint32_t height = swapchain->GetHeight();
+		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+
+		VkCommandBufferBeginInfo swapCmdBeginInfo{};
+		swapCmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		swapCmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		swapCmdBeginInfo.pNext = nullptr;
+
+		VK_CHECK(vkBeginCommandBuffer(swapCmd, &swapCmdBeginInfo), "Failed to begin command buffer!");
+
+		VkRenderPassBeginInfo renderPassBeginInfo{};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass = swapchain->GetRenderPass();
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.renderArea.extent = swapchain->GetExtent();
+		renderPassBeginInfo.clearValueCount = 1;
+		renderPassBeginInfo.pClearValues = &clearValue;
+		renderPassBeginInfo.framebuffer = swapchain->GetCurrentFramebuffer();
+
+		vkCmdBeginRenderPass(swapCmd, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+		VkCommandBufferInheritanceInfo inheritanceInfo{};
+		inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+		inheritanceInfo.renderPass = swapchain->GetRenderPass();
+		inheritanceInfo.framebuffer = swapchain->GetCurrentFramebuffer();
+
+		VkCommandBufferBeginInfo imGuiCmdInfo{};
+		imGuiCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		imGuiCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+		imGuiCmdInfo.pInheritanceInfo = &inheritanceInfo;
+
+		VK_CHECK(vkBeginCommandBuffer(s_ImGuiCmds[imageIndex], &imGuiCmdInfo), "Failed to begin command buffer!");
+
+		VkViewport viewport;
+		viewport.x = 0.0f;
+		viewport.y = height;
+		viewport.height = height;
+		viewport.width = width;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		vkCmdSetViewport(s_ImGuiCmds[imageIndex], 0, 1, &viewport);
+
+		VkRect2D scissor;
+		scissor.extent = { width, height };
+		scissor.offset = { 0, 0 };
+		vkCmdSetScissor(s_ImGuiCmds[imageIndex], 0, 1, &scissor);
+
+		ImDrawData* data = ImGui::GetDrawData();
+		//ImGui_ImplVulkan_RenderDrawData(data, swapCmd);
+		ImGui_ImplVulkan_RenderDrawData(data, s_ImGuiCmds[imageIndex]);
+
+		VK_CHECK(vkEndCommandBuffer(s_ImGuiCmds[imageIndex]), "Failed to end command buffer!");
+
+		vkCmdExecuteCommands(swapCmd, 1, &s_ImGuiCmds[imageIndex]);
+		vkCmdEndRenderPass(swapCmd);
+
+		VK_CHECK(vkEndCommandBuffer(swapCmd), "Failed to end command buffer!");
+
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+		}
 	}
 }

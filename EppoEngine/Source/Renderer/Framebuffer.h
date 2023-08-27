@@ -22,6 +22,7 @@ namespace Eppo
 	{
 	public:
 		Framebuffer(const FramebufferSpecification& specification);
+		~Framebuffer();
 
 		Ref<Image> GetFinalImage() { return m_ImageAttachments[0]; };
 

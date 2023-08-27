@@ -97,4 +97,12 @@ namespace Eppo
 
 		VK_CHECK(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &m_Framebuffer), "Failed to create framebuffer!");
 	}
+
+	Framebuffer::~Framebuffer()
+	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		vkDestroyRenderPass(device, m_RenderPass, nullptr);
+		vkDestroyFramebuffer(device, m_Framebuffer, nullptr);
+	}
 }

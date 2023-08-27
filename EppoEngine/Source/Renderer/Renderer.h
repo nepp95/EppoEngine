@@ -4,13 +4,11 @@
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Material.h"
+#include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Texture.h"
 
 #include <glm/glm.hpp>
-
-typedef struct VkDescriptorSet_T* VkDescriptorSet;
-typedef struct VkDescriptorSetLayout_T* VkDescriptorSetLayout;
 
 namespace Eppo
 {
@@ -25,7 +23,7 @@ namespace Eppo
 		static void EndFrame();
 
 		// Render pass
-		static void BeginRenderPass(Ref<Framebuffer> framebuffer = nullptr);
+		static void BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Framebuffer> framebuffer, VkSubpassContents flags = VK_SUBPASS_CONTENTS_INLINE);
 		static void EndRenderPass();
 
 		// Batch

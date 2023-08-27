@@ -83,7 +83,7 @@ namespace Eppo
 		m_TracyContexts.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 			m_TracyContexts[i] = TracyVkContext(m_PhysicalDevice->GetNativeDevice(), m_LogicalDevice->GetNativeDevice(), m_LogicalDevice->GetGraphicsQueue(), m_Swapchain->m_CommandBuffers[i]);
-		
+
 		SubmitResourceFree([=]()
 		{
 			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)

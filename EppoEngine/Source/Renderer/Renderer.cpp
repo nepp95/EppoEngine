@@ -20,6 +20,7 @@ namespace Eppo
 		static const uint32_t MaxIndices = MaxQuads * 6;
 		static const uint32_t MaxTextureSlots = 32;
 
+		Ref<RenderCommandBuffer> CommandBuffer;
 		RenderCommandQueue CommandQueue;
 
 		Ref<DescriptorAllocator> DescriptorAllocator;
@@ -64,6 +65,7 @@ namespace Eppo
 		s_Data = new RendererData();
 		s_Data->DescriptorAllocator = CreateRef<DescriptorAllocator>();
 		s_Data->DescriptorCache = CreateRef<DescriptorLayoutCache>();
+		s_Data->CommandBuffer = CreateRef<RenderCommandBuffer>();
 
 		ShaderSpecification quadShaderSpec;
 		quadShaderSpec.ShaderSources = {
@@ -143,19 +145,7 @@ namespace Eppo
 		{
 			EPPO_PROFILE_FUNCTION("Renderer::BeginFrame");
 
-			Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-			VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
-
-			uint32_t imageIndex = swapchain->GetCurrentImageIndex();
-
 			//s_Data->DescriptorAllocator->ResetPools();
-
-			VkCommandBufferBeginInfo beginInfo{};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = 0;
-			beginInfo.pInheritanceInfo = nullptr;
-
-			VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "Failed to begin command buffer!");
 		});
 	}
 
@@ -164,27 +154,21 @@ namespace Eppo
 		SubmitCommand([]()
 		{
 			EPPO_PROFILE_FUNCTION("Renderer::EndFrame");
-
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
-
-			EPPO_PROFILE_GPU_END(context->GetCurrentProfilerContext(), commandBuffer);
-
-			VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
 		});
 	}
 
-	void Renderer::BeginRenderPass(Ref<Framebuffer> framebuffer)
+	void Renderer::BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Framebuffer> framebuffer, VkSubpassContents flags)
 	{
-		SubmitCommand([framebuffer]()
+		SubmitCommand([renderCommandBuffer, framebuffer, flags]()
 		{
 			EPPO_PROFILE_FUNCTION("Renderer::BeginRenderPass");
 
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 
-			EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), swapchain->GetCurrentRenderCommandBuffer(), "Render pass");
+			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
+
+			EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), commandBuffer, "Quads");
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -207,7 +191,7 @@ namespace Eppo
 				renderPassInfo.renderArea.extent = framebuffer->GetExtent();
 			}
 
-			vkCmdBeginRenderPass(swapchain->GetCurrentRenderCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, flags);
 		});
 	}
 
@@ -217,10 +201,11 @@ namespace Eppo
 		{
 			EPPO_PROFILE_FUNCTION("Renderer::EndRenderPass");
 
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
+			VkCommandBuffer commandBuffer = s_Data->CommandBuffer->GetCurrentCommandBuffer();
+			vkCmdEndRenderPass(commandBuffer);
 
-			vkCmdEndRenderPass(swapchain->GetCurrentRenderCommandBuffer());
+			Ref<RendererContext> context = RendererContext::Get();
+			EPPO_PROFILE_GPU_END(context->GetCurrentProfilerContext(), commandBuffer);
 		});
 	}
 
@@ -248,7 +233,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Flush");
 
-		BeginRenderPass(s_Data->QuadPipeline->GetSpecification().Framebuffer);
+		s_Data->CommandBuffer->Begin();
+		BeginRenderPass(s_Data->CommandBuffer, s_Data->QuadPipeline->GetSpecification().Framebuffer);
 
 		// Quads
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data->QuadVertexBufferPtr - (uint8_t*)s_Data->QuadVertexBufferBase);
@@ -261,7 +247,7 @@ namespace Eppo
 				Ref<RendererContext> context = RendererContext::Get();
 				Ref<Swapchain> swapchain = context->GetSwapchain();
 
-				VkCommandBuffer commandBuffer = swapchain->GetCurrentRenderCommandBuffer();
+				VkCommandBuffer commandBuffer = s_Data->CommandBuffer->GetCurrentCommandBuffer();
 
 				// Update descriptors
 				for (uint32_t i = 0; i < s_Data->TextureSlots.size(); i++)
@@ -328,6 +314,8 @@ namespace Eppo
 		}
 
 		EndRenderPass();
+		s_Data->CommandBuffer->End();
+		s_Data->CommandBuffer->Submit();
 	}
 
 	void Renderer::BeginScene(const EditorCamera& camera)

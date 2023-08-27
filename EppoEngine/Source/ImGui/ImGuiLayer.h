@@ -17,7 +17,6 @@ namespace Eppo
 		void OnEvent(Event& e) override;
 
 		void Begin();
-		void ImRender();
 		void End();
 	};
 }
