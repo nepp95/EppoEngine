@@ -8,11 +8,22 @@ namespace Eppo
 	Framebuffer::Framebuffer(const FramebufferSpecification& specification)
 		: m_Specification(specification)
 	{
-		
+		Create();
+	}
+
+	Framebuffer::~Framebuffer()
+	{
+		Cleanup();
+	}
+
+	void Framebuffer::Create()
+	{
 		std::vector<VkAttachmentDescription> attachmentDescriptions;
 		std::vector<VkAttachmentReference> attachmentReferences;
 		std::vector<VkSubpassDescription> subpassDescriptions;
 		std::vector<VkSubpassDependency> subpassDependencies;
+
+		m_ImageAttachments.clear();
 
 		for (const auto& attachment : m_Specification.Attachments)
 		{
@@ -98,11 +109,20 @@ namespace Eppo
 		VK_CHECK(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &m_Framebuffer), "Failed to create framebuffer!");
 	}
 
-	Framebuffer::~Framebuffer()
+	void Framebuffer::Cleanup()
 	{
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		vkDestroyRenderPass(device, m_RenderPass, nullptr);
 		vkDestroyFramebuffer(device, m_Framebuffer, nullptr);
+	}
+
+	void Framebuffer::Resize(uint32_t width, uint32_t height)
+	{
+		m_Specification.Width = width;
+		m_Specification.Height = height;
+
+		Cleanup();
+		Create();
 	}
 }

@@ -24,6 +24,10 @@ namespace Eppo
 		Framebuffer(const FramebufferSpecification& specification);
 		~Framebuffer();
 
+		void Create();
+		void Cleanup();
+		void Resize(uint32_t width, uint32_t height);
+
 		Ref<Image> GetFinalImage() { return m_ImageAttachments[0]; };
 
 		VkFramebuffer GetFramebuffer() const { return m_Framebuffer; }

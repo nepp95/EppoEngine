@@ -177,7 +177,19 @@ namespace Eppo
 	bool Application::OnWindowResize(WindowResizeEvent& e)
 	{
 		EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
-		EPPO_ASSERT(false);
+		
+		uint32_t width = e.GetWidth();
+		uint32_t height = e.GetHeight();
+
+		if (width == 0 || height == 0)
+		{
+			m_IsMinimized = true;
+			return false;
+		}
+		else
+			m_IsMinimized = false;
+
+		RendererContext::Get()->GetSwapchain()->OnResize();
 
 		return true;
 	}

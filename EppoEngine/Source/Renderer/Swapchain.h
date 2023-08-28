@@ -22,6 +22,7 @@ namespace Eppo
 		void Present();
 
 		void Cleanup();
+		void Create(bool recreate = false);
 		void Destroy();
 
 		void OnResize();
