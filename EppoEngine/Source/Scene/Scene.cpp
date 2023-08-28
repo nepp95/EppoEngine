@@ -2,6 +2,7 @@
 #include "Scene.h"
 
 #include "Renderer/Renderer.h"
+#include "Scene/Entity.h"
 
 namespace Eppo
 {
@@ -16,12 +17,28 @@ namespace Eppo
 
 		Renderer::BeginScene(editorCamera);
 
-		Renderer::DrawQuad({ -0.5f, -0.5f, 0.0f }, { 0.9f, 0.2f, 0.2f, 1.0f });
-		Renderer::DrawQuad({ 0.5f, 0.5f, 0.0f }, { 0.2f, 0.9f, 0.2f, 1.0f });
-		Renderer::DrawQuad({ -0.5f, 0.5f, 0.0f }, { 0.2f, 0.2f, 0.9f, 1.0f });
-		Renderer::DrawQuad({ 0.5f, -0.5f, 0.0f }, { 0.2f, 0.5f, 0.5f, 1.0f });
+		auto group = m_Registry.group<TransformComponent, ColorComponent>();
+
+		for (const auto entity : group)
+		{
+			auto [transform, color] = group.get<TransformComponent, ColorComponent>(entity);
+			Renderer::DrawQuad(transform.GetTransform(), color.Color);
+		}
 
 		Renderer::EndScene();
+	}
+
+	Entity Scene::CreateEntity(const std::string& name)
+	{
+		Entity entity(m_Registry.create(), this);
+
+		entity.AddComponent<IDComponent>();
+		entity.AddComponent<TransformComponent>();
+
+		auto& tag = entity.AddComponent<TagComponent>();
+		tag = name.empty() ? "Entity" : name;
+
+		return entity;
 	}
 
 	Ref<Image> Scene::GetFinalImage() const

@@ -13,3 +13,6 @@
 [submodule "EppoEngine/Vendor/imgui"]
 	path = EppoEngine/Vendor/imgui
 	url = https://github.com/nepp95/imgui.git
+[submodule "EppoEngine/Vendor/entt"]
+	path = EppoEngine/Vendor/entt
+	url = https://github.com/nepp95/entt.git

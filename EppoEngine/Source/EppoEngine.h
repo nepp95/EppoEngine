@@ -25,4 +25,5 @@
 #include "Renderer/Texture.h"
 
 // Scene
+#include "Scene/Entity.h"
 #include "Scene/Scene.h"

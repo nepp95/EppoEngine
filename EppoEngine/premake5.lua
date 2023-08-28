@@ -25,6 +25,7 @@ project "EppoEngine"
 
     includedirs {
         "Source",
+		"%{IncludeDir.entt}",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",

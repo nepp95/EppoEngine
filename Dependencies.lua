@@ -2,6 +2,7 @@ VulkanSdk = os.getenv("VULKAN_SDK")
 
 -- Include directories
 IncludeDir = {}
+IncludeDir["entt"] = "%{wks.location}/EppoEngine/Vendor/entt/single_include"
 IncludeDir["glfw"] = "%{wks.location}/EppoEngine/Vendor/glfw/include"
 IncludeDir["glm"] = "%{wks.location}/EppoEngine/Vendor/glm"
 IncludeDir["imgui"] = "%{wks.location}/EppoEngine/Vendor/imgui"

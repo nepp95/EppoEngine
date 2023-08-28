@@ -13,6 +13,34 @@ namespace Eppo
 	{
 		m_ActiveScene = CreateRef<Scene>();
 
+		{
+			Entity entity = m_ActiveScene->CreateEntity("Entity 1");
+			entity.AddComponent<ColorComponent>(glm::vec4(0.9f, 0.2f, 0.2f, 1.0f));
+			auto& tc = entity.GetComponent<TransformComponent>();
+			tc.Translation = { -0.5f, -0.5f, 0.0f };
+		}
+
+		{
+			Entity entity = m_ActiveScene->CreateEntity("Entity 2");
+			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.9f, 0.2f, 1.0f));
+			auto& tc = entity.GetComponent<TransformComponent>();
+			tc.Translation = { 0.5f, 0.5f, 0.0f };
+		}
+
+		{
+			Entity entity = m_ActiveScene->CreateEntity("Entity 3");
+			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.2f, 0.9f, 1.0f));
+			auto& tc = entity.GetComponent<TransformComponent>();
+			tc.Translation = { -0.5f, 0.5f, 0.0f };
+		}
+
+		{
+			Entity entity = m_ActiveScene->CreateEntity("Entity 4");
+			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.5f, 0.5f, 1.0f));
+			auto& tc = entity.GetComponent<TransformComponent>();
+			tc.Translation = { 0.5f, -0.5f, 0.0f };
+		}
+
 		m_TestTexture = CreateRef<Texture>("Resources/Textures/Icons/Directory.png");
 	}
 	
