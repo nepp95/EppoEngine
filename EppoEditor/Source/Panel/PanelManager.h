@@ -1,0 +1,61 @@
+#pragma once
+
+#include "Panel/Panel.h"
+
+#include <EppoEngine.h>
+
+namespace Eppo
+{
+	struct PanelData
+	{
+		Ref<Panel> Panel;
+		bool IsOpen = false;
+	};
+
+	class PanelManager
+	{
+	public:
+		PanelManager() = default;
+		~PanelManager() = default;
+
+		void RenderGui();
+
+		void SetSceneContext(const Ref<Scene>& scene);
+		void SetSelectedEntity(Entity entity);
+
+		template<typename T, typename... Args>
+		void AddPanel(const std::string& name, bool isOpen, Args&&... args)
+		{
+			static_assert(std::is_base_of_v<Panel, T>);
+
+			if (HasPanel(name))
+				return;
+
+			PanelData panelData;
+			panelData.Panel = CreateRef<T>(std::forward<Args>(args)...);
+			panelData.IsOpen = isOpen;
+
+			m_PanelData.insert({ name, panelData });
+		}
+
+		template<typename T>
+		Ref<T> GetPanel(const std::string& name)
+		{
+			static_assert(std::is_base_of_v<Panel, T>);
+
+			auto it = m_PanelData.find(name);
+			if (it == m_PanelData.end())
+				return nullptr;
+
+			return it->second.Panel; // TODO: Might not work? dynamic cast to derived class
+		}
+
+		bool HasPanel(const std::string& name)
+		{
+			return m_PanelData.find(name) != m_PanelData.end();
+		}
+
+	private:
+		std::unordered_map<std::string, PanelData> m_PanelData;
+	};
+}

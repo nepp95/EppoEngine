@@ -1,10 +1,13 @@
 #include "EditorLayer.h"
 
+#include "Panel/SceneHierarchyPanel.h"
+
 #include <imgui/imgui.h>
-#include <backends/imgui_impl_vulkan.h>
 
 namespace Eppo
 {
+	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
+
 	EditorLayer::EditorLayer()
 		: Layer("EditorLayer")
 	{}
@@ -42,6 +45,11 @@ namespace Eppo
 		}
 
 		m_TestTexture = CreateRef<Texture>("Resources/Textures/Icons/Directory.png");
+
+		m_PanelManager = CreateScope<PanelManager>();
+		m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
+
+		m_PanelManager->SetSceneContext(m_ActiveScene);
 	}
 	
 	void EditorLayer::OnDetach()
@@ -122,18 +130,19 @@ namespace Eppo
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		ImGui::Text("This is text");
-
 		UI::Image(m_ActiveScene->GetFinalImage(), ImGui::GetContentRegionAvail());
 
-		ImGui::End();
+		ImGui::End(); // Viewport
+
+		// Panels
+		m_PanelManager->RenderGui();
 
 		// Settings
 		ImGui::Begin("Settings");
 		ImGui::Text("Here I will put settings... Sometime... Never...");
-		ImGui::End();
+		ImGui::End(); // Settings
 
-		ImGui::End();
+		ImGui::End(); // DockSpace
 	}
 
 	void EditorLayer::OnEvent(Event& e)

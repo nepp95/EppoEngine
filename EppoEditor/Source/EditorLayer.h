@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Panel/PanelManager.h"
+
 #include <EppoEngine.h>
 
 namespace Eppo
@@ -25,6 +27,8 @@ namespace Eppo
 
 		uint32_t m_ViewportWidth;
 		uint32_t m_ViewportHeight;
+
+		Scope<PanelManager> m_PanelManager;
 
 		Ref<Texture> m_TestTexture;
 	};

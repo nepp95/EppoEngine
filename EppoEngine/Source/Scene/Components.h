@@ -31,7 +31,7 @@ namespace Eppo
 			: Tag(tag)
 		{}
 
-		operator std::string() { return Tag; }
+		operator std::string&() { return Tag; }
 		operator const std::string&() const { return Tag; }
 	};
 
