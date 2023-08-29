@@ -20,6 +20,7 @@ workspace "EppoEngine"
         include "EppoEngine/Vendor/glfw"
         include "EppoEngine/Vendor/imgui"
         include "EppoEngine/Vendor/spdlog"
+        include "EppoEngine/Vendor/yaml-cpp"
     group ""
 
     group "Core"

@@ -22,8 +22,17 @@ namespace Eppo
 		void OnEvent(Event& e) override;
 
 	private:
+		void NewScene();
+		void SaveScene();
+		void SaveScene(const std::filesystem::path& filepath);
+		void OpenScene();
+		void OpenScene(const std::filesystem::path& filepath);
+
+	private:
+		// Scene
 		Ref<Scene> m_ActiveScene;
-		EditorCamera m_EditorCamera = EditorCamera(30.0f, 1.778f);
+		std::filesystem::path m_ActiveScenePath;
+		EditorCamera m_EditorCamera;
 
 		uint32_t m_ViewportWidth;
 		uint32_t m_ViewportHeight;

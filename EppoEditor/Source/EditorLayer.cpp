@@ -9,47 +9,19 @@ namespace Eppo
 	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
 	EditorLayer::EditorLayer()
-		: Layer("EditorLayer")
+		: Layer("EditorLayer"), m_EditorCamera(EditorCamera(30.0f, 1.778f))
 	{}
 
 	void EditorLayer::OnAttach()
 	{
-		m_ActiveScene = CreateRef<Scene>();
-
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 1");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.9f, 0.2f, 0.2f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { -0.5f, -0.5f, 0.0f };
-		}
-
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 2");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.9f, 0.2f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { 0.5f, 0.5f, 0.0f };
-		}
-
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 3");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.2f, 0.9f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { -0.5f, 0.5f, 0.0f };
-		}
-
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 4");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.5f, 0.5f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { 0.5f, -0.5f, 0.0f };
-		}
-
-		m_TestTexture = CreateRef<Texture>("Resources/Textures/Icons/Directory.png");
-
 		m_PanelManager = CreateScope<PanelManager>();
 		m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
 
 		m_PanelManager->SetSceneContext(m_ActiveScene);
+
+		OpenScene("Resources/Scenes/test.epposcene");
+
+		m_TestTexture = CreateRef<Texture>("Resources/Textures/Icons/Directory.png");
 	}
 	
 	void EditorLayer::OnDetach()
@@ -122,6 +94,26 @@ namespace Eppo
 
 		style.WindowMinSize.x = minWinSizeX;
 
+		// Menubar
+		if (ImGui::BeginMenuBar())
+		{
+			if (ImGui::BeginMenu("File"))
+			{
+				if (ImGui::MenuItem("Save Scene", "CTRL+S"))
+					SaveScene();
+
+				if (ImGui::MenuItem("Open Scene", "CTRL+O"))
+					OpenScene();
+
+				if (ImGui::MenuItem("Exit"))
+					Application::Get().Close();
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMenuBar();
+		}
+
 		// Viewport
 		ImGui::Begin("Viewport");
 
@@ -148,5 +140,55 @@ namespace Eppo
 	void EditorLayer::OnEvent(Event& e)
 	{
 
+	}
+
+	void EditorLayer::NewScene()
+	{
+		m_ActiveScenePath = std::filesystem::path();
+		m_ActiveScene = CreateRef<Scene>();
+
+		m_PanelManager->SetSceneContext(m_ActiveScene);
+	}
+
+	void EditorLayer::SaveScene()
+	{
+		if (m_ActiveScenePath.empty())
+			m_ActiveScenePath = FileDialog::SaveFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+
+		SaveScene(m_ActiveScenePath);
+	}
+
+	void EditorLayer::SaveScene(const std::filesystem::path& filepath)
+	{
+		SceneSerializer serializer(m_ActiveScene);
+		serializer.Serialize(m_ActiveScenePath);
+	}
+
+	void EditorLayer::OpenScene()
+	{
+		std::filesystem::path filepath = FileDialog::OpenFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+
+		if (!filepath.empty())
+			OpenScene(filepath);
+	}
+
+	void EditorLayer::OpenScene(const std::filesystem::path& filepath)
+	{
+		if (filepath.extension().string() != ".epposcene")
+		{
+			EPPO_ERROR("Could not load '{}' because it is not a scene file!", filepath.string());
+			return;
+		}
+
+		Ref<Scene> newScene = CreateRef<Scene>();
+		SceneSerializer serializer(newScene);
+
+		if (serializer.Deserialize(filepath))
+		{
+			m_ActiveScene = newScene;
+			m_ActiveScenePath = filepath;
+			
+			m_PanelManager->SetSceneContext(m_ActiveScene);
+		}
 	}
 }

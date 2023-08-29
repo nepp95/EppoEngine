@@ -12,7 +12,8 @@ project "EppoEngine"
     pchsource "Source/pch.cpp"
 
 	defines {
-		"GLFW_INCLUDE_NONE"
+		"GLFW_INCLUDE_NONE",
+		"YAML_CPP_STATIC_DEFINE"
 	}
 
     files {
@@ -20,7 +21,7 @@ project "EppoEngine"
         "Source/**.cpp",
 
 		"%{IncludeDir.stb}/*.h",
-		"%{IncludeDir.stb}/*.cpp"
+		"%{IncludeDir.stb}/*.cpp",
     }
 
     includedirs {
@@ -33,12 +34,14 @@ project "EppoEngine"
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.tracy}",
         "%{IncludeDir.vma}",
-        "%{IncludeDir.vulkan}"
+        "%{IncludeDir.vulkan}",
+		"%{IncludeDir.yaml_cpp}"
     }
 
     links {
         "glfw",
 		"imgui",
+		"yaml-cpp",
         "%{Library.vulkan}"
     }
 

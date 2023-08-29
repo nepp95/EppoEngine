@@ -19,7 +19,7 @@ namespace Eppo
 
 		auto group = m_Registry.group<TransformComponent, ColorComponent>();
 
-		for (const auto entity : group)
+		for (const EntityHandle entity : group)
 		{
 			auto [transform, color] = group.get<TransformComponent, ColorComponent>(entity);
 			Renderer::DrawQuad(transform.GetTransform(), color.Color);
@@ -30,15 +30,25 @@ namespace Eppo
 
 	Entity Scene::CreateEntity(const std::string& name)
 	{
+		return CreateEntityWithUUID(UUID(), name);
+	}
+
+	Entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& name)
+	{
 		Entity entity(m_Registry.create(), this);
 
-		entity.AddComponent<IDComponent>();
+		entity.AddComponent<IDComponent>(uuid);
 		entity.AddComponent<TransformComponent>();
 
 		auto& tag = entity.AddComponent<TagComponent>();
 		tag = name.empty() ? "Entity" : name;
 
 		return entity;
+	}
+
+	void Scene::DestroyEntity(Entity entity)
+	{
+		m_Registry.destroy(entity);
 	}
 
 	Ref<Image> Scene::GetFinalImage() const

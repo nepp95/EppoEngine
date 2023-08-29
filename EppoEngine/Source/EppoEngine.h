@@ -10,6 +10,7 @@
 #include "Core/KeyCodes.h"
 #include "Core/Layer.h"
 #include "Core/MouseCodes.h"
+#include "Core/UUID.h"
 
 // Events
 #include "Event/ApplicationEvent.h"
@@ -27,3 +28,7 @@
 // Scene
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneSerializer.h"
+
+// Utility
+#include "Utility/FileDialog.h"

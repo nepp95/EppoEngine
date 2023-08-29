@@ -11,6 +11,7 @@ IncludeDir["stb"] = "%{wks.location}/EppoEngine/Vendor/stb"
 IncludeDir["tracy"] = "%{wks.location}/EppoEngine/Vendor/tracy/public"
 IncludeDir["vma"] = "%{wks.location}/EppoEngine/Vendor/vulkan-memory-allocator"
 IncludeDir["vulkan"] = "%{VulkanSdk}/Include"
+IncludeDir["yaml_cpp"] = "%{wks.location}/EppoEngine/Vendor/yaml-cpp/include"
 
 -- Library directories
 LibraryDir = {}

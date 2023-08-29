@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/UUID.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Image.h"
 
@@ -19,6 +20,7 @@ namespace Eppo
 		void Render(const EditorCamera& editorCamera);
 
 		Entity CreateEntity(const std::string& name = std::string());
+		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);
 		void DestroyEntity(Entity entity);
 
 		Ref<Image> GetFinalImage() const;
@@ -28,5 +30,6 @@ namespace Eppo
 
 		friend class Entity;
 		friend class SceneHierarchyPanel;
+		friend class SceneSerializer;
 	};
 }
