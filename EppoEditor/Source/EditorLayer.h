@@ -22,6 +22,8 @@ namespace Eppo
 		void OnEvent(Event& e) override;
 
 	private:
+		bool OnKeyPressed(KeyPressedEvent& e);
+
 		void NewScene();
 		void SaveScene();
 		void SaveScene(const std::filesystem::path& filepath);
@@ -37,8 +39,7 @@ namespace Eppo
 		uint32_t m_ViewportWidth;
 		uint32_t m_ViewportHeight;
 
-		Scope<PanelManager> m_PanelManager;
-
+		PanelManager& m_PanelManager;
 		Ref<Texture> m_TestTexture;
 	};
 }

@@ -15,13 +15,15 @@ namespace Eppo
 	class PanelManager
 	{
 	public:
-		PanelManager() = default;
 		~PanelManager() = default;
 
 		void RenderGui();
 
-		void SetSceneContext(const Ref<Scene>& scene);
-		void SetSelectedEntity(Entity entity);
+		Ref<Scene> GetSceneContext() { return m_SceneContext; }
+		Entity GetSelectedEntity() { return m_SelectedEntity; }
+
+		void SetSceneContext(const Ref<Scene>& scene) { m_SceneContext = scene; }
+		void SetSelectedEntity(Entity entity) { m_SelectedEntity = entity; }
 
 		template<typename T, typename... Args>
 		void AddPanel(const std::string& name, bool isOpen, Args&&... args)
@@ -55,7 +57,15 @@ namespace Eppo
 			return m_PanelData.find(name) != m_PanelData.end();
 		}
 
+		static PanelManager& Get();
+
+	private:
+		PanelManager() = default;
+
 	private:
 		std::unordered_map<std::string, PanelData> m_PanelData;
+
+		Ref<Scene> m_SceneContext;
+		Entity m_SelectedEntity;
 	};
 }

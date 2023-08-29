@@ -53,7 +53,5 @@ namespace Eppo
 
 		// Tracy profiler context
 		std::vector<TracyVkCtx> m_TracyContexts;
-
-		static RendererContext* s_Instance;
 	};
 }

@@ -8,15 +8,11 @@
 
 namespace Eppo
 {
-	RendererContext* RendererContext::s_Instance = nullptr;
-
 	RendererContext::RendererContext(GLFWwindow* windowHandle)
 		: m_WindowHandle(windowHandle)
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::RendererContext");
 
-		EPPO_ASSERT(!s_Instance);
-		s_Instance = this;
 		EPPO_ASSERT(windowHandle);
 	}
 

@@ -1,5 +1,6 @@
 #include "EditorLayer.h"
 
+#include "Panel/PropertyPanel.h"
 #include "Panel/SceneHierarchyPanel.h"
 
 #include <imgui/imgui.h>
@@ -7,17 +8,18 @@
 namespace Eppo
 {
 	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
+	static const std::string PROPERTY_PANEL = "PropertyPanel";
 
 	EditorLayer::EditorLayer()
-		: Layer("EditorLayer"), m_EditorCamera(EditorCamera(30.0f, 1.778f))
+		: Layer("EditorLayer"), m_EditorCamera(EditorCamera(30.0f, 1.778f)), m_PanelManager(PanelManager::Get())
 	{}
 
 	void EditorLayer::OnAttach()
 	{
-		m_PanelManager = CreateScope<PanelManager>();
-		m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
+		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
+		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
 
-		m_PanelManager->SetSceneContext(m_ActiveScene);
+		m_PanelManager.SetSceneContext(m_ActiveScene);
 
 		OpenScene("Resources/Scenes/test.epposcene");
 
@@ -127,7 +129,7 @@ namespace Eppo
 		ImGui::End(); // Viewport
 
 		// Panels
-		m_PanelManager->RenderGui();
+		m_PanelManager.RenderGui();
 
 		// Settings
 		ImGui::Begin("Settings");
@@ -139,15 +141,46 @@ namespace Eppo
 
 	void EditorLayer::OnEvent(Event& e)
 	{
+		EventDispatcher dispatcher(e);
 
+		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
+	}
+
+	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
+	{
+		if (e.IsRepeat())
+			return false;
+
+		bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
+		bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
+		bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
+
+		switch (e.GetKeyCode())
+		{
+			case Key::O:
+			{
+				if (control)
+					OpenScene();
+				break;
+			}
+
+			case Key::S:
+			{
+				if (control)
+					SaveScene();
+				break;
+			}
+		}
+
+		return false;
 	}
 
 	void EditorLayer::NewScene()
 	{
-		m_ActiveScenePath = std::filesystem::path();
 		m_ActiveScene = CreateRef<Scene>();
+		m_ActiveScenePath = std::filesystem::path();
 
-		m_PanelManager->SetSceneContext(m_ActiveScene);
+		m_PanelManager.SetSceneContext(m_ActiveScene);
 	}
 
 	void EditorLayer::SaveScene()
@@ -188,7 +221,7 @@ namespace Eppo
 			m_ActiveScene = newScene;
 			m_ActiveScenePath = filepath;
 			
-			m_PanelManager->SetSceneContext(m_ActiveScene);
+			m_PanelManager.SetSceneContext(m_ActiveScene);
 		}
 	}
 }

@@ -4,14 +4,25 @@
 
 namespace Eppo
 {
+	class PanelManager;
+
 	class Panel
 	{
 	public:
+		Panel(PanelManager& panelManager);
+
 		virtual ~Panel() = default;
 
 		virtual void RenderGui() = 0;
+
+	protected:
+		Ref<Scene> GetSceneContext();
+		Entity GetSelectedEntity();
 		
-		virtual void SetSceneContext(const Ref<Scene>& scene) {}
-		virtual void SetSelectedEntity(Entity entity) {}
+		void SetSceneContext(const Ref<Scene>& scene);
+		void SetSelectedEntity(Entity entity);
+
+	protected:
+		PanelManager& m_PanelManager;
 	};
 }

@@ -11,15 +11,9 @@ namespace Eppo
 		}
 	}
 
-	void PanelManager::SetSceneContext(const Ref<Scene>& scene)
+	PanelManager& PanelManager::Get()
 	{
-		for (const auto& [name, panelData] : m_PanelData)
-			panelData.Panel->SetSceneContext(scene);
-	}
-
-	void PanelManager::SetSelectedEntity(Entity entity)
-	{
-		for (const auto& [name, panelData] : m_PanelData)
-			panelData.Panel->SetSelectedEntity(entity);
+		static PanelManager p;
+		return p;
 	}
 }
