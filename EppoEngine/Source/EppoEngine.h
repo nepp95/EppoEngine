@@ -18,6 +18,7 @@
 #include "Event/MouseEvent.h"
 
 // ImGui
+#include "ImGui/ScopedBegin.h"
 #include "ImGui/UI.h"
 
 // Renderer

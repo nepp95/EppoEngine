@@ -30,11 +30,15 @@ namespace Eppo
 
 	Entity Scene::CreateEntity(const std::string& name)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::CreateEntity");
+
 		return CreateEntityWithUUID(UUID(), name);
 	}
 
 	Entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& name)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::CreateEntityWithUUID");
+
 		Entity entity(m_Registry.create(), this);
 
 		entity.AddComponent<IDComponent>(uuid);
@@ -48,11 +52,15 @@ namespace Eppo
 
 	void Scene::DestroyEntity(Entity entity)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
+
 		m_Registry.destroy(entity);
 	}
 
 	Ref<Image> Scene::GetFinalImage() const
 	{
+		EPPO_PROFILE_FUNCTION("Scene::GetFinalImage");
+
 		return Renderer::GetFinalImage();
 	}
 }

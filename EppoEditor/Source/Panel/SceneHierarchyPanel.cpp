@@ -8,15 +8,13 @@ namespace Eppo
 
 	void SceneHierarchyPanel::RenderGui()
 	{
-		ImGui::Begin("Scene Hierarchy");
+		ScopedBegin scopedBegin("Scene Hierarchy");
 
 		GetSceneContext()->m_Registry.each([&](auto entityID)
 		{
 			Entity entity(entityID, GetSceneContext().get());
 			DrawEntityNode(entity);
 		});
-
-		ImGui::End();
 	}
 
 	void SceneHierarchyPanel::DrawEntityNode(Entity entity)
