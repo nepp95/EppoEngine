@@ -43,12 +43,12 @@ namespace Eppo
 
 		std::streampos end = stream.tellg();
 		stream.seekg(0, std::ios::beg);
-		uint32_t fileSize = end - stream.tellg();
+		size_t fileSize = end - stream.tellg();
 
 		if (fileSize == 0)
 			return {};
 
-		Buffer buffer(fileSize);
+		Buffer buffer((uint32_t)fileSize);
 		stream.read(buffer.As<char>(), fileSize);
 		stream.close();
 

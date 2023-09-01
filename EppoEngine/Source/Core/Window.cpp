@@ -129,14 +129,14 @@ namespace Eppo
 		glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
 		{
 			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
-			MouseScrolledEvent e(xOffset, yOffset);
+			MouseScrolledEvent e((float)xOffset, (float)yOffset);
 			callback(e);
 		});
 
 		glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double xPos, double yPos)
 		{
 			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
-			MouseMovedEvent e(xPos, yPos);
+			MouseMovedEvent e((float)xPos, (float)yPos);
 			callback(e);
 		});
 	}

@@ -16,7 +16,7 @@ namespace Eppo
 		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
 		// If there are no physical devices, we can't continue
-		EPPO_ASSERT(deviceCount > 0);
+		EPPO_ASSERT((deviceCount > 0));
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
 		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
@@ -74,7 +74,7 @@ namespace Eppo
 		for (size_t i = 0; i < queueFamilies.size(); i++)
 		{
 			if (queueFamilies[i].queueFlags && VK_QUEUE_GRAPHICS_BIT)
-				indices.Graphics = i;
+				indices.Graphics = (int32_t)i;
 
 			if (indices.IsComplete())
 				break;

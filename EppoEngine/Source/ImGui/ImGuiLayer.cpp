@@ -171,13 +171,11 @@ namespace Eppo
 
 		VK_CHECK(vkBeginCommandBuffer(s_ImGuiCmds[imageIndex], &imGuiCmdInfo), "Failed to begin command buffer!");
 
-		EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), s_ImGuiCmds[imageIndex], "UI");
-
 		VkViewport viewport;
 		viewport.x = 0.0f;
-		viewport.y = height;
-		viewport.height = height;
-		viewport.width = width;
+		viewport.y = (float)height;
+		viewport.height = (float)height;
+		viewport.width = (float)width;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(s_ImGuiCmds[imageIndex], 0, 1, &viewport);
@@ -195,8 +193,6 @@ namespace Eppo
 
 		vkCmdExecuteCommands(swapCmd, 1, &s_ImGuiCmds[imageIndex]);
 		vkCmdEndRenderPass(swapCmd);
-
-		EPPO_PROFILE_GPU_END(context->GetCurrentProfilerContext(), s_ImGuiCmds[imageIndex]);
 
 		VK_CHECK(vkEndCommandBuffer(swapCmd), "Failed to end command buffer!");
 

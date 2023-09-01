@@ -135,7 +135,7 @@ namespace Eppo
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 		QueueFamilyIndices indices = logicalDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
-		uint32_t queueFamilyIndices[] = { indices.Graphics };
+		uint32_t queueFamilyIndices[] = { (uint32_t)indices.Graphics };
 
 		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		createInfo.queueFamilyIndexCount = 0;

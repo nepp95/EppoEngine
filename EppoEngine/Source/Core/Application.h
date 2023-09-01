@@ -23,7 +23,7 @@ namespace Eppo
 
 		const char* operator[](int index) const
 		{
-			EPPO_ASSERT(index < Count);
+			EPPO_ASSERT((index < Count));
 			if (index >= Count)
 				return "";
 			return Args[index];

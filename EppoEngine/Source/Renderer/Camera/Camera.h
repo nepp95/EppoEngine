@@ -15,7 +15,7 @@ namespace Eppo
 		void OnUpdate(float timestep);
 		void OnEvent(Event& e);
 
-		void SetViewportSize(float width, float height);
+		void SetViewportSize(uint32_t width, uint32_t height);
 
 		float GetDistance() const { return m_Distance; }
 		void SetDistance(float distance);
