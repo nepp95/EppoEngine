@@ -4,6 +4,7 @@
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Material.h"
+#include "Renderer/Mesh.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Texture.h"

@@ -41,11 +41,11 @@ namespace Eppo
 			VkAttachmentDescription& colorAttachment = attachmentDescriptions.emplace_back();
 			colorAttachment.format = Utils::ImageFormatToVkFormat(attachment);
 			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			colorAttachment.loadOp = m_Specification.Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			colorAttachment.initialLayout = m_Specification.Clear ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 			VkAttachmentReference colorAttachmentRef = attachmentReferences.emplace_back(VkAttachmentReference{ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
@@ -58,7 +58,15 @@ namespace Eppo
 
 		if (!m_ImageAttachments.empty())
 		{
-			{
+			VkSubpassDependency& subpassDependency = subpassDependencies.emplace_back();
+			subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+			subpassDependency.dstSubpass = 0;
+			subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			subpassDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			subpassDependency.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+
+			/*{
 				VkSubpassDependency& subpassDependency = subpassDependencies.emplace_back();
 				subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 				subpassDependency.dstSubpass = 0;
@@ -78,7 +86,7 @@ namespace Eppo
 				subpassDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 				subpassDependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 				subpassDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-			}
+			}*/
 		}
 
 		VkRenderPassCreateInfo renderPassInfo{};

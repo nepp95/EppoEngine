@@ -11,6 +11,7 @@ namespace Eppo
 		~IndexBuffer();
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
+		uint32_t GetIndexCount() const { return m_Size / sizeof(uint32_t); }
 
 	private:
 		uint32_t m_Size;

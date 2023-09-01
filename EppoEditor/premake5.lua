@@ -22,7 +22,8 @@ project "EppoEditor"
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
         "%{IncludeDir.tracy}",
-		"%{IncludeDir.vulkan}"
+		"%{IncludeDir.vulkan}",
+		"%{IncludeDir.vma}"
     }
 
     links {
@@ -42,6 +43,10 @@ project "EppoEditor"
 			"EPPO_TRACK_MEMORY"
 		}
 
+		postbuildcommands {
+			'{COPY} "%{Library.assimp_debug_dll}" "%{cfg.targetdir}"'
+		}
+
     filter "configurations:Release"
         defines "EPPO_RELEASE"
         runtime "Release"
@@ -51,8 +56,16 @@ project "EppoEditor"
 			"TRACY_ENABLE",
 			"EPPO_TRACK_MEMORY"
 		}
-    
+
+		postbuildcommands {
+			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
+		}
+
     filter "configurations:Dist"
         defines "EPPO_DIST"
         runtime "Release"
         optimize "On"
+
+		postbuildcommands {
+			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
+		}

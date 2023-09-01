@@ -16,6 +16,8 @@ namespace Eppo
 
 		uint32_t Width;
 		uint32_t Height;
+
+		bool Clear = true;
 	};
 
 	class Framebuffer
@@ -27,6 +29,8 @@ namespace Eppo
 		void Create();
 		void Cleanup();
 		void Resize(uint32_t width, uint32_t height);
+
+		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
 
 		Ref<Image> GetFinalImage() { return m_ImageAttachments[0]; };
 

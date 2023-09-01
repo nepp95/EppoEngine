@@ -2,7 +2,6 @@
 #include "Pipeline.h"
 
 #include "Renderer/RendererContext.h"
-#include "Renderer/Vertex.h"
 
 namespace Eppo
 {
@@ -16,8 +15,21 @@ namespace Eppo
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		// Vertex input
-		auto bindingDescription = Vertex::GetBindingDescription();
-		auto attributeDescriptions = Vertex::GetAttributeDescriptions();
+		VkVertexInputBindingDescription bindingDescription{};
+		bindingDescription.binding = 0;
+		bindingDescription.stride = m_Specification.Layout.GetStride();
+		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+		const auto& elements = m_Specification.Layout.GetElements();
+		for (size_t i = 0; i < elements.size(); i++)
+		{
+			VkVertexInputAttributeDescription& attribute = attributeDescriptions.emplace_back();
+			attribute.binding = 0;
+			attribute.location = i;
+			attribute.format = ShaderDataTypeToVkFormat(elements[i].Type);
+			attribute.offset = elements[i].Offset;
+		}
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

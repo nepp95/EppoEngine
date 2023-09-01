@@ -23,6 +23,7 @@
 
 // Renderer
 #include "Renderer/Camera/EditorCamera.h"
+#include "Renderer/Mesh.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/Texture.h"
 

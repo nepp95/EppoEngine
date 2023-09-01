@@ -26,6 +26,7 @@ project "EppoEngine"
 
     includedirs {
         "Source",
+		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
@@ -59,6 +60,7 @@ project "EppoEngine"
 		}
 
         links {
+			"%{Library.assimp_debug}",
             "%{Library.shaderc_debug}",
             "%{Library.spirv_cross_debug}",
             "%{Library.spirv_cross_glsl_debug}"
@@ -70,6 +72,7 @@ project "EppoEngine"
         optimize "On"
 
         links {
+			"%{Library.assimp_release}",
             "%{Library.shaderc_release}",
             "%{Library.spirv_cross_release}",
             "%{Library.spirv_cross_glsl_release}"
@@ -86,6 +89,7 @@ project "EppoEngine"
         optimize "On"
 
         links {
+			"%{Library.assimp_release}",
             "%{Library.shaderc_release}",
             "%{Library.spirv_cross_release}",
             "%{Library.spirv_cross_glsl_release}"

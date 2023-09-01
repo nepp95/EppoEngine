@@ -6,8 +6,9 @@
 *.sln
 
 # Binaries
-Bin
-Bin-Int
+/Bin
+/Bin-Int
+/Vendor/Premake
 
 # Cache
 *.shadercache

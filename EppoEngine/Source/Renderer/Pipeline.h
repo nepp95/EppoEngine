@@ -2,6 +2,7 @@
 
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Shader.h"
+#include "Renderer/VertexBufferLayout.h"
 
 namespace Eppo
 {
@@ -9,6 +10,7 @@ namespace Eppo
 	{
 		Ref<Framebuffer> Framebuffer;
 		Ref<Shader> Shader;
+		VertexBufferLayout Layout;
 	};
 
 	class Pipeline

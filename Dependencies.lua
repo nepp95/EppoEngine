@@ -2,6 +2,7 @@ VulkanSdk = os.getenv("VULKAN_SDK")
 
 -- Include directories
 IncludeDir = {}
+IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
 IncludeDir["entt"] = "%{wks.location}/EppoEngine/Vendor/entt/single_include"
 IncludeDir["glfw"] = "%{wks.location}/EppoEngine/Vendor/glfw/include"
 IncludeDir["glm"] = "%{wks.location}/EppoEngine/Vendor/glm"
@@ -15,10 +16,15 @@ IncludeDir["yaml_cpp"] = "%{wks.location}/EppoEngine/Vendor/yaml-cpp/include"
 
 -- Library directories
 LibraryDir = {}
+LibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/bin"
 LibraryDir["vulkan"] = "%{VulkanSdk}/Lib"
 
 -- Libraries
 Library = {}
+Library["assimp_debug"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
+Library["assimp_debug_dll"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"
+Library["assimp_release"] = "%{LibraryDir.assimp}/Release/assimp-vc143-mt.lib"
+Library["assimp_release_dll"] = "%{LibraryDir.assimp}/Release/assimp-vc143-mt.dll"
 Library["shaderc_debug"] = "%{LibraryDir.vulkan}/shaderc_sharedd.lib"
 Library["shaderc_release"] = "%{LibraryDir.vulkan}/shaderc_shared.lib"
 Library["spirv_cross_debug"] = "%{LibraryDir.vulkan}/spirv-cross-cored.lib"
