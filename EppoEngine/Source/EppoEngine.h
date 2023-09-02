@@ -2,6 +2,10 @@
 
 #include "Core/Base.h"
 
+// Asset
+#include "Asset/Asset.h"
+#include "Asset/AssetManager.h"
+
 // Core
 #include "Core/Application.h"
 #include "Core/Buffer.h"

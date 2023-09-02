@@ -23,7 +23,7 @@ namespace Eppo
 
 		OpenScene("Resources/Scenes/test.epposcene");
 
-		m_TestTexture = CreateRef<Texture>("Resources/Textures/Icons/Directory.png");
+		m_TestTexture = AssetManager::Get().LoadAsset<Texture>("Resources/Textures/Icons/Directory.png");
 	}
 	
 	void EditorLayer::OnDetach()

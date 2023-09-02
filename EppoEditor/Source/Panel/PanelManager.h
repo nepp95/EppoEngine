@@ -28,7 +28,7 @@ namespace Eppo
 		template<typename T, typename... Args>
 		void AddPanel(const std::string& name, bool isOpen, Args&&... args)
 		{
-			static_assert(std::is_base_of_v<Panel, T>);
+			static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
 
 			if (HasPanel(name))
 				return;
@@ -43,7 +43,7 @@ namespace Eppo
 		template<typename T>
 		Ref<T> GetPanel(const std::string& name)
 		{
-			static_assert(std::is_base_of_v<Panel, T>);
+			static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
 
 			auto it = m_PanelData.find(name);
 			if (it == m_PanelData.end())
