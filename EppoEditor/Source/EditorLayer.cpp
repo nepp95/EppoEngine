@@ -1,5 +1,6 @@
 #include "EditorLayer.h"
 
+#include "Panel/ContentBrowserPanel.h"
 #include "Panel/PropertyPanel.h"
 #include "Panel/SceneHierarchyPanel.h"
 
@@ -7,8 +8,9 @@
 
 namespace Eppo
 {
-	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
+	static const std::string CONTENT_BROWSER_PANEL = "ContentBrowserPanel";
 	static const std::string PROPERTY_PANEL = "PropertyPanel";
+	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
 	EditorLayer::EditorLayer()
 		: Layer("EditorLayer"), m_EditorCamera(EditorCamera(30.0f, 1.778f)), m_PanelManager(PanelManager::Get())
@@ -18,6 +20,7 @@ namespace Eppo
 	{
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
+		m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 

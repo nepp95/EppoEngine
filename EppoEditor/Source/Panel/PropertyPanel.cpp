@@ -119,6 +119,12 @@ namespace Eppo
 			}
 		});
 
+		DrawComponent<SpriteComponent>(entity, [](auto& component)
+		{
+			ImGui::Text("Filepath input soon");
+			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+		});
+
 		DrawComponent<ColorComponent>(entity, [](auto& component)
 		{
 			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Asset.h"
 #include "Core/UUID.h"
 
 #include <glm/glm.hpp>
@@ -53,6 +54,18 @@ namespace Eppo
 				* glm::toMat4(glm::quat(Rotation))
 				* glm::scale(glm::mat4(1.0f), Scale);
 		}
+	};
+
+	struct SpriteComponent
+	{
+		AssetHandle Texture;
+		glm::vec4 Color = glm::vec4(1.0f);
+
+		SpriteComponent() = default;
+		SpriteComponent(const SpriteComponent&) = default;
+		SpriteComponent(const glm::vec4& color)
+			: Color(color)
+		{}
 	};
 
 	struct ColorComponent

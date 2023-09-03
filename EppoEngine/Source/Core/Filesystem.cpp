@@ -6,6 +6,7 @@ namespace Eppo
 	struct FilesystemData
 	{
 		std::filesystem::path RootPath;
+		std::filesystem::path AssetPath;
 	};
 
 	FilesystemData* s_Data;
@@ -17,6 +18,7 @@ namespace Eppo
 		s_Data = new FilesystemData();
 
 		s_Data->RootPath = std::filesystem::current_path();
+		s_Data->AssetPath = s_Data->RootPath / "Resources";
 	}
 
 	void Filesystem::Shutdown()
@@ -24,6 +26,11 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Filesystem::Shutdown");
 
 		delete s_Data;
+	}
+
+	const std::filesystem::path& Filesystem::GetAssetsDirectory()
+	{
+		return s_Data->AssetPath;
 	}
 
 	bool Filesystem::Exists(const std::filesystem::path& path)

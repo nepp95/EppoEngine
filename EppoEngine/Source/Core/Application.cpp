@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Application.h"
 
+#include "Core/Filesystem.h"
 #include "Renderer/Renderer.h"
 
 #include <glfw/glfw3.h>
@@ -33,6 +34,7 @@ namespace Eppo
 		m_Window->SetEventCallback([this](Event& e) { Application::OnEvent(e);  });
 
 		// Initialize systems
+		Filesystem::Init();
 		Renderer::Init();
 
 		// Add GUI layer
