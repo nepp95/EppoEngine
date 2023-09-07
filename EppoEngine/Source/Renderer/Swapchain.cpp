@@ -114,6 +114,10 @@ namespace Eppo
 		if (details.Capabilities.maxImageCount > 0 && imageCount > details.Capabilities.maxImageCount)
 			imageCount = details.Capabilities.maxImageCount;
 
+
+		// TODO: TEMP:
+		imageCount = 2;
+
 		VkSwapchainKHR oldSwapchain;
 		if (recreate)
 			oldSwapchain = m_Swapchain;
