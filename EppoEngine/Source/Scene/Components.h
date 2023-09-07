@@ -58,7 +58,7 @@ namespace Eppo
 
 	struct SpriteComponent
 	{
-		AssetHandle Texture;
+		std::string Texture;
 		glm::vec4 Color = glm::vec4(1.0f);
 
 		SpriteComponent() = default;

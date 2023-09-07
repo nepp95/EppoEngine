@@ -11,8 +11,10 @@ namespace Eppo
 
 		void RenderGui() override;
 
+		void UpdateFileList();
+
 	private:
-		void TraverseDirectory(const std::filesystem::path& path);
+		void TraverseDirectory(const std::filesystem::path& path, uint32_t depth = 0);
 
 	private:
 		struct FileTreeNode
@@ -20,8 +22,8 @@ namespace Eppo
 			std::string Name;
 			std::string Type;
 			size_t Size;
-			bool Loaded = false;
 			bool IsFolder = false;
+			bool IsOpen = false;
 		};
 
 		std::vector<FileTreeNode> m_FileTreeNodes;

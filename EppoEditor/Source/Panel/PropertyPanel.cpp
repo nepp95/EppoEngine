@@ -121,7 +121,19 @@ namespace Eppo
 
 		DrawComponent<SpriteComponent>(entity, [](auto& component)
 		{
-			ImGui::Text("Filepath input soon");
+			ImGui::Button("Texture", ImVec2(100.0f, 0.0f));
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+				{
+					const wchar_t* path = (const wchar_t*)payload->Data;
+					std::filesystem::path texturePath = path;
+					component.Texture = texturePath.string();
+					EPPO_TRACE(texturePath.string());
+				}
+				ImGui::EndDragDropTarget();
+			}
+
 			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
 		});
 
