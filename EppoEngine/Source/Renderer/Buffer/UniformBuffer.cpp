@@ -27,7 +27,7 @@ namespace Eppo
 		m_DescriptorSets.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			m_Allocations[i] = Allocator::AllocateBuffer(m_Buffers[i], bufferInfo, VMA_MEMORY_USAGE_CPU_COPY);
+			m_Allocations[i] = Allocator::AllocateBuffer(m_Buffers[i], bufferInfo, VMA_MEMORY_USAGE_CPU_ONLY);
 			m_MappedMemory[i] = Allocator::MapMemory(m_Allocations[i]);
 
 			VkDescriptorBufferInfo& descriptorBufferInfo = m_DescriptorBufferInfos.emplace_back();

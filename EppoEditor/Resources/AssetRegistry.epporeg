@@ -1,0 +1,9 @@
+- AssetHandle: 10038959528754306053
+  Type: Texture
+  Filepath: Resources/Textures/Icons/Directory.png
+- AssetHandle: 4680662875752212828
+  Type: Texture
+  Filepath: Resources\Textures\Icons\File.png
+- AssetHandle: 11229244397201243529
+  Type: Texture
+  Filepath: Resources\Textures\Icons\StopButton.png

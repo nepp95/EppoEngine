@@ -70,7 +70,7 @@ namespace Eppo
 		// Create descriptor set layout
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = m_Bindings.size();
+		layoutInfo.bindingCount = (uint32_t)m_Bindings.size();
 		layoutInfo.pBindings = m_Bindings.data();
 		layoutInfo.pNext = nullptr;
 
@@ -83,7 +83,7 @@ namespace Eppo
 			writeDesc.dstSet = set;
 
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		vkUpdateDescriptorSets(device, m_WriteDescriptors.size(), m_WriteDescriptors.data(), 0, nullptr);
+		vkUpdateDescriptorSets(device, (uint32_t)m_WriteDescriptors.size(), m_WriteDescriptors.data(), 0, nullptr);
 
 		return true;
 	}
@@ -95,7 +95,7 @@ namespace Eppo
 		// Create descriptor set layout
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = m_Bindings.size();
+		layoutInfo.bindingCount = (uint32_t)m_Bindings.size();
 		layoutInfo.pBindings = m_Bindings.data();
 		layoutInfo.pNext = nullptr;
 
@@ -108,7 +108,7 @@ namespace Eppo
 			writeDesc.dstSet = set;
 
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		vkUpdateDescriptorSets(device, m_WriteDescriptors.size(), m_WriteDescriptors.data(), 0, nullptr);
+		vkUpdateDescriptorSets(device, (uint32_t)m_WriteDescriptors.size(), m_WriteDescriptors.data(), 0, nullptr);
 	
 		return true;
 	}

@@ -12,6 +12,9 @@ namespace Eppo
 		static void Init();
 		static void Shutdown();
 
+		static const std::filesystem::path& GetAppRootDirectory();
+		static const std::filesystem::path& GetAssetsDirectory();
+
 		static bool Exists(const std::filesystem::path& path);
 
 		static Buffer ReadBytes(const std::filesystem::path& filepath);

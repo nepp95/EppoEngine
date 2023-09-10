@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Asset.h"
 #include "Core/Buffer.h"
 #include "Renderer/Image.h"
 
@@ -7,7 +8,7 @@ typedef struct VkDescriptorSet_T* VkDescriptorSet;
 
 namespace Eppo
 {
-	class Texture
+	class Texture : public Asset
 	{
 	public:
 		Texture(const std::filesystem::path& filepath);
@@ -19,6 +20,9 @@ namespace Eppo
 
 		uint32_t GetWidth() const { return m_Width; }
 		uint32_t GetHeight() const { return m_Height; }
+
+		// Asset
+		static AssetType GetStaticType() { return AssetType::Texture; }
 
 	private:
 		std::filesystem::path m_Filepath;

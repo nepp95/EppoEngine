@@ -118,7 +118,12 @@ namespace Eppo
 
 	void ImGuiLayer::OnEvent(Event& e)
 	{
-
+		if (m_BlockEvents)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+			e.Handled |= e.IsInCategory(EventCategoryMouse) & io.WantCaptureMouse;
+			e.Handled |= e.IsInCategory(EventCategoryKeyboard) & io.WantCaptureKeyboard;
+		}
 	}
 
 	void ImGuiLayer::Begin()
@@ -173,9 +178,9 @@ namespace Eppo
 
 		VkViewport viewport;
 		viewport.x = 0.0f;
-		viewport.y = height;
-		viewport.height = height;
-		viewport.width = width;
+		viewport.y = (float)height;
+		viewport.height = (float)height;
+		viewport.width = (float)width;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(s_ImGuiCmds[imageIndex], 0, 1, &viewport);

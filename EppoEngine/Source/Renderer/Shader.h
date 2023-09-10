@@ -76,6 +76,7 @@ namespace Eppo
 			}
 
 			EPPO_ASSERT(false);
+			return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 		}
 
 		static VkShaderStageFlagBits ShaderTypeToVkShaderStage(ShaderType type)
@@ -87,6 +88,7 @@ namespace Eppo
 			}
 
 			EPPO_ASSERT(false);
+			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 		}
 	}
 }

@@ -14,7 +14,7 @@ namespace Eppo
 		uint32_t Width = 1600;
 		uint32_t Height = 900;
 
-		uint32_t RefreshRate = 60.0f;
+		uint32_t RefreshRate = 60;
 		
 		// If this is set to true, glfw will override above information with information gathered from the primary monitor
 		bool OverrideSpecification = false;

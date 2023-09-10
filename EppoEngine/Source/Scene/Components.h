@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Asset.h"
 #include "Core/UUID.h"
 
 #include <glm/glm.hpp>
@@ -55,17 +56,15 @@ namespace Eppo
 		}
 	};
 
-	struct ColorComponent
+	struct SpriteComponent
 	{
+		AssetHandle TextureHandle = 0;
 		glm::vec4 Color = glm::vec4(1.0f);
 
-		ColorComponent() = default;
-		ColorComponent(const ColorComponent&) = default;
-		ColorComponent(const glm::vec4& color)
+		SpriteComponent() = default;
+		SpriteComponent(const SpriteComponent&) = default;
+		SpriteComponent(const glm::vec4& color)
 			: Color(color)
 		{}
-
-		operator glm::vec4() { return Color; }
-		operator const glm::vec4&() const { return Color; }
 	};
 }

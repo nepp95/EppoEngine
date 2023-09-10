@@ -98,7 +98,7 @@ namespace Eppo
 		VkDescriptorPoolCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		createInfo.maxSets = count;
-		createInfo.poolSizeCount = sizes.size();
+		createInfo.poolSizeCount = (uint32_t)sizes.size();
 		createInfo.pPoolSizes = sizes.data();
 		createInfo.flags = flags;
 

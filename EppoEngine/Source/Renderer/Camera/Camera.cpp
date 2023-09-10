@@ -42,12 +42,12 @@ namespace Eppo
 		dispatcher.Dispatch<MouseScrolledEvent>(BIND_EVENT_FN(Camera::OnMouseScroll));
 	}
 
-	void Camera::SetViewportSize(float width, float height)
+	void Camera::SetViewportSize(uint32_t width, uint32_t height)
 	{
 		m_ViewportWidth = width;
 		m_ViewportHeight = height;
 
-		m_AspectRatio = m_ViewportWidth / m_ViewportHeight;
+		m_AspectRatio = (float)m_ViewportWidth / (float)m_ViewportHeight;
 		m_ProjectionMatrix = glm::perspective(glm::radians(m_Fov), m_AspectRatio, m_NearClip, m_FarClip);
 	}
 

@@ -1,5 +1,6 @@
 #include "EditorLayer.h"
 
+#include "Panel/ContentBrowserPanel.h"
 #include "Panel/PropertyPanel.h"
 #include "Panel/SceneHierarchyPanel.h"
 
@@ -7,8 +8,9 @@
 
 namespace Eppo
 {
-	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
+	static const std::string CONTENT_BROWSER_PANEL = "ContentBrowserPanel";
 	static const std::string PROPERTY_PANEL = "PropertyPanel";
+	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
 	EditorLayer::EditorLayer()
 		: Layer("EditorLayer"), m_EditorCamera(EditorCamera(30.0f, 1.778f)), m_PanelManager(PanelManager::Get())
@@ -18,23 +20,21 @@ namespace Eppo
 	{
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
+		m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 
 		OpenScene("Resources/Scenes/test.epposcene");
-
-		m_TestTexture = CreateRef<Texture>("Resources/Textures/Icons/Directory.png");
 	}
 	
 	void EditorLayer::OnDetach()
 	{
-		m_TestTexture.reset();
+		AssetManager::Get().Shutdown();
 	}
 	
 	void EditorLayer::Update(float timestep)
 	{
 		m_EditorCamera.OnUpdate(timestep);
-
 		m_ActiveScene->OnUpdate(timestep);
 	}
 	
@@ -119,8 +119,11 @@ namespace Eppo
 		// Viewport
 		ImGui::Begin("Viewport");
 
-		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+		m_ViewportFocused = ImGui::IsWindowFocused();
+		m_ViewportHovered = ImGui::IsWindowHovered();
+		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
 
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 

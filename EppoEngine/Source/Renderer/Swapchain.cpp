@@ -114,6 +114,10 @@ namespace Eppo
 		if (details.Capabilities.maxImageCount > 0 && imageCount > details.Capabilities.maxImageCount)
 			imageCount = details.Capabilities.maxImageCount;
 
+
+		// TODO: TEMP:
+		imageCount = 2;
+
 		VkSwapchainKHR oldSwapchain;
 		if (recreate)
 			oldSwapchain = m_Swapchain;
@@ -135,7 +139,7 @@ namespace Eppo
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 		QueueFamilyIndices indices = logicalDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
-		uint32_t queueFamilyIndices[] = { indices.Graphics };
+		uint32_t queueFamilyIndices[] = { (uint32_t)indices.Graphics };
 
 		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		createInfo.queueFamilyIndexCount = 0;

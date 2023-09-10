@@ -23,7 +23,7 @@ namespace Eppo
 
 		const char* operator[](int index) const
 		{
-			EPPO_ASSERT(index < Count);
+			EPPO_ASSERT((index < Count));
 			if (index >= Count)
 				return "";
 			return Args[index];
@@ -57,6 +57,7 @@ namespace Eppo
 
 		static Application& Get() { return *s_Instance; }
 		Window& GetWindow() { return *m_Window; }
+		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
 
 	private:
 		void Run();

@@ -53,7 +53,7 @@ namespace Eppo
 
 		VkSubpassDescription& subpassDescription = subpassDescriptions.emplace_back();
 		subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpassDescription.colorAttachmentCount = attachmentReferences.size();
+		subpassDescription.colorAttachmentCount = (uint32_t)attachmentReferences.size();
 		subpassDescription.pColorAttachments = attachmentReferences.data();
 
 		if (!m_ImageAttachments.empty())
@@ -91,11 +91,11 @@ namespace Eppo
 
 		VkRenderPassCreateInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = attachmentDescriptions.size();
+		renderPassInfo.attachmentCount = (uint32_t)attachmentDescriptions.size();
 		renderPassInfo.pAttachments = attachmentDescriptions.data();
-		renderPassInfo.subpassCount = subpassDescriptions.size();
+		renderPassInfo.subpassCount = (uint32_t)subpassDescriptions.size();
 		renderPassInfo.pSubpasses = subpassDescriptions.data();
-		renderPassInfo.dependencyCount = subpassDependencies.size();
+		renderPassInfo.dependencyCount = (uint32_t)subpassDependencies.size();
 		renderPassInfo.pDependencies = subpassDependencies.data();
 
 		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
@@ -108,7 +108,7 @@ namespace Eppo
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = m_RenderPass;
-		framebufferInfo.attachmentCount = attachments.size();
+		framebufferInfo.attachmentCount = (uint32_t)attachments.size();
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = GetWidth();
 		framebufferInfo.height = GetHeight();
