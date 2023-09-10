@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "AssetManager.h"
 
+#include "Renderer/Mesh.h"
 #include "Renderer/Texture.h"
 
 #include <yaml-cpp/yaml.h>
@@ -102,6 +103,13 @@ namespace Eppo
 
 		switch (metadata.Type)
 		{
+			case AssetType::Mesh:
+			{
+				asset = CreateRef<Mesh>(filepath);
+				asset->Handle = metadata.Handle;
+				return true;
+			}
+
 			case AssetType::Texture:
 			{
 				asset = CreateRef<Texture>(filepath);

@@ -177,6 +177,15 @@ namespace Eppo
 					nc.TextureHandle = c["TextureHandle"].as<uint64_t>();
 				}
 			}
+
+			{
+				auto c = entity["MeshComponent"];
+				if (c)
+				{
+					auto& nc = newEntity.AddComponent<MeshComponent>();
+					nc.MeshHandle = c["MeshHandle"].as<uint64_t>();
+				}
+			}
 		}
 
 		return true;
@@ -224,6 +233,17 @@ namespace Eppo
 			auto& c = entity.GetComponent<SpriteComponent>();
 			out << YAML::Key << "Color" << YAML::Value << c.Color;
 			out << YAML::Key << "TextureHandle" << YAML::Value << c.TextureHandle;
+
+			out << YAML::EndMap;
+		}
+
+		if (entity.HasComponent<MeshComponent>())
+		{
+			out << YAML::Key << "MeshComponent" << YAML::Value;
+			out << YAML::BeginMap;
+
+			auto& c = entity.GetComponent<MeshComponent>();
+			out << YAML::Key << "MeshHandle" << YAML::Value << c.MeshHandle;
 
 			out << YAML::EndMap;
 		}

@@ -41,6 +41,9 @@ namespace Eppo
 
 		// Geometry
 		Ref<Pipeline> GeometryPipeline;
+		std::map<AssetHandle, glm::mat4> GeometryTransformData;
+		std::map<AssetHandle, Ref<Mesh>> GeometryDrawList;
+
 		Ref<Mesh> ActiveMesh;
 
 		// Textures
@@ -207,10 +210,6 @@ namespace Eppo
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderArea.offset = { 0, 0 };
 
-			VkClearValue clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
-
 			if (!framebuffer)
 			{
 				renderPassInfo.renderPass = swapchain->GetRenderPass();
@@ -225,7 +224,7 @@ namespace Eppo
 
 				if (framebuffer->GetSpecification().Clear)
 				{
-					VkClearValue clearColor = { 0.0f, 0.2f, 0.0f, 1.0f };
+					VkClearValue clearColor = { 0.4f, 0.4f, 0.4f, 1.0f };
 					renderPassInfo.clearValueCount = 1;
 					renderPassInfo.pClearValues = &clearColor;
 				}
@@ -359,39 +358,8 @@ namespace Eppo
 		}
 
 		// Mesh
-		SubmitCommand([]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-
-			VkCommandBuffer commandBuffer = s_Data->CommandBuffer->GetCurrentCommandBuffer();
-
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->GeometryPipeline->GetPipeline());
-
-			VkExtent2D extent = swapchain->GetExtent();
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			VkBuffer vbo[] = { s_Data->ActiveMesh->GetVertexBuffer()->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbo, offsets);
-			vkCmdBindIndexBuffer(commandBuffer, s_Data->ActiveMesh->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-			// Draw
-			vkCmdDrawIndexed(commandBuffer, s_Data->ActiveMesh->GetIndexBuffer()->GetIndexCount(), 1, 0, 0, 0);
-		});
+		for (auto& [handle, mesh] : s_Data->GeometryDrawList)
+			Renderer::DrawGeometry(mesh);
 
 		EndRenderPass();
 
@@ -568,5 +536,68 @@ namespace Eppo
 		}
 		
 		DrawQuad(transform, sc.Color);
+	}
+
+	void Renderer::SubmitGeometry(const glm::vec2& position, MeshComponent& mc)
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::SubmitGeometry");
+
+		SubmitGeometry({ position.x, position.y, 0.0f }, mc);
+	}
+
+	void Renderer::SubmitGeometry(const glm::vec3& position, MeshComponent& mc)
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::SubmitGeometry");
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+		SubmitGeometry(transform, mc);
+	}
+
+	void Renderer::SubmitGeometry(const glm::mat4& transform, MeshComponent& mc)
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::SubmitGeometry");
+
+		AssetManager& assetManager = AssetManager::Get();
+		Ref<Mesh> mesh = assetManager.GetAsset<Mesh>(mc.MeshHandle);
+
+		s_Data->GeometryDrawList[mesh->Handle] = mesh;
+		s_Data->GeometryTransformData[mesh->Handle] = transform;
+	}
+
+	void Renderer::DrawGeometry(Ref<Mesh> mesh)
+	{
+		SubmitCommand([mesh]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+
+			VkCommandBuffer commandBuffer = s_Data->CommandBuffer->GetCurrentCommandBuffer();
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_Data->GeometryPipeline->GetPipeline());
+
+			VkExtent2D extent = swapchain->GetExtent();
+
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = (float)extent.width;
+			viewport.height = (float)extent.height;
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+			VkRect2D scissor{};
+			scissor.offset = { 0, 0 };
+			scissor.extent = extent;
+			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+			VkBuffer vbo[] = { mesh->GetVertexBuffer()->GetBuffer() };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbo, offsets);
+			vkCmdBindIndexBuffer(commandBuffer, mesh->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+			// Draw
+			vkCmdDrawIndexed(commandBuffer, mesh->GetIndexBuffer()->GetIndexCount(), 1, 0, 0, 0);
+		});
 	}
 }

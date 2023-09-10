@@ -53,6 +53,7 @@ namespace Eppo
 		if (ImGui::BeginPopup("AddComponent"))
 		{
 			DrawAddComponentEntry<SpriteComponent>("Sprite");
+			DrawAddComponentEntry<MeshComponent>("Mesh");
 
 			ImGui::EndPopup();
 		}
@@ -147,7 +148,7 @@ namespace Eppo
 				ImGui::Button("Texture", ImVec2(100.0f, 0.0f));
 				if (ImGui::BeginDragDropTarget())
 				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_ASSET"))
 					{
 						const wchar_t* path = (const wchar_t*)payload->Data;
 						std::filesystem::path texturePath = path;
@@ -160,6 +161,34 @@ namespace Eppo
 			}
 
 			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+		});
+
+		DrawComponent<MeshComponent>(entity, [](auto& component)
+		{
+			AssetManager& assetManager = AssetManager::Get();
+
+			if (component.MeshHandle)
+			{
+				ImGui::TextDisabled(assetManager.GetMetadata(component.MeshHandle).Filepath.string().c_str());
+				ImGui::SameLine();
+				if (ImGui::Button("X"))
+					component.MeshHandle = 0;
+			} else 
+			{
+				ImGui::Button("Mesh", ImVec2(100.0f, 0.0f));
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MESH_ASSET"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path meshPath = path;
+
+						Ref<Mesh> mesh = assetManager.LoadAsset<Mesh>(meshPath);
+						component.MeshHandle = mesh->Handle;
+					}
+					ImGui::EndDragDropTarget();
+				}
+			}
 		});
 	}
 

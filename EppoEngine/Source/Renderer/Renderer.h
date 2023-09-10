@@ -60,5 +60,12 @@ namespace Eppo
 		static void DrawQuad(const glm::vec2& position, SpriteComponent& sc, int entityId);
 		static void DrawQuad(const glm::vec3& position, SpriteComponent& sc, int entityId);
 		static void DrawQuad(const glm::mat4& transform, SpriteComponent& sc, int entityId);
+
+		// Geometry
+		static void SubmitGeometry(const glm::vec2& position, MeshComponent& mc);
+		static void SubmitGeometry(const glm::vec3& position, MeshComponent& mc);
+		static void SubmitGeometry(const glm::mat4& transform, MeshComponent& mc);
+
+		static void DrawGeometry(Ref<Mesh> mesh);
 	};
 }

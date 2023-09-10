@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Scene.h"
 
+#include "Asset/AssetManager.h"
 #include "Renderer/Renderer.h"
 #include "Scene/Entity.h"
 
@@ -17,12 +18,24 @@ namespace Eppo
 
 		Renderer::BeginScene(editorCamera);
 
-		auto group = m_Registry.group<TransformComponent, SpriteComponent>();
-
-		for (const EntityHandle entity : group)
 		{
-			auto [transform, sprite] = group.get<TransformComponent, SpriteComponent>(entity);
-			Renderer::DrawQuad(transform.GetTransform(), sprite, (int)entity);
+			auto view = m_Registry.view<TransformComponent, SpriteComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [transform, sprite] = view.get<TransformComponent, SpriteComponent>(entity);
+				Renderer::DrawQuad(transform.GetTransform(), sprite, (int)entity);
+			}
+		}
+
+		{
+			auto view = m_Registry.view<TransformComponent, MeshComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [transform, mesh] = view.get<TransformComponent, MeshComponent>(entity);
+				Renderer::SubmitGeometry(transform.GetTransform(), mesh);
+			}
 		}
 
 		Renderer::EndScene();

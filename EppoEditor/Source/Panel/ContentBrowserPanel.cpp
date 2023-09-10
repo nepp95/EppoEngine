@@ -2,6 +2,14 @@
 
 namespace Eppo
 {
+	static const char* GetImGuiPayloadTypeFromExtension(const std::filesystem::path& filepath)
+	{
+		if (filepath == ".fbx") return "MESH_ASSET";
+		if (filepath == ".png") return "TEXTURE_ASSET";
+
+		return "CONTENT_BROWSER_ITEM";
+	}
+
 	ContentBrowserPanel::ContentBrowserPanel(PanelManager& panelManager)
 		: Panel(panelManager)
 	{}
@@ -67,7 +75,7 @@ namespace Eppo
 					auto relativePath = std::filesystem::relative(entry, Filesystem::GetAppRootDirectory());
 					const wchar_t* itemPath = relativePath.c_str();
 
-					ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
+					ImGui::SetDragDropPayload(GetImGuiPayloadTypeFromExtension(relativePath.extension()), itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
 					ImGui::EndDragDropSource();
 				}
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Asset.h"
 #include "Renderer/Buffer/IndexBuffer.h"
 #include "Renderer/Buffer/VertexBuffer.h"
 
@@ -9,7 +10,7 @@ struct aiScene;
 
 namespace Eppo
 {
-	class Mesh
+	class Mesh : public Asset
 	{
 	public:
 		Mesh(const std::filesystem::path& filepath);
@@ -17,6 +18,9 @@ namespace Eppo
 
 		Ref<VertexBuffer> GetVertexBuffer() const { return m_VertexBuffer; }
 		Ref<IndexBuffer> GetIndexBuffer() const { return m_IndexBuffer; }
+
+		// Asset
+		static AssetType GetStaticType() { return AssetType::Mesh; }
 
 	private:
 		void ProcessNode(aiNode* node, const aiScene* scene);

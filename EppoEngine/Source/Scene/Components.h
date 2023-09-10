@@ -67,4 +67,12 @@ namespace Eppo
 			: Color(color)
 		{}
 	};
+
+	struct MeshComponent
+	{
+		AssetHandle MeshHandle = 0;
+
+		MeshComponent() = default;
+		MeshComponent(const MeshComponent&) = default;
+	};
 }
