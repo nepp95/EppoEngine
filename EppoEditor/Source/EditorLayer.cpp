@@ -35,7 +35,6 @@ namespace Eppo
 	void EditorLayer::Update(float timestep)
 	{
 		m_EditorCamera.OnUpdate(timestep);
-
 		m_ActiveScene->OnUpdate(timestep);
 	}
 	
