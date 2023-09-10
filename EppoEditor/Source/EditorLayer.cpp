@@ -25,13 +25,11 @@ namespace Eppo
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 
 		OpenScene("Resources/Scenes/test.epposcene");
-
-		m_TestTexture = AssetManager::Get().LoadAsset<Texture>("Resources/Textures/Icons/Directory.png");
 	}
 	
 	void EditorLayer::OnDetach()
 	{
-		m_TestTexture.reset();
+		AssetManager::Get().Shutdown();
 	}
 	
 	void EditorLayer::Update(float timestep)
@@ -122,8 +120,11 @@ namespace Eppo
 		// Viewport
 		ImGui::Begin("Viewport");
 
-		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+		m_ViewportFocused = ImGui::IsWindowFocused();
+		m_ViewportHovered = ImGui::IsWindowHovered();
+		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
 
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 

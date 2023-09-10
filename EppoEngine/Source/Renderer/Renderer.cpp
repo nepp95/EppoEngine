@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Renderer.h"
 
+#include "Asset/AssetManager.h"
 #include "Renderer/Buffer/IndexBuffer.h"
 #include "Renderer/Buffer/UniformBuffer.h"
 #include "Renderer/Buffer/VertexBuffer.h"
@@ -455,5 +456,37 @@ namespace Eppo
 		}
 
 		s_Data->QuadIndexCount += 6;
+	}
+
+	void Renderer::DrawQuad(const glm::vec2& position, SpriteComponent& sc, int entityId)
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
+		DrawQuad({ position.x, position.y, 0.0f }, sc, entityId);
+	}
+
+	void Renderer::DrawQuad(const glm::vec3& position, SpriteComponent& sc, int entityId)
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+		DrawQuad(transform, sc, entityId);
+	}
+
+	void Renderer::DrawQuad(const glm::mat4& transform, SpriteComponent& sc, int entityId)
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
+
+		if (sc.TextureHandle)
+		{
+			Ref<Texture> texture = AssetManager::Get().GetAsset<Texture>(sc.TextureHandle);
+			if (texture)
+			{
+				DrawQuad(transform, texture, sc.Color);
+				return;
+			}
+		}
+		
+		DrawQuad(transform, sc.Color);
 	}
 }

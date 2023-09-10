@@ -28,6 +28,11 @@ namespace Eppo
 		delete s_Data;
 	}
 
+	const std::filesystem::path& Filesystem::GetAppRootDirectory()
+	{
+		return s_Data->RootPath;
+	}
+
 	const std::filesystem::path& Filesystem::GetAssetsDirectory()
 	{
 		return s_Data->AssetPath;

@@ -17,12 +17,12 @@ namespace Eppo
 
 		Renderer::BeginScene(editorCamera);
 
-		auto group = m_Registry.group<TransformComponent, ColorComponent>();
+		auto group = m_Registry.group<TransformComponent, SpriteComponent>();
 
 		for (const EntityHandle entity : group)
 		{
-			auto [transform, color] = group.get<TransformComponent, ColorComponent>(entity);
-			Renderer::DrawQuad(transform.GetTransform(), color.Color);
+			auto [transform, sprite] = group.get<TransformComponent, SpriteComponent>(entity);
+			Renderer::DrawQuad(transform.GetTransform(), sprite, (int)entity);
 		}
 
 		Renderer::EndScene();

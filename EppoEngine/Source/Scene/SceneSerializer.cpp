@@ -173,17 +173,8 @@ namespace Eppo
 				if (c)
 				{
 					auto& nc = newEntity.AddComponent<SpriteComponent>();
-					nc.Texture = c["Texture"].as<std::string>();
 					nc.Color = c["Color"].as<glm::vec4>();
-				}
-			}
-
-			{
-				auto c = entity["ColorComponent"];
-				if (c)
-				{
-					auto& nc = newEntity.AddComponent<ColorComponent>();
-					nc.Color = c["Color"].as<glm::vec4>();
+					nc.TextureHandle = c["TextureHandle"].as<uint64_t>();
 				}
 			}
 		}
@@ -231,20 +222,9 @@ namespace Eppo
 			out << YAML::BeginMap;
 
 			auto& c = entity.GetComponent<SpriteComponent>();
-			out << YAML::Key << "Texture" << YAML::Value << c.Texture;
 			out << YAML::Key << "Color" << YAML::Value << c.Color;
+			out << YAML::Key << "TextureHandle" << YAML::Value << c.TextureHandle;
 
-			out << YAML::EndMap;
-		}
-
-		if (entity.HasComponent<ColorComponent>())
-		{
-			out << YAML::Key << "ColorComponent" << YAML::Value;
-			out << YAML::BeginMap;
-
-			auto& c = entity.GetComponent<ColorComponent>();
-			out << YAML::Key << "Color" << YAML::Value << c.Color;
-			
 			out << YAML::EndMap;
 		}
 

@@ -13,44 +13,6 @@ namespace Eppo
 		const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
 		UpdateFileList();
-
-		/*if (ImGui::BeginTable("Files", 4, flags))
-		{
-			ImGui::TableSetupColumn("Loaded", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
-			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableHeadersRow();*/
-
-
-			/*for (auto& node : m_FileTreeNodes)
-			{
-
-				ImGui::TableNextRow();
-				ImGui::TableNextColumn();
-
-				ImGui::Text("x");
-				ImGui::TableNextColumn();*/
-
-				/*if (node.IsFolder)
-				{
-					bool open = ImGui::TreeNodeEx(node.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth);
-					ImGui::TableNextColumn();
-					ImGui::TableNextColumn();
-					ImGui::TextUnformatted("Folder");
-				}
-				else
-				{
-					ImGui::TreeNodeEx(node.Name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth);
-					ImGui::TableNextColumn();
-					ImGui::Text("%d", node.Size);
-					ImGui::TableNextColumn();
-					ImGui::TextUnformatted(node.Type.c_str());
-				}*/
-			//}
-
-			//ImGui::EndTable();
-		//}
 	}
 
 	void ContentBrowserPanel::UpdateFileList()
@@ -85,7 +47,6 @@ namespace Eppo
 				bool open = ImGui::TreeNodeEx(entry.path().filename().string().c_str(), ImGuiTreeNodeFlags_OpenOnArrow);
 				ImGui::TableNextColumn();
 
-				ImGui::Text("x");
 				ImGui::TableNextColumn();
 				ImGui::TableNextColumn();
 				ImGui::Text("Folder");
@@ -103,7 +64,7 @@ namespace Eppo
 				ImGui::TreeNodeEx(entry.path().filename().string().c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 				if (ImGui::BeginDragDropSource())
 				{
-					auto relativePath = std::filesystem::relative(entry, Filesystem::GetAssetsDirectory());
+					auto relativePath = std::filesystem::relative(entry, Filesystem::GetAppRootDirectory());
 					const wchar_t* itemPath = relativePath.c_str();
 
 					ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
@@ -111,7 +72,14 @@ namespace Eppo
 				}
 
 				ImGui::TableNextColumn();
-				ImGui::TextUnformatted("x");
+
+				// is asset loaded?
+				auto relativePath = std::filesystem::relative(entry, Filesystem::GetAppRootDirectory());
+				if (AssetManager::Get().IsAssetLoaded(relativePath))
+					ImGui::TextUnformatted("Yes");
+				else
+					ImGui::TextUnformatted("No");
+
 				ImGui::TableNextColumn();
 				ImGui::Text("%.2f KB", std::filesystem::file_size(entry.path()) / 1024.0f);
 				ImGui::TableNextColumn();

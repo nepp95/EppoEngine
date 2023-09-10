@@ -44,6 +44,19 @@ namespace Eppo
 				tag = std::string(buffer); // TODO: Add support for empty labels --> Don't crash...
 		});
 
+		ImGui::SameLine();
+
+		// Add components
+		if (ImGui::Button("Add component"))
+			ImGui::OpenPopup("AddComponent");
+
+		if (ImGui::BeginPopup("AddComponent"))
+		{
+			DrawAddComponentEntry<SpriteComponent>("Sprite");
+
+			ImGui::EndPopup();
+		}
+
 		DrawComponent<TransformComponent>(entity, [](auto& component)
 		{
 			if (ImGui::BeginTable("##", 4))
@@ -121,26 +134,46 @@ namespace Eppo
 
 		DrawComponent<SpriteComponent>(entity, [](auto& component)
 		{
-			ImGui::Button("Texture", ImVec2(100.0f, 0.0f));
-			if (ImGui::BeginDragDropTarget())
+			AssetManager& assetManager = AssetManager::Get();
+
+			if (component.TextureHandle)
 			{
-				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+				ImGui::TextDisabled(assetManager.GetMetadata(component.TextureHandle).Filepath.string().c_str());
+				ImGui::SameLine();
+				if (ImGui::Button("X"))
+					component.TextureHandle = 0;
+			} else
+			{
+				ImGui::Button("Texture", ImVec2(100.0f, 0.0f));
+				if (ImGui::BeginDragDropTarget())
 				{
-					const wchar_t* path = (const wchar_t*)payload->Data;
-					std::filesystem::path texturePath = path;
-					component.Texture = texturePath.string();
-					EPPO_TRACE(texturePath.string());
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path texturePath = path;
+
+						Ref<Texture> texture = assetManager.LoadAsset<Texture>(texturePath);
+						component.TextureHandle = texture->Handle;
+					}
+					ImGui::EndDragDropTarget();
 				}
-				ImGui::EndDragDropTarget();
 			}
 
 			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
 		});
+	}
 
-		DrawComponent<ColorComponent>(entity, [](auto& component)
+	template<typename T>
+	void PropertyPanel::DrawAddComponentEntry(const std::string& label)
+	{
+		if (!GetSelectedEntity().HasComponent<T>())
 		{
-			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
-		});
+			if (ImGui::MenuItem(label.c_str()))
+			{
+				GetSelectedEntity().AddComponent<T>();
+				ImGui::CloseCurrentPopup();
+			}
+		}
 	}
 
 	template<typename T, typename FN>
@@ -154,9 +187,11 @@ namespace Eppo
 
 		auto& c = entity.GetComponent<T>();
 		
-		if (ImGui::CollapsingHeader(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-		{
+		bool closedHeader = true; // If this is set to false by ImGui, we delete the component
+		if (ImGui::CollapsingHeader(label.c_str(), &closedHeader, ImGuiTreeNodeFlags_DefaultOpen))
 			uiFn(c);
-		}
+
+		if (!closedHeader)
+			entity.RemoveComponent<T>();
 	}
 }

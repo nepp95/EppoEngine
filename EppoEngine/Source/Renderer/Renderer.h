@@ -7,6 +7,7 @@
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Texture.h"
+#include "Scene/Components.h"
 
 #include <glm/glm.hpp>
 
@@ -54,5 +55,9 @@ namespace Eppo
 		static void DrawQuad(const glm::vec2& position, Ref<Texture> texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 		static void DrawQuad(const glm::vec3& position, Ref<Texture> texture, const glm::vec4& tintColor = glm::vec4(1.0f));
 		static void DrawQuad(const glm::mat4& transform, Ref<Texture> texture, const glm::vec4& tintColor = glm::vec4(1.0f));
+
+		static void DrawQuad(const glm::vec2& position, SpriteComponent& sc, int entityId);
+		static void DrawQuad(const glm::vec3& position, SpriteComponent& sc, int entityId);
+		static void DrawQuad(const glm::mat4& transform, SpriteComponent& sc, int entityId);
 	};
 }
