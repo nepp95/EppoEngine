@@ -1,35 +1,14 @@
 Scene: test
 Entities:
-  - Entity: 14727401765604476230
+  - Entity: 15859226382881889157
     TagComponent:
-      Tag: Entity 1
+      Tag: New entity
     TransformComponent:
-      Translation: [-0.5, -0.5, 0]
+      Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
-    SpriteComponent:
-      Color: [0.90196079, 0.200000003, 0.200000003, 1]
-      TextureHandle: 10038959528754306053
-  - Entity: 1445605631529400738
-    TagComponent:
-      Tag: Entity 2
-    TransformComponent:
-      Translation: [0.5, 0.5, 0]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    SpriteComponent:
-      Color: [0.200000003, 0.90196079, 0.200000003, 1]
-      TextureHandle: 0
-  - Entity: 8883272270469192655
-    TagComponent:
-      Tag: Entity 3
-    TransformComponent:
-      Translation: [-0.5, 0.5, 0]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    SpriteComponent:
-      Color: [0.200000003, 0.200000003, 1, 1]
-      TextureHandle: 4680662875752212828
+    MeshComponent:
+      MeshHandle: 5345703082771143640
   - Entity: 17616192009971894606
     TagComponent:
       Tag: Entity 4
@@ -40,3 +19,33 @@ Entities:
     SpriteComponent:
       Color: [0.200000003, 0.5, 0.5, 1]
       TextureHandle: 11229244397201243529
+  - Entity: 8883272270469192655
+    TagComponent:
+      Tag: Entity 3
+    TransformComponent:
+      Translation: [-0.5, 0.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    SpriteComponent:
+      Color: [0.200000003, 0.200000003, 1, 1]
+      TextureHandle: 4680662875752212828
+  - Entity: 1445605631529400738
+    TagComponent:
+      Tag: Entity 2
+    TransformComponent:
+      Translation: [0.5, 0.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    SpriteComponent:
+      Color: [0.200000003, 0.90196079, 0.200000003, 1]
+      TextureHandle: 0
+  - Entity: 14727401765604476230
+    TagComponent:
+      Tag: Entity 1
+    TransformComponent:
+      Translation: [-0.5, -0.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    SpriteComponent:
+      Color: [0.90196079, 0.200000003, 0.200000003, 1]
+      TextureHandle: 10038959528754306053

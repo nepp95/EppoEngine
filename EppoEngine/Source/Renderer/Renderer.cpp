@@ -10,6 +10,7 @@
 #include "Renderer/RendererContext.h"
 #include "Renderer/Vertex.h"
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace Eppo
@@ -83,7 +84,7 @@ namespace Eppo
 		};
 
 		FramebufferSpecification framebufferSpec;
-		framebufferSpec.Attachments = { ImageFormat::RGBA8 };
+		framebufferSpec.Attachments = { ImageFormat::RGBA8, ImageFormat::Depth };
 		framebufferSpec.Width = swapchain->GetWidth();
 		framebufferSpec.Height = swapchain->GetHeight();
 		framebufferSpec.Clear = true;

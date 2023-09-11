@@ -5,6 +5,24 @@
 
 namespace Eppo
 {
+	namespace Utils
+	{
+		static std::vector<VkFormat> depthFormats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
+		static VkFormat FindSupportedDepthFormat()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+
+			for (const auto& format : depthFormats)
+			{
+				VkFormatProperties properties;
+				vkGetPhysicalDeviceFormatProperties(physicalDevice->GetNativeDevice(), format, &properties);
+				if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+					return format;
+			}
+		}
+	}
+
 	Framebuffer::Framebuffer(const FramebufferSpecification& specification)
 		: m_Specification(specification)
 	{
@@ -45,7 +63,7 @@ namespace Eppo
 			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			colorAttachment.initialLayout = m_Specification.Clear ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			colorAttachment.initialLayout = m_Specification.Clear ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 			VkAttachmentReference colorAttachmentRef = attachmentReferences.emplace_back(VkAttachmentReference{ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
@@ -62,31 +80,9 @@ namespace Eppo
 			subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			subpassDependency.dstSubpass = 0;
 			subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			subpassDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			subpassDependency.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-
-			/*{
-				VkSubpassDependency& subpassDependency = subpassDependencies.emplace_back();
-				subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-				subpassDependency.dstSubpass = 0;
-				subpassDependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-				subpassDependency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				subpassDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-			}
-
-			{
-				VkSubpassDependency& subpassDependency = subpassDependencies.emplace_back();
-				subpassDependency.srcSubpass = 0;
-				subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
-				subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				subpassDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-				subpassDependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				subpassDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-			}*/
+			subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			subpassDependency.srcAccessMask = 0;
+			subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		}
 
 		VkRenderPassCreateInfo renderPassInfo{};

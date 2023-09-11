@@ -7,3 +7,6 @@
 - AssetHandle: 11229244397201243529
   Type: Texture
   Filepath: Resources\Textures\Icons\StopButton.png
+- AssetHandle: 5345703082771143640
+  Type: Mesh
+  Filepath: Resources\Meshes\untitled.fbx
