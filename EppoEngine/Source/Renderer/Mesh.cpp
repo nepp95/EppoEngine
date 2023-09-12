@@ -13,7 +13,7 @@ namespace Eppo
 		: m_Filepath(filepath)
 	{
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile("Resources/Meshes/untitled.fbx", aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_FlipWindingOrder);
+		const aiScene* scene = importer.ReadFile(filepath.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_FlipWindingOrder);
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{

@@ -4,11 +4,11 @@ Entities:
     TagComponent:
       Tag: New entity
     TransformComponent:
-      Translation: [0, 0, 0]
-      Rotation: [0, 0, 0]
+      Translation: [0, 0, -1000]
+      Rotation: [1.5, 0, 0.300000012]
       Scale: [1, 1, 1]
     MeshComponent:
-      MeshHandle: 5345703082771143640
+      MeshHandle: 15303463009593374873
   - Entity: 17616192009971894606
     TagComponent:
       Tag: Entity 4

@@ -34,7 +34,8 @@ namespace Eppo
 			for (const EntityHandle entity : view)
 			{
 				auto [transform, mesh] = view.get<TransformComponent, MeshComponent>(entity);
-				Renderer::SubmitGeometry(transform.GetTransform(), mesh);
+				if (mesh.MeshHandle)
+					Renderer::SubmitGeometry(transform.GetTransform(), mesh);
 			}
 		}
 

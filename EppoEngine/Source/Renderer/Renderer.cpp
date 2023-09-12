@@ -88,6 +88,7 @@ namespace Eppo
 		framebufferSpec.Width = swapchain->GetWidth();
 		framebufferSpec.Height = swapchain->GetHeight();
 		framebufferSpec.Clear = true;
+		framebufferSpec.ClearColor = { 0.4f, 0.4f, 0.4f, 1.0f };
 
 		PipelineSpecification quadPipelineSpec;
 		quadPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
@@ -97,6 +98,9 @@ namespace Eppo
 			{ ShaderDataType::Float4, "inColor" },
 			{ ShaderDataType::Float2, "inTexCoord" },
 			{ ShaderDataType::Float,  "inTexIndex" },
+		};
+		quadPipelineSpec.PushConstants = {
+			{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
 		};
 
 		s_Data->QuadPipeline = CreateRef<Pipeline>(quadPipelineSpec);
@@ -148,6 +152,10 @@ namespace Eppo
 			{ ShaderDataType::Float3, "inPosition" },
 			{ ShaderDataType::Float3, "inNormal" },
 			{ ShaderDataType::Float2, "inTexCoord" },
+		};
+		geometryPipelineSpec.DepthTesting = true;
+		geometryPipelineSpec.PushConstants = {
+			{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
 		};
 
 		s_Data->GeometryPipeline = CreateRef<Pipeline>(geometryPipelineSpec);
@@ -222,17 +230,8 @@ namespace Eppo
 				renderPassInfo.renderPass = framebuffer->GetRenderPass();
 				renderPassInfo.framebuffer = framebuffer->GetFramebuffer();
 				renderPassInfo.renderArea.extent = framebuffer->GetExtent();
-
-				if (framebuffer->GetSpecification().Clear)
-				{
-					VkClearValue clearColor = { 0.4f, 0.4f, 0.4f, 1.0f };
-					renderPassInfo.clearValueCount = 1;
-					renderPassInfo.pClearValues = &clearColor;
-				}
-				else {
-					renderPassInfo.clearValueCount = 0;
-					renderPassInfo.pClearValues = nullptr;
-				}
+				renderPassInfo.clearValueCount = (uint32_t)framebuffer->GetClearValues().size();
+				renderPassInfo.pClearValues = framebuffer->GetClearValues().data();
 			}
 
 			vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, flags);
@@ -366,6 +365,12 @@ namespace Eppo
 
 		s_Data->CommandBuffer->End();
 		s_Data->CommandBuffer->Submit();
+
+		SubmitCommand([]()
+		{
+			s_Data->GeometryDrawList.clear();
+			s_Data->GeometryTransformData.clear();
+		});
 	}
 
 	void Renderer::BeginScene(const EditorCamera& camera)
@@ -596,6 +601,7 @@ namespace Eppo
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbo, offsets);
 			vkCmdBindIndexBuffer(commandBuffer, mesh->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+			vkCmdPushConstants(commandBuffer, s_Data->GeometryPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &s_Data->GeometryTransformData[mesh->Handle]);
 
 			// Draw
 			vkCmdDrawIndexed(commandBuffer, mesh->GetIndexBuffer()->GetIndexCount(), 1, 0, 0, 0);

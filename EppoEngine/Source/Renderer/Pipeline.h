@@ -11,6 +11,11 @@ namespace Eppo
 		Ref<Framebuffer> Framebuffer;
 		Ref<Shader> Shader;
 		VertexBufferLayout Layout;
+
+		// TODO: Get from shader
+		std::vector<VkPushConstantRange> PushConstants;
+
+		bool DepthTesting = false;
 	};
 
 	class Pipeline

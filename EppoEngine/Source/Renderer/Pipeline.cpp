@@ -74,6 +74,17 @@ namespace Eppo
 		multisamplingInfo.alphaToCoverageEnable = VK_FALSE;
 		multisamplingInfo.alphaToOneEnable = VK_FALSE;
 
+		// Depth testing
+		VkPipelineDepthStencilStateCreateInfo depthInfo{};
+		depthInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthInfo.depthTestEnable = m_Specification.DepthTesting ? VK_TRUE : VK_FALSE;
+		depthInfo.depthWriteEnable = m_Specification.DepthTesting ? VK_TRUE : VK_FALSE;
+		depthInfo.depthCompareOp = m_Specification.DepthTesting ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_ALWAYS;
+		depthInfo.depthBoundsTestEnable = VK_FALSE;
+		depthInfo.minDepthBounds = 0.0f;
+		depthInfo.maxDepthBounds = 1.0f;
+		depthInfo.stencilTestEnable = VK_FALSE;
+
 		// Color blending
 		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -114,8 +125,8 @@ namespace Eppo
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = (uint32_t)descriptorSetLayouts.size();
 		pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
-		pipelineLayoutInfo.pPushConstantRanges = VK_NULL_HANDLE;
+		pipelineLayoutInfo.pushConstantRangeCount = (uint32_t)m_Specification.PushConstants.size();
+		pipelineLayoutInfo.pPushConstantRanges = m_Specification.PushConstants.data();
 
 		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!");
 
@@ -131,7 +142,7 @@ namespace Eppo
 		pipelineInfo.pViewportState = &viewportStateInfo;
 		pipelineInfo.pRasterizationState = &rasterizerInfo;
 		pipelineInfo.pMultisampleState = &multisamplingInfo;
-		pipelineInfo.pDepthStencilState = VK_NULL_HANDLE;
+		pipelineInfo.pDepthStencilState = &depthInfo;
 		pipelineInfo.pColorBlendState = &colorBlendInfo;
 		pipelineInfo.pDynamicState = &dynamicState;
 		pipelineInfo.layout = m_PipelineLayout;

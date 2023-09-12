@@ -18,6 +18,7 @@ namespace Eppo
 		uint32_t Height;
 
 		bool Clear = true;
+		glm::vec4 ClearColor = { 0.5f, 0.5f, 0.5f, 1.0f };
 	};
 
 	class Framebuffer
@@ -41,12 +42,19 @@ namespace Eppo
 		uint32_t GetHeight() const { return m_Specification.Height; }
 		VkExtent2D GetExtent() const { return { GetWidth(), GetHeight() }; }
 
+		const std::vector<VkClearValue>& GetClearValues() const { return m_ClearValues; }
+
+		bool HasDepthAttachment() const { return m_DepthTesting; }
+
 	private:
 		FramebufferSpecification m_Specification;
 
 		VkFramebuffer m_Framebuffer;
 		VkRenderPass m_RenderPass;
-
 		std::vector<Ref<Image>> m_ImageAttachments;
+
+		std::vector<VkClearValue> m_ClearValues;
+
+		bool m_DepthTesting = false;
 	};
 }
