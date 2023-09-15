@@ -45,8 +45,6 @@ namespace Eppo
 		std::map<AssetHandle, glm::mat4> GeometryTransformData;
 		std::map<AssetHandle, Ref<Mesh>> GeometryDrawList;
 
-		Ref<Mesh> ActiveMesh;
-
 		// Textures
 		Ref<Texture> WhiteTexture;
 		std::array<Ref<Texture>, MaxTextureSlots> TextureSlots;
@@ -170,8 +168,6 @@ namespace Eppo
 
 		// Camera
 		s_Data->CameraUniformBuffer = CreateRef<UniformBuffer>(quadPipelineSpec.Shader, sizeof(RendererData::CameraBuffer));
-
-		s_Data->ActiveMesh = CreateRef<Mesh>("Resources/Meshes/untitled.fbx");
 	}
 
 	void Renderer::Shutdown()
@@ -597,14 +593,18 @@ namespace Eppo
 			scissor.extent = extent;
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			VkBuffer vbo[] = { mesh->GetVertexBuffer()->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbo, offsets);
-			vkCmdBindIndexBuffer(commandBuffer, mesh->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-			vkCmdPushConstants(commandBuffer, s_Data->GeometryPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &s_Data->GeometryTransformData[mesh->Handle]);
+			const auto& submeshes = mesh->GetSubmeshes();
+			for (const auto& submesh : submeshes)
+			{
+				VkBuffer vbo[] = { submesh.GetVertexBuffer()->GetBuffer() };
+				VkDeviceSize offsets[] = { 0 };
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbo, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, submesh.GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdPushConstants(commandBuffer, s_Data->GeometryPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &s_Data->GeometryTransformData[mesh->Handle]);
 
-			// Draw
-			vkCmdDrawIndexed(commandBuffer, mesh->GetIndexBuffer()->GetIndexCount(), 1, 0, 0, 0);
+				// Draw
+				vkCmdDrawIndexed(commandBuffer, submesh.GetIndexBuffer()->GetIndexCount(), 1, 0, 0, 0);
+			}
 		});
 	}
 }

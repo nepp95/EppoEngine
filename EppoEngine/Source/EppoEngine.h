@@ -26,8 +26,8 @@
 #include "ImGui/UI.h"
 
 // Renderer
+#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Camera/EditorCamera.h"
-#include "Renderer/Mesh.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/Texture.h"
 

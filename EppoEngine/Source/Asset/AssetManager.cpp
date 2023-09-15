@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "AssetManager.h"
 
-#include "Renderer/Mesh.h"
+#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Texture.h"
 
 #include <yaml-cpp/yaml.h>
@@ -28,6 +28,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("AssetManager::AssetManager");
 
 		LoadRegistry();
+		WriteRegistry();
 	}
 
 	bool AssetManager::IsAssetLoaded(AssetHandle handle)
@@ -148,12 +149,19 @@ namespace Eppo
 
 		for (auto asset : data)
 		{
+			std::filesystem::path filepath = asset["Filepath"].as<std::string>();
+			if (!Filesystem::Exists(filepath))
+			{
+				EPPO_WARN("Asset with filepath '{}' has been removed from the asset registry because it does not exist!", filepath.string());
+				continue;
+			}
+
 			AssetHandle handle = asset["AssetHandle"].as<uint64_t>();
 
 			AssetMetadata metadata;
 			metadata.Handle = handle;
 			metadata.Type = Utils::AssetTypeFromString(asset["Type"].as<std::string>());
-			metadata.Filepath = asset["Filepath"].as<std::string>();
+			metadata.Filepath = filepath;
 
 			m_AssetData[handle] = metadata;
 

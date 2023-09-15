@@ -1,9 +1,6 @@
 - AssetHandle: 10038959528754306053
   Type: Texture
   Filepath: Resources/Textures/Icons/Directory.png
-- AssetHandle: 15303463009593374873
-  Type: Mesh
-  Filepath: Resources\Meshes\uploads_files_2787791_Mercedes+Benz+GLS+580.fbx
 - AssetHandle: 4680662875752212828
   Type: Texture
   Filepath: Resources\Textures\Icons\File.png
