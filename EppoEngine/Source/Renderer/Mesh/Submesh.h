@@ -12,7 +12,7 @@ namespace Eppo
 	class Submesh
 	{
 	public:
-		Submesh(aiMesh* mesh, const aiScene* scene, const std::filesystem::path& directoryPath);
+		Submesh(aiMesh* mesh, const aiScene* scene);
 
 		Ref<IndexBuffer> GetIndexBuffer() const { return m_IndexBuffer; }
 		Ref<VertexBuffer> GetVertexBuffer() const { return m_VertexBuffer; }

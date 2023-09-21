@@ -8,8 +8,10 @@
 
 namespace Eppo
 {
-	Submesh::Submesh(aiMesh* mesh, const aiScene* scene, const std::filesystem::path& directoryPath)
+	Submesh::Submesh(aiMesh* mesh, const aiScene* scene)
 	{
+		EPPO_PROFILE_FUNCTION("Submesh::Submesh");
+
 		// Vertex Buffer
 		std::vector<MeshVertex> vertices;
 		vertices.resize(mesh->mNumVertices);
@@ -26,8 +28,6 @@ namespace Eppo
 			vertices[i] = vertex;
 		}
 
-		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(MeshVertex));
-
 		// Index Buffer
 		std::vector<uint32_t> indices;
 		for (uint32_t i = 0; i < mesh->mNumFaces; i++)
@@ -40,22 +40,7 @@ namespace Eppo
 				indices[offset + j] = face.mIndices[j];
 		}
 
+		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(MeshVertex));
 		m_IndexBuffer = CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
-	
-		// Materials
-		if (mesh->mMaterialIndex >= 0)
-		{
-			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-
-			std::vector<Ref<Texture>> diffuseMaps;
-			for (uint32_t i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++)
-			{
-				aiString str;
-				material->GetTexture(aiTextureType_DIFFUSE, i, &str);
-
-				std::filesystem::path path = directoryPath / str.C_Str();
-				diffuseMaps.push_back(CreateRef<Texture>(path));
-			}
-		}
 	}
 }
