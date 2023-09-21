@@ -34,9 +34,14 @@ namespace Eppo
 			for (uint32_t i = 0; i < scene->mNumMaterials; i++)
 			{
 				aiMaterial* material = scene->mMaterials[i];
-				aiString filepath;
 
-				material->GetTexture(aiTextureType_DIFFUSE, 0, &filepath);
+				aiColor3D diffuseColor;
+				material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+
+				aiColor3D emission;
+				material->Get(AI_MATKEY_COLOR_EMISSIVE, emission);
+
+				//material->GetTexture(aiTextureType_DIFFUSE, 0, &filepath);
 #if 0
 				EPPO_TRACE("Material: {}", material->GetName().C_Str());
 				for (uint32_t j = 0; j < material->mNumProperties; j++)
@@ -53,13 +58,11 @@ namespace Eppo
 				}
 #endif
 
-				material->Get(AI_MATKEY_TEXTURE(aiTextureType_SPECULAR, 0), filepath);
-				EPPO_TRACE("{}", filepath.C_Str());
+				//material->Get(AI_MATKEY_TEXTURE(aiTextureType_SPECULAR, 0), filepath);
+				//EPPO_TRACE("{}", filepath.C_Str());
 
-				const aiTexture* texture = scene->GetEmbeddedTexture(filepath.C_Str());
-				EPPO_ASSERT(texture);
-
-
+				//const aiTexture* texture = scene->GetEmbeddedTexture(filepath.C_Str());
+				//EPPO_ASSERT(texture);
 			}
 		}
 	}

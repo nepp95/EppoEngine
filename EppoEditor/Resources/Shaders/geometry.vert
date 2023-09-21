@@ -9,12 +9,12 @@ layout(set = 1, binding = 0) uniform Camera
 	mat4 uViewProjection;
 };
 
-layout(push_constant) uniform PushConstants
+layout(push_constant) uniform Transform
 {
-	mat4 uTransform;
-};
+	mat4 Transform;
+} uTransform;
 
 void main()
 {
-	gl_Position = uViewProjection * uTransform * vec4(inPosition, 1.0);
+	gl_Position = uViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
 }

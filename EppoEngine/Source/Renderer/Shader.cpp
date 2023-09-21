@@ -183,8 +183,23 @@ namespace Eppo
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		EPPO_TRACE("Shader::Reflect - {} {}", Utils::ShaderTypeToString(type), m_Specification.ShaderSources.at(type).string());
+		EPPO_TRACE("\t{} Push constants", resources.push_constant_buffers.size());
 		EPPO_TRACE("\t{} Uniform buffers", resources.uniform_buffers.size());
 		EPPO_TRACE("\t{} Sampled images", resources.sampled_images.size());
+
+		if (!resources.push_constant_buffers.empty())
+		{
+			EPPO_TRACE("Push constants:");
+			EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
+
+			const auto& resource = resources.push_constant_buffers[0];
+			const auto& bufferType = compiler.get_type(resource.base_type_id);
+			uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
+			size_t memberCount = bufferType.member_types.size();
+
+			EPPO_TRACE("\t\tSize = {}", bufferSize);
+			EPPO_TRACE("\t\tMembers = {}", memberCount);
+		}
 
 		if (!resources.uniform_buffers.empty())
 		{
