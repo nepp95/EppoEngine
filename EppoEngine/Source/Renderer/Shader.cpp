@@ -146,7 +146,7 @@ namespace Eppo
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
-		options.SetOptimizationLevel(shaderc_optimization_level_performance);
+		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
 
 		// Read shader source
 		std::ifstream stream(filepath, std::ios::binary | std::ios::in);
@@ -183,13 +183,13 @@ namespace Eppo
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		EPPO_TRACE("Shader::Reflect - {} {}", Utils::ShaderTypeToString(type), m_Specification.ShaderSources.at(type).string());
-		EPPO_TRACE("\t{} Push constants", resources.push_constant_buffers.size());
-		EPPO_TRACE("\t{} Uniform buffers", resources.uniform_buffers.size());
-		EPPO_TRACE("\t{} Sampled images", resources.sampled_images.size());
+		EPPO_TRACE("    {} Push constant buffers", resources.push_constant_buffers.size());
+		EPPO_TRACE("    {} Uniform buffers", resources.uniform_buffers.size());
+		EPPO_TRACE("    {} Sampled images", resources.sampled_images.size());
 
 		if (!resources.push_constant_buffers.empty())
 		{
-			EPPO_TRACE("Push constants:");
+			EPPO_TRACE("    Push constant buffers:");
 			EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
 
 			const auto& resource = resources.push_constant_buffers[0];
@@ -197,13 +197,16 @@ namespace Eppo
 			uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
 			size_t memberCount = bufferType.member_types.size();
 
-			EPPO_TRACE("\t\tSize = {}", bufferSize);
-			EPPO_TRACE("\t\tMembers = {}", memberCount);
+			for (size_t i = 0; i < memberCount; i++)
+				EPPO_TRACE("        Member name: {}", compiler.get_member_name(resource.base_type_id, i));
+
+			EPPO_TRACE("        Size = {}", bufferSize);
+			EPPO_TRACE("        Members = {}", memberCount);
 		}
 
 		if (!resources.uniform_buffers.empty())
 		{
-			EPPO_TRACE("Uniform buffers:");
+			EPPO_TRACE("    Uniform buffers:");
 
 			for (const auto& resource : resources.uniform_buffers)
 			{
@@ -223,17 +226,17 @@ namespace Eppo
 
 				m_ShaderResources[set].push_back(shaderResource);
 
-				EPPO_TRACE("\t{}", resource.name);
-				EPPO_TRACE("\t\tSize = {}", bufferSize);
-				EPPO_TRACE("\t\tSet = {}", set);
-				EPPO_TRACE("\t\tBinding = {}", binding);
-				EPPO_TRACE("\t\tMembers = {}", memberCount);
+				EPPO_TRACE("        {}", resource.name);
+				EPPO_TRACE("            Size = {}", bufferSize);
+				EPPO_TRACE("            Set = {}", set);
+				EPPO_TRACE("            Binding = {}", binding);
+				EPPO_TRACE("            Members = {}", memberCount);
 			}
 		}
 
 		if (!resources.sampled_images.empty())
 		{
-			EPPO_TRACE("Sampled images:");
+			EPPO_TRACE("    Sampled images:");
 
 			for (const auto& resource : resources.sampled_images)
 			{
@@ -254,10 +257,11 @@ namespace Eppo
 
 				m_ShaderResources[set].push_back(shaderResource);
 
-				EPPO_TRACE("\t\tSet = {}", set);
-				EPPO_TRACE("\t\tBinding = {}", binding);
+				EPPO_TRACE("        Set = {}", set);
+				EPPO_TRACE("        Binding = {}", binding);
 			}
 		}
+		EPPO_TRACE("");
 	}
 
 	void Shader::CreatePipelineShaderInfos()
