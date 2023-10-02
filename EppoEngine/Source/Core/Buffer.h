@@ -15,7 +15,7 @@ namespace Eppo
 
 		Buffer(uint32_t size)
 		{
-			Allocate(size);
+				Allocate(size);
 		}
 
 		static Buffer Copy(Buffer other)
