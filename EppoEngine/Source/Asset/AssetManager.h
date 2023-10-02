@@ -2,6 +2,8 @@
 
 #include "Asset/AssetMetadata.h"
 
+#include <unordered_map>
+
 namespace Eppo
 {
 	class AssetManager

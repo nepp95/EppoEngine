@@ -15,7 +15,7 @@ namespace Eppo
 
 		Buffer(uint32_t size)
 		{
-			Allocate(size);
+				Allocate(size);
 		}
 
 		static Buffer Copy(Buffer other)
@@ -82,7 +82,7 @@ namespace Eppo
 		}
 
 		uint8_t* Data() { return m_Buffer.Data; }
-		uint64_t Size() { return m_Buffer.Size; }
+		uint32_t Size() { return m_Buffer.Size; }
 
 		template<typename T>
 		T* As()

@@ -17,6 +17,7 @@ workspace "EppoEngine"
     OutputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
     group "Dependencies"
+        include "EppoEngine/Vendor/googletest"
         include "EppoEngine/Vendor/glfw"
         include "EppoEngine/Vendor/imgui"
         include "EppoEngine/Vendor/spdlog"
@@ -29,4 +30,5 @@ workspace "EppoEngine"
 
     group "Tools"
         include "EppoEditor"
+        include "EppoTesting"
     group ""
