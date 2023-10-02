@@ -82,7 +82,7 @@ namespace Eppo
 		}
 
 		uint8_t* Data() { return m_Buffer.Data; }
-		uint64_t Size() { return m_Buffer.Size; }
+		uint32_t Size() { return m_Buffer.Size; }
 
 		template<typename T>
 		T* As()
