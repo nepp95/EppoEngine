@@ -1,8 +1,7 @@
 #pragma once
 
-#include <tracy/Tracy.hpp>
-
 #if defined(EPPO_ENABLE_PROFILING)
+	#include <tracy/Tracy.hpp>
 	#define EPPO_PROFILE_FUNCTION(name) ZoneScopedN(name)
 	#define EPPO_PROFILE_FRAME_MARK FrameMark
 	#define EPPO_PROFILE_GPU(context, commandBuffer, name) TracyVkZone(context, commandBuffer, name)

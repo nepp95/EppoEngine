@@ -5,6 +5,7 @@
 #include "Renderer/Swapchain.h"
 
 #include <deque>
+#include <functional>
 
 struct GLFWwindow;
 

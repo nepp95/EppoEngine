@@ -2,7 +2,6 @@
 #include "Base.h"
 
 #if defined(EPPO_TRACK_MEMORY)
-
 	_NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size) _VCRT_ALLOCATOR
 	void* __CRTDECL operator new(size_t size)
 	{
@@ -30,5 +29,4 @@
 		TracyFreeS(block, 32);
 		free(block);
 	}
-
 #endif
