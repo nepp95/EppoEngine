@@ -5,7 +5,7 @@ namespace Eppo
 	//
 	// Buffer
 	//
-	TEST(BufferTest, ZeroInitialized)
+	TEST(BufferTest, Ctor)
 	{
 		Buffer buffer;
 
@@ -13,7 +13,7 @@ namespace Eppo
 		EXPECT_FALSE(buffer.Data);
 	}
 
-	TEST(BufferTest, ZeroInitialized_0)
+	TEST(BufferTest, Ctor_Zero)
 	{
 		Buffer buffer(0);
 
@@ -21,7 +21,7 @@ namespace Eppo
 		EXPECT_FALSE(buffer.Data);
 	}
 
-	TEST(BufferTest, Initialize_1024)
+	TEST(BufferTest, Ctor_UInt)
 	{
 		Buffer buffer(1024);
 
@@ -29,7 +29,16 @@ namespace Eppo
 		EXPECT_TRUE(buffer.Data);
 	}
 
-	TEST(BufferTest, Allocate_1024)
+	TEST(BufferTest, Ctor_Copy)
+	{
+		Buffer buffer(1024);
+		Buffer targetBuffer(buffer);
+
+		EXPECT_EQ(buffer.Size, targetBuffer.Size);
+		EXPECT_TRUE(targetBuffer.Data);
+	}
+
+	TEST(BufferTest, Allocate_UInt)
 	{
 		Buffer buffer;
 		buffer.Allocate(1024);
@@ -98,7 +107,7 @@ namespace Eppo
 	//
 	// ScopedBuffer
 	//
-	TEST(ScopedBufferTest, ZeroInitialized)
+	TEST(ScopedBufferTest, Ctor)
 	{
 		ScopedBuffer buffer;
 
@@ -106,7 +115,7 @@ namespace Eppo
 		EXPECT_FALSE(buffer.Data());
 	}
 
-	TEST(ScopedBufferTest, ZeroInitialized_0)
+	TEST(ScopedBufferTest, Ctor_Zero)
 	{
 		ScopedBuffer buffer(0);
 
@@ -114,7 +123,7 @@ namespace Eppo
 		EXPECT_FALSE(buffer.Data());
 	}
 
-	TEST(ScopedBufferTest, Initialize_1024)
+	TEST(ScopedBufferTest, Ctor_UInt)
 	{
 		ScopedBuffer buffer(1024);
 
