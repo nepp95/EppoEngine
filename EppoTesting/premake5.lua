@@ -26,6 +26,7 @@ project "EppoTesting"
 
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.googlemock}",
         "%{IncludeDir.googletest}",
 		"%{IncludeDir.imgui}",
 		"%{IncludeDir.spdlog}",

@@ -2,132 +2,92 @@
 
 namespace Eppo
 {
+	static const uint32_t s_DefaultBufferSize = 8;
 	//
 	// Buffer
 	//
-	TEST(BufferTest, Ctor)
+	TEST(BufferTest, DefaultConstructor)
 	{
 		Buffer buffer;
 
-		EXPECT_EQ(0, buffer.Size);
-		EXPECT_FALSE(buffer.Data);
+		EXPECT_EQ(buffer.Size, 0);
+		EXPECT_EQ(buffer.Data, nullptr);
+		EXPECT_FALSE(static_cast<bool>(buffer));
 	}
 
-	TEST(BufferTest, Ctor_Zero)
+	TEST(BufferTest, ConstructorWithSize)
 	{
-		Buffer buffer(0);
+		Buffer buffer(s_DefaultBufferSize);
 
-		EXPECT_EQ(0, buffer.Size);
-		EXPECT_FALSE(buffer.Data);
-	}
-
-	TEST(BufferTest, Ctor_UInt)
-	{
-		Buffer buffer(1024);
-
-		EXPECT_EQ(1024, buffer.Size);
+		EXPECT_EQ(buffer.Size, s_DefaultBufferSize);
 		EXPECT_TRUE(buffer.Data);
+		EXPECT_TRUE(static_cast<bool>(buffer));
 	}
 
-	TEST(BufferTest, Ctor_Copy)
+	TEST(BufferTest, CopyBuffer)
 	{
-		Buffer buffer(1024);
-		Buffer targetBuffer(buffer);
+		Buffer originalBuffer(s_DefaultBufferSize);
 
-		EXPECT_EQ(buffer.Size, targetBuffer.Size);
-		EXPECT_TRUE(targetBuffer.Data);
+		Buffer copiedBuffer = Buffer::Copy(originalBuffer);
+
+		EXPECT_EQ(copiedBuffer.Size, s_DefaultBufferSize);
+		EXPECT_NE(copiedBuffer.Data, originalBuffer.Data);
+		EXPECT_TRUE(copiedBuffer.Data);
+		EXPECT_TRUE(static_cast<bool>(copiedBuffer));
 	}
 
-	TEST(BufferTest, Allocate_UInt)
+	TEST(BufferTest, CopyRawData)
 	{
-		Buffer buffer;
-		buffer.Allocate(1024);
+		uint32_t size = 8;
+		uint8_t rawData[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
 
-		EXPECT_EQ(1024, buffer.Size);
+		Buffer buffer = Buffer::Copy(&rawData, size);
+
+		EXPECT_EQ(buffer.Size, size);
 		EXPECT_TRUE(buffer.Data);
+		EXPECT_TRUE(static_cast<bool>(buffer));
+
+		for (uint32_t i = 0; i < size; i++)
+			EXPECT_EQ(buffer.Data[i], rawData[i]);
 	}
 
-	TEST(BufferTest, Release)
+	TEST(BufferTest, As)
 	{
-		Buffer buffer;
-		buffer.Release();
+		Buffer buffer(s_DefaultBufferSize);
+		for (uint32_t i = 0; i < buffer.Size; i++)
+			buffer.Data[i] = i;
 
-		EXPECT_EQ(0, buffer.Size);
-		EXPECT_FALSE(buffer.Data);
-	}
+		uint8_t* data = buffer.As<uint8_t>();
 
-	TEST(BufferTest, Copy_Buffer)
-	{
-		Buffer buffer(1024);
-		memset(buffer.Data, 5, buffer.Size);
-
-		EXPECT_EQ(1024, buffer.Size);
-		EXPECT_TRUE(buffer.Data);
-
-		Buffer targetBuffer = Buffer::Copy(buffer);
-
-		EXPECT_EQ(1024, targetBuffer.Size);
-		EXPECT_TRUE(targetBuffer.Data);
-
-		for (uint32_t i = 0; i < targetBuffer.Size; i++)
-			EXPECT_EQ(5, targetBuffer.Data[i]);
-	}
-
-	TEST(BufferTest, Copy_DataAndSize)
-	{
-		uint8_t* data = new uint8_t[1024];
-		memset(data, 5, 1024);
-
-		Buffer targetBuffer = Buffer::Copy(data, 1024);
-
-		delete[] data;
-		data = nullptr;
-
-		EXPECT_EQ(1024, targetBuffer.Size);
-		EXPECT_TRUE(targetBuffer.Data);
-
-		for (uint32_t i = 0; i < targetBuffer.Size; i++)
-			EXPECT_EQ(5, targetBuffer.Data[i]);
-	}
-
-	TEST(BufferTest, Copy_VoidDataAndSize)
-	{
-		void* data = new uint8_t[1024];
-		memset(data, 5, 1024);
-
-		Buffer targetBuffer = Buffer::Copy(data, 1024);
-
-		EXPECT_EQ(1024, targetBuffer.Size);
-		EXPECT_TRUE(targetBuffer.Data);
-
-		for (uint32_t i = 0; i < targetBuffer.Size; i++)
-			EXPECT_EQ(5, targetBuffer.Data[i]);
+		for (uint32_t i = 0; i < buffer.Size; i++)
+			EXPECT_EQ(data[i], i);
 	}
 
 	//
 	// ScopedBuffer
 	//
-	TEST(ScopedBufferTest, Ctor)
+	TEST(ScopedBufferTest, DefaultConstructor)
 	{
-		ScopedBuffer buffer;
+		ScopedBuffer scopedBuffer;
 
-		EXPECT_EQ(0, buffer.Size());
-		EXPECT_FALSE(buffer.Data());
+		EXPECT_EQ(scopedBuffer.Size(), 0);
+		EXPECT_FALSE(scopedBuffer.Data());
 	}
 
-	TEST(ScopedBufferTest, Ctor_Zero)
+	TEST(ScopedBufferTest, ConstructorWithBuffer)
 	{
-		ScopedBuffer buffer(0);
+		Buffer buffer(s_DefaultBufferSize);
+		ScopedBuffer scopedBuffer(buffer);
 
-		EXPECT_EQ(0, buffer.Size());
-		EXPECT_FALSE(buffer.Data());
+		EXPECT_EQ(scopedBuffer.Size(), s_DefaultBufferSize);
+		EXPECT_TRUE(scopedBuffer.Data());
 	}
 
-	TEST(ScopedBufferTest, Ctor_UInt)
+	TEST(ScopedBufferTest, ConstructorWithSize)
 	{
-		ScopedBuffer buffer(1024);
+		ScopedBuffer scopedBuffer(s_DefaultBufferSize);
 
-		EXPECT_EQ(1024, buffer.Size());
-		EXPECT_TRUE(buffer.Data());
+		EXPECT_EQ(scopedBuffer.Size(), s_DefaultBufferSize);
+		EXPECT_TRUE(scopedBuffer.Data());
 	}
 }
