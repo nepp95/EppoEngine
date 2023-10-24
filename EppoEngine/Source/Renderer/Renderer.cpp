@@ -153,7 +153,8 @@ namespace Eppo
 		};
 		geometryPipelineSpec.DepthTesting = true;
 		geometryPipelineSpec.PushConstants = {
-			{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
+			{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float) }
 		};
 
 		s_Data->GeometryPipeline = CreateRef<Pipeline>(geometryPipelineSpec);
@@ -593,6 +594,18 @@ namespace Eppo
 			scissor.extent = extent;
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+			VkDescriptorSet descriptorSet = s_Data->CameraUniformBuffer->GetCurrentDescriptorSet();
+			vkCmdBindDescriptorSets(
+				commandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				s_Data->GeometryPipeline->GetPipelineLayout(),
+				1,
+				1,
+				&descriptorSet,
+				0,
+				nullptr
+			);
+
 			const auto& submeshes = mesh->GetSubmeshes();
 			for (const auto& submesh : submeshes)
 			{
@@ -601,6 +614,7 @@ namespace Eppo
 				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbo, offsets);
 				vkCmdBindIndexBuffer(commandBuffer, submesh.GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 				vkCmdPushConstants(commandBuffer, s_Data->GeometryPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &s_Data->GeometryTransformData[mesh->Handle]);
+				vkCmdPushConstants(commandBuffer, s_Data->GeometryPipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float), &mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
 
 				// Draw
 				vkCmdDrawIndexed(commandBuffer, submesh.GetIndexBuffer()->GetIndexCount(), 1, 0, 0, 0);

@@ -40,6 +40,8 @@ namespace Eppo
 				indices[offset + j] = face.mIndices[j];
 		}
 
+		m_MaterialIndex = mesh->mMaterialIndex;
+
 		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(MeshVertex));
 		m_IndexBuffer = CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
 	}

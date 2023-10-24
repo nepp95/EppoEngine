@@ -197,11 +197,13 @@ namespace Eppo
 			uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
 			size_t memberCount = bufferType.member_types.size();
 
-			for (size_t i = 0; i < memberCount; i++)
-				EPPO_TRACE("        Member name: {}", compiler.get_member_name(resource.base_type_id, i));
-
+			if (!resource.name.empty())
+				EPPO_TRACE("        {}", resource.name);
 			EPPO_TRACE("        Size = {}", bufferSize);
 			EPPO_TRACE("        Members = {}", memberCount);
+
+			for (size_t i = 0; i < memberCount; i++)
+				EPPO_TRACE("            Member: {} ({})", compiler.get_member_name(resource.base_type_id, i), compiler.get_type(resource.base_type_id).member_types[i]);
 		}
 
 		if (!resources.uniform_buffers.empty())

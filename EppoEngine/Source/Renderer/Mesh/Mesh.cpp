@@ -31,38 +31,23 @@ namespace Eppo
 		{
 			EPPO_TRACE("Mesh '{}' has {} materials", filepath.string(), scene->mNumMaterials);
 
+			m_Materials.resize(scene->mNumMaterials);
 			for (uint32_t i = 0; i < scene->mNumMaterials; i++)
 			{
-				aiMaterial* material = scene->mMaterials[i];
+				aiMaterial* aiMaterial = scene->mMaterials[i];
+				aiString name = aiMaterial->GetName();
+
+				MeshMaterial& material = m_Materials[i];
+				material.Name = name.C_Str();
 
 				aiColor3D diffuseColor;
-				material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+				aiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+				material.DiffuseColor = { diffuseColor.r, diffuseColor.g, diffuseColor.b };
 
-				aiColor3D emission;
-				material->Get(AI_MATKEY_COLOR_EMISSIVE, emission);
-
-				//material->GetTexture(aiTextureType_DIFFUSE, 0, &filepath);
-#if 0
-				EPPO_TRACE("Material: {}", material->GetName().C_Str());
-				for (uint32_t j = 0; j < material->mNumProperties; j++)
-				{
-					EPPO_TRACE("\tProperty {}:", j);
-					aiMaterialProperty* mp = material->mProperties[j];
-
-					EPPO_TRACE("\t\tmKey: {}", mp->mKey.C_Str());
-					std::string data(mp->mData, mp->mDataLength);
-					EPPO_TRACE("\t\tmData: {}", data);
-					EPPO_TRACE("\t\tmIndex: {}", mp->mIndex);
-					EPPO_TRACE("\t\tmType: {}", mp->mType);
-					EPPO_TRACE("\t\tmSemantic: {}", mp->mSemantic);
-				}
-#endif
-
-				//material->Get(AI_MATKEY_TEXTURE(aiTextureType_SPECULAR, 0), filepath);
-				//EPPO_TRACE("{}", filepath.C_Str());
-
-				//const aiTexture* texture = scene->GetEmbeddedTexture(filepath.C_Str());
-				//EPPO_ASSERT(texture);
+				float shininess;
+				if (aiMaterial->Get(AI_MATKEY_SHININESS, shininess) != aiReturn_SUCCESS)
+					shininess = 80.0f; // Default
+				material.Roughness = 1.0f - glm::sqrt(shininess / 100.0f);
 			}
 		}
 	}

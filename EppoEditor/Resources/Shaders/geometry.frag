@@ -4,7 +4,8 @@ layout(location = 0) out vec4 outColor;
 
 layout(push_constant) uniform Material
 {
-	vec3 AlbedoColor;
+	layout(offset = 64) vec3 AlbedoColor;
+	layout(offset = 80) float Roughness;
 } uMaterial;
 
 void main()
