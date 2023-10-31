@@ -51,7 +51,8 @@ namespace Eppo
 		const std::unordered_map<uint32_t, std::vector<ShaderResource>>& GetShaderResources() const { return m_ShaderResources; }
 
 	private:
-		void Compile(ShaderType type, const std::filesystem::path& filepath);
+		std::string ReadShaderFile(const std::filesystem::path& filepath);
+		void Compile(ShaderType type, const std::string& shaderSource, const std::string& filename);
 		void Reflect(ShaderType type, const std::vector<uint32_t>& shaderBytes);
 		void CreatePipelineShaderInfos();
 		void CreateDescriptorSetLayout(const Ref<DescriptorLayoutCache>& layoutCache);

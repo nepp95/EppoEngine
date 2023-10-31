@@ -3,6 +3,7 @@
 
 #include "Core/Buffer.h"
 #include "Core/Filesystem.h"
+#include "Core/Hash.h"
 #include "Renderer/RendererContext.h"
 
 #include <shaderc/shaderc.hpp>
@@ -51,62 +52,52 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Shader::Shader");
 
-		std::filesystem::path cacheDir = Utils::GetCacheDirectory();
+		const std::filesystem::path cacheDir = Utils::GetCacheDirectory();
 
-		// Get filename i.e. shader
-		std::filesystem::path vertexCachePath = cacheDir / specification.ShaderSources.at(ShaderType::Vertex).filename();
-		// Replace filename with filename + extension = shader.vert
-		vertexCachePath.replace_filename(vertexCachePath.filename().string() + vertexCachePath.extension().string());
-		// Add extension to filename = shader.vert.shadercache
-		vertexCachePath.replace_extension("shadercache");
-
-		// Get filename i.e. shader
-		std::filesystem::path fragmentCachePath = cacheDir / specification.ShaderSources.at(ShaderType::Fragment).filename();
-		// Replace filename with filename + extension = shader.frag
-		fragmentCachePath.replace_filename(fragmentCachePath.filename().string() + fragmentCachePath.extension().string());
-		// Add extension to filename = shader.vert.shadercache
-		fragmentCachePath.replace_extension("shadercache");
-
-		if (std::filesystem::exists(vertexCachePath))
+		for (const auto& [type, filepath] : m_Specification.ShaderSources)
 		{
-			// Load shader byte code from cache
-			ScopedBuffer buffer = Filesystem::ReadBytes(vertexCachePath);
+			// Calculate hash of shader source
+			std::string shaderSource = ReadShaderFile(filepath);
+			std::string hash = std::to_string(Hash::GenerateFnv(shaderSource));
+			
+			// Check if the shader is cached
+			std::filesystem::path cacheFile = filepath.filename().replace_filename(filepath.filename().string() + filepath.extension().string()).replace_extension("shadercache");
+			std::filesystem::path cachePath = cacheDir / cacheFile;
+			std::filesystem::path cacheHashPath = cacheDir / cacheFile.replace_extension("hash");
 
-			// Since the buffer size is 1 byte aligned and a uint32_t is 4 bytes, we only need a quarter of the size
-			std::vector<uint32_t> vec(buffer.Size() / sizeof(uint32_t));
+			bool cacheVerified = false;
+			if (Filesystem::Exists(cachePath))
+			{
+				std::string cachedHash = Filesystem::ReadText(cacheHashPath);
 
-			// Copy the data into the vector
-			memcpy(vec.data(), buffer.Data(), buffer.Size());
-			m_ShaderBytes[ShaderType::Vertex] = vec;
-		}
-		else
-		{
-			// Compile shader from shader source
-			Compile(ShaderType::Vertex, m_Specification.ShaderSources.at(ShaderType::Vertex));
+				if (cachedHash == hash)
+					cacheVerified = true;
+				else
+					EPPO_INFO("Triggered recompilation of shader due to hash mismatch: {}", filepath.string());
+			}
 
-			// Write cache
-			Filesystem::WriteBytes(vertexCachePath, m_ShaderBytes.at(ShaderType::Vertex));
-		}
+			if (cacheVerified)
+			{
+				// Read shader cache
+				ScopedBuffer buffer = Filesystem::ReadBytes(cachePath);
 
-		if (std::filesystem::exists(fragmentCachePath))
-		{
-			// Load shader byte code from cache
-			ScopedBuffer buffer = Filesystem::ReadBytes(fragmentCachePath);
+				// Since the buffer size is 1 byte aligned and a uint32_t is 4 bytes, we only need a quarter of the size
+				std::vector<uint32_t> vec(buffer.Size() / sizeof(uint32_t));
 
-			// Since the buffer size is 1 byte aligned and a uint32_t is 4 bytes, we only need a quarter of the size
-			std::vector<uint32_t> vec(buffer.Size() / sizeof(uint32_t));
+				// Copy the data into the vector
+				memcpy(vec.data(), buffer.Data(), buffer.Size());
+				m_ShaderBytes[type] = vec;
+			} else 
+			{
+				// Compile shader
+				Compile(type, shaderSource, filepath.string());
 
-			// Copy the data into the vector
-			memcpy(vec.data(), buffer.Data(), buffer.Size());
-			m_ShaderBytes[ShaderType::Fragment] = vec;
-		}
-		else
-		{
-			// Compile shader from shader source
-			Compile(ShaderType::Fragment, m_Specification.ShaderSources.at(ShaderType::Fragment));
+				// Write shader cache
+				Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(type));
 
-			// Write cache
-			Filesystem::WriteBytes(fragmentCachePath, m_ShaderBytes.at(ShaderType::Fragment));
+				// Write shader hash
+				Filesystem::WriteText(cacheHashPath, hash);
+			}
 		}
 
 		m_ShaderResources[0] = {};
@@ -139,16 +130,8 @@ namespace Eppo
 		return m_DescriptorSetLayouts.at(set);
 	}
 
-	void Shader::Compile(ShaderType type, const std::filesystem::path& filepath)
+	std::string Shader::ReadShaderFile(const std::filesystem::path& filepath)
 	{
-		EPPO_PROFILE_FUNCTION("Shader::Compile");
-
-		shaderc::Compiler compiler;
-		shaderc::CompileOptions options;
-		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
-		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
-
-		// Read shader source
 		std::ifstream stream(filepath, std::ios::binary | std::ios::in);
 		EPPO_ASSERT(stream);
 
@@ -164,10 +147,22 @@ namespace Eppo
 			stream.read(&shaderSource[0], shaderSource.size());
 		}
 
-		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(shaderSource, Utils::ShaderTypeToShaderCKind(type), filepath.string().c_str(), options);
+		return shaderSource;
+	}
+
+	void Shader::Compile(ShaderType type, const std::string& shaderSource, const std::string& filename)
+	{
+		EPPO_PROFILE_FUNCTION("Shader::Compile");
+
+		shaderc::Compiler compiler;
+		shaderc::CompileOptions options;
+		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
+
+		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(shaderSource, Utils::ShaderTypeToShaderCKind(type), filename.c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
-			EPPO_ERROR("Failed to compile shader with path: {}", filepath.string());
+			EPPO_ERROR("Failed to compile shader with filename: {}", filename);
 			EPPO_ERROR(result.GetErrorMessage());
 			EPPO_ASSERT(false);
 		}

@@ -24,13 +24,15 @@ project "EppoTesting"
         "Source",
         "%{wks.location}/EppoEngine/Source",
 
+		-- TODO: Remove some of the dependencies here
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.glm}",
         "%{IncludeDir.googletest}",
 		"%{IncludeDir.imgui}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.tracy}",
-		"%{IncludeDir.vulkan}"
+		"%{IncludeDir.vulkan}",
+		"%{IncludeDir.vma}"
     }
 
     links {
