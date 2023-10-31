@@ -12,4 +12,5 @@
 
 # Cache
 *.shadercache
+*.hash
 __pycache__
