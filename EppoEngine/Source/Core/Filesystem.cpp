@@ -71,10 +71,11 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Filesystem::ReadText");
 
-		std::ifstream stream(filepath, std::ios::binary | std::ios::in);
-		EPPO_ASSERT(stream);
-
 		std::string text;
+
+		std::ifstream stream(filepath, std::ios::binary | std::ios::in);
+		if (!stream)
+			return text;
 
 		stream.seekg(0, std::ios::end);
 		size_t size = stream.tellg();

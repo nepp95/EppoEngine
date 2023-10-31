@@ -21,7 +21,6 @@ namespace Eppo
 
 		// Generate hash
 		uint64_t hash = fnvOffsetBasis;
-		uint64_t* hashPtr = &hash;
 		for (uint32_t i = 0; i < buffer.Size; i++)
 		{
 			hash ^= *buffer.Data++;
