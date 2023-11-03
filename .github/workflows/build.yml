@@ -8,11 +8,35 @@ on:
     branches: [ master, develop ]
 
 jobs:
-  build:
+  build-debug:
+    name: "Build"
     runs-on: [ self-hosted, windows ]
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Setup Premake
+        if: steps.premake-cache.outputs.cache-hit != 'true'
+        uses: abel0b/setup-premake@v2.3
+        with:
+          version: "5.0.0-beta2"
+          path: Vendor/Premake/Bin
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.3.1
+      
+      - name: Run Premake
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: Vendor/Premake/Bin/Premake5.exe vs2022
+      
+      - name: Build (Debug)
+        run: msbuild /m /p:Configuration=Debug EppoEngine.sln
+      
+      - name: Build (Release)
+        run: msbuild /m /p:Configuration=Release EppoEngine.sln
+      
+      - name: Build (Dist)
+        run: msbuild /m /p:Configuration=Dist EppoEngine.sln
