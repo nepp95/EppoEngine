@@ -11,10 +11,6 @@
 	#define EPPO_ENABLE_PROFILING
 #endif
 
-#if defined(EPPO_TESTING)
-	#undef EPPO_ENABLE_PROFILING
-#endif
-
 #include <Debug/Profiler.h>
 
 #define BIT(x) (1 << x)
