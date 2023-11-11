@@ -22,6 +22,9 @@ namespace Eppo
 		// Set working directory
 		if (!m_Specification.WorkingDirectory.empty())
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
+		
+		// Create profiler
+		m_Profiler = CreateRef<Profiler>();
 
 		// Create window
 		WindowSpecification windowSpec;

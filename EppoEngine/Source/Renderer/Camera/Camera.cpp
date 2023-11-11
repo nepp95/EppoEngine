@@ -17,6 +17,8 @@ namespace Eppo
 
 	void Camera::OnUpdate(float timestep)
 	{
+		EPPO_PROFILE_FN("CPU Update", "Camera Update");
+
 		float cameraSpeed = timestep;
 
 		if (Input::IsKeyPressed(Key::LeftAlt))

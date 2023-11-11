@@ -134,10 +134,29 @@ namespace Eppo
 		// Panels
 		m_PanelManager.RenderGui();
 
-		// Settings
-		ImGui::Begin("Settings");
-		ImGui::Text("Here I will put settings... Sometime... Never...");
-		ImGui::End(); // Settings
+		// Performance
+		ImGui::Begin("Performance");
+		
+		const auto& profileData = Application::Get().GetProfiler()->GetProfileData();
+		for (const auto& [category, results] : profileData)
+		{
+			ImGui::Text("%s", category.c_str());
+
+			std::chrono::microseconds totalCategoryTime = std::chrono::microseconds::zero();
+
+			for (const auto& [tag, time] : results)
+			{
+				ImGui::Text("  %s: %.3fms", tag.c_str(), time.count() / 1000.0f);
+				totalCategoryTime += time;
+			}
+
+			ImGui::Text("Total time: %.3fms", totalCategoryTime.count() / 1000.0f);
+			ImGui::Separator();
+		}
+
+		Application::Get().GetProfiler()->Clear();
+
+		ImGui::End(); // Performance
 
 		ImGui::End(); // DockSpace
 	}
