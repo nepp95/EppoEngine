@@ -57,6 +57,17 @@ namespace Eppo
 		};
 		CameraData CameraBuffer;
 		Ref<UniformBuffer> CameraUniformBuffer;
+
+		// Stats
+		uint32_t QueryIndex2D = UINT32_MAX;
+		uint32_t QueryIndexGeometry = UINT32_MAX;
+
+		struct GPUTimings
+		{
+			float Render2D = 0.0f;
+			float RenderGeometry = 0.0f;
+		};
+		GPUTimings GPUTimes;
 	};
 
 	static RendererData* s_Data;
@@ -210,8 +221,6 @@ namespace Eppo
 
 			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
 
-			EPPO_PROFILE_GPU(context->GetCurrentProfilerContext(), commandBuffer, "Quads");
-
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderArea.offset = { 0, 0 };
@@ -243,9 +252,6 @@ namespace Eppo
 
 			VkCommandBuffer commandBuffer = s_Data->CommandBuffer->GetCurrentCommandBuffer();
 			vkCmdEndRenderPass(commandBuffer);
-
-			Ref<RendererContext> context = RendererContext::Get();
-			EPPO_PROFILE_GPU_END(context->GetCurrentProfilerContext(), commandBuffer);
 		});
 	}
 
@@ -273,7 +279,11 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Flush");
 
+		s_Data->QueryIndex2D = UINT32_MAX;
+		s_Data->QueryIndexGeometry = UINT32_MAX;
+
 		s_Data->CommandBuffer->Begin();
+		s_Data->QueryIndex2D = s_Data->CommandBuffer->BeginTimestampQuery();
 
 		// Quads
 		BeginRenderPass(s_Data->CommandBuffer, s_Data->GeometryPipeline->GetSpecification().Framebuffer);
@@ -360,14 +370,15 @@ namespace Eppo
 
 		EndRenderPass();
 
+		s_Data->CommandBuffer->EndTimestampQuery(s_Data->QueryIndex2D);
+
 		s_Data->CommandBuffer->End();
 		s_Data->CommandBuffer->Submit();
 
-		SubmitCommand([]()
-		{
-			s_Data->GeometryDrawList.clear();
-			s_Data->GeometryTransformData.clear();
-		});
+		s_Data->GeometryDrawList.clear();
+		s_Data->GeometryTransformData.clear();
+
+		UpdateStatistics();
 	}
 
 	void Renderer::BeginScene(const EditorCamera& camera)
@@ -419,6 +430,11 @@ namespace Eppo
 	Ref<DescriptorLayoutCache> Renderer::GetDescriptorLayoutCache()
 	{
 		return s_Data->DescriptorCache;
+	}
+
+	void Renderer::UpdateStatistics()
+	{
+
 	}
 
 	void Renderer::DrawQuad(const glm::vec2& position, const glm::vec4& color)

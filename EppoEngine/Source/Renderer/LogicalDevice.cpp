@@ -31,6 +31,11 @@ namespace Eppo
 		queueCreateInfos.push_back(graphicsQueueCreateInfo);
 
 		VkPhysicalDeviceFeatures deviceFeatures = m_PhysicalDevice->GetDeviceFeatures();
+		
+		VkPhysicalDeviceHostQueryResetFeatures resetFeatures{};
+		resetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES;
+		resetFeatures.hostQueryReset = VK_TRUE;
+		resetFeatures.pNext = nullptr;
 
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -39,6 +44,7 @@ namespace Eppo
 		createInfo.pEnabledFeatures = &deviceFeatures;
 		createInfo.enabledExtensionCount = (uint32_t)VulkanConfig::DeviceExtensions.size();
 		createInfo.ppEnabledExtensionNames = VulkanConfig::DeviceExtensions.data();
+		createInfo.pNext = &resetFeatures;
 		if (VulkanConfig::EnableValidation)
 		{
 			createInfo.enabledLayerCount = (uint32_t)VulkanConfig::ValidationLayers.size();

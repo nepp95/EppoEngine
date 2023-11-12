@@ -48,6 +48,9 @@ namespace Eppo
 		static Ref<DescriptorAllocator> GetDescriptorAllocator();
 		static Ref<DescriptorLayoutCache> GetDescriptorLayoutCache();
 
+		// Statistics
+		static void UpdateStatistics();
+
 		// Primitives
 		static void DrawQuad(const glm::vec2& position, const glm::vec4& color = glm::vec4(1.0f));
 		static void DrawQuad(const glm::vec3& position, const glm::vec4& color = glm::vec4(1.0f));
