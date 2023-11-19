@@ -9,6 +9,7 @@
 namespace Eppo
 {
 	class Entity;
+	class SceneRenderer;
 
 	class Scene
 	{
@@ -18,6 +19,7 @@ namespace Eppo
 
 		void OnUpdate(float timestep);
 		void Render(const EditorCamera& editorCamera);
+		void RenderEditor(const Ref<SceneRenderer>& sceneRenderer);
 
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);

@@ -5,6 +5,7 @@
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Material.h"
 #include "Renderer/Mesh/Mesh.h"
+#include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Texture.h"
@@ -20,13 +21,11 @@ namespace Eppo
 		static void Init();
 		static void Shutdown();
 
-		// Frames
-		static void BeginFrame();
-		static void EndFrame();
-
 		// Render pass
 		static void BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Framebuffer> framebuffer, VkSubpassContents flags = VK_SUBPASS_CONTENTS_INLINE);
 		static void EndRenderPass();
+
+		static void BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline);
 
 		// Batch
 		static void StartBatch();
@@ -69,6 +68,20 @@ namespace Eppo
 		static void SubmitGeometry(const glm::vec3& position, MeshComponent& mc);
 		static void SubmitGeometry(const glm::mat4& transform, MeshComponent& mc);
 
+		static void RenderGeometry(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, const Ref<Mesh>& mesh);
+
 		static void DrawGeometry(Ref<Mesh> mesh);
+
+	private:
+		RenderCommandQueue m_CommandQueue;
+
+		// Descriptors
+		Ref<DescriptorAllocator> m_DescriptorAllocator;
+		Ref<DescriptorLayoutCache> m_DescriptorLayoutCache;
+
+		// Textures
+		Ref<Texture> m_WhiteTexture;
+		std::array<Ref<Texture>, 32> m_TextureSlots;
+		uint32_t m_TextureSlotIndex = 1;
 	};
 }

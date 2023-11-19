@@ -58,10 +58,6 @@ namespace Eppo
 		CameraData CameraBuffer;
 		Ref<UniformBuffer> CameraUniformBuffer;
 
-		// Stats
-		uint32_t QueryIndex2D = UINT32_MAX;
-		uint32_t QueryIndexGeometry = UINT32_MAX;
-
 		struct GPUTimings
 		{
 			float Render2D = 0.0f;
@@ -192,24 +188,6 @@ namespace Eppo
 		delete s_Data;
 	}
 
-	void Renderer::BeginFrame()
-	{
-		SubmitCommand([]()
-		{
-			EPPO_PROFILE_FUNCTION("Renderer::BeginFrame");
-
-			//s_Data->DescriptorAllocator->ResetPools();
-		});
-	}
-
-	void Renderer::EndFrame()
-	{
-		SubmitCommand([]()
-		{
-			EPPO_PROFILE_FUNCTION("Renderer::EndFrame");
-		});
-	}
-
 	void Renderer::BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Framebuffer> framebuffer, VkSubpassContents flags)
 	{
 		SubmitCommand([renderCommandBuffer, framebuffer, flags]()
@@ -241,6 +219,27 @@ namespace Eppo
 			}
 
 			vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, flags);
+		});
+	}
+
+	void Renderer::BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline)
+	{
+		SubmitCommand([commandBuffer, pipeline]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+
+			Ref<Framebuffer> framebuffer = pipeline->GetSpecification().Framebuffer;
+
+			VkRenderPassBeginInfo renderPassInfo{};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo.renderArea.offset = { 0, 0 };
+			renderPassInfo.renderArea.extent = framebuffer->GetExtent();
+			renderPassInfo.framebuffer = framebuffer->GetFramebuffer();
+			renderPassInfo.clearValueCount = framebuffer->GetClearValues().size();
+			renderPassInfo.pClearValues = framebuffer->GetClearValues().data();
+
+			vkCmdBeginRenderPass(commandBuffer->GetCurrentCommandBuffer(), &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
 		});
 	}
 
@@ -581,6 +580,38 @@ namespace Eppo
 
 		s_Data->GeometryDrawList[mesh->Handle] = mesh;
 		s_Data->GeometryTransformData[mesh->Handle] = transform;
+	}
+
+	void Renderer::RenderGeometry(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, const Ref<Mesh>& mesh)
+	{
+		SubmitCommand([commandBuffer, pipeline, mesh]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+
+			VkCommandBuffer vulkanCommandBuffer = commandBuffer->GetCurrentCommandBuffer();
+			
+			// Pipeline
+			vkCmdBindPipeline(vulkanCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
+			
+			// Descriptor sets
+			for (const auto& submesh : mesh->GetSubmeshes())
+			{
+				// Vertex buffer Mesh
+				VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
+				vkCmdBindVertexBuffers(vulkanCommandBuffer, 0, 1, &vb, 0);
+
+				// Index buffer
+				Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
+				vkCmdBindIndexBuffer(vulkanCommandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+				// Push constants
+				vkCmdPushConstants(vulkanCommandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float), &mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
+
+				// Draw call
+				vkCmdDrawIndexed(vulkanCommandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
+			}
+		});
 	}
 
 	void Renderer::DrawGeometry(Ref<Mesh> mesh)

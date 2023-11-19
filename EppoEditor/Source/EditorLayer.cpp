@@ -18,13 +18,17 @@ namespace Eppo
 
 	void EditorLayer::OnAttach()
 	{
+		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 
+		// Open scene
 		OpenScene("Resources/Scenes/test.epposcene");
+
+		m_ViewportRenderer = CreateScope<SceneRenderer>(m_ActiveScene, RenderSpecification());
 	}
 	
 	void EditorLayer::OnDetach()

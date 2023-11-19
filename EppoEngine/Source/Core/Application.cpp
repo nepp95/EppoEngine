@@ -140,17 +140,11 @@ namespace Eppo
 				{
 					EPPO_PROFILE_FUNCTION("CPU Prepare Render");
 
-					// 1. Start command buffer
-					Renderer::BeginFrame();
-
 					// 2. Record commands
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
 
 					Renderer::SubmitCommand([this]() { RenderGui();	});
-
-					// 3. End command buffer
-					Renderer::EndFrame();
 				}
 				{
 					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)

@@ -3,6 +3,7 @@
 
 #include "Asset/AssetManager.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/SceneRenderer.h"
 #include "Scene/Entity.h"
 
 namespace Eppo
@@ -42,6 +43,27 @@ namespace Eppo
 		}
 
 		Renderer::EndScene();
+	}
+
+	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer)
+	{
+		sceneRenderer->BeginScene();
+
+		{
+			auto view = m_Registry.view<MeshComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
+				if (meshC.MeshHandle)
+				{
+					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
+					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, (int)entity);
+				}
+			}
+		}
+
+		sceneRenderer->EndScene();
 	}
 
 	Entity Scene::CreateEntity(const std::string& name)

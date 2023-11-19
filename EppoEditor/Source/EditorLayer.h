@@ -32,6 +32,8 @@ namespace Eppo
 
 	private:
 		// Scene
+		Scope<SceneRenderer> m_ViewportRenderer;
+
 		Ref<Scene> m_ActiveScene;
 		std::filesystem::path m_ActiveScenePath;
 		EditorCamera m_EditorCamera;
