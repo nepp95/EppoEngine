@@ -11,6 +11,8 @@ namespace Eppo
 		VertexBuffer(void* data, uint32_t size);
 		VertexBuffer(uint32_t size);
 		~VertexBuffer();
+		VertexBuffer(const VertexBuffer&) = delete;
+		VertexBuffer& operator=(const VertexBuffer&) = delete;
 
 		void SetData(void* data, uint32_t size);
 

@@ -66,7 +66,7 @@ namespace Eppo
 			binding.binding = resource.Binding;
 			binding.descriptorCount = resource.ArraySize == 0 ? 1 : resource.ArraySize;
 			binding.descriptorType = Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType);
-			binding.stageFlags = Utils::ShaderTypeToVkShaderStage(resource.Type);
+			binding.stageFlags = Utils::ShaderStageToVkShaderStage(resource.Type);
 			binding.pImmutableSamplers = nullptr;
 
 			bindings.push_back(binding);

@@ -58,12 +58,7 @@ namespace Eppo
 		CameraData CameraBuffer;
 		Ref<UniformBuffer> CameraUniformBuffer;
 
-		struct GPUTimings
-		{
-			float Render2D = 0.0f;
-			float RenderGeometry = 0.0f;
-		};
-		GPUTimings GPUTimes;
+		Scope<ShaderLibrary> ShaderLibrary;
 	};
 
 	static RendererData* s_Data;
@@ -80,13 +75,9 @@ namespace Eppo
 		s_Data->DescriptorAllocator = CreateRef<DescriptorAllocator>();
 		s_Data->DescriptorCache = CreateRef<DescriptorLayoutCache>();
 		s_Data->CommandBuffer = CreateRef<RenderCommandBuffer>();
+		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
 
-		// Quad
-		ShaderSpecification quadShaderSpec;
-		quadShaderSpec.ShaderSources = {
-			{ ShaderType::Vertex, "Resources/Shaders/quad.vert" },
-			{ ShaderType::Fragment, "Resources/Shaders/quad.frag" },
-		};
+		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
 
 		FramebufferSpecification framebufferSpec;
 		framebufferSpec.Attachments = { ImageFormat::RGBA8, ImageFormat::Depth };
@@ -95,64 +86,9 @@ namespace Eppo
 		framebufferSpec.Clear = true;
 		framebufferSpec.ClearColor = { 0.4f, 0.4f, 0.4f, 1.0f };
 
-		PipelineSpecification quadPipelineSpec;
-		quadPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-		quadPipelineSpec.Shader = CreateRef<Shader>(quadShaderSpec, s_Data->DescriptorCache);
-		quadPipelineSpec.Layout = {
-			{ ShaderDataType::Float3, "inPosition" },
-			{ ShaderDataType::Float4, "inColor" },
-			{ ShaderDataType::Float2, "inTexCoord" },
-			{ ShaderDataType::Float,  "inTexIndex" },
-		};
-		quadPipelineSpec.PushConstants = {
-			{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
-		};
-
-		s_Data->QuadPipeline = CreateRef<Pipeline>(quadPipelineSpec);
-
-		// Vertex buffer
-		s_Data->QuadVertexBuffer = CreateRef<VertexBuffer>(sizeof(Vertex) * RendererData::MaxVertices);
-		s_Data->QuadVertexBufferBase = new Vertex[RendererData::MaxVertices];
-
-		s_Data->QuadVertexPositions[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
-		s_Data->QuadVertexPositions[1] = {  0.5f, -0.5f, 0.0f, 1.0f };
-		s_Data->QuadVertexPositions[2] = {  0.5f,  0.5f, 0.0f, 1.0f };
-		s_Data->QuadVertexPositions[3] = { -0.5f,  0.5f, 0.0f, 1.0f };
-
-		s_Data->QuadVertexTexCoords[0] = { 0.0f, 0.0f };
-		s_Data->QuadVertexTexCoords[1] = { 1.0f, 0.0f };
-		s_Data->QuadVertexTexCoords[2] = { 1.0f, 1.0f };
-		s_Data->QuadVertexTexCoords[3] = { 0.0f, 1.0f };
-
-		// Index buffer
-		uint32_t* quadIndices = new uint32_t[RendererData::MaxIndices];
-		uint32_t offset = 0;
-		for (uint32_t i = 0; i < RendererData::MaxIndices; i += 6)
-		{
-			quadIndices[i + 0] = offset + 2;
-			quadIndices[i + 1] = offset + 1;
-			quadIndices[i + 2] = offset + 0;
-
-			quadIndices[i + 3] = offset + 0;
-			quadIndices[i + 4] = offset + 3;
-			quadIndices[i + 5] = offset + 2;
-
-			offset += 4;
-		}
-
-		s_Data->QuadIndexBuffer = CreateRef<IndexBuffer>((void*)quadIndices, RendererData::MaxIndices);
-		delete[] quadIndices;
-		
-		// Geometry Pipeline
-		ShaderSpecification geometryShaderSpec;
-		geometryShaderSpec.ShaderSources = {
-			{ ShaderType::Vertex, "Resources/Shaders/geometry.vert" },
-			{ ShaderType::Fragment, "Resources/Shaders/geometry.frag" },
-		};
-
 		PipelineSpecification geometryPipelineSpec;
 		geometryPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-		geometryPipelineSpec.Shader = CreateRef<Shader>(geometryShaderSpec, s_Data->DescriptorCache);
+		geometryPipelineSpec.Shader = s_Data->ShaderLibrary->Get("geometry");
 		geometryPipelineSpec.Layout = {
 			{ ShaderDataType::Float3, "inPosition" },
 			{ ShaderDataType::Float3, "inNormal" },
@@ -171,11 +107,8 @@ namespace Eppo
 		s_Data->WhiteTexture = CreateRef<Texture>(1, 1, ImageFormat::RGBA8, &whiteTextureData);
 		s_Data->TextureSlots[0] = s_Data->WhiteTexture;
 
-		// Materials
-		s_Data->QuadMaterial = CreateRef<Material>(quadPipelineSpec.Shader);
-
 		// Camera
-		s_Data->CameraUniformBuffer = CreateRef<UniformBuffer>(quadPipelineSpec.Shader, sizeof(RendererData::CameraBuffer));
+		s_Data->CameraUniformBuffer = CreateRef<UniformBuffer>(geometryPipelineSpec.Shader, sizeof(RendererData::CameraBuffer));
 	}
 
 	void Renderer::Shutdown()
@@ -222,9 +155,9 @@ namespace Eppo
 		});
 	}
 
-	void Renderer::BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline)
+	void Renderer::BeginRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline)
 	{
-		SubmitCommand([commandBuffer, pipeline]()
+		SubmitCommand([renderCommandBuffer, pipeline]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
@@ -236,20 +169,21 @@ namespace Eppo
 			renderPassInfo.renderArea.offset = { 0, 0 };
 			renderPassInfo.renderArea.extent = framebuffer->GetExtent();
 			renderPassInfo.framebuffer = framebuffer->GetFramebuffer();
+			renderPassInfo.renderPass = framebuffer->GetRenderPass();
 			renderPassInfo.clearValueCount = framebuffer->GetClearValues().size();
 			renderPassInfo.pClearValues = framebuffer->GetClearValues().data();
 
-			vkCmdBeginRenderPass(commandBuffer->GetCurrentCommandBuffer(), &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBeginRenderPass(renderCommandBuffer->GetCurrentCommandBuffer(), &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
 		});
 	}
 
-	void Renderer::EndRenderPass()
+	void Renderer::EndRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer)
 	{
-		SubmitCommand([]()
+		SubmitCommand([renderCommandBuffer]()
 		{
 			EPPO_PROFILE_FUNCTION("Renderer::EndRenderPass");
 
-			VkCommandBuffer commandBuffer = s_Data->CommandBuffer->GetCurrentCommandBuffer();
+			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
 			vkCmdEndRenderPass(commandBuffer);
 		});
 	}
@@ -273,16 +207,11 @@ namespace Eppo
 		StartBatch();
 	}
 
-
 	void Renderer::Flush()
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Flush");
 
-		s_Data->QueryIndex2D = UINT32_MAX;
-		s_Data->QueryIndexGeometry = UINT32_MAX;
-
 		s_Data->CommandBuffer->Begin();
-		s_Data->QueryIndex2D = s_Data->CommandBuffer->BeginTimestampQuery();
 
 		// Quads
 		BeginRenderPass(s_Data->CommandBuffer, s_Data->GeometryPipeline->GetSpecification().Framebuffer);
@@ -367,9 +296,7 @@ namespace Eppo
 		for (auto& [handle, mesh] : s_Data->GeometryDrawList)
 			Renderer::DrawGeometry(mesh);
 
-		EndRenderPass();
-
-		s_Data->CommandBuffer->EndTimestampQuery(s_Data->QueryIndex2D);
+		EndRenderPass(s_Data->CommandBuffer);
 
 		s_Data->CommandBuffer->End();
 		s_Data->CommandBuffer->Submit();
@@ -419,6 +346,11 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Renderer::SubmitCommand");
 
 		s_Data->CommandQueue.AddCommand(command);
+	}
+
+	Ref<Shader> Renderer::GetShader(const std::string& name)
+	{
+		return s_Data->ShaderLibrary->Get(name);
 	}
 
 	Ref<DescriptorAllocator> Renderer::GetDescriptorAllocator()
@@ -593,13 +525,41 @@ namespace Eppo
 			
 			// Pipeline
 			vkCmdBindPipeline(vulkanCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
+
+			VkExtent2D extent = swapchain->GetExtent();
+
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = (float)extent.width;
+			viewport.height = (float)extent.height;
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+			vkCmdSetViewport(vulkanCommandBuffer, 0, 1, &viewport);
+
+			VkRect2D scissor{};
+			scissor.offset = { 0, 0 };
+			scissor.extent = extent;
+			vkCmdSetScissor(vulkanCommandBuffer, 0, 1, &scissor);
+
+			VkDescriptorSet descriptorSet = s_Data->CameraUniformBuffer->GetCurrentDescriptorSet();
+			vkCmdBindDescriptorSets(
+				vulkanCommandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				s_Data->GeometryPipeline->GetPipelineLayout(),
+				1,
+				1,
+				&descriptorSet,
+				0,
+				nullptr
+			);
 			
-			// Descriptor sets
 			for (const auto& submesh : mesh->GetSubmeshes())
 			{
 				// Vertex buffer Mesh
 				VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
-				vkCmdBindVertexBuffers(vulkanCommandBuffer, 0, 1, &vb, 0);
+				VkDeviceSize offsets[] = { 0 };
+				vkCmdBindVertexBuffers(vulkanCommandBuffer, 0, 1, &vb, offsets);
 
 				// Index buffer
 				Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();

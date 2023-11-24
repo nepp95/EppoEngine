@@ -11,6 +11,5 @@
 /Vendor/Premake
 
 # Cache
-*.shadercache
-*.hash
+/EppoEditor/Resources/Shaders/Cache
 __pycache__

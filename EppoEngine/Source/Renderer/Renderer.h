@@ -8,6 +8,7 @@
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
+#include "Renderer/ShaderLibrary.h"
 #include "Renderer/Texture.h"
 #include "Scene/Components.h"
 
@@ -23,9 +24,9 @@ namespace Eppo
 
 		// Render pass
 		static void BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Framebuffer> framebuffer, VkSubpassContents flags = VK_SUBPASS_CONTENTS_INLINE);
-		static void EndRenderPass();
+		static void EndRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer);
 
-		static void BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline);
+		static void BeginRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline);
 
 		// Batch
 		static void StartBatch();
@@ -42,6 +43,9 @@ namespace Eppo
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
+
+		// Shaders
+		static Ref<Shader> GetShader(const std::string& name);
 
 		// Descriptor Sets
 		static Ref<DescriptorAllocator> GetDescriptorAllocator();
@@ -74,10 +78,6 @@ namespace Eppo
 
 	private:
 		RenderCommandQueue m_CommandQueue;
-
-		// Descriptors
-		Ref<DescriptorAllocator> m_DescriptorAllocator;
-		Ref<DescriptorLayoutCache> m_DescriptorLayoutCache;
 
 		// Textures
 		Ref<Texture> m_WhiteTexture;

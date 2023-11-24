@@ -58,7 +58,7 @@ namespace Eppo
 				if (meshC.MeshHandle)
 				{
 					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
-					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, (int)entity);
+					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
 				}
 			}
 		}

@@ -7,6 +7,7 @@
 namespace Eppo
 {
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
+		: m_RenderSpecification(renderSpecification)
 	{
 		Ref<RendererContext> context = RendererContext::Get();
 		Ref<Swapchain> swapchain = context->GetSwapchain();
@@ -22,16 +23,9 @@ namespace Eppo
 		framebufferSpec.Clear = true;
 		framebufferSpec.ClearColor = { 0.4f, 0.4f, 0.4f, 1.0f };
 
-		// TODO: Load from shader library in renderer
-		ShaderSpecification geometryShaderSpec;
-		geometryShaderSpec.ShaderSources = {
-			{ ShaderType::Vertex, "Resources/Shaders/geometry.vert" },
-			{ ShaderType::Fragment, "Resources/Shaders/geometry.frag" },
-		};
-
 		PipelineSpecification geometryPipelineSpec;
 		geometryPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-		geometryPipelineSpec.Shader = CreateRef<Shader>(geometryShaderSpec, s_Data->DescriptorCache); // Solution: Create shader descriptor sets. One pool per shader. Investigation needed
+		geometryPipelineSpec.Shader = Renderer::GetShader("geometry");
 		geometryPipelineSpec.Layout = {
 			{ ShaderDataType::Float3, "inPosition" },
 			{ ShaderDataType::Float3, "inNormal" },
@@ -49,12 +43,14 @@ namespace Eppo
 		m_CameraUniformBuffer = CreateRef<UniformBuffer>(geometryPipelineSpec.Shader, sizeof(CameraData));
 
 		// Vertex buffer
+		m_TransformBuffers.resize(VulkanConfig::MaxFramesInFlight);
 		//m_VertexBuffer = CreateRef<VertexBuffer>(sizeof(glm::mat4) * 1000);
 	}
 
 	void SceneRenderer::BeginScene()
 	{
 		// Prepare scene rendering
+		m_DrawList.clear(); // TODO: Do this at flush or begin scene?
 	}
 
 	void SceneRenderer::EndScene()
@@ -82,20 +78,20 @@ namespace Eppo
 		for (auto& [entity, dc] : m_DrawList)
 			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, dc.Mesh);
 
-		Renderer::EndRenderPass();
+		Renderer::EndRenderPass(m_CommandBuffer);
 
 		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.GeometryQuery);
 
 		m_CommandBuffer->End();
 		m_CommandBuffer->Submit();
-
-		// Clear drawlist and update stats
-		m_DrawList.clear();
 	}
 
 	void SceneRenderer::PrepareRender()
 	{
 		// Fill transform buffer
+		if (!m_DrawList.size())
+			return;
+
 		glm::mat4* buffer = new glm::mat4[m_DrawList.size()];
 
 		for (auto& [entity, dc] : m_DrawList)
@@ -109,7 +105,7 @@ namespace Eppo
 			Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
 			uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-			m_TransformBuffers[imageIndex]->SetData((void*)buffer, m_DrawList.size() * sizeof(glm::mat4));
+			m_TransformBuffers[imageIndex] = CreateRef<VertexBuffer>((void*)buffer, m_DrawList.size() * sizeof(glm::mat4));
 		});
 	}
 }

@@ -28,7 +28,7 @@ namespace Eppo
 		// Open scene
 		OpenScene("Resources/Scenes/test.epposcene");
 
-		m_ViewportRenderer = CreateScope<SceneRenderer>(m_ActiveScene, RenderSpecification());
+		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
 	}
 	
 	void EditorLayer::OnDetach()
@@ -44,7 +44,9 @@ namespace Eppo
 	
 	void EditorLayer::Render()
 	{
-		m_ActiveScene->Render(m_EditorCamera);
+		//m_ActiveScene->Render(m_EditorCamera);
+
+		m_ActiveScene->RenderEditor(m_ViewportRenderer);
 	}
 
 	void EditorLayer::RenderGui()
