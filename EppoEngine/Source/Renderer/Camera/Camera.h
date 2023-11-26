@@ -25,7 +25,7 @@ namespace Eppo
 		glm::mat4 m_ViewMatrix;
 		glm::mat4 m_ProjectionMatrix = glm::mat4(1.0f);
 		
-		glm::vec3 m_Position = { 0.0f, 0.0f, 3.0f };
+		glm::vec3 m_Position = { 0.0f, 0.0f, 10.0f };
 		glm::vec3 m_Direction = { 0.0f, 0.0f, 0.0f };
 
 		glm::vec3 m_FrontDirection = { 0.0f, 0.0f, -1.0f };
@@ -35,7 +35,5 @@ namespace Eppo
 		float m_Pitch = 0.0f;
 
 		glm::vec2 m_MousePosition = { 0.0f, 0.0f };
-
-		float timeTest = 0.0f;
 	};
 }

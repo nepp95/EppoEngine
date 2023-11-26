@@ -18,14 +18,6 @@ namespace Eppo
 	{
 		float cameraSpeed = timestep * 2.0f;
 
-		if (timeTest >= 1.0f)
-		{
-			EPPO_INFO("Camera position: {}", m_Position);
-			EPPO_INFO("Camera direction: {}", m_Direction);
-			timeTest = 0.0f;
-		}
-		timeTest += timestep;
-
 		if (Input::IsKeyPressed(Key::LeftAlt))
 		{
 			glm::vec2 mousePosition = Input::GetMousePosition();
