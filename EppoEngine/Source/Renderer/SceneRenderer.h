@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Buffer/UniformBuffer.h"
+#include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
@@ -30,10 +31,12 @@ namespace Eppo
 	public:
 		SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification);
 
-		void BeginScene();
+		void BeginScene(const EditorCamera& editorCamera);
 		void EndScene();
 
-		void SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId);
+		Ref<Image> GetFinalPassImage();
+
+		void SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId);
 
 	private:
 		void Flush();
@@ -64,7 +67,7 @@ namespace Eppo
 		};
 		
 		std::map<EntityHandle, DrawCommand> m_DrawList;
-		std::vector<Ref<VertexBuffer>> m_TransformBuffers;
+		//std::vector<Ref<UniformBuffer>> m_TransformBuffers;
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;

@@ -3,7 +3,6 @@
 
 #include "Asset/AssetManager.h"
 #include "Renderer/Buffer/IndexBuffer.h"
-#include "Renderer/Buffer/UniformBuffer.h"
 #include "Renderer/Buffer/VertexBuffer.h"
 #include "Renderer/Descriptor/DescriptorBuilder.h"
 #include "Renderer/Pipeline.h"
@@ -173,7 +172,7 @@ namespace Eppo
 			renderPassInfo.clearValueCount = framebuffer->GetClearValues().size();
 			renderPassInfo.pClearValues = framebuffer->GetClearValues().data();
 
-			vkCmdBeginRenderPass(renderCommandBuffer->GetCurrentCommandBuffer(), &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBeginRenderPass(renderCommandBuffer->GetCurrentCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		});
 	}
 
@@ -327,11 +326,6 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Renderer::EndScene");
 
 		Flush();
-	}
-
-	Ref<Image> Renderer::GetFinalImage()
-	{
-		return s_Data->GeometryPipeline->GetSpecification().Framebuffer->GetFinalImage();
 	}
 
 	void Renderer::ExecuteRenderCommands()
@@ -514,17 +508,17 @@ namespace Eppo
 		s_Data->GeometryTransformData[mesh->Handle] = transform;
 	}
 
-	void Renderer::RenderGeometry(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, const Ref<Mesh>& mesh)
+	void Renderer::RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& cameraBuffer, const Ref<Mesh>& mesh, const glm::mat4& transform)
 	{
-		SubmitCommand([commandBuffer, pipeline, mesh]()
+		SubmitCommand([renderCommandBuffer, pipeline, cameraBuffer, mesh, transform]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
 
-			VkCommandBuffer vulkanCommandBuffer = commandBuffer->GetCurrentCommandBuffer();
+			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
 			
 			// Pipeline
-			vkCmdBindPipeline(vulkanCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
 
 			VkExtent2D extent = swapchain->GetExtent();
 
@@ -535,16 +529,16 @@ namespace Eppo
 			viewport.height = (float)extent.height;
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(vulkanCommandBuffer, 0, 1, &viewport);
+			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
 			VkRect2D scissor{};
 			scissor.offset = { 0, 0 };
 			scissor.extent = extent;
-			vkCmdSetScissor(vulkanCommandBuffer, 0, 1, &scissor);
+			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			VkDescriptorSet descriptorSet = s_Data->CameraUniformBuffer->GetCurrentDescriptorSet();
+			VkDescriptorSet descriptorSet = cameraBuffer->GetCurrentDescriptorSet();
 			vkCmdBindDescriptorSets(
-				vulkanCommandBuffer,
+				commandBuffer,
 				VK_PIPELINE_BIND_POINT_GRAPHICS,
 				s_Data->GeometryPipeline->GetPipelineLayout(),
 				1,
@@ -559,17 +553,18 @@ namespace Eppo
 				// Vertex buffer Mesh
 				VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
 				VkDeviceSize offsets[] = { 0 };
-				vkCmdBindVertexBuffers(vulkanCommandBuffer, 0, 1, &vb, offsets);
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
 				// Index buffer
 				Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
-				vkCmdBindIndexBuffer(vulkanCommandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 				// Push constants
-				vkCmdPushConstants(vulkanCommandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float), &mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
+				vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &transform);
+				vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float), &mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
 
 				// Draw call
-				vkCmdDrawIndexed(vulkanCommandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
+				vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
 			}
 		});
 	}

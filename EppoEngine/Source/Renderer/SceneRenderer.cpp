@@ -43,13 +43,17 @@ namespace Eppo
 		m_CameraUniformBuffer = CreateRef<UniformBuffer>(geometryPipelineSpec.Shader, sizeof(CameraData));
 
 		// Vertex buffer
-		m_TransformBuffers.resize(VulkanConfig::MaxFramesInFlight);
+		//m_TransformBuffers.resize(VulkanConfig::MaxFramesInFlight);
 		//m_VertexBuffer = CreateRef<VertexBuffer>(sizeof(glm::mat4) * 1000);
 	}
 
-	void SceneRenderer::BeginScene()
+	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
 		// Prepare scene rendering
+		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
+		m_CameraUniformBuffer->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+
+		// Cleanup from last draw
 		m_DrawList.clear(); // TODO: Do this at flush or begin scene?
 	}
 
@@ -58,7 +62,12 @@ namespace Eppo
 		Flush();
 	}
 
-	void SceneRenderer::SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId)
+	Ref<Image> SceneRenderer::GetFinalPassImage()
+	{
+		return m_GeometryPipeline->GetSpecification().Framebuffer->GetFinalImage();
+	}
+
+	void SceneRenderer::SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId)
 	{
 		auto& drawCommand = m_DrawList[entityId];
 		drawCommand.Mesh = mesh;
@@ -70,18 +79,16 @@ namespace Eppo
 		PrepareRender();
 
 		m_CommandBuffer->Begin();
-
 		m_TimestampQueries.GeometryQuery = m_CommandBuffer->BeginTimestampQuery();
 
 		Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
 
 		for (auto& [entity, dc] : m_DrawList)
-			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, dc.Mesh);
+			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_CameraUniformBuffer, dc.Mesh, dc.Transform);
 
 		Renderer::EndRenderPass(m_CommandBuffer);
 
 		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.GeometryQuery);
-
 		m_CommandBuffer->End();
 		m_CommandBuffer->Submit();
 	}
@@ -89,23 +96,23 @@ namespace Eppo
 	void SceneRenderer::PrepareRender()
 	{
 		// Fill transform buffer
-		if (!m_DrawList.size())
-			return;
+		//if (!m_DrawList.size())
+		//	return;
 
-		glm::mat4* buffer = new glm::mat4[m_DrawList.size()];
+		//glm::mat4* buffer = new glm::mat4[m_DrawList.size()];
 
-		for (auto& [entity, dc] : m_DrawList)
-		{
-			*buffer = dc.Transform;
-			buffer++;
-		}
-		
-		Renderer::SubmitCommand([this, buffer]()
-		{
-			Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-			uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+		//for (auto& [entity, dc] : m_DrawList)
+		//{
+		//	*buffer = dc.Transform;
+		//	buffer++;
+		//}
+		//
+		//Renderer::SubmitCommand([this, buffer]()
+		//{
+		//	Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
+		//	uint32_t imageIndex = swapchain->GetCurrentImageIndex();
 
-			m_TransformBuffers[imageIndex] = CreateRef<VertexBuffer>((void*)buffer, m_DrawList.size() * sizeof(glm::mat4));
-		});
+		//	m_TransformBuffers[imageIndex] = CreateRef<VertexBuffer>((void*)buffer, m_DrawList.size() * sizeof(glm::mat4));
+		//});
 	}
 }

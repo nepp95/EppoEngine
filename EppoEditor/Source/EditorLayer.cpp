@@ -13,7 +13,7 @@ namespace Eppo
 	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
 	EditorLayer::EditorLayer()
-		: Layer("EditorLayer"), m_EditorCamera(EditorCamera(30.0f, 1.778f)), m_PanelManager(PanelManager::Get())
+		: Layer("EditorLayer"), m_PanelManager(PanelManager::Get())
 	{}
 
 	void EditorLayer::OnAttach()
@@ -46,7 +46,7 @@ namespace Eppo
 	{
 		//m_ActiveScene->Render(m_EditorCamera);
 
-		m_ActiveScene->RenderEditor(m_ViewportRenderer);
+		m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
 	}
 
 	void EditorLayer::RenderGui()
@@ -133,7 +133,7 @@ namespace Eppo
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		UI::Image(m_ActiveScene->GetFinalImage(), ImGui::GetContentRegionAvail());
+		UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
 
 		ImGui::End(); // Viewport
 

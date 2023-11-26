@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Renderer/Descriptor/DescriptorBuilder.h"
+#include "Renderer/Buffer/UniformBuffer.h"
 #include "Renderer/Camera/EditorCamera.h"
+#include "Renderer/Descriptor/DescriptorBuilder.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Material.h"
 #include "Renderer/Mesh/Mesh.h"
@@ -37,9 +38,6 @@ namespace Eppo
 		static void BeginScene(const EditorCamera& camera);
 		static void EndScene();
 
-		// Final image
-		static Ref<Image> GetFinalImage();
-
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
@@ -72,7 +70,7 @@ namespace Eppo
 		static void SubmitGeometry(const glm::vec3& position, MeshComponent& mc);
 		static void SubmitGeometry(const glm::mat4& transform, MeshComponent& mc);
 
-		static void RenderGeometry(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, const Ref<Mesh>& mesh);
+		static void RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& cameraBuffer, const Ref<Mesh>& mesh, const glm::mat4& transform);
 
 		static void DrawGeometry(Ref<Mesh> mesh);
 

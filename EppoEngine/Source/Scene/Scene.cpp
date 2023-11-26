@@ -45,9 +45,9 @@ namespace Eppo
 		Renderer::EndScene();
 	}
 
-	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer)
+	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
 	{
-		sceneRenderer->BeginScene();
+		sceneRenderer->BeginScene(editorCamera);
 
 		{
 			auto view = m_Registry.view<MeshComponent, TransformComponent>();
@@ -93,12 +93,5 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
 
 		m_Registry.destroy(entity);
-	}
-
-	Ref<Image> Scene::GetFinalImage() const
-	{
-		EPPO_PROFILE_FUNCTION("Scene::GetFinalImage");
-
-		return Renderer::GetFinalImage();
 	}
 }

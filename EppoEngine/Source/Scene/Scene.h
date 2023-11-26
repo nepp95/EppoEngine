@@ -19,13 +19,11 @@ namespace Eppo
 
 		void OnUpdate(float timestep);
 		void Render(const EditorCamera& editorCamera);
-		void RenderEditor(const Ref<SceneRenderer>& sceneRenderer);
+		void RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera);
 
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);
 		void DestroyEntity(Entity entity);
-
-		Ref<Image> GetFinalImage() const;
 
 	private:
 		entt::registry m_Registry;
