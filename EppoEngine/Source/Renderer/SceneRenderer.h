@@ -31,6 +31,8 @@ namespace Eppo
 	public:
 		SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification);
 
+		void RenderGui();
+
 		void BeginScene(const EditorCamera& editorCamera);
 		void EndScene();
 
@@ -40,8 +42,6 @@ namespace Eppo
 
 	private:
 		void Flush();
-
-		void PrepareRender();
 
 	private:
 		RenderSpecification m_RenderSpecification;
@@ -67,7 +67,6 @@ namespace Eppo
 		};
 		
 		std::map<EntityHandle, DrawCommand> m_DrawList;
-		//std::vector<Ref<UniformBuffer>> m_TransformBuffers;
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;

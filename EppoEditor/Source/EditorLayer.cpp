@@ -141,8 +141,9 @@ namespace Eppo
 		m_PanelManager.RenderGui();
 
 		// Performance
-		ImGui::Begin("Performance");
-		
+		m_ViewportRenderer->RenderGui();
+		/*ImGui::Begin("Performance");
+
 		const auto& profileData = Application::Get().GetProfiler()->GetProfileData();
 		for (const auto& [category, results] : profileData)
 		{
@@ -162,7 +163,7 @@ namespace Eppo
 
 		Application::Get().GetProfiler()->Clear();
 
-		ImGui::End(); // Performance
+		ImGui::End();*/ // Performance
 
 		ImGui::End(); // DockSpace
 	}

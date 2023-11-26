@@ -4,6 +4,8 @@
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 
+#include <imgui.h>
+
 namespace Eppo
 {
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
@@ -47,6 +49,29 @@ namespace Eppo
 		//m_VertexBuffer = CreateRef<VertexBuffer>(sizeof(glm::mat4) * 1000);
 	}
 
+	void SceneRenderer::RenderGui()
+	{
+		ImGui::Begin("Performance");
+
+		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+
+		ImGui::Text("GPU Time: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex));
+		ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.GeometryQuery));
+
+		ImGui::Separator();
+
+		const auto& pipelineStats = m_CommandBuffer->GetPipelineStatistics(imageIndex);
+		ImGui::Text("Pipeline statistics:");
+		ImGui::Text("Input Assembly Vertices: %llu", pipelineStats.InputAssemblyVertices);
+		ImGui::Text("Input Assembly Primitives: %llu", pipelineStats.InputAssemblyPrimitives);
+		ImGui::Text("Vertex Shader Invocations: %llu", pipelineStats.VertexShaderInvocations);
+		ImGui::Text("Clipping Invocations: %llu", pipelineStats.ClippingInvocations);
+		ImGui::Text("Clipping Primitives: %llu", pipelineStats.ClippingPrimitives);
+		ImGui::Text("Fragment Shader Invocations: %llu", pipelineStats.FragmentShaderInvocations);
+
+		ImGui::End();
+	}
+
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
 		// Prepare scene rendering
@@ -76,8 +101,6 @@ namespace Eppo
 
 	void SceneRenderer::Flush()
 	{
-		PrepareRender();
-
 		m_CommandBuffer->Begin();
 		m_TimestampQueries.GeometryQuery = m_CommandBuffer->BeginTimestampQuery();
 
@@ -91,28 +114,5 @@ namespace Eppo
 		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.GeometryQuery);
 		m_CommandBuffer->End();
 		m_CommandBuffer->Submit();
-	}
-
-	void SceneRenderer::PrepareRender()
-	{
-		// Fill transform buffer
-		//if (!m_DrawList.size())
-		//	return;
-
-		//glm::mat4* buffer = new glm::mat4[m_DrawList.size()];
-
-		//for (auto& [entity, dc] : m_DrawList)
-		//{
-		//	*buffer = dc.Transform;
-		//	buffer++;
-		//}
-		//
-		//Renderer::SubmitCommand([this, buffer]()
-		//{
-		//	Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-		//	uint32_t imageIndex = swapchain->GetCurrentImageIndex();
-
-		//	m_TransformBuffers[imageIndex] = CreateRef<VertexBuffer>((void*)buffer, m_DrawList.size() * sizeof(glm::mat4));
-		//});
 	}
 }

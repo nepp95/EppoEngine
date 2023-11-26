@@ -2,7 +2,6 @@
 #include "Material.h"
 
 #include "Renderer/Renderer.h"
-#include "Renderer/RendererContext.h"
 
 namespace Eppo
 {
@@ -36,8 +35,7 @@ namespace Eppo
 		imageInfo.imageView = info.ImageView;
 		imageInfo.sampler = info.Sampler;
 
-		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 
 		VkWriteDescriptorSet writeDesc{};
 		writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -66,8 +64,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Material::GetCurrentDescriptorSet");
 
-		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 
 		return GetDescriptorSet(imageIndex);
 	}

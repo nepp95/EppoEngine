@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-	class EditorCamera : public ActualCamera
+	class EditorCamera : public Camera
 	{
 	public:
 		/*EditorCamera(float Fov, float aspectRatio, float nearClip = 0.1f, float farClip = 1000.0f)

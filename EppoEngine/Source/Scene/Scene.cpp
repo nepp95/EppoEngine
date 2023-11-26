@@ -14,37 +14,6 @@ namespace Eppo
 		EPPO_PROFILE_FN("CPU Update", "Update Scene");
 	}
 
-	void Scene::Render(const EditorCamera& editorCamera)
-	{
-		EPPO_PROFILE_FUNCTION("Scene::Render");
-		EPPO_PROFILE_FN("CPU Render", "Render Scene");
-
-		Renderer::BeginScene(editorCamera);
-
-		{
-			auto view = m_Registry.view<TransformComponent, SpriteComponent>();
-
-			for (const EntityHandle entity : view)
-			{
-				auto [transform, sprite] = view.get<TransformComponent, SpriteComponent>(entity);
-				Renderer::DrawQuad(transform.GetTransform(), sprite, (int)entity);
-			}
-		}
-
-		{
-			auto view = m_Registry.view<TransformComponent, MeshComponent>();
-
-			for (const EntityHandle entity : view)
-			{
-				auto [transform, mesh] = view.get<TransformComponent, MeshComponent>(entity);
-				if (mesh.MeshHandle)
-					Renderer::SubmitGeometry(transform.GetTransform(), mesh);
-			}
-		}
-
-		Renderer::EndScene();
-	}
-
 	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
 	{
 		sceneRenderer->BeginScene(editorCamera);
