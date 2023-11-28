@@ -44,8 +44,6 @@ namespace Eppo
 	
 	void EditorLayer::Render()
 	{
-		//m_ActiveScene->Render(m_EditorCamera);
-
 		m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
 	}
 
@@ -123,6 +121,7 @@ namespace Eppo
 		}
 
 		// Viewport
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0 ));
 		ImGui::Begin("Viewport");
 
 		m_ViewportFocused = ImGui::IsWindowFocused();
@@ -136,6 +135,7 @@ namespace Eppo
 		UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
 
 		ImGui::End(); // Viewport
+		ImGui::PopStyleVar();
 
 		// Panels
 		m_PanelManager.RenderGui();

@@ -23,7 +23,7 @@ namespace Eppo
 		framebufferSpec.Width = swapchain->GetWidth();
 		framebufferSpec.Height = swapchain->GetHeight();
 		framebufferSpec.Clear = true;
-		framebufferSpec.ClearColor = { 0.4f, 0.4f, 0.4f, 1.0f };
+		framebufferSpec.ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 		PipelineSpecification geometryPipelineSpec;
 		geometryPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
