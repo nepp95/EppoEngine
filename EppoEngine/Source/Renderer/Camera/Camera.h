@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Event/MouseEvent.h"
-
 #include <glm/glm.hpp>
 
 namespace Eppo
@@ -9,31 +7,16 @@ namespace Eppo
 	class Camera
 	{
 	public:
-		Camera();
-		~Camera() = default;
+		Camera() = default;
+		Camera(const glm::mat4& projectionMatrix)
+			: m_ProjectionMatrix(projectionMatrix)
+		{}
 
-		void OnUpdate(float timestep);
-		void OnEvent(Event& e);
+		virtual ~Camera() = default;
 
-		const glm::mat4& GetViewMatrix() const { return m_ViewMatrix; }
-		glm::mat4 GetViewProjectionMatrix() const { return m_ProjectionMatrix * m_ViewMatrix; }
+		const glm::mat4& GetProjectionMatrix() const { return m_ProjectionMatrix; }
 
-	private:
-		void UpdateCameraVectors();
-
-	private:
-		glm::mat4 m_ViewMatrix;
-		glm::mat4 m_ProjectionMatrix = glm::mat4(1.0f);
-		
-		glm::vec3 m_Position = { 0.0f, 0.0f, 10.0f };
-		glm::vec3 m_Direction = { 0.0f, 0.0f, 0.0f };
-
-		glm::vec3 m_FrontDirection = { 0.0f, 0.0f, -1.0f };
-		glm::vec3 m_UpDirection = { 0.0f, 1.0f, 0.0f };
-
-		float m_Yaw = -90.0f;
-		float m_Pitch = 0.0f;
-
-		glm::vec2 m_MousePosition = { 0.0f, 0.0f };
+	protected:
+		glm::mat4 m_ProjectionMatrix;
 	};
 }
