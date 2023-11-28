@@ -75,7 +75,8 @@ namespace Eppo
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
 		// Prepare scene rendering
-		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
+		m_CameraBuffer.ViewMatrix = editorCamera.GetViewMatrix();
+		m_CameraBuffer.ViewProjectionMatrix = editorCamera.GetViewProjectionMatrix();
 		m_CameraUniformBuffer->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Cleanup from last draw

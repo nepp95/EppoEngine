@@ -55,7 +55,8 @@ namespace Eppo
 		// Camera
 		struct CameraData
 		{
-			glm::mat4 ViewProjection;
+			glm::mat4 ViewMatrix;
+			glm::mat4 ViewProjectionMatrix;
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUniformBuffer;
 

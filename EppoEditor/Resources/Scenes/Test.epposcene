@@ -1,11 +1,29 @@
 Scene: test
 Entities:
+  - Entity: 3710366019641617553
+    TagComponent:
+      Tag: Big Cube
+    TransformComponent:
+      Translation: [0, 4.9000001, 0]
+      Rotation: [0, 0, 0]
+      Scale: [15, 1.89999998, 15]
+    MeshComponent:
+      MeshHandle: 5345703082771143640
   - Entity: 15859226382881889157
     TagComponent:
-      Tag: New entity
+      Tag: Small Cube 1
     TransformComponent:
-      Translation: [0, 0, 0]
-      Rotation: [1.5, 0, 0.300000012]
+      Translation: [2.4000001, 0, 0]
+      Rotation: [1.5, 0.600000024, 0.300000012]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshHandle: 5345703082771143640
+  - Entity: 5455157477212647122
+    TagComponent:
+      Tag: Small Cube 2
+    TransformComponent:
+      Translation: [-0.200000003, 0.400000006, -2.9000001]
+      Rotation: [-0.400000006, -0.600000024, -0.100000001]
       Scale: [1, 1, 1]
     MeshComponent:
       MeshHandle: 5345703082771143640
