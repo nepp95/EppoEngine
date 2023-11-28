@@ -10,7 +10,7 @@ on:
 jobs:
   setup:
     runs-on: [ self-hosted, windows ]
-    name: "Setup"
+    name: "Build"
 
     steps:
       - name: Checkout repository
