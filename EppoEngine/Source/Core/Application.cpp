@@ -22,6 +22,9 @@ namespace Eppo
 		// Set working directory
 		if (!m_Specification.WorkingDirectory.empty())
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
+		
+		// Create profiler
+		m_Profiler = CreateRef<Profiler>();
 
 		// Create window
 		WindowSpecification windowSpec;
@@ -137,17 +140,11 @@ namespace Eppo
 				{
 					EPPO_PROFILE_FUNCTION("CPU Prepare Render");
 
-					// 1. Start command buffer
-					Renderer::BeginFrame();
-
 					// 2. Record commands
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
 
 					Renderer::SubmitCommand([this]() { RenderGui();	});
-
-					// 3. End command buffer
-					Renderer::EndFrame();
 				}
 				{
 					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)

@@ -154,6 +154,7 @@ namespace Eppo
 	void Window::ProcessEvents()
 	{
 		EPPO_PROFILE_FUNCTION("Window::ProcessEvents");
+		EPPO_PROFILE_FN("CPU Update", "Process Events");
 
 		glfwPollEvents();
 	}

@@ -9,6 +9,8 @@ namespace Eppo
 	public:
 		IndexBuffer(void* data, uint32_t size);
 		~IndexBuffer();
+		IndexBuffer(const IndexBuffer&) = delete;
+		IndexBuffer& operator=(const IndexBuffer&) = delete;
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
 		uint32_t GetIndexCount() const { return m_Size / sizeof(uint32_t); }

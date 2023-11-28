@@ -3,6 +3,7 @@
 
 #include "Asset/AssetManager.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/SceneRenderer.h"
 #include "Scene/Entity.h"
 
 namespace Eppo
@@ -10,36 +11,28 @@ namespace Eppo
 	void Scene::OnUpdate(float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
+		EPPO_PROFILE_FN("CPU Update", "Update Scene");
 	}
 
-	void Scene::Render(const EditorCamera& editorCamera)
+	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
 	{
-		EPPO_PROFILE_FUNCTION("Scene::Render");
-
-		Renderer::BeginScene(editorCamera);
+		sceneRenderer->BeginScene(editorCamera);
 
 		{
-			auto view = m_Registry.view<TransformComponent, SpriteComponent>();
+			auto view = m_Registry.view<MeshComponent, TransformComponent>();
 
 			for (const EntityHandle entity : view)
 			{
-				auto [transform, sprite] = view.get<TransformComponent, SpriteComponent>(entity);
-				Renderer::DrawQuad(transform.GetTransform(), sprite, (int)entity);
+				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
+				if (meshC.MeshHandle)
+				{
+					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
+					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
+				}
 			}
 		}
 
-		{
-			auto view = m_Registry.view<TransformComponent, MeshComponent>();
-
-			for (const EntityHandle entity : view)
-			{
-				auto [transform, mesh] = view.get<TransformComponent, MeshComponent>(entity);
-				if (mesh.MeshHandle)
-					Renderer::SubmitGeometry(transform.GetTransform(), mesh);
-			}
-		}
-
-		Renderer::EndScene();
+		sceneRenderer->EndScene();
 	}
 
 	Entity Scene::CreateEntity(const std::string& name)
@@ -69,12 +62,5 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
 
 		m_Registry.destroy(entity);
-	}
-
-	Ref<Image> Scene::GetFinalImage() const
-	{
-		EPPO_PROFILE_FUNCTION("Scene::GetFinalImage");
-
-		return Renderer::GetFinalImage();
 	}
 }

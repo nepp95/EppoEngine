@@ -13,18 +13,22 @@ namespace Eppo
 	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
 	EditorLayer::EditorLayer()
-		: Layer("EditorLayer"), m_EditorCamera(EditorCamera(30.0f, 1.778f)), m_PanelManager(PanelManager::Get())
+		: Layer("EditorLayer"), m_PanelManager(PanelManager::Get())
 	{}
 
 	void EditorLayer::OnAttach()
 	{
+		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 
+		// Open scene
 		OpenScene("Resources/Scenes/test.epposcene");
+
+		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
 	}
 	
 	void EditorLayer::OnDetach()
@@ -40,7 +44,7 @@ namespace Eppo
 	
 	void EditorLayer::Render()
 	{
-		m_ActiveScene->Render(m_EditorCamera);
+		m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
 	}
 
 	void EditorLayer::RenderGui()
@@ -117,6 +121,7 @@ namespace Eppo
 		}
 
 		// Viewport
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0 ));
 		ImGui::Begin("Viewport");
 
 		m_ViewportFocused = ImGui::IsWindowFocused();
@@ -127,17 +132,38 @@ namespace Eppo
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		UI::Image(m_ActiveScene->GetFinalImage(), ImGui::GetContentRegionAvail());
+		UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
 
 		ImGui::End(); // Viewport
+		ImGui::PopStyleVar();
 
 		// Panels
 		m_PanelManager.RenderGui();
 
-		// Settings
-		ImGui::Begin("Settings");
-		ImGui::Text("Here I will put settings... Sometime... Never...");
-		ImGui::End(); // Settings
+		// Performance
+		m_ViewportRenderer->RenderGui();
+		/*ImGui::Begin("Performance");
+
+		const auto& profileData = Application::Get().GetProfiler()->GetProfileData();
+		for (const auto& [category, results] : profileData)
+		{
+			ImGui::Text("%s", category.c_str());
+
+			std::chrono::microseconds totalCategoryTime = std::chrono::microseconds::zero();
+
+			for (const auto& [tag, time] : results)
+			{
+				ImGui::Text("  %s: %.3fms", tag.c_str(), time.count() / 1000.0f);
+				totalCategoryTime += time;
+			}
+
+			ImGui::Text("Total time: %.3fms", totalCategoryTime.count() / 1000.0f);
+			ImGui::Separator();
+		}
+
+		Application::Get().GetProfiler()->Clear();
+
+		ImGui::End();*/ // Performance
 
 		ImGui::End(); // DockSpace
 	}

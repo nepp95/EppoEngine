@@ -73,8 +73,13 @@ namespace Eppo
 
 		for (size_t i = 0; i < queueFamilies.size(); i++)
 		{
-			if (queueFamilies[i].queueFlags && VK_QUEUE_GRAPHICS_BIT)
+			if (queueFamilies[i].queueFlags &&
+				VK_QUEUE_GRAPHICS_BIT &&
+				queueFamilies[i].timestampValidBits > 0
+				)
+			{
 				indices.Graphics = (int32_t)i;
+			}
 
 			if (indices.IsComplete())
 				break;

@@ -1,3 +1,4 @@
+#stage vert
 #version 450
 
 layout(location = 0) in vec3 inPosition;
@@ -13,7 +14,7 @@ layout(set = 1, binding = 0) uniform Camera
 
 layout(push_constant) uniform Transform
 {
-	mat4 uTransform;
+	layout(offset = 0) mat4 uTransform;
 };
 
 void main()
@@ -21,4 +22,20 @@ void main()
 	outNormal = inNormal;
 
 	gl_Position = uViewProjection * uTransform * vec4(inPosition, 1.0);
+}
+
+#stage frag
+#version 450
+
+layout(location = 0) out vec4 outColor;
+
+layout(push_constant) uniform Material
+{
+	layout(offset = 64) vec3 AlbedoColor;
+	layout(offset = 80) float Roughness;
+} uMaterial;
+
+void main()
+{
+	outColor = vec4(uMaterial.AlbedoColor, 1.0);
 }

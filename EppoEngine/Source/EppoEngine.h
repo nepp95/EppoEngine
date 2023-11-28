@@ -27,10 +27,11 @@
 #include "ImGui/UI.h"
 
 // Renderer
-#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Camera/EditorCamera.h"
-#include "Renderer/Renderer.h"
+#include "Renderer/Mesh/Mesh.h"
+#include "Renderer/SceneRenderer.h"
 #include "Renderer/Texture.h"
+#include "Renderer/SceneRenderer.h"
 
 // Scene
 #include "Scene/Entity.h"

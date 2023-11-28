@@ -3,7 +3,6 @@
 
 #include "Renderer/Descriptor/DescriptorBuilder.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/RendererContext.h"
 
 namespace Eppo
 {
@@ -58,8 +57,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("UniformBuffer::SetData");
 		EPPO_ASSERT(size == m_Size);
 
-		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 
 		memcpy(m_MappedMemory[imageIndex], data, size);
 	}
@@ -76,8 +74,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::GetCurrentDescriptorSet");
 
-		Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-		uint32_t imageIndex = swapchain->GetCurrentImageIndex();
+		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 
 		return GetDescriptorSet(imageIndex);
 	}

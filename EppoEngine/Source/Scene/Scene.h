@@ -2,13 +2,13 @@
 
 #include "Core/UUID.h"
 #include "Renderer/Camera/EditorCamera.h"
-#include "Renderer/Image.h"
 
 #include <entt/entt.hpp>
 
 namespace Eppo
 {
 	class Entity;
+	class SceneRenderer;
 
 	class Scene
 	{
@@ -17,13 +17,11 @@ namespace Eppo
 		~Scene() = default;
 
 		void OnUpdate(float timestep);
-		void Render(const EditorCamera& editorCamera);
+		void RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera);
 
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);
 		void DestroyEntity(Entity entity);
-
-		Ref<Image> GetFinalImage() const;
 
 	private:
 		entt::registry m_Registry;

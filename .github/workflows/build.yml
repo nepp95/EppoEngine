@@ -1,0 +1,74 @@
+name: EppoEngine CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  setup:
+    runs-on: [ self-hosted, windows ]
+    name: "Setup"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Premake
+        uses: abel0b/setup-premake@v2.3
+        with:
+          version: "5.0.0-beta2"
+          path: Vendor/Premake/Bin
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.3.1
+      
+      - name: Cache Vulkan SDK
+        id: cache-vulkan-sdk
+        uses: actions/cache@v3
+        with:
+          path: "C:\\VulkanSDK\\1.3.261.1"
+          key: vulkan-sdk-1.3.261.1
+      
+      - name: Setup Vulkan
+        if: steps.cache-vulkan-sdk.outputs.cache-hit != 'true'
+        run: |
+          Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/1.3.261.1/windows/VulkanSDK-1.3.261.1-Installer.exe" -OutFile VulkanSDK.exe
+          $installer = Start-Process -FilePath VulkanSDK.exe -Wait -PassThru -ArgumentList "--accept-licenses --default-answer --confirm-command install";
+          $installer.WaitForExit();
+          Remove-Item "VulkanSDK.exe" -Force
+      
+      - name: Run Premake
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: Vendor/Premake/Bin/Premake5.exe vs2022
+
+  build-debug:
+    runs-on: [ self-hosted, windows ]
+    name: "Build and Test (Debug)"
+    needs: setup
+
+    steps:
+      - name: Build
+        run: msbuild /m /p:Configuration=Debug EppoEngine.sln
+      
+  build-release:
+    runs-on: [ self-hosted, windows ]
+    name: "Build and Test (Release)"
+    needs: setup
+
+    steps:
+      - name: Build
+        run: msbuild /m /p:Configuration=Release EppoEngine.sln
+  
+  build-dist:
+    runs-on: [ self-hosted, windows ]
+    name: "Build and Test (Dist)"
+    needs: setup
+
+    steps:
+      - name: Build
+        run: msbuild /m /p:Configuration=Dist EppoEngine.sln

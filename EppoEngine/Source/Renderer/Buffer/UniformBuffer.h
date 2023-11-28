@@ -10,6 +10,8 @@ namespace Eppo
 	public:
 		UniformBuffer(const Ref<Shader>& shader, uint32_t size);
 		~UniformBuffer();
+		UniformBuffer(const UniformBuffer&) = delete;
+		UniformBuffer& operator=(const UniformBuffer&) = delete;
 
 		void SetData(void* data, uint32_t size);
 
