@@ -46,29 +46,11 @@ jobs:
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: Vendor/Premake/Bin/Premake5.exe vs2022
 
-  build-debug:
-    runs-on: [ self-hosted, windows ]
-    name: "Build and Test (Debug)"
-    needs: setup
-
-    steps:
-      - name: Build
+      - name: "Build and Test (Debug)"
         run: msbuild /m /p:Configuration=Debug EppoEngine.sln
       
-  build-release:
-    runs-on: [ self-hosted, windows ]
-    name: "Build and Test (Release)"
-    needs: setup
-
-    steps:
-      - name: Build
+      - name: "Build and Test (Release)"
         run: msbuild /m /p:Configuration=Release EppoEngine.sln
   
-  build-dist:
-    runs-on: [ self-hosted, windows ]
-    name: "Build and Test (Dist)"
-    needs: setup
-
-    steps:
-      - name: Build
+      - name: "Build and Test (Dist)"
         run: msbuild /m /p:Configuration=Dist EppoEngine.sln
