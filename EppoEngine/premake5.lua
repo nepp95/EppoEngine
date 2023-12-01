@@ -58,6 +58,10 @@ project "EppoEngine"
         links {
             "glfw"
         }
+
+        removefiles {
+            "Source/Platform/Linux/**.cpp"
+        }
     
     filter "system:linux"
         defines {
@@ -71,8 +75,13 @@ project "EppoEngine"
         links {
             "glfw"
         }
+
+        removefiles {
+            "Source/Platform/Windows/**.cpp"
+        }
     
     filter { "system:linux", "action:gmake2" }
+        -- fpermissive is specified because of struct members having the same name as the type
         buildoptions {
             "-fpermissive"
         }
