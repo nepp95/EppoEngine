@@ -28,7 +28,6 @@ project "EppoEngine"
         "Source",
 		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}",
-        "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
@@ -52,6 +51,10 @@ project "EppoEngine"
             "EPPO_PLATFORM_WINDOWS"
         }
 
+        includedirs {
+            "%{IncludeDir.glfw}"
+        }
+
         links {
             "glfw"
         }
@@ -61,9 +64,17 @@ project "EppoEngine"
             "EPPO_PLATFORM_LINUX"
         }
 
-        glfw = os.findlib("glfw")
+        includedirs {
+            "/usr/local/include"
+        }
 
         links {
+            "glfw"
+        }
+    
+    filter { "system:linux", "action:gmake2" }
+        buildoptions {
+            "-fpermissive"
         }
     
     filter "configurations:Debug"
