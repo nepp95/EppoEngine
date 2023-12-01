@@ -160,10 +160,10 @@ namespace Eppo
 			ImGui::Text("Total time: %.3fms", totalCategoryTime.count() / 1000.0f);
 			ImGui::Separator();
 		}
-
+		*/
 		Application::Get().GetProfiler()->Clear();
 
-		ImGui::End();*/ // Performance
+		//ImGui::End(); // Performance
 
 		ImGui::End(); // DockSpace
 	}

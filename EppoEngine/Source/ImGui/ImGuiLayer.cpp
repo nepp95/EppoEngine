@@ -191,7 +191,6 @@ namespace Eppo
 		vkCmdSetScissor(s_ImGuiCmds[imageIndex], 0, 1, &scissor);
 
 		ImDrawData* data = ImGui::GetDrawData();
-		//ImGui_ImplVulkan_RenderDrawData(data, swapCmd);
 		ImGui_ImplVulkan_RenderDrawData(data, s_ImGuiCmds[imageIndex]);
 
 		VK_CHECK(vkEndCommandBuffer(s_ImGuiCmds[imageIndex]), "Failed to end command buffer!");
