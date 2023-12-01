@@ -33,6 +33,15 @@ project "EppoEditor"
     filter "system:windows"
 		systemversion "latest"
 
+        defines {
+            "EPPO_PLATFORM_WINDOWS"
+        }
+    
+    filter "system:linux"
+        defines {
+            "EPPO_PLATFORM_LINUX"
+        }
+
     filter "configurations:Debug"
         defines "EPPO_DEBUG"
         runtime "Debug"

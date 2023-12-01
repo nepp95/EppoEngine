@@ -40,7 +40,6 @@ project "EppoEngine"
     }
 
     links {
-        "glfw",
 		"imgui",
 		"yaml-cpp",
         "%{Library.vulkan}"
@@ -48,6 +47,24 @@ project "EppoEngine"
 
     filter "system:windows"
         systemversion "latest"
+
+        defines {
+            "EPPO_PLATFORM_WINDOWS"
+        }
+
+        links {
+            "glfw"
+        }
+    
+    filter "system:linux"
+        defines {
+            "EPPO_PLATFORM_LINUX"
+        }
+
+        glfw = os.findlib("glfw")
+
+        links {
+        }
     
     filter "configurations:Debug"
         defines "EPPO_DEBUG"

@@ -1,4 +1,5 @@
 include "Dependencies.lua"
+include "Helpers.lua"
 
 workspace "EppoEngine"
     architecture "x86_64"
