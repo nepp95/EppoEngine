@@ -109,20 +109,18 @@ namespace Eppo
 		m_CameraUniformBuffer->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Set environment
-		m_EnvironmentBuffer.LightPosition.z = 0.0f;
+		m_EnvironmentBuffer.LightPosition.y = 0.0f;
 		if (m_EnvironmentBuffer.LightPosition.x > 50.0f)
 			m_EnvironmentBuffer.LightPosition.x = -50.0f;
 		else
 			m_EnvironmentBuffer.LightPosition.x += 0.1f;
 
-		if (m_EnvironmentBuffer.LightPosition.y > 50.0f)
-			m_EnvironmentBuffer.LightPosition.y = -50.0f;
+		if (m_EnvironmentBuffer.LightPosition.z > 50.0f)
+			m_EnvironmentBuffer.LightPosition.z = -50.0f;
 		else
-			m_EnvironmentBuffer.LightPosition.y += 0.1f;
+			m_EnvironmentBuffer.LightPosition.z += 0.1f;
 
 		m_EnvironmentUniformBuffer->SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
-
-		EPPO_WARN("{}", m_EnvironmentBuffer.LightPosition);
 
 		// Cleanup from last draw
 		m_DrawList.clear(); // TODO: Do this at flush or begin scene?

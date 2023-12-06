@@ -52,29 +52,44 @@ layout(push_constant) uniform Material
 
 void main()
 {
-	vec3 lightColor = uEnvironment.LightColor;
-	vec3 lightPosition = uEnvironment.LightPosition;
+	// using the Phong Reflection Model: https://en.wikipedia.org/wiki/Phong_reflection_model
 
 	// Ambient
-	float ambientStrength = 0.5;
-	vec3 ambient = ambientStrength * lightColor;
+	// Ia = Ka * I
+	// Ia = ambient intensity
+	// Ka = ambient intensity coefficient
+	// I = light intensity
+	float ambientIntensity = 0.2;
+	vec3 ambient = ambientIntensity * uEnvironment.LightColor;
 
 	// Diffuse
-	//vec3 norm = normalize(inNormal);
-	//vec3 lightDirection = normalize(lightPosition);
+	// Id = Kd * I * max(dot(N, L), 0)
+	// Id = diffuse intensity
+	// Kd = diffuse intensity coefficient
+	// I = light intensity
+	// N = normalized surface normal vector
+	// L = normalized light direction vector
+	vec3 nNormal = normalize(inNormal);
+	vec3 nLightDirection = normalize(uEnvironment.LightPosition - inFragPosition);
 
-	//float diff = max(dot(norm, lightDirection), 0.0);
-	//vec3 diffuse = diff * lightColor;
+	vec3 diffuseIntensity = uEnvironment.LightColor * max(dot(nNormal, nLightDirection), 0.0); // * roughness
+	vec3 diffuse = diffuseIntensity * uEnvironment.LightColor;
 
 	// Specular
-	//float specularStrength = 0.5;
-	//vec3 viewDirection = normalize(inViewPosition - inFragPosition);
-	//vec3 reflectDirection = reflect(-lightDirection, norm);
+	// Is = Ks * I * (max(dot(R, V), 0)n
+	// Is = specular intensity
+	// Ks = specular intensity coefficient
+	// I = light intensity
+	// R = normalized reflected light direction vector
+	// V = normalized view direction vector
+	// n = shininess coefficient
+	vec3 nViewDirection = normalize(inViewPosition - inFragPosition);
+	vec3 nReflectDirection = normalize(reflect(-nLightDirection, nNormal));
+	
+	float specularIntensity = 0.5;
+	vec3 specular = specularIntensity * uEnvironment.LightColor * max(dot(nViewDirection, nReflectDirection), 0.0);
 
-	//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32);
-	//vec3 specular = specularStrength * spec * lightColor;
-
-	vec3 result = ambient * uMaterial.AlbedoColor;
-
+	// Output
+	vec3 result = (ambient + diffuse + specular) * uMaterial.AlbedoColor;
 	outColor = vec4(result, 1.0);
 }
