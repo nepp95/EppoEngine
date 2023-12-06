@@ -51,14 +51,22 @@ namespace Eppo
 
 		// Pipelines
 		Ref<Pipeline> m_GeometryPipeline;
+		Ref<Pipeline> m_ShadowPipeline;
 
-		// Camera
+		// Uniform buffers
 		struct CameraData
 		{
 			glm::mat4 ViewMatrix;
 			glm::mat4 ViewProjectionMatrix;
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUniformBuffer;
+
+		struct EnvironmentData
+		{
+			glm::vec3 LightPosition = { 0.0f, 0.0f, 0.0f };
+			glm::vec3 LightColor = { 1.0f, 0.1f, 0.1f };
+		} m_EnvironmentBuffer;
+		Ref<UniformBuffer> m_EnvironmentUniformBuffer;
 
 		// Draw commands
 		struct DrawCommand

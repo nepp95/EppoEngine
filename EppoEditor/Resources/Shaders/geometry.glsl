@@ -38,6 +38,12 @@ layout(location = 1) in vec3 inFragPosition;
 layout(location = 2) in vec3 inViewPosition;
 layout(location = 0) out vec4 outColor;
 
+layout(set = 0, binding = 0) uniform Environment
+{
+	vec3 LightPosition;
+	vec3 LightColor;
+} uEnvironment;
+
 layout(push_constant) uniform Material
 {
 	layout(offset = 64) vec3 AlbedoColor;
@@ -46,29 +52,29 @@ layout(push_constant) uniform Material
 
 void main()
 {
-	vec3 lightColor = vec3(1.0, 1.0, 1.0);
-	vec3 lightPosition = vec3(-3.0, -2.0, 0.0);
+	vec3 lightColor = uEnvironment.LightColor;
+	vec3 lightPosition = uEnvironment.LightPosition;
 
 	// Ambient
-	float ambientStrength = 0.1;
+	float ambientStrength = 0.5;
 	vec3 ambient = ambientStrength * lightColor;
 
 	// Diffuse
-	vec3 norm = normalize(inNormal);
-	vec3 lightDirection = normalize(lightPosition);
+	//vec3 norm = normalize(inNormal);
+	//vec3 lightDirection = normalize(lightPosition);
 
-	float diff = max(dot(norm, lightDirection), 0.0);
-	vec3 diffuse = diff * lightColor;
+	//float diff = max(dot(norm, lightDirection), 0.0);
+	//vec3 diffuse = diff * lightColor;
 
 	// Specular
-	float specularStrength = 0.5;
-	vec3 viewDirection = normalize(inViewPosition - inFragPosition);
-	vec3 reflectDirection = reflect(-lightDirection, norm);
+	//float specularStrength = 0.5;
+	//vec3 viewDirection = normalize(inViewPosition - inFragPosition);
+	//vec3 reflectDirection = reflect(-lightDirection, norm);
 
-	float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32);
-	vec3 specular = specularStrength * spec * lightColor;
+	//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32);
+	//vec3 specular = specularStrength * spec * lightColor;
 
-	vec3 result = (ambient + diffuse + specular) * uMaterial.AlbedoColor;
+	vec3 result = ambient * uMaterial.AlbedoColor;
 
 	outColor = vec4(result, 1.0);
 }

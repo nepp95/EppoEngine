@@ -6,7 +6,7 @@
 
 namespace Eppo
 {
-	UniformBuffer::UniformBuffer(const Ref<Shader>& shader, uint32_t size)
+	UniformBuffer::UniformBuffer(uint32_t size)
 		: m_Size(size)
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::UniformBuffer");
@@ -29,14 +29,13 @@ namespace Eppo
 			m_Allocations[i] = Allocator::AllocateBuffer(m_Buffers[i], bufferInfo, VMA_MEMORY_USAGE_CPU_ONLY);
 			m_MappedMemory[i] = Allocator::MapMemory(m_Allocations[i]);
 
-			VkDescriptorBufferInfo& descriptorBufferInfo = m_DescriptorBufferInfos.emplace_back();
-			descriptorBufferInfo.buffer = m_Buffers[i];
-			descriptorBufferInfo.offset = 0;
-			descriptorBufferInfo.range = m_Size;
+			m_DescriptorBufferInfo.buffer = m_Buffers[i];
+			m_DescriptorBufferInfo.offset = 0;
+			m_DescriptorBufferInfo.range = m_Size;
 
 			DescriptorBuilder builder(allocator, Renderer::GetDescriptorLayoutCache());
 			builder
-				.BindBuffer(0, descriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(0, m_DescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_DescriptorSets[i]);
 		}
 	}

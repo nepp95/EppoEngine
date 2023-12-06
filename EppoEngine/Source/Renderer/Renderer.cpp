@@ -15,6 +15,7 @@ namespace Eppo
 
 		Ref<DescriptorAllocator> DescriptorAllocator;
 		Ref<DescriptorLayoutCache> DescriptorCache;
+		std::vector<VkDescriptorPool> DescriptorPools;
 
 		// Shaders
 		Scope<ShaderLibrary> ShaderLibrary;
@@ -34,9 +35,39 @@ namespace Eppo
 		s_Data->DescriptorAllocator = CreateRef<DescriptorAllocator>();
 		s_Data->DescriptorCache = CreateRef<DescriptorLayoutCache>();
 		s_Data->CommandBuffer = CreateRef<RenderCommandBuffer>();
-		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
 
+		// Load shaders
+		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
 		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
+		s_Data->ShaderLibrary->Load("Resources/Shaders/lighting.glsl");
+
+		// Descriptor pool
+		VkDescriptorPoolSize poolSizes[] =
+		{
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 }
+		};
+
+		// from IM_ARRAYSIZE (imgui) = ((int)(sizeof(poolSizes) / sizeof(*(poolSizes))));
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		poolInfo.poolSizeCount = ((int)(sizeof(poolSizes) / sizeof(*(poolSizes))));
+		poolInfo.pPoolSizes = poolSizes;
+		poolInfo.maxSets = 100 * ((int)(sizeof(poolSizes) / sizeof(*(poolSizes))));
+
+		s_Data->DescriptorPools.resize(VulkanConfig::MaxFramesInFlight);
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &s_Data->DescriptorPools[i]), "Failed to create descriptor pool!");
 	}
 
 	void Renderer::Shutdown()
@@ -58,6 +89,10 @@ namespace Eppo
 
 	void Renderer::BeginRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline)
 	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		uint32_t frameIndex = GetCurrentFrameIndex();
+		vkResetDescriptorPool(device, s_Data->DescriptorPools[frameIndex], 0);
+
 		SubmitCommand([renderCommandBuffer, pipeline]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
@@ -118,9 +153,22 @@ namespace Eppo
 		return s_Data->DescriptorCache;
 	}
 
-	void Renderer::RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& cameraBuffer, const Ref<Mesh>& mesh, const glm::mat4& transform)
+	VkDescriptorSet Renderer::AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo)
 	{
-		SubmitCommand([renderCommandBuffer, pipeline, cameraBuffer, mesh, transform]()
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		uint32_t frameIndex = GetCurrentFrameIndex();
+
+		allocInfo.descriptorPool = s_Data->DescriptorPools[frameIndex];
+
+		VkDescriptorSet descriptorSet;
+		VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet), "Failed to allocate descriptor set!");
+
+		return descriptorSet;
+	}
+
+	void Renderer::RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, VkDescriptorSet set0, VkDescriptorSet set1, const Ref<Mesh>& mesh, const glm::mat4& transform)
+	{
+		SubmitCommand([renderCommandBuffer, pipeline, set0, set1, mesh, transform]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
@@ -146,18 +194,32 @@ namespace Eppo
 			scissor.extent = extent;
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			VkDescriptorSet descriptorSet = cameraBuffer->GetCurrentDescriptorSet();
-			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				pipeline->GetPipelineLayout(),
-				1,
-				1,
-				&descriptorSet,
-				0,
-				nullptr
-			);
-			
+			{
+				vkCmdBindDescriptorSets(
+					commandBuffer,
+					VK_PIPELINE_BIND_POINT_GRAPHICS,
+					pipeline->GetPipelineLayout(),
+					0,
+					1,
+					&set0,
+					0,
+					nullptr
+				);
+			}
+
+			{
+				vkCmdBindDescriptorSets(
+					commandBuffer,
+					VK_PIPELINE_BIND_POINT_GRAPHICS,
+					pipeline->GetPipelineLayout(),
+					1,
+					1,
+					&set1,
+					0,
+					nullptr
+				);
+			}
+
 			for (const auto& submesh : mesh->GetSubmeshes())
 			{
 				// Vertex buffer Mesh

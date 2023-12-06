@@ -36,8 +36,9 @@ namespace Eppo
 		// Descriptor Sets
 		static Ref<DescriptorAllocator> GetDescriptorAllocator();
 		static Ref<DescriptorLayoutCache> GetDescriptorLayoutCache();
+		static VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo);
 
 		// Geometry
-		static void RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& cameraBuffer, const Ref<Mesh>& mesh, const glm::mat4& transform);
+		static void RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, VkDescriptorSet set0, VkDescriptorSet set1, const Ref<Mesh>& mesh, const glm::mat4& transform);
 	};
 }

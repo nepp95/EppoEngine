@@ -4,6 +4,7 @@
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 
+#include <GLFW/glfw3.h>
 #include <imgui.h>
 
 namespace Eppo
@@ -17,32 +18,60 @@ namespace Eppo
 
 		m_CommandBuffer = CreateRef<RenderCommandBuffer>();
 
-		// Framebuffer & Pipeline
-		FramebufferSpecification framebufferSpec;
-		framebufferSpec.Attachments = { ImageFormat::RGBA8, ImageFormat::Depth };
-		framebufferSpec.Width = swapchain->GetWidth();
-		framebufferSpec.Height = swapchain->GetHeight();
-		framebufferSpec.Clear = true;
-		framebufferSpec.ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		// Geometry
+		{
+			FramebufferSpecification framebufferSpec;
+			framebufferSpec.Attachments = { ImageFormat::RGBA8, ImageFormat::Depth };
+			framebufferSpec.Width = swapchain->GetWidth();
+			framebufferSpec.Height = swapchain->GetHeight();
+			framebufferSpec.Clear = true;
+			framebufferSpec.ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-		PipelineSpecification geometryPipelineSpec;
-		geometryPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-		geometryPipelineSpec.Shader = Renderer::GetShader("geometry");
-		geometryPipelineSpec.Layout = {
-			{ ShaderDataType::Float3, "inPosition" },
-			{ ShaderDataType::Float3, "inNormal" },
-			{ ShaderDataType::Float2, "inTexCoord" },
-		};
-		geometryPipelineSpec.DepthTesting = true;
-		geometryPipelineSpec.PushConstants = {
-			{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float) }
-		};
+			PipelineSpecification geometryPipelineSpec;
+			geometryPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			geometryPipelineSpec.Shader = Renderer::GetShader("geometry");
+			geometryPipelineSpec.Layout = {
+				{ ShaderDataType::Float3, "inPosition" },
+				{ ShaderDataType::Float3, "inNormal" },
+				{ ShaderDataType::Float2, "inTexCoord" },
+			};
+			geometryPipelineSpec.DepthTesting = true;
+			geometryPipelineSpec.PushConstants = {
+				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) },
+				{ VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float) }
+			};
 
-		m_GeometryPipeline = CreateRef<Pipeline>(geometryPipelineSpec);
+			m_GeometryPipeline = CreateRef<Pipeline>(geometryPipelineSpec);
+		}
 
-		// Camera
-		m_CameraUniformBuffer = CreateRef<UniformBuffer>(geometryPipelineSpec.Shader, sizeof(CameraData));
+		// Lighting
+		{
+			FramebufferSpecification framebufferSpec;
+		}
+
+		// Shadow
+		{
+			// TODO: Create shadow map image
+			// TODO: Clear pass for clearing the shadow map image
+
+			FramebufferSpecification framebufferSpec;
+			framebufferSpec.Attachments = { ImageFormat::Depth };
+			framebufferSpec.Width = swapchain->GetWidth();
+			framebufferSpec.Height = swapchain->GetHeight();
+			framebufferSpec.Clear = true;
+			framebufferSpec.ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+			PipelineSpecification shadowPipelineSpec;
+			shadowPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			shadowPipelineSpec.Shader = Renderer::GetShader("lighting");
+			shadowPipelineSpec.Layout = {
+
+			};
+		}
+
+		// Uniform buffers
+		m_CameraUniformBuffer = CreateRef<UniformBuffer>(sizeof(CameraData));
+		m_EnvironmentUniformBuffer = CreateRef<UniformBuffer>(sizeof(EnvironmentData));
 
 		// Vertex buffer
 		//m_TransformBuffers.resize(VulkanConfig::MaxFramesInFlight);
@@ -79,6 +108,22 @@ namespace Eppo
 		m_CameraBuffer.ViewProjectionMatrix = editorCamera.GetViewProjectionMatrix();
 		m_CameraUniformBuffer->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
+		// Set environment
+		m_EnvironmentBuffer.LightPosition.z = 0.0f;
+		if (m_EnvironmentBuffer.LightPosition.x > 50.0f)
+			m_EnvironmentBuffer.LightPosition.x = -50.0f;
+		else
+			m_EnvironmentBuffer.LightPosition.x += 0.1f;
+
+		if (m_EnvironmentBuffer.LightPosition.y > 50.0f)
+			m_EnvironmentBuffer.LightPosition.y = -50.0f;
+		else
+			m_EnvironmentBuffer.LightPosition.y += 0.1f;
+
+		m_EnvironmentUniformBuffer->SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
+
+		EPPO_WARN("{}", m_EnvironmentBuffer.LightPosition);
+
 		// Cleanup from last draw
 		m_DrawList.clear(); // TODO: Do this at flush or begin scene?
 	}
@@ -107,8 +152,45 @@ namespace Eppo
 
 		Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
 
+		VkDescriptorSetAllocateInfo allocInfo;
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &m_GeometryPipeline->GetSpecification().Shader->GetDescriptorSetLayout(0);
+		allocInfo.pNext = nullptr;
+
+		VkDescriptorSet set0 = Renderer::AllocateDescriptorSet(allocInfo);
+
+		allocInfo.pSetLayouts = &m_GeometryPipeline->GetSpecification().Shader->GetDescriptorSetLayout(1);
+		VkDescriptorSet set1 = Renderer::AllocateDescriptorSet(allocInfo);
+
+		{
+			VkWriteDescriptorSet writeDescriptor{};
+			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writeDescriptor.descriptorCount = 1;
+			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			writeDescriptor.dstSet = set0;
+			writeDescriptor.dstBinding = 0;
+			writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
+
+			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+			vkUpdateDescriptorSets(device, 1, &writeDescriptor, 0, nullptr);
+		}
+
+		{
+			VkWriteDescriptorSet writeDescriptor{};
+			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writeDescriptor.descriptorCount = 1;
+			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			writeDescriptor.dstSet = set1;
+			writeDescriptor.dstBinding = 0;
+			writeDescriptor.pBufferInfo = &m_CameraUniformBuffer->GetDescriptorBufferInfo();
+
+			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+			vkUpdateDescriptorSets(device, 1, &writeDescriptor, 0, nullptr);
+		}
+
 		for (auto& [entity, dc] : m_DrawList)
-			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_CameraUniformBuffer, dc.Mesh, dc.Transform);
+			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, set0, set1, dc.Mesh, dc.Transform);
 
 		Renderer::EndRenderPass(m_CommandBuffer);
 
