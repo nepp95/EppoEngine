@@ -8,7 +8,7 @@ namespace Eppo
 	class UniformBuffer
 	{
 	public:
-		UniformBuffer(uint32_t size);
+		UniformBuffer(uint32_t size, uint32_t binding);
 		~UniformBuffer();
 		UniformBuffer(const UniformBuffer&) = delete;
 		UniformBuffer& operator=(const UniformBuffer&) = delete;
@@ -17,17 +17,16 @@ namespace Eppo
 
 		const std::vector<VkBuffer>& GetBuffers() const { return m_Buffers; }
 		const VkDescriptorBufferInfo& GetDescriptorBufferInfo() const { return m_DescriptorBufferInfo; }
-		VkDescriptorSet GetDescriptorSet(uint32_t imageIndex);
-		VkDescriptorSet GetCurrentDescriptorSet();
+		uint32_t GetBinding() const { return m_Binding; }
 
 	private:
 		uint32_t m_Size;
+		uint32_t m_Binding;
 
 		std::vector<VkBuffer> m_Buffers;
 		std::vector<VmaAllocation> m_Allocations;
 		std::vector<void*> m_MappedMemory;
 
 		VkDescriptorBufferInfo m_DescriptorBufferInfo;
-		std::vector<VkDescriptorSet> m_DescriptorSets;
 	};
 }

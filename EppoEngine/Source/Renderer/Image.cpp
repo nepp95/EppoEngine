@@ -82,6 +82,10 @@ namespace Eppo
 		VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &m_Info.Sampler), "Failed to create sampler!");
 
 		m_Info.ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		m_DescriptorImageInfo.imageLayout = m_Info.ImageLayout;
+		m_DescriptorImageInfo.imageView = m_Info.ImageView;
+		m_DescriptorImageInfo.sampler = m_Info.Sampler;
 	}
 
 	Image::~Image()

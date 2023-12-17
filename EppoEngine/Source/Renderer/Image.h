@@ -56,9 +56,13 @@ namespace Eppo
 		ImageInfo& GetImageInfo() { return m_Info; }
 		VkImageView GetImageView() const { return m_Info.ImageView; }
 
+		const VkDescriptorImageInfo& GetDescriptorImageInfo() const { return m_DescriptorImageInfo; }
+
 	private:
 		ImageSpecification m_Specification;
 		ImageInfo m_Info;
+
+		VkDescriptorImageInfo m_DescriptorImageInfo;
 	};
 
 	namespace Utils

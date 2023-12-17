@@ -8,9 +8,10 @@ layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec3 outFragPosition;
 layout(location = 2) out vec3 outViewPosition;
 
-layout(set = 1, binding = 0) uniform Camera
+layout(set = 0, binding = 0) uniform Camera
 {
-	mat4 ViewMatrix;
+	mat4 View;
+	mat4 Projection;
 	mat4 ViewProjection;
 } uCamera;
 
@@ -25,7 +26,7 @@ void main()
 	outFragPosition = vec3(uTransform.Transform * vec4(inPosition, 1.0));
 
 	vec4 worldPosition = uTransform.Transform * vec4(inPosition, 1.0);
-	outViewPosition = vec3(uCamera.ViewMatrix * vec4(worldPosition.xyz, 1.0));
+	outViewPosition = vec3(uCamera.View * vec4(worldPosition.xyz, 1.0));
 
 	gl_Position = uCamera.ViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
 }
@@ -38,17 +39,36 @@ layout(location = 1) in vec3 inFragPosition;
 layout(location = 2) in vec3 inViewPosition;
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 0) uniform Environment
+layout(set = 0, binding = 1) uniform Environment
 {
+	mat4 LightView;
+	mat4 LightProjection;
+	mat4 LightViewProjection;
 	vec3 LightPosition;
 	vec3 LightColor;
 } uEnvironment;
+
+layout(set = 0, binding = 2) uniform sampler2D uShadowMap;
 
 layout(push_constant) uniform Material
 {
 	layout(offset = 64) vec3 AlbedoColor;
 	layout(offset = 80) float Roughness;
 } uMaterial;
+
+float CalculateShadow(vec4 fragPos)
+{
+	// Transform fragPos from clip space to ndc -1 to 1
+	vec3 ndcCoords = fragPos.xyz / fragPos.w;
+
+	// Normalize to 0 to 1
+	ndcCoords = ndcCoords * 0.5 + 0.5;
+
+	// Get closest depth value 
+	float closestDepth = texture(uShadowMap, ndcCoords.xy).r;
+
+	return closestDepth;
+}
 
 void main()
 {
@@ -59,7 +79,7 @@ void main()
 	// Ia = ambient intensity
 	// Ka = ambient intensity coefficient
 	// I = light intensity
-	float ambientIntensity = 0.2;
+	float ambientIntensity = 0.1;
 	vec3 ambient = ambientIntensity * uEnvironment.LightColor;
 
 	// Diffuse
@@ -89,7 +109,11 @@ void main()
 	float specularIntensity = 0.5;
 	vec3 specular = specularIntensity * uEnvironment.LightColor * max(dot(nViewDirection, nReflectDirection), 0.0);
 
+	// Shadow
+	vec4 fragPosLightSpace = uEnvironment.LightViewProjection * vec4(inFragPosition, 1.0);
+	float shadow = CalculateShadow(fragPosLightSpace);
+
 	// Output
-	vec3 result = (ambient + diffuse + specular) * uMaterial.AlbedoColor;
+	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
 	outColor = vec4(result, 1.0);
 }

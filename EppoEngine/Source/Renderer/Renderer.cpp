@@ -39,7 +39,7 @@ namespace Eppo
 		// Load shaders
 		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
 		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
-		s_Data->ShaderLibrary->Load("Resources/Shaders/lighting.glsl");
+		s_Data->ShaderLibrary->Load("Resources/Shaders/shadow.glsl");
 
 		// Descriptor pool
 		VkDescriptorPoolSize poolSizes[] =
@@ -166,14 +166,14 @@ namespace Eppo
 		return descriptorSet;
 	}
 
-	void Renderer::RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, VkDescriptorSet set0, VkDescriptorSet set1, const Ref<Mesh>& mesh, const glm::mat4& transform)
+	void Renderer::RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& environmentUB, const Ref<UniformBuffer>& cameraUB, const Ref<Mesh>& mesh, const glm::mat4& transform)
 	{
-		SubmitCommand([renderCommandBuffer, pipeline, set0, set1, mesh, transform]()
+		SubmitCommand([renderCommandBuffer, pipeline, environmentUB, cameraUB, mesh, transform]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 			Ref<Swapchain> swapchain = context->GetSwapchain();
-
 			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
+			uint32_t frameIndex = GetCurrentFrameIndex();
 			
 			// Pipeline
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
@@ -194,31 +194,18 @@ namespace Eppo
 			scissor.extent = extent;
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			{
-				vkCmdBindDescriptorSets(
-					commandBuffer,
-					VK_PIPELINE_BIND_POINT_GRAPHICS,
-					pipeline->GetPipelineLayout(),
-					0,
-					1,
-					&set0,
-					0,
-					nullptr
-				);
-			}
+			const auto& descriptorSets = pipeline->GetDescriptorSets(frameIndex);
 
-			{
-				vkCmdBindDescriptorSets(
-					commandBuffer,
-					VK_PIPELINE_BIND_POINT_GRAPHICS,
-					pipeline->GetPipelineLayout(),
-					1,
-					1,
-					&set1,
-					0,
-					nullptr
-				);
-			}
+			vkCmdBindDescriptorSets(
+				commandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				pipeline->GetPipelineLayout(),
+				0,
+				1,
+				&descriptorSets[0],
+				0,
+				nullptr
+			);
 
 			for (const auto& submesh : mesh->GetSubmeshes())
 			{
