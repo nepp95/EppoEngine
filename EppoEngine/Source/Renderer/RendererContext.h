@@ -1,24 +1,22 @@
 #pragma once
 
-#include "Debug/Profiler.h"
-#include "Renderer/LogicalDevice.h"
-#include "Renderer/Swapchain.h"
-
-#include <deque>
-#include <functional>
-
 struct GLFWwindow;
 
 namespace Eppo
 {
+	enum class RendererAPI
+	{
+		OpenGL,
+		Vulkan
+	};
+
 	class RendererContext
 	{
 	public:
-		RendererContext(GLFWwindow* windowHandle);
-		~RendererContext() = default;
+		virtual ~RendererContext();
 
-		void Init();
-		void Shutdown();
+		virtual void Init() = 0;
+		virtual void Shutdown() = 0;
 
 		void WaitIdle();
 
@@ -34,11 +32,16 @@ namespace Eppo
 		static Ref<RendererContext> Get();
 		VkInstance& GetVulkanInstance() { return m_VulkanInstance; }
 
+		static RendererAPI GetAPI() { return s_API; }
+		static Scope<RendererContext> Create(void* windowHandle);
+
 	private:
 		bool HasValidationSupport();
 		std::vector<const char*> GetRequiredExtensions();
 
 	private:
+		static RendererAPI s_API;
+
 		GLFWwindow* m_WindowHandle = nullptr;
 
 		VkInstance m_VulkanInstance;

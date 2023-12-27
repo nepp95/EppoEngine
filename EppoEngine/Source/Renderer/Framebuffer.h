@@ -32,7 +32,7 @@ namespace Eppo
 
 		void Create();
 		void Cleanup();
-		void Resize(uint32_t width, uint32_t height);
+		virtual void Resize(uint32_t width, uint32_t height) = 0;
 
 		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
 
@@ -49,6 +49,8 @@ namespace Eppo
 
 		bool HasDepthAttachment() const { return m_DepthTesting; }
 		Ref<Image> GetDepthImage() { return m_DepthImage; }
+
+		static Ref<Framebuffer> Create(const FramebufferSpecification& specification);
 
 	private:
 		FramebufferSpecification m_Specification;

@@ -1,19 +1,30 @@
 #include "pch.h"
 #include "RendererContext.h"
 
-#include "Core/Application.h"
-#include "Renderer/Allocator.h"
-
-#include <glfw/glfw3.h>
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
-	RendererContext::RendererContext(GLFWwindow* windowHandle)
-		: m_WindowHandle(windowHandle)
-	{
-		EPPO_PROFILE_FUNCTION("RendererContext::RendererContext");
+	RendererAPI RendererContext::s_API = RendererAPI::Vulkan;
 
-		EPPO_ASSERT(windowHandle);
+	Scope<RendererContext> RendererContext::Create(void* windowHandle)
+	{
+		switch (s_API)
+		{
+			case RendererAPI::OpenGL:
+			{
+				EPPO_ASSERT(false);
+				break;	
+			}
+
+			case RendererAPI::Vulkan:
+			{
+				return CreateScope<VulkanContext>(static_cast<GLFWwindow*>(windowHandle));
+			}
+
+			EPPO_ASSERT(false);
+			return nullptr;
+		}
 	}
 
 	void RendererContext::Init()

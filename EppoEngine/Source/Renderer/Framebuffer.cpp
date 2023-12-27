@@ -5,6 +5,11 @@
 
 namespace Eppo
 {
+	Ref<Framebuffer> Create(const FramebufferSpecification& specification)
+	{
+		
+	}
+
 	Framebuffer::Framebuffer(const FramebufferSpecification& specification)
 		: m_Specification(specification)
 	{

@@ -16,6 +16,9 @@ namespace Eppo
 	class Renderer
 	{
 	public:
+		virtual void Init() = 0;
+		virtual void Shutdown() = 0;
+
 		static void Init();
 		static void Shutdown();
 
