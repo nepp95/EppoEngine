@@ -1,13 +1,12 @@
 #include "pch.h"
 #include "UniformBuffer.h"
 
-#include "Renderer/Descriptor/DescriptorBuilder.h"
 #include "Renderer/Renderer.h"
 
 namespace Eppo
 {
-	UniformBuffer::UniformBuffer(const Ref<Shader>& shader, uint32_t size)
-		: m_Size(size)
+	UniformBuffer::UniformBuffer(uint32_t size, uint32_t binding)
+		: m_Size(size), m_Binding(binding)
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::UniformBuffer");
 
@@ -21,23 +20,14 @@ namespace Eppo
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		Ref<DescriptorAllocator> allocator = Renderer::GetDescriptorAllocator();
-
-		m_DescriptorSets.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
 			m_Allocations[i] = Allocator::AllocateBuffer(m_Buffers[i], bufferInfo, VMA_MEMORY_USAGE_CPU_ONLY);
 			m_MappedMemory[i] = Allocator::MapMemory(m_Allocations[i]);
 
-			VkDescriptorBufferInfo& descriptorBufferInfo = m_DescriptorBufferInfos.emplace_back();
-			descriptorBufferInfo.buffer = m_Buffers[i];
-			descriptorBufferInfo.offset = 0;
-			descriptorBufferInfo.range = m_Size;
-
-			DescriptorBuilder builder(allocator, Renderer::GetDescriptorLayoutCache());
-			builder
-				.BindBuffer(0, descriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.Build(m_DescriptorSets[i]);
+			m_DescriptorBufferInfo.buffer = m_Buffers[i];
+			m_DescriptorBufferInfo.offset = 0;
+			m_DescriptorBufferInfo.range = m_Size;
 		}
 	}
 
@@ -60,22 +50,5 @@ namespace Eppo
 		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 
 		memcpy(m_MappedMemory[imageIndex], data, size);
-	}
-
-	VkDescriptorSet UniformBuffer::GetDescriptorSet(uint32_t imageIndex)
-	{
-		EPPO_PROFILE_FUNCTION("UniformBuffer::GetDescriptorSet");
-		EPPO_ASSERT((imageIndex < VulkanConfig::MaxFramesInFlight));
-
-		return m_DescriptorSets[imageIndex];
-	}
-
-	VkDescriptorSet UniformBuffer::GetCurrentDescriptorSet()
-	{
-		EPPO_PROFILE_FUNCTION("UniformBuffer::GetCurrentDescriptorSet");
-
-		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
-
-		return GetDescriptorSet(imageIndex);
 	}
 }

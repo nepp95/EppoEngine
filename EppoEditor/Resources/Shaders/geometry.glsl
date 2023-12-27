@@ -8,9 +8,10 @@ layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec3 outFragPosition;
 layout(location = 2) out vec3 outViewPosition;
 
-layout(set = 1, binding = 0) uniform Camera
+layout(set = 0, binding = 0) uniform Camera
 {
-	mat4 ViewMatrix;
+	mat4 View;
+	mat4 Projection;
 	mat4 ViewProjection;
 } uCamera;
 
@@ -25,7 +26,7 @@ void main()
 	outFragPosition = vec3(uTransform.Transform * vec4(inPosition, 1.0));
 
 	vec4 worldPosition = uTransform.Transform * vec4(inPosition, 1.0);
-	outViewPosition = vec3(uCamera.ViewMatrix * vec4(worldPosition.xyz, 1.0));
+	outViewPosition = vec3(uCamera.View * vec4(worldPosition.xyz, 1.0));
 
 	gl_Position = uCamera.ViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
 }
@@ -38,37 +39,87 @@ layout(location = 1) in vec3 inFragPosition;
 layout(location = 2) in vec3 inViewPosition;
 layout(location = 0) out vec4 outColor;
 
+layout(set = 0, binding = 1) uniform Environment
+{
+	mat4 LightView;
+	mat4 LightProjection;
+	mat4 LightViewProjection;
+	vec3 LightPosition;
+	vec3 LightColor;
+} uEnvironment;
+
+layout(set = 0, binding = 2) uniform sampler2D uShadowMap;
+
 layout(push_constant) uniform Material
 {
 	layout(offset = 64) vec3 AlbedoColor;
 	layout(offset = 80) float Roughness;
 } uMaterial;
 
+float CalculateShadow(vec4 fragPos)
+{
+	// Transform fragPos from clip space to ndc -1 to 1
+	vec3 ndcCoords = fragPos.xyz / fragPos.w;
+
+	// Normalize to 0 to 1
+	ndcCoords = ndcCoords * 0.5 + 0.5;
+
+	// Get closest depth value 
+	float closestDepth = texture(uShadowMap, ndcCoords.xy).r;
+
+	// Get depth of current fragment from light's perspective
+	float currentDepth = ndcCoords.z;
+
+	// Check if fragment is in shadow
+	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+
+	return shadow;
+}
+
 void main()
 {
-	vec3 lightColor = vec3(1.0, 1.0, 1.0);
-	vec3 lightPosition = vec3(-3.0, -2.0, 0.0);
+	// using the Phong Reflection Model: https://en.wikipedia.org/wiki/Phong_reflection_model
 
 	// Ambient
-	float ambientStrength = 0.1;
-	vec3 ambient = ambientStrength * lightColor;
+	// Ia = Ka * I
+	// Ia = ambient intensity
+	// Ka = ambient intensity coefficient
+	// I = light intensity
+	float ambientIntensity = 0.1;
+	vec3 ambient = ambientIntensity * uEnvironment.LightColor;
 
 	// Diffuse
-	vec3 norm = normalize(inNormal);
-	vec3 lightDirection = normalize(lightPosition);
+	// Id = Kd * I * max(dot(N, L), 0)
+	// Id = diffuse intensity
+	// Kd = diffuse intensity coefficient
+	// I = light intensity
+	// N = normalized surface normal vector
+	// L = normalized light direction vector
+	vec3 nNormal = normalize(inNormal);
+	vec3 nLightDirection = normalize(uEnvironment.LightPosition - inFragPosition);
 
-	float diff = max(dot(norm, lightDirection), 0.0);
-	vec3 diffuse = diff * lightColor;
+	vec3 diffuseIntensity = uEnvironment.LightColor * max(dot(nNormal, nLightDirection), 0.0); // * roughness
+	vec3 diffuse = diffuseIntensity * uEnvironment.LightColor;
 
 	// Specular
-	float specularStrength = 0.5;
-	vec3 viewDirection = normalize(inViewPosition - inFragPosition);
-	vec3 reflectDirection = reflect(-lightDirection, norm);
+	// Is = Ks * I * (max(dot(R, V), 0)n
+	// Is = specular intensity
+	// Ks = specular intensity coefficient
+	// I = light intensity
+	// R = normalized reflected light direction vector
+	// V = normalized view direction vector
+	// n = shininess coefficient
+	vec3 nViewDirection = normalize(inViewPosition - inFragPosition);
+	vec3 nReflectDirection = normalize(reflect(-nLightDirection, nNormal));
+	
+	float specularIntensity = 0.5;
+	vec3 specular = specularIntensity * uEnvironment.LightColor * max(dot(nViewDirection, nReflectDirection), 0.0);
 
-	float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32);
-	vec3 specular = specularStrength * spec * lightColor;
+	// Shadow
+	vec4 fragPosLightSpace = uEnvironment.LightViewProjection * vec4(inFragPosition, 1.0);
+	float shadow = CalculateShadow(fragPosLightSpace);
 
-	vec3 result = (ambient + diffuse + specular) * uMaterial.AlbedoColor;
-
+	// Output
+	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
 	outColor = vec4(result, 1.0);
 }

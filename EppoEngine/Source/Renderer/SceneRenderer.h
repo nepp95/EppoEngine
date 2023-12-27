@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Buffer/UniformBuffer.h"
+#include "Renderer/Buffer/UniformBufferSet.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Pipeline.h"
@@ -26,6 +27,12 @@ namespace Eppo
 		uint32_t Meshes = 0;
 	};
 
+	enum class EnvironmentKeys
+	{
+		LightPosition,
+		LightColor
+	};
+
 	class SceneRenderer
 	{
 	public:
@@ -36,12 +43,19 @@ namespace Eppo
 		void BeginScene(const EditorCamera& editorCamera);
 		void EndScene();
 
+		void SetEnvironment(EnvironmentKeys key, void* value);
+
 		Ref<Image> GetFinalPassImage();
 
 		void SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId);
 
 	private:
 		void Flush();
+
+		void PrepareRender();
+
+		void GeometryPass();
+		void ShadowPass();
 
 	private:
 		RenderSpecification m_RenderSpecification;
@@ -51,14 +65,28 @@ namespace Eppo
 
 		// Pipelines
 		Ref<Pipeline> m_GeometryPipeline;
+		Ref<Pipeline> m_ShadowPipeline;
 
-		// Camera
+		// Uniform buffers
+		Ref<UniformBufferSet> m_UniformBufferSet;
+
 		struct CameraData
 		{
-			glm::mat4 ViewMatrix;
-			glm::mat4 ViewProjectionMatrix;
+			glm::mat4 View;
+			glm::mat4 Projection;
+			glm::mat4 ViewProjection;
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUniformBuffer;
+
+		struct EnvironmentData
+		{
+			glm::mat4 LightView;
+			glm::mat4 LightProjection;
+			glm::mat4 LightViewProjection;
+			glm::vec3 LightPosition = { 0.0f, 0.0f, 0.0f };
+			glm::vec3 LightColor;
+		} m_EnvironmentBuffer;
+		Ref<UniformBuffer> m_EnvironmentUniformBuffer;
 
 		// Draw commands
 		struct DrawCommand
@@ -75,6 +103,7 @@ namespace Eppo
 		struct TimestampQueries
 		{
 			uint32_t GeometryQuery = UINT32_MAX;
+			uint32_t ShadowQuery = UINT32_MAX;
 		} m_TimestampQueries;
 	};
 }

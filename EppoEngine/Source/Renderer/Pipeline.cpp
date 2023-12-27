@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Pipeline.h"
 
+#include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
 
 namespace Eppo
@@ -79,7 +80,7 @@ namespace Eppo
 		depthInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 		depthInfo.depthTestEnable = m_Specification.DepthTesting ? VK_TRUE : VK_FALSE;
 		depthInfo.depthWriteEnable = m_Specification.DepthTesting ? VK_TRUE : VK_FALSE;
-		depthInfo.depthCompareOp = m_Specification.DepthTesting ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_ALWAYS;
+		depthInfo.depthCompareOp = m_Specification.DepthTesting ? VK_COMPARE_OP_LESS : VK_COMPARE_OP_ALWAYS;
 		depthInfo.depthBoundsTestEnable = VK_FALSE;
 		depthInfo.minDepthBounds = 0.0f;
 		depthInfo.maxDepthBounds = 1.0f;
@@ -118,9 +119,56 @@ namespace Eppo
 		dynamicState.dynamicStateCount = (uint32_t)dynamicStates.size();
 		dynamicState.pDynamicStates = dynamicStates.data();
 
-		// Pipeline layout
+		// Descriptor pool
+		VkDescriptorPoolSize poolSizes[] =
+		{
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
+			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 10 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 10 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 10 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 10 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 10 }
+		};
+
+		// from IM_ARRAYSIZE (imgui) = ((int)(sizeof(poolSizes) / sizeof(*(poolSizes))));
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.flags = 0;
+		poolInfo.poolSizeCount = ((int)(sizeof(poolSizes) / sizeof(*(poolSizes))));
+		poolInfo.pPoolSizes = poolSizes;
+		poolInfo.maxSets = 4 * ((int)(sizeof(poolSizes) / sizeof(*(poolSizes))));
+
+		m_DescriptorPools.resize(VulkanConfig::MaxFramesInFlight);
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &m_DescriptorPools[i]), "Failed to create descriptor pool!");
+
+		// Descriptor sets
 		const auto& descriptorSetLayouts = m_Specification.Shader->GetDescriptorSetLayouts();
 
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
+
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+		{
+			allocInfo.descriptorPool = m_DescriptorPools[i];
+			
+			m_DescriptorSets[i].resize(4);
+			for (uint32_t j = 0; j < 4; j++)
+			{
+				allocInfo.descriptorSetCount = 1;
+				allocInfo.pSetLayouts = &descriptorSetLayouts[j];
+
+				VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &m_DescriptorSets[i][j]), "Failed to allocate descriptor set!");
+			}
+		}
+
+		// Pipeline layout
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = (uint32_t)descriptorSetLayouts.size();

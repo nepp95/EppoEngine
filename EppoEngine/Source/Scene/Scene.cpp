@@ -16,6 +16,18 @@ namespace Eppo
 
 	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
 	{
+		{
+			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
+				sceneRenderer->SetEnvironment(EnvironmentKeys::LightPosition, &tc.Translation);
+				sceneRenderer->SetEnvironment(EnvironmentKeys::LightColor, &dlc.Color);
+				break;
+			}
+		}
+
 		sceneRenderer->BeginScene(editorCamera);
 
 		{

@@ -76,4 +76,13 @@ namespace Eppo
 		MeshComponent() = default;
 		MeshComponent(const MeshComponent&) = default;
 	};
+
+	struct DirectionalLightComponent
+	{
+		glm::vec4 Color = glm::vec4(1.0f);
+		float Intensity = 1.0f;
+
+		DirectionalLightComponent() = default;
+		DirectionalLightComponent(const DirectionalLightComponent&) = default;
+	};
 }
