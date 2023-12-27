@@ -67,7 +67,13 @@ float CalculateShadow(vec4 fragPos)
 	// Get closest depth value 
 	float closestDepth = texture(uShadowMap, ndcCoords.xy).r;
 
-	return closestDepth;
+	// Get depth of current fragment from light's perspective
+	float currentDepth = ndcCoords.z;
+
+	// Check if fragment is in shadow
+	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+
+	return shadow;
 }
 
 void main()

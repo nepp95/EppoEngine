@@ -27,6 +27,12 @@ namespace Eppo
 		uint32_t Meshes = 0;
 	};
 
+	enum class EnvironmentKeys
+	{
+		LightPosition,
+		LightColor
+	};
+
 	class SceneRenderer
 	{
 	public:
@@ -36,6 +42,8 @@ namespace Eppo
 
 		void BeginScene(const EditorCamera& editorCamera);
 		void EndScene();
+
+		void SetEnvironment(EnvironmentKeys key, void* value);
 
 		Ref<Image> GetFinalPassImage();
 
@@ -69,7 +77,6 @@ namespace Eppo
 			glm::mat4 ViewProjection;
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUniformBuffer;
-		std::vector<VkDescriptorSet> m_CameraDescriptorSets;
 
 		struct EnvironmentData
 		{
@@ -80,7 +87,6 @@ namespace Eppo
 			glm::vec3 LightColor;
 		} m_EnvironmentBuffer;
 		Ref<UniformBuffer> m_EnvironmentUniformBuffer;
-		std::vector<VkDescriptorSet> m_EnvironmentDescriptorSets;
 
 		// Draw commands
 		struct DrawCommand

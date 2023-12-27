@@ -54,6 +54,7 @@ namespace Eppo
 		{
 			DrawAddComponentEntry<SpriteComponent>("Sprite");
 			DrawAddComponentEntry<MeshComponent>("Mesh");
+			DrawAddComponentEntry<DirectionalLightComponent>("Directional Light");
 
 			ImGui::EndPopup();
 		}
@@ -190,6 +191,12 @@ namespace Eppo
 				}
 			}
 		});
+
+		DrawComponent<DirectionalLightComponent>(entity, [](auto& component)
+		{
+			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+			ImGui::DragFloat("Intensity", &component.Intensity, 0.05f);
+		}, std::string("Directional Light"));
 	}
 
 	template<typename T>

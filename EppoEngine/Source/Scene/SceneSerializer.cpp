@@ -186,6 +186,16 @@ namespace Eppo
 					nc.MeshHandle = c["MeshHandle"].as<uint64_t>();
 				}
 			}
+
+			{
+				auto c = entity["DirectionalLightComponent"];
+				if (c)
+				{
+					auto& dlc = newEntity.AddComponent<DirectionalLightComponent>();
+					dlc.Color = c["Color"].as<glm::vec4>();
+					dlc.Intensity = c["Intensity"].as<float>();
+				}
+			}
 		}
 
 		return true;
@@ -244,6 +254,18 @@ namespace Eppo
 
 			auto& c = entity.GetComponent<MeshComponent>();
 			out << YAML::Key << "MeshHandle" << YAML::Value << c.MeshHandle;
+
+			out << YAML::EndMap;
+		}
+
+		if (entity.HasComponent<DirectionalLightComponent>())
+		{
+			out << YAML::Key << "DirectionalLightComponent" << YAML::Value;
+			out << YAML::BeginMap;
+
+			auto& c = entity.GetComponent<DirectionalLightComponent>();
+			out << YAML::Key << "Color" << YAML::Value << c.Color;
+			out << YAML::Key << "Intensity" << YAML::Value << c.Intensity;
 
 			out << YAML::EndMap;
 		}

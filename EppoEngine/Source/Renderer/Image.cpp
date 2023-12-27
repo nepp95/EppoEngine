@@ -83,7 +83,10 @@ namespace Eppo
 
 		m_Info.ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		m_DescriptorImageInfo.imageLayout = m_Info.ImageLayout;
+		if (m_Specification.Format == ImageFormat::Depth)
+			m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		else
+			m_DescriptorImageInfo.imageLayout = m_Info.ImageLayout;
 		m_DescriptorImageInfo.imageView = m_Info.ImageView;
 		m_DescriptorImageInfo.sampler = m_Info.Sampler;
 	}

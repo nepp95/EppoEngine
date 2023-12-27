@@ -29,21 +29,21 @@ namespace Eppo
 			framebufferSpec.ClearDepthOnLoad = true;
 			framebufferSpec.ClearDepth = 1.0f;
 
-			PipelineSpecification geometryPipelineSpec;
-			geometryPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-			geometryPipelineSpec.Shader = Renderer::GetShader("geometry");
-			geometryPipelineSpec.Layout = {
+			PipelineSpecification pipelineSpec;
+			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			pipelineSpec.Shader = Renderer::GetShader("geometry");
+			pipelineSpec.Layout = {
 				{ ShaderDataType::Float3, "inPosition" },
 				{ ShaderDataType::Float3, "inNormal" },
 				{ ShaderDataType::Float2, "inTexCoord" }
 			};
-			geometryPipelineSpec.DepthTesting = true;
-			geometryPipelineSpec.PushConstants = {
+			pipelineSpec.DepthTesting = true;
+			pipelineSpec.PushConstants = {
 				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) },
 				{ VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float) }
 			};
 
-			m_GeometryPipeline = CreateRef<Pipeline>(geometryPipelineSpec);
+			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
 		}
 
 		// Lighting
@@ -51,7 +51,7 @@ namespace Eppo
 			FramebufferSpecification framebufferSpec;
 		}
 
-		// Shadow
+		// PreDepth
 		{
 			// TODO: Create shadow map image
 			// TODO: Clear pass for clearing the shadow map image
@@ -64,20 +64,20 @@ namespace Eppo
 			framebufferSpec.ClearDepthOnLoad = true;
 			framebufferSpec.ClearDepth = 1.0f;
 
-			PipelineSpecification shadowPipelineSpec;
-			shadowPipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-			shadowPipelineSpec.Shader = Renderer::GetShader("shadow");
-			shadowPipelineSpec.Layout = {
+			PipelineSpecification pipelineSpec;
+			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			pipelineSpec.Shader = Renderer::GetShader("shadow");
+			pipelineSpec.Layout = {
 				{ ShaderDataType::Float3, "inPosition" },
 				{ ShaderDataType::Float3, "inNormal" },
 				{ ShaderDataType::Float2, "inTexCoord" }
 			};
-			shadowPipelineSpec.DepthTesting = true;
-			shadowPipelineSpec.PushConstants = {
+			pipelineSpec.DepthTesting = true;
+			pipelineSpec.PushConstants = {
 				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
 			};
 
-			m_ShadowPipeline = CreateRef<Pipeline>(shadowPipelineSpec);
+			m_ShadowPipeline = CreateRef<Pipeline>(pipelineSpec);
 		}
 
 		// Uniform buffers
@@ -92,10 +92,6 @@ namespace Eppo
 		
 		m_CameraUniformBuffer = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
 		m_EnvironmentUniformBuffer = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1);
-
-		// Descriptor sets
-		m_CameraDescriptorSets.resize(VulkanConfig::MaxFramesInFlight);
-		m_EnvironmentDescriptorSets.resize(VulkanConfig::MaxFramesInFlight);
 	}
 
 	void SceneRenderer::RenderGui()
@@ -130,21 +126,9 @@ namespace Eppo
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
 		m_CameraUniformBuffer->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
-		// Set environment
-		m_EnvironmentBuffer.LightColor = { 1.0f, 1.0f, 1.0f };
-		m_EnvironmentBuffer.LightPosition.y = -20.0f;
-
-		// Circular light
-		float radius = 100.0f;
-		float rotationSpeed = 0.1f;
-		double elapsedTime = glfwGetTime();
-
-		m_EnvironmentBuffer.LightPosition.x = radius * cos(rotationSpeed * elapsedTime);
-		m_EnvironmentBuffer.LightPosition.z = radius * sin(rotationSpeed * elapsedTime);
-
 		// Matrices
-		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_EnvironmentBuffer.LightProjection = glm::ortho(-800.0f, 800.0f, -450.0f, 450.0f, 0.1f, 100.0f);
+		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 125.0f);
 		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
 
 		m_EnvironmentUniformBuffer->SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
@@ -156,6 +140,15 @@ namespace Eppo
 	void SceneRenderer::EndScene()
 	{
 		Flush();
+	}
+
+	void SceneRenderer::SetEnvironment(EnvironmentKeys key, void* value)
+	{
+		switch (key)
+		{
+			case EnvironmentKeys::LightPosition:	m_EnvironmentBuffer.LightPosition = *(glm::vec3*)value;
+			case EnvironmentKeys::LightColor:		m_EnvironmentBuffer.LightColor = *(glm::vec4*)value;
+		}
 	}
 
 	Ref<Image> SceneRenderer::GetFinalPassImage()
