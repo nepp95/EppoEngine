@@ -13,3 +13,6 @@
 # Cache
 /EppoEditor/Resources/Shaders/Cache
 __pycache__
+
+# Build system
+Makefile

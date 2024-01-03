@@ -5,7 +5,7 @@
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 namespace Eppo
 {

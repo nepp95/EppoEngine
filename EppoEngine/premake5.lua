@@ -28,7 +28,6 @@ project "EppoEngine"
         "Source",
 		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}",
-        "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
@@ -40,7 +39,6 @@ project "EppoEngine"
     }
 
     links {
-        "glfw",
 		"imgui",
 		"yaml-cpp",
         "%{Library.vulkan}"
@@ -48,6 +46,45 @@ project "EppoEngine"
 
     filter "system:windows"
         systemversion "latest"
+
+        defines {
+            "EPPO_PLATFORM_WINDOWS"
+        }
+
+        includedirs {
+            "%{IncludeDir.glfw}"
+        }
+
+        links {
+            "glfw"
+        }
+
+        removefiles {
+            "Source/Platform/Linux/**.cpp"
+        }
+    
+    filter "system:linux"
+        defines {
+            "EPPO_PLATFORM_LINUX"
+        }
+
+        includedirs {
+            "/usr/local/include"
+        }
+
+        links {
+            "glfw"
+        }
+
+        removefiles {
+            "Source/Platform/Windows/**.cpp"
+        }
+    
+    filter { "system:linux", "action:gmake2" }
+        -- fpermissive is specified because of struct members having the same name as the type
+        buildoptions {
+            "-fpermissive"
+        }
     
     filter "configurations:Debug"
         defines "EPPO_DEBUG"

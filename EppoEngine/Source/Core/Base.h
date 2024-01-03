@@ -16,15 +16,10 @@
 #define BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
 #if defined(EPPO_TRACK_MEMORY)
-	_NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size) _VCRT_ALLOCATOR
-	void* __CRTDECL operator new(size_t size);
-
-	_NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size) _VCRT_ALLOCATOR
-	void* __CRTDECL operator new[](size_t size);
-	
-	void __CRTDECL operator delete(void* block);
-	
-	void __CRTDECL operator delete[](void* block);
+	[[nodiscard]] void* operator new(size_t size);
+	[[nodiscard]] void* operator new[](size_t size);
+	void operator delete(void* block);
+	void operator delete[](void* block);
 #endif
 
 namespace Eppo

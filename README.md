@@ -1,4 +1,6 @@
 # EppoEngine
+[![Master Build](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml)
+[![Development Build](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml)
 
 ## Introduction
 

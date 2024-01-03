@@ -39,4 +39,4 @@
 #include "Scene/SceneSerializer.h"
 
 // Utility
-#include "Utility/FileDialog.h"
+#include "Platform/FileDialog.h"
