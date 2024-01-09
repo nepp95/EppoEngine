@@ -48,11 +48,4 @@ namespace Eppo
 	//	VkDevice device = m_LogicalDevice->GetNativeDevice();
 	//	vkDeviceWaitIdle(device);
 	//}
-
-	Ref<RendererContext> RendererContext::Get()
-	{
-		EPPO_PROFILE_FUNCTION("RendererContext::Get");
-
-		return Application::Get().GetWindow().GetRendererContext();
-	}
 }

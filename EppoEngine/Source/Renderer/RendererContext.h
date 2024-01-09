@@ -24,7 +24,6 @@ namespace Eppo
 
 		TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
 
-		static Ref<RendererContext> Get();
 		static RendererAPI GetAPI() { return s_API; }
 		static Scope<RendererContext> Create(void* windowHandle);
 

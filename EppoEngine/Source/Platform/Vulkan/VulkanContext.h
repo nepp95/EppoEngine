@@ -23,6 +23,12 @@ namespace Eppo
 
 		void SubmitResourceFree(std::function<void()> fn);
 
+		const Ref<PhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
+		const Ref<LogicalDevice>& GetLogicalDevice() const { return m_LogicalDevice; }
+		const Ref<Swapchain>& GetSwapchain() const { return m_Swapchain; }
+
+		static Ref<VulkanContext> Get();
+
 	private:
 		bool HasValidationSupport() const;
 		std::vector<const char*> GetRequiredExtensions() const;

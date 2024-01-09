@@ -116,7 +116,8 @@ namespace Eppo
 		renderPassInfo.dependencyCount = (uint32_t)subpassDependencies.size();
 		renderPassInfo.pDependencies = subpassDependencies.data();
 
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = VulkanContext::Get();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 		VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_RenderPass), "Failed to create render pass!");
 
 		std::vector<VkImageView> attachments(m_ImageAttachments.size());
@@ -157,7 +158,7 @@ namespace Eppo
 
 	VulkanFramebuffer::~VulkanFramebuffer()
 	{
-		Ref<VulkanContext> context = std::dynamic_pointer_cast<VulkanContext>(RendererContext::Get());
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		vkDestroyRenderPass(device, m_RenderPass, nullptr);

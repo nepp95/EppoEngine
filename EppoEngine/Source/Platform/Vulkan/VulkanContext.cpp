@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "VulkanContext.h"
 
+#include "Core/Application.h"
 #include "Platform/Vulkan/Allocator.h"
 
 #include <GLFW/glfw3.h>
@@ -97,6 +98,13 @@ namespace Eppo
 
 		m_ResourceFreeCommands.push_back(fn);
 		m_ResourceFreeCommandCount++;
+	}
+
+	Ref<VulkanContext> VulkanContext::Get()
+	{
+		return std::dynamic_pointer_cast<VulkanContext>(
+			Application::Get().GetWindow().GetRendererContext()
+		);
 	}
 
 	bool VulkanContext::HasValidationSupport() const
