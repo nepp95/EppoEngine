@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Renderer/LogicalDevice.h"
+#include "Platform/Vulkan/LogicalDevice.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -38,7 +39,7 @@ namespace Eppo
 		uint32_t GetHeight() const { return m_Extent.height; }
 
 	private:
-		SwapchainSupportDetails QuerySwapchainSupport(Ref<RendererContext> context);
+		SwapchainSupportDetails QuerySwapchainSupport(const Ref<VulkanContext>& context);
 		VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 		VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 		VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);

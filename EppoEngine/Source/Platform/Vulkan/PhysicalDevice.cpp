@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "PhysicalDevice.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -9,8 +9,9 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("PhysicalDevice::PhysicalDevice");
 
-		VkInstance instance = RendererContext::Get()->GetVulkanInstance();
-	
+		Ref<VulkanContext> context = std::dynamic_pointer_cast<VulkanContext>(RendererContext::Get());
+		VkInstance instance = context->GetVulkanInstance();
+
 		// Select GPU
 		uint32_t deviceCount = 0;
 		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);

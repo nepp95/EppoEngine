@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
+#include "Platform/Vulkan/Vulkan.h"
 
 namespace Eppo
 {
@@ -28,7 +28,7 @@ namespace Eppo
 		const QueueFamilyIndices& GetQueueFamilyIndices() const { return m_Indices; }
 
 		bool IsExtensionSupported(const std::string& extension);
-	
+
 	private:
 		QueueFamilyIndices FindQueueFamilyIndices();
 

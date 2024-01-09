@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Vma.h"
+#include "Platform/Vulkan/Vma.h"
 
 namespace Eppo
 {
@@ -20,5 +20,8 @@ namespace Eppo
 
 		static void* MapMemory(VmaAllocation allocation);
 		static void UnmapMemory(VmaAllocation allocation);
+
+	private:
+		// TODO: Make a non static class
 	};
 }

@@ -319,7 +319,7 @@ namespace Eppo
 		RendererContext::Get()->WaitIdle();
 	}
 
-	SwapchainSupportDetails Swapchain::QuerySwapchainSupport(Ref<RendererContext> context)
+	SwapchainSupportDetails Swapchain::QuerySwapchainSupport(const Ref<VulkanContext>& context)
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::QuerySwapchainSupport");
 

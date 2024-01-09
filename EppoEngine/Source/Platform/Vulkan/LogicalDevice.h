@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Renderer/PhysicalDevice.h"
+#include "Platform/Vulkan/PhysicalDevice.h"
 
 namespace Eppo
 {
 	class LogicalDevice
 	{
 	public:
-		LogicalDevice(Ref<PhysicalDevice> physicalDevice);
+		LogicalDevice(const Ref<PhysicalDevice>& physicalDevice);
 
 		VkCommandBuffer GetCommandBuffer(bool begin);
 		void FlushCommandBuffer(VkCommandBuffer commandBuffer);

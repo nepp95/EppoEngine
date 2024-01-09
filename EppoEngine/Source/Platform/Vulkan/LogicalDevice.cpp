@@ -5,7 +5,7 @@
 
 namespace Eppo
 {
-	LogicalDevice::LogicalDevice(Ref<PhysicalDevice> physicalDevice)
+	LogicalDevice::LogicalDevice(const Ref<PhysicalDevice>& physicalDevice)
 		: m_PhysicalDevice(physicalDevice)
 	{
 		EPPO_PROFILE_FUNCTION("LogicalDevice::LogicalDevice");
