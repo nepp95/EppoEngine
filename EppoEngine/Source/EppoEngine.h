@@ -15,6 +15,7 @@
 #include "Core/KeyCodes.h"
 #include "Core/Layer.h"
 #include "Core/MouseCodes.h"
+#include "Core/Ref.h"
 #include "Core/UUID.h"
 
 // Events
