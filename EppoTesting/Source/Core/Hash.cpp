@@ -1,8 +1,8 @@
-#include "test.h"
+#include "Test.h"
 
 namespace Eppo
 {
-	TEST(HashTest, CreateFileHash)
+	TEST(HashTest, GenerateFnv_String)
 	{
 		uint64_t hash = 0;
 
@@ -14,5 +14,10 @@ namespace Eppo
 
 		hash = Hash::GenerateFnv("abcdefghijklmnopqrstuvwxyz1234567890!");
 		EXPECT_EQ(14272954169027804443, hash);
+	}
+
+	TEST(HashTest, GenerateFnv_Buffer)
+	{
+		EXPECT_TRUE(false);
 	}
 }
