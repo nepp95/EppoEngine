@@ -23,7 +23,7 @@ namespace Eppo
 		float ClearDepth = 1.0f;
 	};
 
-	class Framebuffer
+	class Framebuffer : public RefCounter
 	{
 	public:
 		virtual ~Framebuffer() {};

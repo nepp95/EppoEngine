@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
-
 namespace Eppo
 {
 	struct PipelineStatistics
@@ -17,35 +15,18 @@ namespace Eppo
 	class RenderCommandBuffer
 	{
 	public:
-		RenderCommandBuffer(uint32_t count = 0);
-		~RenderCommandBuffer();
+		virtual ~RenderCommandBuffer() {};
 
-		void Begin();
-		void End();
-		void Submit();
+		virtual void Begin() = 0;
+		virtual void End() = 0;
+		virtual void Submit() = 0;
 
-		uint32_t BeginTimestampQuery();
-		void EndTimestampQuery(uint32_t queryIndex);
+		virtual uint32_t BeginTimestampQuery() = 0;
+		virtual void EndTimestampQuery(uint32_t queryIndex) = 0;
 
-		float GetTimestamp(uint32_t imageIndex, uint32_t queryIndex = 0) const;
-		const PipelineStatistics& GetPipelineStatistics(uint32_t imageIndex) const { return m_PipelineStatistics[imageIndex]; }
+		virtual float GetTimestamp(uint32_t imageIndex, uint32_t queryIndex = 0) const = 0;
+		virtual const PipelineStatistics& GetPipelineStatistics(uint32_t imageIndex) const = 0;
 
-		VkCommandBuffer GetCurrentCommandBuffer() const;
-
-	private:
-		VkCommandPool m_CommandPool;
-		std::vector<VkCommandBuffer> m_CommandBuffers;
-		
-		std::vector<VkQueryPool> m_QueryPools;
-		std::vector<std::vector<uint64_t>> m_Timestamps;
-		std::vector<std::vector<float>> m_TimestampDeltas;
-		uint32_t m_QueryIndex = 2;
-		uint32_t m_QueryCount = 6;
-
-		std::vector<VkQueryPool> m_PipelineQueryPools;
-		std::vector<PipelineStatistics> m_PipelineStatistics;
-		uint32_t m_PipelineQueryCount = 6;
-
-		std::vector<VkFence> m_Fences;
+		static Ref<RenderCommandBuffer> Create(uint32_t count);
 	};
 }

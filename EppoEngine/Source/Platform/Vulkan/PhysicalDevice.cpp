@@ -9,7 +9,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("PhysicalDevice::PhysicalDevice");
 
-		Ref<VulkanContext> context = std::dynamic_pointer_cast<VulkanContext>(RendererContext::Get());
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		VkInstance instance = context->GetVulkanInstance();
 
 		// Select GPU

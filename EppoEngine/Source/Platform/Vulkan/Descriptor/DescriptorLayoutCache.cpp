@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "DescriptorLayoutCache.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 #include "Renderer/Shader.h"
 
 namespace Eppo
@@ -10,7 +10,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorLayoutCache::Shutdown");
 
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto& layout : m_LayoutCache)
@@ -42,7 +42,7 @@ namespace Eppo
 			return (*it).second;
 
 		// No cache hit
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorSetLayout layout;

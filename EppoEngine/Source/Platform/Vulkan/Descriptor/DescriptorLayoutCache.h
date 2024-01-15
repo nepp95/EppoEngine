@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Descriptor/DescriptorLayoutInfo.h"
+#include "Platform/Vulkan/Descriptor/DescriptorLayoutInfo.h"
 
 namespace Eppo
 {

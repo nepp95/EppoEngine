@@ -1,13 +1,19 @@
 #include "pch.h"
 #include "RendererContext.h"
 
+#include "Core/Application.h"
 #include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
 	RendererAPI RendererContext::s_API = RendererAPI::Vulkan;
 
-	Scope<RendererContext> RendererContext::Create(void* windowHandle)
+	Ref<RendererContext> RendererContext::Get()
+	{
+		return Application::Get().GetWindow().GetRendererContext();
+	}
+
+	Ref<RendererContext> RendererContext::Create(void* windowHandle)
 	{
 		switch (s_API)
 		{
@@ -19,7 +25,7 @@ namespace Eppo
 
 			case RendererAPI::Vulkan:
 			{
-				return CreateScope<VulkanContext>(static_cast<GLFWwindow*>(windowHandle));
+				return Ref<VulkanContext>::Create(static_cast<GLFWwindow*>(windowHandle)).As<RendererContext>();
 			}
 
 			EPPO_ASSERT(false);
@@ -39,13 +45,5 @@ namespace Eppo
 	//		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 	//			TracyVkDestroy(m_TracyContexts[i]);
 	//	});
-	//}
-
-	//void RendererContext::WaitIdle()
-	//{
-	//	EPPO_PROFILE_FUNCTION("RendererContext::WaitIdle");
-
-	//	VkDevice device = m_LogicalDevice->GetNativeDevice();
-	//	vkDeviceWaitIdle(device);
 	//}
 }

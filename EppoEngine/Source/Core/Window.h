@@ -33,6 +33,8 @@ namespace Eppo
 		void ProcessEvents();
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
+		GLFWwindow* GetNativeWindow() const { return m_Window; }
+
 		Ref<RendererContext> GetRendererContext() { return m_Context; }
 
 	private:

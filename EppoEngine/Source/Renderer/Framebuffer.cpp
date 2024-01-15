@@ -18,7 +18,7 @@ namespace Eppo
 
 			case RendererAPI::Vulkan:
 			{
-				return CreateRef<VulkanFramebuffer>(specification);
+				return Ref<VulkanFramebuffer>::Create(specification).As<Framebuffer>();
 			}
 
 			EPPO_ASSERT(false);

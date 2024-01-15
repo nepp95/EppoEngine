@@ -20,6 +20,8 @@ namespace Eppo
 		const std::vector<VkClearValue>& GetClearValues() const { return m_ClearValues; }
 
 	private:
+		FramebufferSpecification m_Specification;
+
 		VkFramebuffer m_Framebuffer;
 		VkRenderPass m_RenderPass;
 

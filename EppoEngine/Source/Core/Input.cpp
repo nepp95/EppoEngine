@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Input.h"
 
-#include "Renderer/RendererContext.h"
+#include "Core/Application.h"
 
 #include <glfw/glfw3.h>
 
@@ -9,7 +9,7 @@ namespace Eppo
 {
 	bool Input::IsKeyPressed(KeyCode key)
 	{
-		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
+		GLFWwindow* window = Application::Get().GetWindow().GetNativeWindow();
 		int keyState = glfwGetKey(window, key);
 
 		return keyState == GLFW_PRESS;
@@ -17,7 +17,7 @@ namespace Eppo
 
 	bool Input::IsMouseButtonPressed(MouseCode button)
 	{
-		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
+		GLFWwindow* window = Application::Get().GetWindow().GetNativeWindow();
 		int buttonState = glfwGetMouseButton(window, button);
 
 		return buttonState == GLFW_PRESS;
@@ -25,7 +25,7 @@ namespace Eppo
 
 	glm::vec2 Input::GetMousePosition()
 	{
-		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
+		GLFWwindow* window = Application::Get().GetWindow().GetNativeWindow();
 		double xPos, yPos;
 		glfwGetCursorPos(window, &xPos, &yPos);
 

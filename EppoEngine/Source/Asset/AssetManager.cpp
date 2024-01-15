@@ -106,14 +106,14 @@ namespace Eppo
 		{
 			case AssetType::Mesh:
 			{
-				asset = CreateRef<Mesh>(filepath);
+				asset = Ref<Mesh>::Create(filepath);
 				asset->Handle = metadata.Handle;
 				return true;
 			}
 
 			case AssetType::Texture:
 			{
-				asset = CreateRef<Texture>(filepath);
+				asset = Ref<Texture>::Create(filepath);
 				asset->Handle = metadata.Handle;
 				return true;
 			}

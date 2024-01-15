@@ -27,7 +27,7 @@ namespace Eppo
 
 			if (Utils::IsDepthFormat(attachment))
 			{
-				m_DepthImage = CreateRef<Image>(imageSpec);
+				m_DepthImage = Ref<Image>::Create(imageSpec);
 
 				VkAttachmentDescription& depthAttachment = attachmentDescriptions.emplace_back();
 				depthAttachment.format = Utils::FindSupportedDepthFormat(); // TODO: Is it possible this will defer between calls?
@@ -46,7 +46,7 @@ namespace Eppo
 			}
 			else
 			{
-				m_ImageAttachments.emplace_back(CreateRef<Image>(imageSpec));
+				m_ImageAttachments.emplace_back(Ref<Image>::Create(imageSpec));
 
 				VkAttachmentDescription& colorAttachment = attachmentDescriptions.emplace_back();
 				colorAttachment.format = Utils::ImageFormatToVkFormat(attachment);
@@ -116,7 +116,7 @@ namespace Eppo
 		renderPassInfo.dependencyCount = (uint32_t)subpassDependencies.size();
 		renderPassInfo.pDependencies = subpassDependencies.data();
 
-		Ref<VulkanContext> context = VulkanContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 		VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_RenderPass), "Failed to create render pass!");
 
@@ -158,7 +158,7 @@ namespace Eppo
 
 	VulkanFramebuffer::~VulkanFramebuffer()
 	{
-		Ref<VulkanContext> context = VulkanContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		vkDestroyRenderPass(device, m_RenderPass, nullptr);

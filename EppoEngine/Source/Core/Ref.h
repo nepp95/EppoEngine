@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Assert.h"
+
 namespace Eppo
 {
 	class RefCounter
@@ -21,51 +23,45 @@ namespace Eppo
 		}
 
 		template<typename T>
-		friend class Ref2;
+		friend class Ref;
 		
 	private:
 		uint32_t m_RefCount = 0;
 	};
 
 	template<typename T>
-	class Ref2
+	class Ref
 	{
 	public:
 		// Default constructor
-		Ref2()
-		{}
+		Ref()
+		{
+			static_assert(std::is_base_of_v<RefCounter, T>, "Class is not based on RefCounter!");
+		}
 
 		// Destructor
-		~Ref2()
+		~Ref()
 		{
 			if (m_Object)
 				DecRef();
 		}
 		
 		// Construct from raw pointer
-		Ref2(T* object)
+		Ref(T* object)
 		{
 			m_Object = object;
 			IncRef();
 		}
 
 		// Copy constructor
-		Ref2(const Ref2& other)
+		Ref(const Ref& other)
 		{
 			m_Object = other.m_Object;
 			IncRef();
 		}
 
-		// Copy assignment operator
-		Ref2& operator=(const Ref2& other)
-		{
-			m_Object = other.m_Object;
-			IncRef();
-		}
-
-		// Copy constructor child to base
-		template<typename T2>
-		Ref2<T>& operator=(const Ref2<T2>& other)
+		/*template<typename T2>
+		Ref(const Ref<T2>& other)
 		{
 			if (m_Object)
 				DecRef();
@@ -74,22 +70,53 @@ namespace Eppo
 			IncRef();
 
 			return *this;
+		}*/
+
+		// Copy assignment operator
+		Ref& operator=(const Ref& other)
+		{
+			m_Object = other.m_Object;
+			IncRef();
 		}
 
+		// Copy constructor child to base
+		//template<typename T2>
+		//Ref<T>& operator=(const Ref<T2>& other)
+		//{
+		//	if (m_Object)
+		//		DecRef();
+
+		//	m_Object = other.m_Object;
+		//	IncRef();
+
+		//	return *this;
+		//}
+
 		// Move constructor
-		Ref2(Ref2&& other) noexcept
+		Ref(Ref&& other)
 		{
 			m_Object = other.m_Object;
 			other.m_Object = nullptr;
 		}
 
 		// Move assignment operator
-		Ref2& operator=(Ref2&& other) noexcept
+		Ref& operator=(Ref&& other)
 		{
 			m_Object = other.m_Object;
 			other.m_Object = nullptr;
 
-			return *m_Object;
+			return *this;
+		}
+
+		template<typename T2>
+		Ref& operator=(Ref<T2>&& other)
+		{
+			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
+
+			m_Object = other.m_Object;
+			other.m_Object = nullptr;
+
+			return *this;
 		}
 
 		// Raw pointer
@@ -110,22 +137,24 @@ namespace Eppo
 
 		// Create
 		template<typename... Args>
-		static Ref2<T> Create(Args&&... args)
+		static Ref<T> Create(Args&&... args)
 		{
 			T* object = new T(std::forward<Args>(args)...);
 
-			return Ref2<T>(object);
+			return Ref<T>(object);
 		}
 
 		// Cast to polymorphic type
 		template<typename T2>
-		Ref2<T2>& As()
+		Ref<T2>& As()
 		{
+			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
 			EPPO_ASSERT(m_Object);
+
 			T2* ptr = dynamic_cast<T2*>(m_Object);
 			EPPO_ASSERT(ptr);
 			
-			return Ref2<T2>(ptr);
+			return Ref<T2>(ptr);
 		}
 
 		uint32_t GetRefCount() const
@@ -163,6 +192,6 @@ namespace Eppo
 		mutable T* m_Object = nullptr;
 
 		template<typename T2>
-		friend class Ref2;
+		friend class Ref;
 	};
 }

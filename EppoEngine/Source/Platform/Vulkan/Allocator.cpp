@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Allocator.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -24,7 +24,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::Init");
 
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 
 		s_Data = new VmaData();
 

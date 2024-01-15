@@ -49,7 +49,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Window::Init");
 
 		// Create renderer context
-		m_Context = CreateRef<RendererContext>(m_Window);
+		m_Context = RendererContext::Create(m_Window);
 		m_Context->Init();
 
 		glfwSetWindowUserPointer(m_Window, &m_Callback);

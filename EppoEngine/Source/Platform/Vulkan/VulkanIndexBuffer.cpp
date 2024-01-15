@@ -34,7 +34,7 @@ namespace Eppo
 		m_Allocation = Allocator::AllocateBuffer(m_Buffer, indexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
 
 		// Copy staging buffer data to device local buffer
-		Ref<VulkanContext> context = VulkanContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
 		VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "LogicalDevice.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -67,7 +67,7 @@ namespace Eppo
 		VK_CHECK(vkCreateCommandPool(m_Device, &commandPoolInfo, nullptr, &m_CommandPool), "Failed to create command pool!");
 	
 		// Clean up
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		context->SubmitResourceFree([=]()
 		{
 			vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);

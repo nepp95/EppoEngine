@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Debug/Profiler.h"
 #include "Platform/Vulkan/LogicalDevice.h"
 #include "Platform/Vulkan/PhysicalDevice.h"
 #include "Platform/Vulkan/Swapchain.h"
@@ -18,23 +19,28 @@ namespace Eppo
 		VulkanContext(GLFWwindow* windowHandle);
 		virtual ~VulkanContext() = default;
 
-		virtual void Init() override;
-		virtual void Shutdown() override;
+		void Init() override;
+		void Shutdown() override;
+
+		void WaitIdle();
 
 		void SubmitResourceFree(std::function<void()> fn);
 
+		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
+
+		VkInstance GetVulkanInstance() const { return m_VulkanInstance; }
 		const Ref<PhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
 		const Ref<LogicalDevice>& GetLogicalDevice() const { return m_LogicalDevice; }
 		const Ref<Swapchain>& GetSwapchain() const { return m_Swapchain; }
 
-		static Ref<VulkanContext> Get();
+		//TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
 
 	private:
 		bool HasValidationSupport() const;
 		std::vector<const char*> GetRequiredExtensions() const;
 
 	private:
-		GLFWwindow* m_WindowHandle;
+		GLFWwindow* m_WindowHandle = nullptr;
 
 		VkInstance m_VulkanInstance;
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
@@ -46,5 +52,8 @@ namespace Eppo
 		// Vulkan resource management
 		std::deque<std::function<void()>> m_ResourceFreeCommands;
 		uint32_t m_ResourceFreeCommandCount = 0;
+
+		// Tracy profiler context
+		//std::vector<TracyVkCtx> m_TracyContexts;
 	};
 }

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Swapchain.h"
 
-#include "Renderer/RendererContext.h"
+#include "Core/Application.h"
 
 #include <glfw/glfw3.h>
 
@@ -14,7 +14,8 @@ namespace Eppo
 		Create();
 
 		// Cleanup
-		RendererContext::Get()->SubmitResourceFree([this]()
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		context->SubmitResourceFree([this]()
 		{
 			this->Cleanup();
 			this->Destroy();
@@ -25,7 +26,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::BeginFrame");
 
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		{
 			EPPO_PROFILE_FUNCTION("Swapchain::BeginFrame - Acquire Image");
@@ -39,7 +41,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::Present");
 
-		Ref<LogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
 
 		VkResult result;
 		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -85,7 +88,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::Cleanup");
 
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto& framebuffer : m_Framebuffers)
 			vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -96,7 +100,7 @@ namespace Eppo
 
 	void Swapchain::Create(bool recreate)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
 
 		if (!recreate)
@@ -288,7 +292,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::Destroy");
 
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		vkDestroySwapchainKHR(device, m_Swapchain, nullptr);
 		vkDestroyRenderPass(device, m_RenderPass, nullptr);
@@ -305,7 +310,7 @@ namespace Eppo
 		for (auto& commandPool : m_CommandPools)
 			vkDestroyCommandPool(device, commandPool, nullptr);
 
-		VkInstance instance = RendererContext::Get()->GetVulkanInstance();
+		VkInstance instance = context->GetVulkanInstance();
 		vkDestroySurfaceKHR(instance, m_Surface, nullptr);
 	}
 
@@ -313,10 +318,14 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::OnResize");
 
-		RendererContext::Get()->WaitIdle();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+
+		context->WaitIdle();
+
 		Cleanup();
 		Create(true);
-		RendererContext::Get()->WaitIdle();
+
+		context->WaitIdle();
 	}
 
 	SwapchainSupportDetails Swapchain::QuerySwapchainSupport(const Ref<VulkanContext>& context)
@@ -388,7 +397,7 @@ namespace Eppo
 			return capabilities.currentExtent;
 
 		int width = 0, height = 0;
-		glfwGetFramebufferSize(RendererContext::Get()->GetWindowHandle(), &width, &height);
+		glfwGetFramebufferSize(Application::Get().GetWindow().GetNativeWindow(), &width, &height);
 
 		VkExtent2D actualExtent = { (uint32_t)width, (uint32_t)height };
 

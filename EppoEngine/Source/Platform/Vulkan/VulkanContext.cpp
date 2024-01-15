@@ -92,6 +92,14 @@ namespace Eppo
 		vkDestroyInstance(m_VulkanInstance, nullptr);
 	}
 
+	void VulkanContext::WaitIdle()
+	{
+		EPPO_PROFILE_FUNCTION("VulkanContext::WaitIdle");
+
+		VkDevice device = m_LogicalDevice->GetNativeDevice();
+		vkDeviceWaitIdle(device);
+	}
+
 	void VulkanContext::SubmitResourceFree(std::function<void()> fn)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanContext::SubmitResourceFree");
