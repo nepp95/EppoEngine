@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Buffer.h"
-#include "Platform/Vulkan/Allocator.h"
+#include "Platform/Vulkan/VulkanAllocator.h"
 #include "Renderer/Buffer/VertexBuffer.h"
 
 namespace Eppo

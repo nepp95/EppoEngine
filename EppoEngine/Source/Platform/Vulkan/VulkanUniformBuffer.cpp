@@ -23,8 +23,8 @@ namespace Eppo
 
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			m_Allocations[i] = Allocator::AllocateBuffer(m_Buffers[i], bufferInfo, VMA_MEMORY_USAGE_CPU_ONLY);
-			m_MappedMemory[i] = Allocator::MapMemory(m_Allocations[i]);
+			m_Allocations[i] = VulkanAllocator::AllocateBuffer(m_Buffers[i], bufferInfo, VMA_MEMORY_USAGE_CPU_ONLY);
+			m_MappedMemory[i] = VulkanAllocator::MapMemory(m_Allocations[i]);
 
 			m_DescriptorBufferInfo.buffer = m_Buffers[i];
 			m_DescriptorBufferInfo.offset = 0;
@@ -38,8 +38,8 @@ namespace Eppo
 
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			Allocator::UnmapMemory(m_Allocations[i]);
-			Allocator::DestroyBuffer(m_Buffers[i], m_Allocations[i]);
+			VulkanAllocator::UnmapMemory(m_Allocations[i]);
+			VulkanAllocator::DestroyBuffer(m_Buffers[i], m_Allocations[i]);
 		}
 	}
 

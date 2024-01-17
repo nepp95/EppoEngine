@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Debug/Profiler.h"
-#include "Platform/Vulkan/LogicalDevice.h"
-#include "Platform/Vulkan/PhysicalDevice.h"
-#include "Platform/Vulkan/Swapchain.h"
+#include "Platform/Vulkan/VulkanLogicalDevice.h"
+#include "Platform/Vulkan/VulkanPhysicalDevice.h"
+#include "Platform/Vulkan/VulkanSwapchain.h"
 #include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/RendererContext.h"
 
@@ -29,9 +29,9 @@ namespace Eppo
 		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
 
 		VkInstance GetVulkanInstance() const { return m_VulkanInstance; }
-		const Ref<PhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
-		const Ref<LogicalDevice>& GetLogicalDevice() const { return m_LogicalDevice; }
-		const Ref<Swapchain>& GetSwapchain() const { return m_Swapchain; }
+		const Ref<VulkanPhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
+		const Ref<VulkanLogicalDevice>& GetLogicalDevice() const { return m_LogicalDevice; }
+		const Ref<VulkanSwapchain>& GetSwapchain() const { return m_Swapchain; }
 
 		//TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
 
@@ -45,9 +45,9 @@ namespace Eppo
 		VkInstance m_VulkanInstance;
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
 
-		Ref<PhysicalDevice> m_PhysicalDevice;
-		Ref<LogicalDevice> m_LogicalDevice;
-		Ref<Swapchain> m_Swapchain;
+		Ref<VulkanPhysicalDevice> m_PhysicalDevice;
+		Ref<VulkanLogicalDevice> m_LogicalDevice;
+		Ref<VulkanSwapchain> m_Swapchain;
 
 		// Vulkan resource management
 		std::deque<std::function<void()>> m_ResourceFreeCommands;

@@ -14,10 +14,10 @@ namespace Eppo
 		}
 	};
 
-	class PhysicalDevice
+	class VulkanPhysicalDevice
 	{
 	public:
-		PhysicalDevice();
+		VulkanPhysicalDevice();
 
 		const VkPhysicalDevice& GetNativeDevice() const { return m_Device; }
 

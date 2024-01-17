@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Allocator.h"
+#include "VulkanAllocator.h"
 
 #include "Platform/Vulkan/VulkanContext.h"
 
@@ -20,7 +20,7 @@ namespace Eppo
 
 	static VmaData* s_Data;
 
-	void Allocator::Init()
+	void VulkanAllocator::Init()
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::Init");
 
@@ -38,11 +38,11 @@ namespace Eppo
 
 		context->SubmitResourceFree([]()
 		{
-			Allocator::Shutdown();
+			VulkanAllocator::Shutdown();
 		});
 	}
 
-	void Allocator::Shutdown()
+	void VulkanAllocator::Shutdown()
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::Shutdown");
 
@@ -50,7 +50,7 @@ namespace Eppo
 		delete s_Data;
 	}
 
-	VmaAllocation Allocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
+	VmaAllocation VulkanAllocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::AllocateBuffer");
 
@@ -67,7 +67,7 @@ namespace Eppo
 		return allocation;
 	}
 
-	VmaAllocation Allocator::AllocateImage(VkImage& image, const VkImageCreateInfo& createInfo, VmaMemoryUsage usage)
+	VmaAllocation VulkanAllocator::AllocateImage(VkImage& image, const VkImageCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::AllocateImage");
 
@@ -84,7 +84,7 @@ namespace Eppo
 		return allocation;
 	}
 
-	void Allocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+	void VulkanAllocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::DestroyBuffer");
 
@@ -96,7 +96,7 @@ namespace Eppo
 		s_Data->MemoryFreed += allocationInfo.size;
 	}
 
-	void Allocator::DestroyImage(VkImage image, VmaAllocation allocation)
+	void VulkanAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::DestroyImage");
 
@@ -108,7 +108,7 @@ namespace Eppo
 		s_Data->MemoryFreed += allocationInfo.size;
 	}
 
-	void* Allocator::MapMemory(VmaAllocation allocation)
+	void* VulkanAllocator::MapMemory(VmaAllocation allocation)
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::MapMemory");
 
@@ -117,7 +117,7 @@ namespace Eppo
 		return data;
 	}
 
-	void Allocator::UnmapMemory(VmaAllocation allocation)
+	void VulkanAllocator::UnmapMemory(VmaAllocation allocation)
 	{
 		EPPO_PROFILE_FUNCTION("Allocator::UnmapMemory");
 

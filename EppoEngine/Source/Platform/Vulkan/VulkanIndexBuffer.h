@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Platform/Vulkan/Allocator.h"
+#include "Platform/Vulkan/VulkanAllocator.h"
 #include "Renderer/Buffer/IndexBuffer.h"
 
 namespace Eppo

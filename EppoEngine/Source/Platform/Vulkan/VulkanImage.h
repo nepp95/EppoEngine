@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Platform/Vulkan/Allocator.h"
+#include "Platform/Vulkan/VulkanAllocator.h"
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Renderer/Image.h"
 
@@ -43,7 +43,7 @@ namespace Eppo
 		inline VkFormat FindSupportedDepthFormat()
 		{
 			Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
-			Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+			Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 
 			std::vector<VkFormat> depthFormats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
 

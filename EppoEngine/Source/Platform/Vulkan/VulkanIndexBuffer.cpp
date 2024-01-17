@@ -18,11 +18,11 @@ namespace Eppo
 		stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer stagingBuffer;
-		VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-		void* memData = Allocator::MapMemory(stagingBufferAlloc);
+		void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
 		memcpy(memData, data, m_Size);
-		Allocator::UnmapMemory(stagingBufferAlloc);
+		VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
 		// Device local buffer
 		VkBufferCreateInfo indexBufferInfo{};
@@ -31,11 +31,11 @@ namespace Eppo
 		indexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		indexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		m_Allocation = Allocator::AllocateBuffer(m_Buffer, indexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
+		m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, indexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
 
 		// Copy staging buffer data to device local buffer
 		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
-		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 		VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 
 		VkBufferCopy copyRegion{};
@@ -47,14 +47,14 @@ namespace Eppo
 		logicalDevice->FlushCommandBuffer(commandBuffer);
 
 		// Clean up
-		Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+		VulkanAllocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
 	}
 
 	VulkanIndexBuffer::~VulkanIndexBuffer()
 	{
 		EPPO_PROFILE_FUNCTION("VulkanIndexBuffer::~VulkanIndexBuffer");
 
-		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
+		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 
 	uint32_t VulkanIndexBuffer::GetIndexCount() const

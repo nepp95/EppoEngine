@@ -27,6 +27,6 @@ namespace Eppo
 		virtual float GetTimestamp(uint32_t imageIndex, uint32_t queryIndex = 0) const = 0;
 		virtual const PipelineStatistics& GetPipelineStatistics(uint32_t imageIndex) const = 0;
 
-		static Ref<RenderCommandBuffer> Create(uint32_t count);
+		static Ref<RenderCommandBuffer> Create(uint32_t count = 0);
 	};
 }

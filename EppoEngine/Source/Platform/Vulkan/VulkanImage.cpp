@@ -39,7 +39,7 @@ namespace Eppo
 		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageInfo.flags = 0;
 
-		m_Info.Allocation = Allocator::AllocateImage(m_Info.Image, imageInfo, VMA_MEMORY_USAGE_GPU_ONLY);
+		m_Info.Allocation = VulkanAllocator::AllocateImage(m_Info.Image, imageInfo, VMA_MEMORY_USAGE_GPU_ONLY);
 
 		// Image View
 		VkImageViewCreateInfo viewInfo{};
@@ -58,7 +58,7 @@ namespace Eppo
 		VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr, &m_Info.ImageView), "Failed to create image view!");
 
 		// Create sampler
-		Ref<PhysicalDevice> physicalDevice = RendererContext::Get()->GetPhysicalDevice();
+		Ref<VulkanPhysicalDevice> physicalDevice = RendererContext::Get()->GetPhysicalDevice();
 
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -118,7 +118,7 @@ namespace Eppo
 
 		if (m_Info.Image)
 		{
-			Allocator::DestroyImage(m_Info.Image, m_Info.Allocation);
+			VulkanAllocator::DestroyImage(m_Info.Image, m_Info.Allocation);
 			m_Info.Image = nullptr;
 			m_Info.Allocation = nullptr;
 		}

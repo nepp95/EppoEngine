@@ -27,7 +27,7 @@ namespace Eppo
 
 		// TODO: Is this the memory leak :o
 		m_LocalStorage.Release();
-		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
+		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 
 	void VulkanVertexBuffer::SetData(void* data, uint32_t size)
@@ -38,9 +38,9 @@ namespace Eppo
 
 		memcpy(m_LocalStorage.Data, (uint8_t*)data, size);
 
-		void* memData = Allocator::MapMemory(m_Allocation);
+		void* memData = VulkanAllocator::MapMemory(m_Allocation);
 		memcpy(memData, data, size);
-		Allocator::UnmapMemory(m_Allocation);
+		VulkanAllocator::UnmapMemory(m_Allocation);
 	}
 
 	void VulkanVertexBuffer::CreateBuffer(VmaMemoryUsage usage)
@@ -54,7 +54,7 @@ namespace Eppo
 			bufferInfo.size = m_LocalStorage.Size;
 			bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-			m_Allocation = Allocator::AllocateBuffer(m_Buffer, bufferInfo, usage);
+			m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, bufferInfo, usage);
 		}
 		else if (usage == VMA_MEMORY_USAGE_GPU_ONLY)
 		{
@@ -66,11 +66,11 @@ namespace Eppo
 			stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 			VkBuffer stagingBuffer;
-			VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+			VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-			void* memData = Allocator::MapMemory(stagingBufferAlloc);
+			void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
 			memcpy(memData, m_LocalStorage.Data, m_LocalStorage.Size);
-			Allocator::UnmapMemory(stagingBufferAlloc);
+			VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
 			// Device local buffer
 			VkBufferCreateInfo vertexBufferInfo{};
@@ -78,11 +78,11 @@ namespace Eppo
 			vertexBufferInfo.size = m_LocalStorage.Size;
 			vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-			m_Allocation = Allocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
+			m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
 
 			// Copy staging buffer data to device local buffer
 			Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
-			Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+			Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 			VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 
 			VkBufferCopy copyRegion{};
@@ -94,7 +94,7 @@ namespace Eppo
 			logicalDevice->FlushCommandBuffer(commandBuffer);
 
 			// Clean up
-			Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+			VulkanAllocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
 		}
 	}
 }

@@ -45,12 +45,12 @@ namespace Eppo
 			stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 			VkBuffer stagingBuffer;
-			VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+			VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 			// Map staging buffer memory
-			void* memData = Allocator::MapMemory(stagingBufferAlloc);
+			void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
 			memcpy(memData, m_ImageData.Data, m_ImageData.Size);
-			Allocator::UnmapMemory(stagingBufferAlloc);
+			VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
 			ImageInfo& info = m_Image->GetImageInfo();
 
@@ -69,7 +69,7 @@ namespace Eppo
 			barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			
-			Ref<LogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
+			Ref<VulkanLogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
 			VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
@@ -101,7 +101,7 @@ namespace Eppo
 			info.ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 			// Clean up
-			Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+			VulkanAllocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
 			stbi_image_free(m_ImageData.Data);
 			m_ImageData = Buffer();
 		}
@@ -140,12 +140,12 @@ namespace Eppo
 			stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 			VkBuffer stagingBuffer;
-			VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+			VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 			// Map staging buffer memory
-			void* memData = Allocator::MapMemory(stagingBufferAlloc);
+			void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
 			memcpy(memData, m_ImageData.Data, m_ImageData.Size);
-			Allocator::UnmapMemory(stagingBufferAlloc);
+			VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
 			ImageInfo& info = m_Image->GetImageInfo();
 
@@ -164,7 +164,7 @@ namespace Eppo
 			barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-			Ref<LogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
+			Ref<VulkanLogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
 			VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
@@ -193,7 +193,7 @@ namespace Eppo
 			logicalDevice->FlushCommandBuffer(commandBuffer);
 
 			// Create sampler
-			Ref<PhysicalDevice> physicalDevice = RendererContext::Get()->GetPhysicalDevice();
+			Ref<VulkanPhysicalDevice> physicalDevice = RendererContext::Get()->GetPhysicalDevice();
 
 			VkSamplerCreateInfo samplerInfo{};
 			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -219,7 +219,7 @@ namespace Eppo
 			info.ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 			// Clean up
-			Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+			VulkanAllocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
 		}
 	}
 

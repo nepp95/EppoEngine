@@ -2,7 +2,7 @@
 #include "VulkanContext.h"
 
 #include "Core/Application.h"
-#include "Platform/Vulkan/Allocator.h"
+#include "Platform/Vulkan/VulkanAllocator.h"
 
 #include <GLFW/glfw3.h>
 
@@ -66,14 +66,14 @@ namespace Eppo
 			VK_CHECK(CreateDebugUtilsMessengerEXT(m_VulkanInstance, &debugCreateInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!");
 
 		// Devices
-		m_PhysicalDevice = CreateRef<PhysicalDevice>();
-		m_LogicalDevice = CreateRef<LogicalDevice>(m_PhysicalDevice);
+		m_PhysicalDevice = Ref<VulkanPhysicalDevice>::Create();
+		m_LogicalDevice = Ref<VulkanLogicalDevice>::Create(m_PhysicalDevice);
 
 		// Allocator
-		Allocator::Init();
+		VulkanAllocator::Init();
 
 		// Swapchain
-		m_Swapchain = CreateRef<Swapchain>();
+		m_Swapchain = Ref<VulkanSwapchain>::Create();
 	}
 
 	void VulkanContext::Shutdown()
@@ -106,13 +106,6 @@ namespace Eppo
 
 		m_ResourceFreeCommands.push_back(fn);
 		m_ResourceFreeCommandCount++;
-	}
-
-	Ref<VulkanContext> VulkanContext::Get()
-	{
-		return std::dynamic_pointer_cast<VulkanContext>(
-			Application::Get().GetWindow().GetRendererContext()
-		);
 	}
 
 	bool VulkanContext::HasValidationSupport() const

@@ -4,11 +4,11 @@
 
 namespace Eppo
 {
-	class Allocator
+	class VulkanAllocator
 	{
 	public:
-		Allocator() = default;
-		~Allocator() = default;
+		VulkanAllocator() = default;
+		~VulkanAllocator() = default;
 
 		static void Init();
 		static void Shutdown();

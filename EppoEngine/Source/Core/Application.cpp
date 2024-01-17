@@ -120,7 +120,7 @@ namespace Eppo
 		while (m_IsRunning)
 		{
 			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
+			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 
 			{
 				EPPO_PROFILE_FUNCTION("CPU Update");

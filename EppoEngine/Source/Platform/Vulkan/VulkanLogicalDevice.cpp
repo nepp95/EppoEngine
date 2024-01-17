@@ -1,11 +1,11 @@
 #include "pch.h"
-#include "LogicalDevice.h"
+#include "VulkanLogicalDevice.h"
 
 #include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
-	LogicalDevice::LogicalDevice(const Ref<PhysicalDevice>& physicalDevice)
+	VulkanLogicalDevice::VulkanLogicalDevice(const Ref<VulkanPhysicalDevice>& physicalDevice)
 		: m_PhysicalDevice(physicalDevice)
 	{
 		EPPO_PROFILE_FUNCTION("LogicalDevice::LogicalDevice");
@@ -75,7 +75,7 @@ namespace Eppo
 		});
 	}
 
-	VkCommandBuffer LogicalDevice::GetCommandBuffer(bool begin)
+	VkCommandBuffer VulkanLogicalDevice::GetCommandBuffer(bool begin)
 	{
 		EPPO_PROFILE_FUNCTION("LogicalDevice::GetCommandBuffer");
 
@@ -101,7 +101,7 @@ namespace Eppo
 		return commandBuffer;
 	}
 
-	void LogicalDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer)
+	void VulkanLogicalDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer)
 	{
 		EPPO_PROFILE_FUNCTION("LogicalDevice::FlushCommandBuffer");
 
@@ -129,7 +129,7 @@ namespace Eppo
 		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
 	}
 
-	VkCommandBuffer LogicalDevice::GetSecondaryCommandBuffer()
+	VkCommandBuffer VulkanLogicalDevice::GetSecondaryCommandBuffer()
 	{
 		VkCommandBuffer commandBuffer;
 

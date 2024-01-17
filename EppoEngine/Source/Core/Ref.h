@@ -146,15 +146,11 @@ namespace Eppo
 
 		// Cast to polymorphic type
 		template<typename T2>
-		Ref<T2>& As()
+		Ref<T2>& As() const
 		{
 			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
-			EPPO_ASSERT(m_Object);
 
-			T2* ptr = dynamic_cast<T2*>(m_Object);
-			EPPO_ASSERT(ptr);
-			
-			return Ref<T2>(ptr);
+			return Ref<T2>(*this);
 		}
 
 		uint32_t GetRefCount() const

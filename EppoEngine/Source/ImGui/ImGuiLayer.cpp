@@ -45,8 +45,8 @@ namespace Eppo
 		Ref<RendererContext> context = RendererContext::Get();
 		ImGui_ImplGlfw_InitForVulkan(context->GetWindowHandle(), true);
 
-		Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
-		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 
 		// Descriptors
 		VkDescriptorPoolSize poolSizes[] =
@@ -138,7 +138,7 @@ namespace Eppo
 		ImGui::Render();
 
 		Ref<RendererContext> context = RendererContext::Get();
-		Ref<Swapchain> swapchain = context->GetSwapchain();
+		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 		VkCommandBuffer swapCmd = swapchain->GetCurrentRenderCommandBuffer();
 
 		VkClearValue clearValue = { 0.1f, 0.1f, 0.1f, 1.0f };

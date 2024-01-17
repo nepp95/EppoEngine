@@ -13,7 +13,7 @@ namespace Eppo
 		: m_RenderSpecification(renderSpecification)
 	{
 		Ref<RendererContext> context = RendererContext::Get();
-		Ref<Swapchain> swapchain = context->GetSwapchain();
+		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		m_CommandBuffer = CreateRef<RenderCommandBuffer>();
@@ -253,7 +253,7 @@ namespace Eppo
 		Renderer::SubmitCommand([this]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
+			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
 			uint32_t frameIndex = swapchain->GetCurrentImageIndex();
 

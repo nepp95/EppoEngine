@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Platform/Vulkan/LogicalDevice.h"
+#include "Platform/Vulkan/VulkanLogicalDevice.h"
 #include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
@@ -14,10 +14,10 @@ namespace Eppo
 		std::vector<VkPresentModeKHR> PresentModes;
 	};
 
-	class Swapchain
+	class VulkanSwapchain
 	{
 	public:
-		Swapchain();
+		VulkanSwapchain();
 
 		void BeginFrame();
 		void Present();

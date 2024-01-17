@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Swapchain.h"
+#include "VulkanSwapchain.h"
 
 #include "Core/Application.h"
 
@@ -7,7 +7,7 @@
 
 namespace Eppo
 {
-	Swapchain::Swapchain()
+	VulkanSwapchain::VulkanSwapchain()
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::Swapchain");
 
@@ -22,7 +22,7 @@ namespace Eppo
 		});
 	}
 
-	void Swapchain::BeginFrame()
+	void VulkanSwapchain::BeginFrame()
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::BeginFrame");
 
@@ -37,12 +37,12 @@ namespace Eppo
 		vkResetCommandPool(device, m_CommandPools[m_CurrentFrameIndex], 0);
 	}
 
-	void Swapchain::Present()
+	void VulkanSwapchain::Present()
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::Present");
 
 		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
-		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 
 		VkResult result;
 		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -84,7 +84,7 @@ namespace Eppo
 		vkWaitForFences(logicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
 	}
 
-	void Swapchain::Cleanup()
+	void VulkanSwapchain::Cleanup()
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::Cleanup");
 
@@ -98,10 +98,10 @@ namespace Eppo
 			vkDestroyImageView(device, imageView, nullptr);
 	}
 
-	void Swapchain::Create(bool recreate)
+	void VulkanSwapchain::Create(bool recreate)
 	{
 		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
-		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 
 		if (!recreate)
 			VK_CHECK(glfwCreateWindowSurface(context->GetVulkanInstance(), context->GetWindowHandle(), nullptr, &m_Surface), "Failed to create window surface!");
@@ -288,7 +288,7 @@ namespace Eppo
 		}
 	}
 
-	void Swapchain::Destroy()
+	void VulkanSwapchain::Destroy()
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::Destroy");
 
@@ -314,7 +314,7 @@ namespace Eppo
 		vkDestroySurfaceKHR(instance, m_Surface, nullptr);
 	}
 
-	void Swapchain::OnResize()
+	void VulkanSwapchain::OnResize()
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::OnResize");
 
@@ -328,7 +328,7 @@ namespace Eppo
 		context->WaitIdle();
 	}
 
-	SwapchainSupportDetails Swapchain::QuerySwapchainSupport(const Ref<VulkanContext>& context)
+	SwapchainSupportDetails VulkanSwapchain::QuerySwapchainSupport(const Ref<VulkanContext>& context)
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::QuerySwapchainSupport");
 
@@ -362,7 +362,7 @@ namespace Eppo
 		return details;
 	}
 
-	VkSurfaceFormatKHR Swapchain::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+	VkSurfaceFormatKHR VulkanSwapchain::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::ChooseSwapSurfaceFormat");
 
@@ -375,7 +375,7 @@ namespace Eppo
 		return availableFormats[0];
 	}
 
-	VkPresentModeKHR Swapchain::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+	VkPresentModeKHR VulkanSwapchain::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::ChooseSwapPresentMode");
 
@@ -389,7 +389,7 @@ namespace Eppo
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	VkExtent2D Swapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+	VkExtent2D VulkanSwapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 	{
 		EPPO_PROFILE_FUNCTION("Swapchain::ChooseSwapExtent");
 

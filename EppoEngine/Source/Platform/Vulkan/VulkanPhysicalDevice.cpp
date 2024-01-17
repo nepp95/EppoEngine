@@ -1,11 +1,11 @@
 #include "pch.h"
-#include "PhysicalDevice.h"
+#include "VulkanPhysicalDevice.h"
 
 #include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
-	PhysicalDevice::PhysicalDevice()
+	VulkanPhysicalDevice::VulkanPhysicalDevice()
 	{
 		EPPO_PROFILE_FUNCTION("PhysicalDevice::PhysicalDevice");
 
@@ -60,7 +60,7 @@ namespace Eppo
 			m_SupportedExtensions.emplace_back(extension.extensionName);
 	}
 
-	QueueFamilyIndices PhysicalDevice::FindQueueFamilyIndices()
+	QueueFamilyIndices VulkanPhysicalDevice::FindQueueFamilyIndices()
 	{
 		EPPO_PROFILE_FUNCTION("PhysicalDevice::FindQueueFamilyIndices");
 
@@ -89,7 +89,7 @@ namespace Eppo
 		return indices;
 	}
 
-	bool PhysicalDevice::IsExtensionSupported(const std::string& extension)
+	bool VulkanPhysicalDevice::IsExtensionSupported(const std::string& extension)
 	{
 		EPPO_PROFILE_FUNCTION("PhysicalDevice::IsExtensionSupported");
 

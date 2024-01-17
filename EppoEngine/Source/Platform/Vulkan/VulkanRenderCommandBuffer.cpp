@@ -145,8 +145,8 @@ namespace Eppo
 		Renderer::SubmitCommand([this]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
-			Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
-			Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+			Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
+			Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 			VkDevice device = logicalDevice->GetNativeDevice();
 
 			uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
