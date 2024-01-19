@@ -10,13 +10,13 @@ namespace Eppo
 	{
 		switch (RendererContext::GetAPI())
 		{
-			case RendererAPI::OpenGL:
+			case RendererAPIType::OpenGL:
 			{
 				EPPO_ASSERT(false);
 				break;
 			}
 
-			case RendererAPI::Vulkan:
+			case RendererAPIType::Vulkan:
 			{
 				return Ref<VulkanRenderCommandBuffer>::Create(count).As<RenderCommandBuffer>();
 			}

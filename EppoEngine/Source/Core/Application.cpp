@@ -24,7 +24,7 @@ namespace Eppo
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
 		
 		// Create profiler
-		m_Profiler = CreateRef<Profiler>();
+		m_Profiler = Ref<Profiler>::Create();
 
 		// Create window
 		WindowSpecification windowSpec;

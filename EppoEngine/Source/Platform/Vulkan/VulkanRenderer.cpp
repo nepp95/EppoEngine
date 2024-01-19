@@ -4,36 +4,57 @@
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Platform/Vulkan/VulkanFramebuffer.h"
 #include "Platform/Vulkan/VulkanIndexBuffer.h"
+#include "Platform/Vulkan/VulkanPipeline.h"
 #include "Platform/Vulkan/VulkanRenderCommandBuffer.h"
 #include "Platform/Vulkan/VulkanVertexBuffer.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/ShaderLibrary.h"
 
 namespace Eppo
 {
+	struct RendererData
+	{
+		Scope<RenderCommandQueue> CommandQueue;
+		Ref<RenderCommandBuffer> CommandBuffer;
+
+		Ref<DescriptorAllocator> DescriptorAllocator;
+		Ref<DescriptorLayoutCache> DescriptorLayoutCache;
+		std::vector<VkDescriptorPool> DescriptorPools;
+
+		Scope<ShaderLibrary> ShaderLibrary;
+	};
+
+	static RendererData* s_Data = nullptr;
+
 	VulkanRenderer::~VulkanRenderer()
 	{
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::~VulkanRenderer");
 
 		// TODO: Remove shutdown in favor of destructor?
 		Shutdown();
+
+		delete s_Data;
 	}
 
 	void VulkanRenderer::Init()
 	{
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::Init");
 
+		s_Data = new RendererData();
+
 		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
-		m_DescriptorAllocator = Ref<DescriptorAllocator>::Create();
-		m_DescriptorLayoutCache = Ref<DescriptorLayoutCache>::Create();
-		m_CommandBuffer = RenderCommandBuffer::Create();
-		m_CommandQueue = CreateScope<RenderCommandQueue>();
+		s_Data->DescriptorAllocator = Ref<DescriptorAllocator>::Create();
+		s_Data->DescriptorLayoutCache = Ref<DescriptorLayoutCache>::Create();
+		s_Data->CommandBuffer = RenderCommandBuffer::Create();
+		s_Data->CommandQueue = CreateScope<RenderCommandQueue>();
 
 		// Load shaders
-		m_ShaderLibrary = CreateScope<ShaderLibrary>();
-		m_ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
-		m_ShaderLibrary->Load("Resources/Shaders/shadow.glsl");
+		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
+		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
+		s_Data->ShaderLibrary->Load("Resources/Shaders/shadow.glsl");
 
 		// Descriptor pool
 		VkDescriptorPoolSize poolSizes[] =
@@ -59,17 +80,17 @@ namespace Eppo
 		poolInfo.pPoolSizes = poolSizes;
 		poolInfo.maxSets = 100 * ((int)(sizeof(poolSizes) / sizeof(*(poolSizes))));
 
-		m_DescriptorPools.resize(VulkanConfig::MaxFramesInFlight);
+		s_Data->DescriptorPools.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-			VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &m_DescriptorPools[i]), "Failed to create descriptor pool!");
+			VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &s_Data->DescriptorPools[i]), "Failed to create descriptor pool!");
 	}
 
 	void VulkanRenderer::Shutdown()
 	{
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::Shutdown");
 
-		m_DescriptorLayoutCache->Shutdown();
-		m_DescriptorAllocator->Shutdown();
+		s_Data->DescriptorLayoutCache->Shutdown();
+		s_Data->DescriptorAllocator->Shutdown();
 	}
 
 	uint32_t VulkanRenderer::GetCurrentFrameIndex() const
@@ -90,7 +111,7 @@ namespace Eppo
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 		uint32_t frameIndex = GetCurrentFrameIndex();
 
-		vkResetDescriptorPool(device, m_DescriptorPools[frameIndex], 0);
+		vkResetDescriptorPool(device, s_Data->DescriptorPools[frameIndex], 0);
 
 		SubmitCommand([renderCommandBuffer, pipeline]()
 		{
@@ -128,26 +149,26 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::ExecuteRenderCommands");
 
-		m_CommandQueue->Execute();
+		s_Data->CommandQueue->Execute();
 	}
 
 	void VulkanRenderer::SubmitCommand(RenderCommand command)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::SubmitCommand");
 
-		m_CommandQueue->AddCommand(command);
+		s_Data->CommandQueue->AddCommand(command);
 	}
 
 	Ref<Shader> VulkanRenderer::GetShader(const std::string& name)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::GetShader");
 
-		return m_ShaderLibrary->Get(name);
+		return s_Data->ShaderLibrary->Get(name);
 	}
 
-	void VulkanRenderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBuffer> environmentUB, Ref<UniformBuffer> cameraUB, Ref<Mesh> mesh, const glm::mat4& transform)
+	void VulkanRenderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, const glm::mat4& transform)
 	{
-		SubmitCommand([renderCommandBuffer, pipeline, environmentUB, cameraUB, mesh, transform]()
+		SubmitCommand([renderCommandBuffer, pipeline, mesh, transform]()
 		{
 			EPPO_PROFILE_FUNCTION("VulkanRenderer::RenderGeometry");
 
@@ -157,7 +178,8 @@ namespace Eppo
 			uint32_t frameIndex = swapchain->GetCurrentImageIndex();
 
 			// Pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
+			Ref<VulkanPipeline> vulkanPipeline = pipeline.As<VulkanPipeline>();
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipeline());
 
 			VkExtent2D extent = swapchain->GetExtent();
 
@@ -175,12 +197,12 @@ namespace Eppo
 			scissor.extent = extent;
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			const auto& descriptorSets = pipeline->GetDescriptorSets(frameIndex);
+			const auto& descriptorSets = vulkanPipeline->GetDescriptorSets(frameIndex);
 
 			vkCmdBindDescriptorSets(
 				commandBuffer,
 				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				pipeline->GetPipelineLayout(),
+				vulkanPipeline->GetPipelineLayout(),
 				0,
 				1,
 				&descriptorSets[0],
@@ -200,8 +222,8 @@ namespace Eppo
 				vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 				// Push constants
-				vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &transform);
-				vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float), &mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
+				vkCmdPushConstants(commandBuffer, vulkanPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &transform);
+				vkCmdPushConstants(commandBuffer, vulkanPipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float), &mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
 
 				// Draw call
 				vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
@@ -209,15 +231,25 @@ namespace Eppo
 		});
 	}
 
-	VkDescriptorSet VulkanRenderer::AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo) const
+	Ref<DescriptorAllocator> VulkanRenderer::GetDescriptorAllocator()
+	{
+		return s_Data->DescriptorAllocator;
+	}
+
+	Ref<DescriptorLayoutCache> VulkanRenderer::GetDescriptorLayoutCache()
+	{
+		return s_Data->DescriptorLayoutCache;
+	}
+
+	VkDescriptorSet VulkanRenderer::AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::AllocateDescriptorSet");
 
 		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-		uint32_t frameIndex = GetCurrentFrameIndex();
+		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
-		allocInfo.descriptorPool = m_DescriptorPools[frameIndex];
+		allocInfo.descriptorPool = s_Data->DescriptorPools[frameIndex];
 
 		VkDescriptorSet descriptorSet;
 		VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet), "Failed to allocate descriptor set!");

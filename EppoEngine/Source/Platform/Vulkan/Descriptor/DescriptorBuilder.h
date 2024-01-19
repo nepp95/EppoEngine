@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Renderer/Descriptor/DescriptorAllocator.h"
-#include "Renderer/Descriptor/DescriptorLayoutCache.h"
+#include "Platform/Vulkan/Descriptor/DescriptorAllocator.h"
+#include "Platform/Vulkan/Descriptor/DescriptorLayoutCache.h"
 
 namespace Eppo
 {

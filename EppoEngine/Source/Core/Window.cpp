@@ -34,14 +34,18 @@ namespace Eppo
 
 		if (m_Specification.OverrideSpecification)
 		{
-			m_Specification.Width = mode->width;
-			m_Specification.Height = mode->height;
+			m_Width = mode->width;
+			m_Height = mode->height;
 			m_Specification.RefreshRate = mode->refreshRate;
+		} else
+		{
+			m_Width = m_Specification.Width;
+			m_Height = m_Specification.Height;
 		}
 
 		// Create window
-		EPPO_INFO("Creating window '{}' ({}x{}@{}Hz)", m_Specification.Title, m_Specification.Width, m_Specification.Height, m_Specification.RefreshRate);
-		m_Window = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Title.c_str(), nullptr, nullptr);
+		EPPO_INFO("Creating window '{}' ({}x{}@{}Hz)", m_Specification.Title, m_Width, m_Height, m_Specification.RefreshRate);
+		m_Window = glfwCreateWindow(m_Width, m_Height, m_Specification.Title.c_str(), nullptr, nullptr);
 	}
 
 	void Window::Init()

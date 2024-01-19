@@ -1,28 +1,60 @@
 #include "pch.h"
 #include "Renderer.h"
 
-#include "Platform/Vulkan/VulkanRenderer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
-	Ref<Renderer> Renderer::Create()
+	static RendererAPI* s_RendererAPI = nullptr;
+
+	void Renderer::Init()
 	{
-		switch (RendererContext::GetAPI())
-		{
-			case RendererAPI::OpenGL:
-			{
-				EPPO_ASSERT(false);
-				break;
-			}
+		s_RendererAPI->Init();
+	}
 
-			case RendererAPI::Vulkan:
-			{
-				return Ref<VulkanRenderer>::Create().As<Renderer>();
-			}
+	void Renderer::Shutdown()
+	{
+		s_RendererAPI->Shutdown();
+	}
 
-			EPPO_ASSERT(false);
-			return nullptr;
-		}
+	uint32_t Renderer::GetCurrentFrameIndex()
+	{
+		s_RendererAPI->GetCurrentFrameIndex();
+	}
+
+	void Renderer::BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline)
+	{
+		s_RendererAPI->BeginRenderPass(renderCommandBuffer, pipeline);
+	}
+
+	void Renderer::EndRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer)
+	{
+		s_RendererAPI->EndRenderPass(renderCommandBuffer);
+	}
+
+	void Renderer::ExecuteRenderCommands()
+	{
+		s_RendererAPI->ExecuteRenderCommands();
+	}
+
+	void Renderer::SubmitCommand(RenderCommand command)
+	{
+		s_RendererAPI->SubmitCommand(command);
+	}
+
+	Ref<Shader> Renderer::GetShader(const std::string& name)
+	{
+		s_RendererAPI->GetShader(name);
+	}
+
+	void Renderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform)
+	{
+		s_RendererAPI->RenderGeometry(renderCommandBuffer, pipeline, uniformBufferSet, mesh, transform);
+	}
+
+	void RendererAPI::SetAPI(RendererAPIType type)
+	{
+		EPPO_ASSERT(type == RendererAPIType::Vulkan);
+		s_CurrentAPI = type;
 	}
 }

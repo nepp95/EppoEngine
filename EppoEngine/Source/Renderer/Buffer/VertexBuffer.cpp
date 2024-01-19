@@ -10,15 +10,15 @@ namespace Eppo
 	{
 		switch (RendererContext::GetAPI())
 		{
-			case RendererAPI::OpenGL:
+			case RendererAPIType::OpenGL:
 			{
 				EPPO_ASSERT(false);
 				break;
 			}
 
-			case RendererAPI::Vulkan:
+			case RendererAPIType::Vulkan:
 			{
-				return CreateRef<VulkanVertexBuffer>(data, size);
+				return Ref<VulkanVertexBuffer>::Create(data, size).As<VertexBuffer>();
 			}
 
 			EPPO_ASSERT(false);
@@ -30,15 +30,15 @@ namespace Eppo
 	{
 		switch (RendererContext::GetAPI())
 		{
-			case RendererAPI::OpenGL:
+			case RendererAPIType::OpenGL:
 			{
 				EPPO_ASSERT(false);
 				break;
 			}
 
-			case RendererAPI::Vulkan:
+			case RendererAPIType::Vulkan:
 			{
-				return CreateRef<VulkanVertexBuffer>(size);
+				return Ref<VulkanVertexBuffer>::Create(size).As<VertexBuffer>();
 			}
 
 			EPPO_ASSERT(false);

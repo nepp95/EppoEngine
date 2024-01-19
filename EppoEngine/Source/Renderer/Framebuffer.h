@@ -13,8 +13,8 @@ namespace Eppo
 
 		std::vector<ImageFormat> Attachments;
 
-		uint32_t Width;
-		uint32_t Height;
+		uint32_t Width = 0;
+		uint32_t Height = 0;
 
 		bool ClearColorOnLoad = true;
 		glm::vec4 ClearColor = { 0.5f, 0.5f, 0.5f, 1.0f };

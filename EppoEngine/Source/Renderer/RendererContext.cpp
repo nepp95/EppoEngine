@@ -6,7 +6,7 @@
 
 namespace Eppo
 {
-	RendererAPI RendererContext::s_API = RendererAPI::Vulkan;
+	RendererAPIType RendererContext::s_API = RendererAPIType::Vulkan;
 
 	Ref<RendererContext> RendererContext::Get()
 	{
@@ -17,13 +17,13 @@ namespace Eppo
 	{
 		switch (s_API)
 		{
-			case RendererAPI::OpenGL:
+			case RendererAPIType::OpenGL:
 			{
 				EPPO_ASSERT(false);
 				break;	
 			}
 
-			case RendererAPI::Vulkan:
+			case RendererAPIType::Vulkan:
 			{
 				return Ref<VulkanContext>::Create(static_cast<GLFWwindow*>(windowHandle)).As<RendererContext>();
 			}

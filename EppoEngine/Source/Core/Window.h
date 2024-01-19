@@ -33,6 +33,9 @@ namespace Eppo
 		void ProcessEvents();
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
+		uint32_t GetWidth() const { return m_Width; }
+		uint32_t GetHeight() const { return m_Height; }
+
 		GLFWwindow* GetNativeWindow() const { return m_Window; }
 
 		Ref<RendererContext> GetRendererContext() { return m_Context; }
@@ -42,6 +45,9 @@ namespace Eppo
 		GLFWwindow* m_Window;
 
 		Ref<RendererContext> m_Context;
+
+		uint32_t m_Width = 0;
+		uint32_t m_Height = 0;
 
 		EventCallbackFn m_Callback;
 	};

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "VulkanFramebuffer.h"
 
+#include "Core/Application.h"
 #include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
@@ -8,6 +9,12 @@ namespace Eppo
 	VulkanFramebuffer::VulkanFramebuffer(const FramebufferSpecification& specification)
 		: m_Specification(specification)
 	{
+		if (m_Specification.Width == 0)
+			m_Specification.Width = Application::Get().GetWindow().GetWidth();
+
+		if (m_Specification.Height == 0)
+			m_Specification.Height = Application::Get().GetWindow().GetHeight();
+
 		std::vector<VkAttachmentDescription> attachmentDescriptions;
 		std::vector<VkAttachmentReference> attachmentReferences;
 		std::vector<VkSubpassDescription> subpassDescriptions;
