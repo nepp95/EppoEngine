@@ -18,6 +18,7 @@ namespace Eppo
 		stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer stagingBuffer;
+
 		VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		void* memData = Allocator::MapMemory(stagingBufferAlloc);
@@ -47,12 +48,15 @@ namespace Eppo
 
 		// Clean up
 		Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+
+		RendererContext::Get()->SubmitResourceFree([=]()
+		{
+			Allocator::DestroyBuffer(m_Buffer, m_Allocation);
+		});
 	}
 
 	IndexBuffer::~IndexBuffer()
 	{
 		EPPO_PROFILE_FUNCTION("IndexBuffer::~IndexBuffer");
-
-		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 }

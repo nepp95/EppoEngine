@@ -25,6 +25,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VertexBuffer::~VertexBuffer");
 
+		m_LocalStorage.Release();
 		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 
@@ -92,6 +93,11 @@ namespace Eppo
 
 			// Clean up
 			Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+
+			RendererContext::Get()->SubmitResourceFree([=]()
+			{
+				Allocator::DestroyBuffer(m_Buffer, m_Allocation);
+			});
 		}
 	}
 }
