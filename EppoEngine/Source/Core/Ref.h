@@ -33,74 +33,82 @@ namespace Eppo
 	class Ref
 	{
 	public:
-		// Default constructor
+		// Default constructors
 		Ref()
+			: m_Object(nullptr)
+		{}
+
+		Ref(std::nullptr_t)
+			: m_Object(nullptr)
+		{}
+
+		// Construct from raw pointer
+		Ref(T* object)
 		{
 			static_assert(std::is_base_of_v<RefCounter, T>, "Class is not based on RefCounter!");
+
+			m_Object = object;
+			IncRef();
 		}
 
 		// Destructor
 		~Ref()
 		{
-			if (m_Object)
-				DecRef();
+			DecRef();
 		}
 		
-		// Construct from raw pointer
-		Ref(T* object)
-		{
-			m_Object = object;
-			IncRef();
-		}
-
 		// Copy constructor
-		Ref(const Ref& other)
+		Ref(const Ref<T>& other)
 		{
 			m_Object = other.m_Object;
 			IncRef();
 		}
 
-		/*template<typename T2>
+		template<typename T2>
 		Ref(const Ref<T2>& other)
 		{
-			if (m_Object)
-				DecRef();
-
-			m_Object = other.m_Object;
-			IncRef();
-
-			return *this;
-		}*/
-
-		// Copy assignment operator
-		Ref& operator=(const Ref& other)
-		{
-			m_Object = other.m_Object;
+			m_Object = (T*)other.m_Object;
 			IncRef();
 		}
 
-		// Copy constructor child to base
-		//template<typename T2>
-		//Ref<T>& operator=(const Ref<T2>& other)
-		//{
-		//	if (m_Object)
-		//		DecRef();
-
-		//	m_Object = other.m_Object;
-		//	IncRef();
-
-		//	return *this;
-		//}
-
 		// Move constructor
-		Ref(Ref&& other)
+		Ref(Ref<T>&& other)
 		{
 			m_Object = other.m_Object;
 			other.m_Object = nullptr;
 		}
 
+		template<typename T2>
+		Ref(Ref<T2>&& other)
+		{
+			m_Object = (T*)other.m_Object;
+			other.m_Object = nullptr;
+		}
+
+		// Copy assignment operator
+		Ref& operator=(const Ref<T>& other)
+		{
+			DecRef();
+			m_Object = other.m_Object;
+			IncRef();
+
+			return *this;
+		}
+
+		template<typename T2>
+		Ref& operator=(const Ref<T2>& other)
+		{
+			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
+
+			DecRef();
+			m_Object = (T*)other.m_Object;
+			IncRef();
+
+			return *this;
+		}
+
 		// Move assignment operator
-		Ref& operator=(Ref&& other)
+		Ref& operator=(Ref<T>&& other)
 		{
 			m_Object = other.m_Object;
 			other.m_Object = nullptr;
@@ -113,27 +121,30 @@ namespace Eppo
 		{
 			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
 
-			m_Object = other.m_Object;
+			m_Object = (T*)other.m_Object;
 			other.m_Object = nullptr;
 
 			return *this;
 		}
 
 		// Raw pointer
-		const T* Raw() const
-		{
-			EPPO_ASSERT(m_Object);
-
-			return m_Object;
-		}
+		T* Raw() { return m_Object; }
+		const T* Raw() const { return m_Object;	}
 
 		// Pointer access
-		T* operator->() const
-		{
-			EPPO_ASSERT(m_Object);
+		T* operator->() { return m_Object; }
+		const T* operator->() const { return m_Object; }
 
-			return m_Object;
-		}
+		// References
+		T& operator*() { return *m_Object; }
+		const T& operator*() const { return *m_Object; }
+
+		// Comparison
+		operator bool() { return m_Object != nullptr; }
+		operator bool() const { return m_Object != nullptr; }
+
+		bool operator==(const Ref<T>& other) const { return m_Object == other.m_Object; }
+		bool operator!=(const Ref<T>& other) const { return !(*this == other); }
 
 		// Create
 		template<typename... Args>
@@ -146,7 +157,7 @@ namespace Eppo
 
 		// Cast to polymorphic type
 		template<typename T2>
-		Ref<T2>& As() const
+		Ref<T2> As() const
 		{
 			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
 
@@ -165,22 +176,22 @@ namespace Eppo
 		// Increase ref count
 		void IncRef() const
 		{
-			EPPO_ASSERT(m_Object);
-
-			m_Object->IncreaseRefCount();
+			if (m_Object)
+				m_Object->IncreaseRefCount();
 		}
 
 		// Decrease ref count
 		void DecRef() const
 		{
-			EPPO_ASSERT(m_Object);
-
-			m_Object->DecreaseRefCount();
-
-			if (m_Object->GetRefCount() == 0)
+			if (m_Object)
 			{
-				delete m_Object;
-				m_Object = nullptr;
+				m_Object->DecreaseRefCount();
+			
+				if (m_Object->GetRefCount() == 0)
+				{
+					delete m_Object;
+					m_Object = nullptr;
+				}
 			}
 		}
 

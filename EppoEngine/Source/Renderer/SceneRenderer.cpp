@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
-#include "Platform/Vulkan/VulkanContext.h" // TODO: This should absolutely not be here!
-#include "Platform/Vulkan/VulkanPipeline.h" // TODO: This should absolutely not be here!
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 

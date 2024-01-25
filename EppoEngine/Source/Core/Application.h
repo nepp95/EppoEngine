@@ -56,7 +56,7 @@ namespace Eppo
 		void PushLayer(Layer* layer, bool overlay = false);
 		void PopLayer(Layer* layer, bool overlay = false);
 
-		const Ref<Profiler>& GetProfiler() const { return m_Profiler; }
+		Ref<Profiler> GetProfiler() const { return m_Profiler; }
 
 		static Application& Get() { return *s_Instance; }
 		Window& GetWindow() { return *m_Window; }
