@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-	class VulkanLogicalDevice
+	class VulkanLogicalDevice : public RefCounter
 	{
 	public:
 		VulkanLogicalDevice(const Ref<VulkanPhysicalDevice>& physicalDevice);

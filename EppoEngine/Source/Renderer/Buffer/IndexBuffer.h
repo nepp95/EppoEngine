@@ -2,7 +2,7 @@
 
 namespace Eppo
 {
-	class IndexBuffer
+	class IndexBuffer : public RefCounter
 	{
 	public:
 		virtual ~IndexBuffer() {}

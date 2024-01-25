@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-	class UniformBuffer
+	class UniformBuffer : public RefCounter
 	{
 	public:
 		virtual ~UniformBuffer() {};

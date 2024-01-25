@@ -29,7 +29,7 @@ namespace Eppo
 		{}
 	};
 
-	class Profiler
+	class Profiler : public RefCounter
 	{
 	public:
 		Profiler() = default;

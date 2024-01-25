@@ -144,7 +144,7 @@ namespace Eppo
 
 		Renderer::SubmitCommand([this]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
+			Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 			Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 			Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 			VkDevice device = logicalDevice->GetNativeDevice();
@@ -219,7 +219,7 @@ namespace Eppo
 
 	VkCommandBuffer VulkanRenderCommandBuffer::GetCurrentCommandBuffer() const
 	{
-		uint32_t imageIndex = RendererContext::Get()->GetSwapchain()->GetCurrentImageIndex();
+		uint32_t imageIndex = RendererContext::Get().As<VulkanContext>()->GetSwapchain()->GetCurrentImageIndex();
 
 		return m_CommandBuffers[imageIndex];
 	}

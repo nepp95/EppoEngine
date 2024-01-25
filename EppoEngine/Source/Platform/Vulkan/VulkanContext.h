@@ -22,6 +22,11 @@ namespace Eppo
 		void Init() override;
 		void Shutdown() override;
 
+		void BeginFrame() override;
+		void PresentFrame() override;
+
+		void OnResize() override;
+
 		void WaitIdle();
 
 		void SubmitResourceFree(std::function<void()> fn);

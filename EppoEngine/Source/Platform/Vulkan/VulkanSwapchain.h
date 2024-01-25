@@ -1,11 +1,10 @@
 #pragma once
 
 #include "Platform/Vulkan/VulkanLogicalDevice.h"
-#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
-	class RendererContext;
+	class VulkanContext;
 
 	struct SwapchainSupportDetails
 	{

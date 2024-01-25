@@ -38,7 +38,7 @@ namespace Eppo
 		bool Optimize = false;
 	};
 
-	class Shader
+	class Shader : public RefCounter
 	{
 	public:
 		virtual ~Shader() {};

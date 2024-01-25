@@ -6,7 +6,7 @@
 
 namespace Eppo
 {
-	class UniformBufferSet
+	class UniformBufferSet : public RefCounter
 	{
 	public:
 		UniformBufferSet() = default;

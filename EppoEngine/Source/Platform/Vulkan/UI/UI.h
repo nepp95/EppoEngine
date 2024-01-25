@@ -6,5 +6,5 @@
 
 namespace Eppo::UI
 {
-	void Image(const Ref<Eppo::Image>& image, const ImVec2& size);
+	void Image(Ref<Eppo::Image> image, const ImVec2& size);
 }

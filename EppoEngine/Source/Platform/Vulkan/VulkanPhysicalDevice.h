@@ -14,7 +14,7 @@ namespace Eppo
 		}
 	};
 
-	class VulkanPhysicalDevice
+	class VulkanPhysicalDevice : public RefCounter
 	{
 	public:
 		VulkanPhysicalDevice();

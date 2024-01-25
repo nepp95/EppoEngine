@@ -2,7 +2,7 @@
 
 namespace Eppo
 {
-	class VertexBuffer
+	class VertexBuffer : public RefCounter
 	{
 	public:
 		virtual ~VertexBuffer() {};

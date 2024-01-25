@@ -3,6 +3,7 @@
 
 #include "Core/Application.h"
 #include "Platform/Vulkan/VulkanAllocator.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 #include <GLFW/glfw3.h>
 
@@ -90,6 +91,21 @@ namespace Eppo
 			DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
 
 		vkDestroyInstance(m_VulkanInstance, nullptr);
+	}
+
+	void VulkanContext::BeginFrame()
+	{
+		m_Swapchain->BeginFrame();
+	}
+
+	void VulkanContext::PresentFrame()
+	{
+		m_Swapchain->Present();
+	}
+
+	void VulkanContext::OnResize()
+	{
+		m_Swapchain->OnResize();
 	}
 
 	void VulkanContext::WaitIdle()
