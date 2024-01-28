@@ -206,18 +206,15 @@ namespace Eppo
 	}
 
 	template<typename T, typename FN>
-	void PropertyPanel::DrawComponent(Entity entity, FN uiFn, std::string& label)
+	void PropertyPanel::DrawComponent(Entity entity, FN uiFn)
 	{
 		if (!entity.HasComponent<T>())
 			return;
 
-		if (label.empty())
-			label = Utils::GetComponentString<T>();
-
 		auto& c = entity.GetComponent<T>();
 		
 		bool closedHeader = true; // If this is set to false by ImGui, we delete the component
-		if (ImGui::CollapsingHeader(label.c_str(), &closedHeader, ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader(Utils::GetComponentString<T>().c_str(), &closedHeader, ImGuiTreeNodeFlags_DefaultOpen))
 			uiFn(c);
 
 		if (!closedHeader)

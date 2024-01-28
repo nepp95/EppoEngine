@@ -28,6 +28,7 @@ project "EppoEngine"
         "Source",
 		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}",
+        "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
@@ -38,12 +39,6 @@ project "EppoEngine"
 		"%{IncludeDir.yaml_cpp}"
     }
 
-    links {
-		"imgui",
-		"yaml-cpp",
-        "%{Library.vulkan}"
-    }
-
     filter "system:windows"
         systemversion "latest"
 
@@ -51,12 +46,11 @@ project "EppoEngine"
             "EPPO_PLATFORM_WINDOWS"
         }
 
-        includedirs {
-            "%{IncludeDir.glfw}"
-        }
-
         links {
-            "glfw"
+            "%{Library.glfw}",
+            "%{Library.imgui}",
+            "%{Library.yaml_cpp}",
+            "%{Library.vulkan}"
         }
 
         removefiles {
@@ -66,14 +60,6 @@ project "EppoEngine"
     filter "system:linux"
         defines {
             "EPPO_PLATFORM_LINUX"
-        }
-
-        includedirs {
-            "/usr/local/include"
-        }
-
-        links {
-            "glfw"
         }
 
         removefiles {
@@ -96,6 +82,8 @@ project "EppoEngine"
 			"EPPO_TRACK_MEMORY"
 		}
 
+    filter {"system:windows", "configurations:Debug"}
+
         links {
 			"%{Library.assimp_debug}",
             "%{Library.shaderc_debug}",
@@ -108,23 +96,25 @@ project "EppoEngine"
         runtime "Release"
         optimize "On"
 
+        defines {
+			"TRACY_ENABLE",
+			"EPPO_TRACK_MEMORY"
+		}
+
+    filter {"system:windows", "configurations:Debug"}
         links {
 			"%{Library.assimp_release}",
             "%{Library.shaderc_release}",
             "%{Library.spirv_cross_release}",
             "%{Library.spirv_cross_glsl_release}"
         }
-
-		defines {
-			"TRACY_ENABLE",
-			"EPPO_TRACK_MEMORY"
-		}
     
     filter "configurations:Dist"
         defines "EPPO_DIST"
         runtime "Release"
         optimize "On"
 
+    filter {"system:windows", "configurations:Debug"}
         links {
 			"%{Library.assimp_release}",
             "%{Library.shaderc_release}",

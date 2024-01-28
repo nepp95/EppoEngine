@@ -38,8 +38,29 @@ project "EppoEditor"
         }
     
     filter "system:linux"
+        buildoptions {
+            "-fpermissive"
+        }
+    
         defines {
             "EPPO_PLATFORM_LINUX"
+        }
+
+        libdirs {
+            "/usr/local/lib",
+            "%{LibraryDir.vulkan}"
+        }
+
+        links {
+            "%{Library.glfw}",
+            "%{Library.vulkan}",
+            "%{Library.shaderc}",
+            "%{Library.spirv_cross}",
+            "%{Library.spirv_cross_glsl}",
+            "%{Library.spirv_tools}",
+            "%{Library.imgui}",
+            "%{Library.yaml_cpp}",
+            "%{Library.assimp}"
         }
 
     filter "configurations:Debug"
@@ -52,6 +73,7 @@ project "EppoEditor"
 			"EPPO_TRACK_MEMORY"
 		}
 
+    filter {"system:windows", "configurations:Debug"}
 		postbuildcommands {
 			'{COPY} "%{Library.assimp_debug_dll}" "%{cfg.targetdir}"'
 		}
@@ -66,6 +88,7 @@ project "EppoEditor"
 			"EPPO_TRACK_MEMORY"
 		}
 
+    filter {"system:windows", "configurations:Debug"}
 		postbuildcommands {
 			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
 		}
@@ -75,6 +98,7 @@ project "EppoEditor"
         runtime "Release"
         optimize "On"
 
+    filter {"system:windows", "configurations:Debug"}
 		postbuildcommands {
 			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
 		}
