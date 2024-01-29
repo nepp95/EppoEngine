@@ -4,7 +4,7 @@
 #include "Core/Application.h"
 #include "Platform/Vulkan/VulkanContext.h"
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 namespace Eppo
 {

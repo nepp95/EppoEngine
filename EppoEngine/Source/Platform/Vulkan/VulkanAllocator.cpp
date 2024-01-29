@@ -64,6 +64,8 @@ namespace Eppo
 
 		s_Data->MemoryAllocated += allocationInfo.size;
 
+		EPPO_WARN("Buffer allocated: {} - {} - {}", allocationInfo.size, createInfo.usage, usage);
+
 		return allocation;
 	}
 
@@ -81,6 +83,8 @@ namespace Eppo
 
 		s_Data->MemoryAllocated += allocationInfo.size;
 
+		EPPO_WARN("Image allocated: {} - {} - {}", allocationInfo.size, createInfo.usage, usage);
+
 		return allocation;
 	}
 
@@ -94,6 +98,8 @@ namespace Eppo
 		vmaDestroyBuffer(s_Data->Allocator, buffer, allocation);
 
 		s_Data->MemoryFreed += allocationInfo.size;
+
+		EPPO_WARN("Buffer freed: {}", allocationInfo.size);
 	}
 
 	void VulkanAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
@@ -106,6 +112,8 @@ namespace Eppo
 		vmaDestroyImage(s_Data->Allocator, image, allocation);
 
 		s_Data->MemoryFreed += allocationInfo.size;
+
+		EPPO_WARN("Image freed: {}", allocationInfo.size);
 	}
 
 	void* VulkanAllocator::MapMemory(VmaAllocation allocation)

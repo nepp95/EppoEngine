@@ -73,9 +73,9 @@ namespace Eppo
 				if (ImGui::BeginDragDropSource())
 				{
 					auto relativePath = std::filesystem::relative(entry, Filesystem::GetAppRootDirectory());
-					const wchar_t* itemPath = relativePath.c_str();
+					const char* itemPath = relativePath.c_str();
 
-					ImGui::SetDragDropPayload(GetImGuiPayloadTypeFromExtension(relativePath.extension()), itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
+					ImGui::SetDragDropPayload(GetImGuiPayloadTypeFromExtension(relativePath.extension()), itemPath, strlen(itemPath));
 					ImGui::EndDragDropSource();
 				}
 
