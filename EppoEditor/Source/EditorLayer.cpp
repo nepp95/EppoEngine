@@ -26,7 +26,8 @@ namespace Eppo
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 
 		// Open scene
-		OpenScene("Resources/Scenes/test.epposcene");
+		//OpenScene("Resources/Scenes/Test.epposcene");
+		NewScene();
 
 		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
 	}
