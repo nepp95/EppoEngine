@@ -29,17 +29,26 @@ namespace Eppo
 			m_DescriptorBufferInfo.offset = 0;
 			m_DescriptorBufferInfo.range = m_Size;
 		}
+
+		RendererContext::Get()->SubmitResourceFree([=]()
+		{
+			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			{
+				Allocator::UnmapMemory(m_Allocations[i]);
+				Allocator::DestroyBuffer(m_Buffers[i], m_Allocations[i]);
+			}
+		});
 	}
 
 	UniformBuffer::~UniformBuffer()
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::~UniformBuffer");
 
-		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+		/*for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
 			Allocator::UnmapMemory(m_Allocations[i]);
 			Allocator::DestroyBuffer(m_Buffers[i], m_Allocations[i]);
-		}
+		}*/
 	}
 
 	void UniformBuffer::SetData(void* data, uint32_t size)

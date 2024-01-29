@@ -1,4 +1,5 @@
 include "Dependencies.lua"
+include "Helpers.lua"
 
 workspace "EppoEngine"
     architecture "x86_64"
@@ -30,5 +31,5 @@ workspace "EppoEngine"
 
     group "Tools"
         include "EppoEditor"
-        include "EppoTesting"
+        --include "EppoTesting"
     group ""

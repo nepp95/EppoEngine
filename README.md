@@ -1,4 +1,6 @@
 # EppoEngine
+[![Master Build](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml)
+[![Development Build](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml)
 
 ## Introduction
 
@@ -27,6 +29,7 @@ As a final point; I also want to dip my toes into raytracing and multithreading.
 
 ## Installation
 
+### Windows
 *Note: Currently, Windows is the only supported platform.*
 
 1. `git clone https://github.com/nepp95/EppoEngine.git` to a folder of your choosing.
@@ -34,3 +37,10 @@ As a final point; I also want to dip my toes into raytracing and multithreading.
 This will require you to have Visual Studio 2022 installed. If you have a different version of Visual Studio installed or want to use CMake, please edit `GenerateProjects-Win.bat` and change `vs2022` to one of the options on [this page](https://premake.github.io/docs/Using-Premake).
 3. Based on what you had installed on your computer before running `Setup.bat`, you might have to run it again. Please make sure you have run this program twice to verify everything is in order. If the program tells you "Done", you know it's okay!
 4. You can now open the solution (Visual Studio), build and run! Of course, if you used a different parameter in step 2, you can use that build system to build out of the box.
+
+### Linux
+1. `git clone https://github.com/nepp95/EppoEngine.git` to a folder of your choosing.
+2. Make sure you have the following dependencies installed:
+```
+sudo apt install libassimp-dev
+```

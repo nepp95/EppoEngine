@@ -102,8 +102,7 @@ namespace Eppo
 
 			// Clean up
 			Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
-			stbi_image_free(m_ImageData.Data);
-			m_ImageData = Buffer();
+			m_ImageData.Release();
 		}
 	}
 

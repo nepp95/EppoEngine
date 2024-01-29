@@ -163,6 +163,15 @@ namespace Eppo
 			depthClear.depthStencil = { m_Specification.ClearDepth, 0 };
 			m_ClearValues.push_back(depthClear);
 		}
+
+		Ref<RendererContext> context = RendererContext::Get();
+		context->SubmitResourceFree([=]()
+		{
+			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+
+			vkDestroyRenderPass(device, m_RenderPass, nullptr);
+			vkDestroyFramebuffer(device, m_Framebuffer, nullptr);
+		});
 	}
 
 	void Framebuffer::Cleanup()

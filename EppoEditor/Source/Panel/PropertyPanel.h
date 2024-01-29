@@ -16,6 +16,6 @@ namespace Eppo
 		void DrawAddComponentEntry(const std::string& label);
 
 		template<typename T, typename FN>
-		void DrawComponent(Entity entity, FN uiFn, std::string& label = std::string());
+		void DrawComponent(Entity entity, FN uiFn);
 	};
 }

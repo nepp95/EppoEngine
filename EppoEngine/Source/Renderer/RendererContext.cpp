@@ -4,7 +4,7 @@
 #include "Core/Application.h"
 #include "Renderer/Allocator.h"
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 namespace Eppo
 {
@@ -76,15 +76,15 @@ namespace Eppo
 		m_Swapchain = CreateRef<Swapchain>();
 		
 		// Profiler
-		m_TracyContexts.resize(VulkanConfig::MaxFramesInFlight);
-		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-			m_TracyContexts[i] = TracyVkContext(m_PhysicalDevice->GetNativeDevice(), m_LogicalDevice->GetNativeDevice(), m_LogicalDevice->GetGraphicsQueue(), m_Swapchain->m_CommandBuffers[i]);
-
-		SubmitResourceFree([=]()
-		{
-			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-				TracyVkDestroy(m_TracyContexts[i]);
-		});
+		//m_TracyContexts.resize(VulkanConfig::MaxFramesInFlight);
+		//for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+		//	m_TracyContexts[i] = TracyVkContext(m_PhysicalDevice->GetNativeDevice(), m_LogicalDevice->GetNativeDevice(), m_LogicalDevice->GetGraphicsQueue(), m_Swapchain->m_CommandBuffers[i]);
+//
+		//SubmitResourceFree([=]()
+		//{
+		//	for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+		//		TracyVkDestroy(m_TracyContexts[i]);
+		//});
 	}
 
 	void RendererContext::Shutdown()
