@@ -7,7 +7,7 @@ namespace Eppo
 	struct ShaderResource;
 
 	// Descriptor abstraction from https://vkguide.dev/docs/extra-chapter/abstracting_descriptors/
-	class DescriptorLayoutCache
+	class DescriptorLayoutCache : public RefCounter
 	{
 	public:
 		DescriptorLayoutCache() = default;

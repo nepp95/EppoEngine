@@ -18,7 +18,7 @@ namespace Eppo
 
 			case RendererAPIType::Vulkan:
 			{
-				return CreateRef<VulkanIndexBuffer>(data, size);
+				return Ref<VulkanIndexBuffer>::Create(data, size);
 			}
 
 			EPPO_ASSERT(false);

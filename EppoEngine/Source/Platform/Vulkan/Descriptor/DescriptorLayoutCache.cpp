@@ -2,7 +2,7 @@
 #include "DescriptorLayoutCache.h"
 
 #include "Platform/Vulkan/VulkanContext.h"
-#include "Renderer/Shader.h"
+#include "Platform/Vulkan/VulkanShader.h"
 
 namespace Eppo
 {

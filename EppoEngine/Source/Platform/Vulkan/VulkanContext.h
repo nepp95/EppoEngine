@@ -34,9 +34,9 @@ namespace Eppo
 		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
 
 		VkInstance GetVulkanInstance() const { return m_VulkanInstance; }
-		const Ref<VulkanPhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
-		const Ref<VulkanLogicalDevice>& GetLogicalDevice() const { return m_LogicalDevice; }
-		const Ref<VulkanSwapchain>& GetSwapchain() const { return m_Swapchain; }
+		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
+		Ref<VulkanLogicalDevice> GetLogicalDevice() const { return m_LogicalDevice; }
+		Ref<VulkanSwapchain> GetSwapchain() const { return m_Swapchain; }
 
 		//TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
 

@@ -5,7 +5,7 @@
 namespace Eppo
 {
 	// Descriptor abstraction from https://vkguide.dev/docs/extra-chapter/abstracting_descriptors/
-	class DescriptorAllocator
+	class DescriptorAllocator : public RefCounter
 	{
 	public:
 		DescriptorAllocator() = default;

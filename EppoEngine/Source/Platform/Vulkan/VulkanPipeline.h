@@ -6,7 +6,7 @@
 
 namespace Eppo
 {
-	class VulkanPipeline : Pipeline
+	class VulkanPipeline : public Pipeline
 	{
 	public:
 		VulkanPipeline(const PipelineSpecification& specification);

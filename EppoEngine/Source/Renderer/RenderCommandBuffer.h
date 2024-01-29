@@ -12,7 +12,7 @@ namespace Eppo
 		uint64_t FragmentShaderInvocations = 0;
 	};
 
-	class RenderCommandBuffer
+	class RenderCommandBuffer : public RefCounter
 	{
 	public:
 		virtual ~RenderCommandBuffer() {};

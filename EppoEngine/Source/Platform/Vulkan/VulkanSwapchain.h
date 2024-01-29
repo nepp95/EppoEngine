@@ -13,7 +13,7 @@ namespace Eppo
 		std::vector<VkPresentModeKHR> PresentModes;
 	};
 
-	class VulkanSwapchain
+	class VulkanSwapchain : public RefCounter
 	{
 	public:
 		VulkanSwapchain();
