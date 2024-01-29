@@ -69,8 +69,7 @@ project "EppoEditor"
         symbols "On"
 
 		defines {
-			"TRACY_ENABLE",
-			"EPPO_TRACK_MEMORY"
+			--"TRACY_ENABLE"
 		}
 
     filter {"system:windows", "configurations:Debug"}
@@ -84,8 +83,7 @@ project "EppoEditor"
         optimize "On"
 
 		defines {
-			"TRACY_ENABLE",
-			"EPPO_TRACK_MEMORY"
+			--"TRACY_ENABLE"
 		}
 
     filter {"system:windows", "configurations:Debug"}

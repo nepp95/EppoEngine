@@ -77,7 +77,7 @@ project "EppoEngine"
         symbols "On"
 
 		defines {
-			"TRACY_ENABLE",
+			--"TRACY_ENABLE",
 		}
 
     filter {"system:windows", "configurations:Debug"}
@@ -95,7 +95,7 @@ project "EppoEngine"
         optimize "On"
 
         defines {
-			"TRACY_ENABLE",
+			--"TRACY_ENABLE",
 		}
 
     filter {"system:windows", "configurations:Debug"}
