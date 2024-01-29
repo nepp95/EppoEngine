@@ -27,7 +27,7 @@ namespace Eppo
 		Ref<Swapchain> GetSwapchain() { return m_Swapchain; }
 		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
 
-		TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
+		//TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
 
 		void SubmitResourceFree(std::function<void()> fn);
 
@@ -53,6 +53,6 @@ namespace Eppo
 		uint32_t m_ResourceFreeCommandCount = 0;
 
 		// Tracy profiler context
-		std::vector<TracyVkCtx> m_TracyContexts;
+		//std::vector<TracyVkCtx> m_TracyContexts;
 	};
 }

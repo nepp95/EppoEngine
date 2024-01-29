@@ -2,8 +2,10 @@
 
 #include "Core/Base.h"
 
+#include <signal.h>
+
 #ifdef EPPO_ENABLE_ASSERTS
-	#ifdef EPPO_PLATFORM_WINDOWS
+	#if defined(EPPO_PLATFORM_WINDOWS)
 		#define EPPO_ASSERT(condition) { if (!(condition)) __debugbreak(); }
 	#elif defined(EPPO_PLATFORM_LINUX)
 		#define EPPO_ASSERT(condition) { if (!(condition)) raise(SIGTRAP); }

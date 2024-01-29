@@ -3,7 +3,6 @@ project "EppoEngine"
     language "C++"
     cppdialect "C++17"
     staticruntime "Off"
-	editandcontinue "Off" -- Necessary for tracy profiler
 
     targetdir ("%{wks.location}/Bin/" .. OutputDir .. "/%{prj.name}")
     objdir ("%{wks.location}/Bin-Int/" .. OutputDir .. "/%{prj.name}")
@@ -79,7 +78,6 @@ project "EppoEngine"
 
 		defines {
 			"TRACY_ENABLE",
-			"EPPO_TRACK_MEMORY"
 		}
 
     filter {"system:windows", "configurations:Debug"}
@@ -98,7 +96,6 @@ project "EppoEngine"
 
         defines {
 			"TRACY_ENABLE",
-			"EPPO_TRACK_MEMORY"
 		}
 
     filter {"system:windows", "configurations:Debug"}
