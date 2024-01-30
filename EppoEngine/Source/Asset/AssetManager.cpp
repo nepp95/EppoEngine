@@ -113,7 +113,7 @@ namespace Eppo
 
 			case AssetType::Texture:
 			{
-				asset = Ref<Texture>::Create(filepath);
+				asset = Texture::Create(filepath);
 				asset->Handle = metadata.Handle;
 				return true;
 			}

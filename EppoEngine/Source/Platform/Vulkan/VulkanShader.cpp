@@ -4,7 +4,7 @@
 #include "Core/Filesystem.h"
 #include "Core/Hash.h"
 #include "Platform/Vulkan/VulkanContext.h"
-#include "Renderer/Renderer.h"
+#include "Platform/Vulkan/VulkanRenderer.h"
 
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
@@ -119,16 +119,19 @@ namespace Eppo
 		{
 			// Make sure we aren't eol after type token
 			const size_t eol = source.find_first_of("\r\n", pos);
-			EPPO_ASSERT(eol != std::string::npos, "Syntax error: No stage specified!");
+			EPPO_ERROR("Syntax error: No stage specified!");
+			EPPO_ASSERT(eol != std::string::npos);
 
 			// Extract shader stage
 			const size_t begin = pos + stageTokenLength + 1;
 			const std::string stage = std::string(source.substr(begin, eol - begin));
-			EPPO_ASSERT((bool)Utils::StringToShaderStage(stage), "Invalid stage specified!");
+			EPPO_ERROR("Invalid stage specified!");
+			EPPO_ASSERT((bool)Utils::StringToShaderStage(stage));
 
 			// If there is no other stage token, take the string till eof. Otherwise till the next stage token
 			const size_t nextLinePos = source.find_first_not_of("\r\n", eol);
-			EPPO_ASSERT(nextLinePos != std::string::npos, "Syntax error: No source after stage token!");
+			EPPO_ERROR("Syntax error: No source after stage token!");
+			EPPO_ASSERT(nextLinePos != std::string::npos);
 			pos = source.find(stageToken, nextLinePos);
 			shaderSources[Utils::StringToShaderStage(stage)] = (pos == std::string::npos) ? std::string(source.substr(nextLinePos)) : std::string(source.substr(nextLinePos, pos - nextLinePos));
 		}
@@ -336,7 +339,7 @@ namespace Eppo
 
 		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-		Ref<DescriptorLayoutCache> layoutCache = Renderer::GetDescriptorLayoutCache();
+		Ref<DescriptorLayoutCache> layoutCache = VulkanRenderer::GetDescriptorLayoutCache();
 
 		for (const auto& [set, setResources] : m_ShaderResources)
 		{

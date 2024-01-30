@@ -12,7 +12,7 @@ namespace Eppo
 
 		GetSceneContext()->m_Registry.each([&](auto entityID)
 		{
-			Entity entity(entityID, GetSceneContext().get());
+			Entity entity(entityID, GetSceneContext().Raw());
 			DrawEntityNode(entity);
 		});
 

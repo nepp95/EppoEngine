@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/Buffer/UniformBufferSet.h"
+#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"

@@ -3,6 +3,7 @@
 
 #include "Core/Application.h"
 #include "Platform/Vulkan/VulkanContext.h"
+#include "Platform/Vulkan/VulkanImage.h"
 
 namespace Eppo
 {
@@ -34,7 +35,7 @@ namespace Eppo
 
 			if (Utils::IsDepthFormat(attachment))
 			{
-				m_DepthImage = Ref<Image>::Create(imageSpec);
+				m_DepthImage = Image::Create(imageSpec);
 
 				VkAttachmentDescription& depthAttachment = attachmentDescriptions.emplace_back();
 				depthAttachment.format = Utils::FindSupportedDepthFormat(); // TODO: Is it possible this will defer between calls?
@@ -53,7 +54,7 @@ namespace Eppo
 			}
 			else
 			{
-				m_ImageAttachments.emplace_back(Ref<Image>::Create(imageSpec));
+				m_ImageAttachments.emplace_back(Image::Create(imageSpec));
 
 				VkAttachmentDescription& colorAttachment = attachmentDescriptions.emplace_back();
 				colorAttachment.format = Utils::ImageFormatToVkFormat(attachment);
@@ -129,10 +130,10 @@ namespace Eppo
 
 		std::vector<VkImageView> attachments(m_ImageAttachments.size());
 		for (size_t i = 0; i < m_ImageAttachments.size(); i++)
-			attachments[i] = m_ImageAttachments[i]->GetImageView();
+			attachments[i] = m_ImageAttachments[i].As<VulkanImage>()->GetImageView();
 
 		if (m_DepthImage)
-			attachments.emplace_back(m_DepthImage->GetImageInfo().ImageView);
+			attachments.emplace_back(m_DepthImage.As<VulkanImage>()->GetImageInfo().ImageView);
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -171,4 +172,7 @@ namespace Eppo
 		vkDestroyRenderPass(device, m_RenderPass, nullptr);
 		vkDestroyFramebuffer(device, m_Framebuffer, nullptr);
 	}
+
+	void VulkanFramebuffer::Resize(uint32_t width, uint32_t height)
+	{}
 }

@@ -9,7 +9,7 @@ namespace Eppo
 	{
 	public:
 		VulkanRenderCommandBuffer(uint32_t count);
-		~VulkanRenderCommandBuffer();
+		virtual ~VulkanRenderCommandBuffer();
 
 		void Begin() override;
 		void End() override;

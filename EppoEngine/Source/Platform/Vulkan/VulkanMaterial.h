@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/Material.h"
 
 namespace Eppo

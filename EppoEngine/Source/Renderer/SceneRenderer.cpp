@@ -1,6 +1,15 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
+// TODO: TEMP
+#include "Platform/Vulkan/VulkanContext.h"
+#include "Platform/Vulkan/VulkanIndexBuffer.h"
+#include "Platform/Vulkan/VulkanPipeline.h"
+#include "Platform/Vulkan/VulkanRenderCommandBuffer.h"
+#include "Platform/Vulkan/VulkanSwapchain.h"
+#include "Platform/Vulkan/VulkanUniformBuffer.h"
+#include "Platform/Vulkan/VulkanVertexBuffer.h"
+
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 
@@ -12,7 +21,7 @@ namespace Eppo
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
 		: m_RenderSpecification(renderSpecification)
 	{
-		m_CommandBuffer = Ref<RenderCommandBuffer>::Create();
+		m_CommandBuffer = RenderCommandBuffer::Create();
 
 		// Geometry
 		{
@@ -144,7 +153,7 @@ namespace Eppo
 
 	Ref<Image> SceneRenderer::GetFinalPassImage()
 	{
-		return m_GeometryPipeline->GetSpecification().Framebuffer->GetFinalImage();
+		return m_GeometryPipeline.As<VulkanPipeline>()->GetSpecification().Framebuffer->GetFinalImage();
 	}
 
 	void SceneRenderer::SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId)
@@ -209,13 +218,13 @@ namespace Eppo
 
 		Renderer::SubmitCommand([this]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
+			Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
+			VkCommandBuffer commandBuffer = m_CommandBuffer.As<VulkanRenderCommandBuffer>()->GetCurrentCommandBuffer();
 			uint32_t frameIndex = swapchain->GetCurrentImageIndex();
 
 			// Descriptor sets
-			const auto& descriptorSets = m_ShadowPipeline->GetDescriptorSets(frameIndex);
+			const auto& descriptorSets = m_ShadowPipeline.As<VulkanPipeline>()->GetDescriptorSets(frameIndex);
 
 			std::vector<VkWriteDescriptorSet> writeDescriptors;
 			{
@@ -225,14 +234,14 @@ namespace Eppo
 				writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 				writeDescriptor.dstSet = descriptorSets[0];
 				writeDescriptor.dstBinding = 1;
-				writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
+				writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer.As<VulkanUniformBuffer>()->GetDescriptorBufferInfo();
 			}
 
 			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 			vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
 
 			// Pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline->GetPipeline());
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline.As<VulkanPipeline>()->GetPipeline());
 
 			VkExtent2D extent = swapchain->GetExtent();
 
@@ -253,7 +262,7 @@ namespace Eppo
 			vkCmdBindDescriptorSets(
 				commandBuffer,
 				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				m_ShadowPipeline->GetPipelineLayout(),
+				m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(),
 				0,
 				1,
 				&descriptorSets[0],
@@ -266,16 +275,16 @@ namespace Eppo
 				for (const auto& submesh : dc.Mesh->GetSubmeshes())
 				{
 					// Vertex buffer Mesh
-					VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
+					VkBuffer vb = { submesh.GetVertexBuffer().As<VulkanVertexBuffer>()->GetBuffer() };
 					VkDeviceSize offsets[] = { 0 };
 					vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
 					// Index buffer
 					Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
-					vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+					vkCmdBindIndexBuffer(commandBuffer, indexBuffer.As<VulkanIndexBuffer>()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 					// Push constants
-					vkCmdPushConstants(commandBuffer, m_ShadowPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
+					vkCmdPushConstants(commandBuffer, m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
 				
 					// Draw call
 					vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);

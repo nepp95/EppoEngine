@@ -29,7 +29,7 @@ namespace Eppo
 		//OpenScene("Resources/Scenes/Test.epposcene");
 		NewScene();
 
-		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
+		m_ViewportRenderer = Ref<SceneRenderer>::Create(m_ActiveScene, RenderSpecification());
 	}
 	
 	void EditorLayer::OnDetach()
@@ -133,7 +133,8 @@ namespace Eppo
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
+		// TODO: CRITICAL!!! Without this, there is no viewport
+		//UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -207,7 +208,7 @@ namespace Eppo
 
 	void EditorLayer::NewScene()
 	{
-		m_ActiveScene = CreateRef<Scene>();
+		m_ActiveScene = Ref<Scene>::Create();
 		m_ActiveScenePath = std::filesystem::path();
 
 		m_PanelManager.SetSceneContext(m_ActiveScene);
@@ -243,7 +244,7 @@ namespace Eppo
 			return;
 		}
 
-		Ref<Scene> newScene = CreateRef<Scene>();
+		Ref<Scene> newScene = Ref<Scene>::Create();
 		SceneSerializer serializer(newScene);
 
 		if (serializer.Deserialize(filepath))

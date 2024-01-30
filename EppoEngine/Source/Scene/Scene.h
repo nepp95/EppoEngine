@@ -10,7 +10,7 @@ namespace Eppo
 	class Entity;
 	class SceneRenderer;
 
-	class Scene
+	class Scene : public RefCounter
 	{
 	public:
 		Scene() = default;

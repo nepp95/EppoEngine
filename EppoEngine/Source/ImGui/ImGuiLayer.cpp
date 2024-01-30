@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "ImGuiLayer.h"
 
+#include "Platform/Vulkan/VulkanContext.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/RendererContext.h"
 
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan_custom.h>
@@ -42,7 +42,7 @@ namespace Eppo
 		ImGui::StyleColorsDark();
 
 		// Initialize
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		ImGui_ImplGlfw_InitForVulkan(context->GetWindowHandle(), true);
 
 		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
@@ -108,7 +108,8 @@ namespace Eppo
 
 	void ImGuiLayer::OnDetach()
 	{
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 		vkDestroyDescriptorPool(device, s_DescriptorPool, nullptr);
 
 		ImGui_ImplVulkan_Shutdown();
@@ -137,7 +138,7 @@ namespace Eppo
 	{
 		ImGui::Render();
 
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
 		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 		VkCommandBuffer swapCmd = swapchain->GetCurrentRenderCommandBuffer();
 

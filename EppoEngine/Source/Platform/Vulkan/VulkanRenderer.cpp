@@ -166,9 +166,9 @@ namespace Eppo
 		return s_Data->ShaderLibrary->Get(name);
 	}
 
-	void VulkanRenderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, const glm::mat4& transform)
+	void VulkanRenderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform)
 	{
-		SubmitCommand([renderCommandBuffer, pipeline, mesh, transform]()
+		SubmitCommand([renderCommandBuffer, pipeline, uniformBufferSet, mesh, transform]()
 		{
 			EPPO_PROFILE_FUNCTION("VulkanRenderer::RenderGeometry");
 

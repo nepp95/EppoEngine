@@ -54,11 +54,12 @@ namespace Eppo
 		viewInfo.subresourceRange.baseArrayLayer = 0;
 		viewInfo.subresourceRange.layerCount = 1;
 
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 		VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr, &m_Info.ImageView), "Failed to create image view!");
 
 		// Create sampler
-		Ref<VulkanPhysicalDevice> physicalDevice = RendererContext::Get()->GetPhysicalDevice();
+		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

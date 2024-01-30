@@ -32,11 +32,11 @@ namespace Eppo
 		Ref<Shader> GetShader(const std::string& name) override;
 
 		// Geometry
-		void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, const glm::mat4& transform) override;
+		void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform) override;
 
 		// Descriptor sets
 		static Ref<DescriptorAllocator> GetDescriptorAllocator();
 		static Ref<DescriptorLayoutCache> GetDescriptorLayoutCache();
-		static VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo) const;
+		static VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo);
 	};
 }

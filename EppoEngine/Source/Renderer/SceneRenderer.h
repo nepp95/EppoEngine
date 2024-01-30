@@ -33,7 +33,7 @@ namespace Eppo
 		LightColor
 	};
 
-	class SceneRenderer
+	class SceneRenderer : public RefCounter
 	{
 	public:
 		SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification);

@@ -42,7 +42,7 @@ namespace Eppo
 
 		m_MaterialIndex = mesh->mMaterialIndex;
 
-		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(MeshVertex));
-		m_IndexBuffer = CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+		m_VertexBuffer = VertexBuffer::Create(vertices.data(), vertices.size() * sizeof(MeshVertex));
+		m_IndexBuffer = IndexBuffer::Create(indices.data(), indices.size() * sizeof(uint32_t));
 	}
 }

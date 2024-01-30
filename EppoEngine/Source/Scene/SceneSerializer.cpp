@@ -96,7 +96,7 @@ namespace Eppo
 		
 		m_SceneContext->m_Registry.each([&](auto entityID)
 		{
-			Entity entity(entityID, m_SceneContext.get());
+			Entity entity(entityID, m_SceneContext.Raw());
 			if (!entity)
 				return;
 
