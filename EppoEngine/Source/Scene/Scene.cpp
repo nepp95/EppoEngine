@@ -14,7 +14,7 @@ namespace Eppo
 		EPPO_PROFILE_FN("CPU Update", "Update Scene");
 	}
 
-	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
+	void Scene::RenderEditor(Ref<SceneRenderer> sceneRenderer, const EditorCamera& editorCamera)
 	{
 		{
 			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();

@@ -31,7 +31,7 @@ namespace Eppo
 
 		void SubmitResourceFree(std::function<void()> fn);
 
-		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
+		GLFWwindow* GetWindowHandle() const override { return m_WindowHandle; }
 
 		VkInstance GetVulkanInstance() const { return m_VulkanInstance; }
 		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }

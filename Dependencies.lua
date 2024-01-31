@@ -26,8 +26,7 @@ Library = {}
 Library["imgui"] = "imgui"
 Library["yaml_cpp"] = "yaml-cpp"
 
-filter "system:windows"
-    Library["glfw"] = "glfw"
+if (os.target() == "windows") then
     Library["vulkan"] = "%{LibraryDir.vulkan}/vulkan-1.lib"
     Library["assimp_debug"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
     Library["assimp_debug_dll"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"
@@ -40,8 +39,7 @@ filter "system:windows"
     Library["spirv_cross_glsl_debug"] = "%{LibraryDir.vulkan}/spirv-cross-glsld.lib"
     Library["spirv_cross_glsl_release"] = "%{LibraryDir.vulkan}/spirv-cross-glsl.lib"
     Library["spirv_tools_debug"] = "%{LibraryDir.vulkan}/SPIRV-Toolsd.lib"
-
-filter "system:linux"
+else
     Library["glfw"] = "glfw3"
     Library["vulkan"] = "vulkan"
     Library["assimp"] = "assimp"
@@ -49,3 +47,4 @@ filter "system:linux"
     Library["spirv_cross"] = "spirv-cross-core"
     Library["spirv_cross_glsl"] = "spirv-cross-glsl"
     Library["spirv_tools"] = "SPIRV-Tools"
+end

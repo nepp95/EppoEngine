@@ -153,7 +153,7 @@ namespace Eppo
 
 	Ref<Image> SceneRenderer::GetFinalPassImage()
 	{
-		return m_GeometryPipeline.As<VulkanPipeline>()->GetSpecification().Framebuffer->GetFinalImage();
+		return m_GeometryPipeline->GetSpecification().Framebuffer->GetFinalImage();
 	}
 
 	void SceneRenderer::SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId)

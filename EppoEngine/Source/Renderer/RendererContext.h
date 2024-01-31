@@ -22,6 +22,7 @@ namespace Eppo
 		virtual void PresentFrame() = 0;
 
 		virtual void OnResize() = 0;
+		virtual GLFWwindow* GetWindowHandle() const = 0;
 
 		static RendererAPIType GetAPI() { return s_API; }
 		static Ref<RendererContext> Get();

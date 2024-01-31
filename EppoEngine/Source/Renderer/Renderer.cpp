@@ -19,7 +19,7 @@ namespace Eppo
 
 	uint32_t Renderer::GetCurrentFrameIndex()
 	{
-		s_RendererAPI->GetCurrentFrameIndex();
+		return s_RendererAPI->GetCurrentFrameIndex();
 	}
 
 	void Renderer::BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline)
@@ -44,7 +44,7 @@ namespace Eppo
 
 	Ref<Shader> Renderer::GetShader(const std::string& name)
 	{
-		s_RendererAPI->GetShader(name);
+		return s_RendererAPI->GetShader(name);
 	}
 
 	void Renderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform)

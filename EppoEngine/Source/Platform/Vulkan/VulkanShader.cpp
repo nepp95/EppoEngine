@@ -94,7 +94,7 @@ namespace Eppo
 
 	ShaderDescriptorSet VulkanShader::AllocateDescriptorSet(uint32_t set)
 	{
-
+		return {};
 	}
 
 	const VkDescriptorSetLayout& VulkanShader::GetDescriptorSetLayout(uint32_t set) const
