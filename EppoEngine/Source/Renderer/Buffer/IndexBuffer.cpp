@@ -2,13 +2,13 @@
 #include "IndexBuffer.h"
 
 #include "Platform/Vulkan/VulkanIndexBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<IndexBuffer> IndexBuffer::Create(void* data, uint32_t size)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

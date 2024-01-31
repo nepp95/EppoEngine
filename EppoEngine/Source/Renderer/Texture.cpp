@@ -2,13 +2,13 @@
 #include "Texture.h"
 
 #include "Platform/Vulkan/VulkanTexture.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<Texture> Texture::Create(const std::filesystem::path& filepath)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{
@@ -28,7 +28,7 @@ namespace Eppo
 
 	Ref<Texture> Texture::Create(uint32_t width, uint32_t height, ImageFormat format, void* data)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

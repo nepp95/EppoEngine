@@ -24,11 +24,7 @@ namespace Eppo
 		virtual void OnResize() = 0;
 		virtual GLFWwindow* GetWindowHandle() const = 0;
 
-		static RendererAPIType GetAPI() { return s_API; }
 		static Ref<RendererContext> Get();
 		static Ref<RendererContext> Create(void* windowHandle);
-
-	private:
-		static RendererAPIType s_API;
 	};
 }

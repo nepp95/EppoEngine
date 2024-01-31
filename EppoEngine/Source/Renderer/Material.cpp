@@ -2,13 +2,13 @@
 #include "Material.h"
 
 #include "Platform/Vulkan/VulkanMaterial.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<Material> Material::Create(Ref<Shader> shader)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

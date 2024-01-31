@@ -2,13 +2,13 @@
 #include "UniformBuffer.h"
 
 #include "Platform/Vulkan/VulkanUniformBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<UniformBuffer> UniformBuffer::Create(uint32_t size, uint32_t binding)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

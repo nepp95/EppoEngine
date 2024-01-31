@@ -4,11 +4,10 @@
 #include "Core/Application.h"
 #include "Platform/OpenGL/OpenGLContext.h"
 #include "Platform/Vulkan/VulkanContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
-	RendererAPIType RendererContext::s_API = RendererAPIType::OpenGL;
-
 	Ref<RendererContext> RendererContext::Get()
 	{
 		return Application::Get().GetWindow().GetRendererContext();
@@ -16,12 +15,11 @@ namespace Eppo
 
 	Ref<RendererContext> RendererContext::Create(void* windowHandle)
 	{
-		switch (s_API)
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{
 				return Ref<OpenGLContext>::Create(static_cast<GLFWwindow*>(windowHandle)).As<RendererContext>();
-				break;	
 			}
 
 			case RendererAPIType::Vulkan:

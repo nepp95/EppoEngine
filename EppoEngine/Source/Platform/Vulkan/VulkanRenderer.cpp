@@ -51,11 +51,6 @@ namespace Eppo
 		s_Data->CommandBuffer = RenderCommandBuffer::Create();
 		s_Data->CommandQueue = CreateScope<RenderCommandQueue>();
 
-		// Load shaders
-		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
-		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
-		s_Data->ShaderLibrary->Load("Resources/Shaders/shadow.glsl");
-
 		// Descriptor pool
 		VkDescriptorPoolSize poolSizes[] =
 		{

@@ -4,6 +4,7 @@
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
+#include "Renderer/RendererAPI.h"
 
 #include <GLFW/glfw3.h>
 
@@ -27,13 +28,13 @@ namespace Eppo
 		glfwSetErrorCallback(GLFWErrorCallback);
 
 		// Platform specific window hints
-		if (RendererContext::GetAPI() == RendererAPIType::OpenGL)
+		if (RendererAPI::Current() == RendererAPIType::OpenGL)
 		{
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 			#ifdef EPPO_DEBUG
 				glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 			#endif
-		} else if (RendererContext::GetAPI() == RendererAPIType::Vulkan)
+		} else if (RendererAPI::Current() == RendererAPIType::Vulkan)
 		{
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		}

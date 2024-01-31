@@ -2,13 +2,13 @@
 #include "Pipeline.h"
 
 #include "Platform/Vulkan/VulkanPipeline.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<Pipeline> Pipeline::Create(const PipelineSpecification& specification)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

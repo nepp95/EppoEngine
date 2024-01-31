@@ -5,6 +5,7 @@
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
+#include "Renderer/Renderer.h"
 #include "Renderer/Shader.h"
 
 namespace Eppo
@@ -33,9 +34,8 @@ namespace Eppo
 		virtual void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform) = 0;
 	
 		static RendererAPIType Current() { return s_CurrentAPI; }
-		static void SetAPI(RendererAPIType type);
-
+		
 	private:
-		inline static RendererAPIType s_CurrentAPI = RendererAPIType::Vulkan;
+		inline static constexpr RendererAPIType s_CurrentAPI = RendererAPIType::OpenGL;
 	};
 }

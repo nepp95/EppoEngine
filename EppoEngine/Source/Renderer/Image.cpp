@@ -2,13 +2,13 @@
 #include "Image.h"
 
 #include "Platform/Vulkan/VulkanImage.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<Image> Image::Create(const ImageSpecification& specification)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

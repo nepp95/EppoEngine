@@ -2,13 +2,13 @@
 #include "Framebuffer.h"
 
 #include "Platform/Vulkan/VulkanFramebuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<Framebuffer> Framebuffer::Create(const FramebufferSpecification& specification)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

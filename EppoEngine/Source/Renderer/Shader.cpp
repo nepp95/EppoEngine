@@ -1,19 +1,19 @@
 #include "pch.h"
 #include "Shader.h"
 
+#include "Platform/OpenGL/OpenGLShader.h"
 #include "Platform/Vulkan/VulkanShader.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
-	Ref<Shader> Create(const ShaderSpecification& specification)
+	Ref<Shader> Shader::Create(const ShaderSpecification& specification)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{
-				EPPO_ASSERT(false);
-				break;
+				return Ref<OpenGLShader>::Create(specification).As<Shader>();
 			}
 
 			case RendererAPIType::Vulkan:

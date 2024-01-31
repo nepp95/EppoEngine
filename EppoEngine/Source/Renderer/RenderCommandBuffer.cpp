@@ -2,13 +2,13 @@
 #include "RenderCommandBuffer.h"
 
 #include "Platform/Vulkan/VulkanRenderCommandBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<RenderCommandBuffer> RenderCommandBuffer::Create(uint32_t count)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{

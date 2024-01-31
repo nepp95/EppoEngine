@@ -2,13 +2,13 @@
 #include "VertexBuffer.h"
 
 #include "Platform/Vulkan/VulkanVertexBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/RendererAPI.h"
 
 namespace Eppo
 {
 	Ref<VertexBuffer> VertexBuffer::Create(void* data, uint32_t size)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{
@@ -28,7 +28,7 @@ namespace Eppo
 
 	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size)
 	{
-		switch (RendererContext::GetAPI())
+		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::OpenGL:
 			{
