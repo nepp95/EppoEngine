@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Core/Buffer.h"
+#include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/Texture.h"
-
-typedef struct VkDescriptorSet_T* VkDescriptorSet;
 
 namespace Eppo
 {

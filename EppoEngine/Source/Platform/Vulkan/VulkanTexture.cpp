@@ -12,7 +12,7 @@ namespace Eppo
     VulkanTexture::VulkanTexture(const std::filesystem::path& filepath)
         : m_Filepath(filepath)
     {
-        EPPO_PROFILE_FUNCTION("Texture::Texture");
+        EPPO_PROFILE_FUNCTION("VulkanTexture::VulkanTexture");
 
 		// Read pixels
 		int width, height, channels;
@@ -111,7 +111,7 @@ namespace Eppo
     VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, ImageFormat format, void* data)
         : m_Width(width), m_Height(height)
     {
-        EPPO_PROFILE_FUNCTION("Texture::Texture");
+        EPPO_PROFILE_FUNCTION("VulkanTexture::VulkanTexture");
 
 		uint32_t size = width * height * Utils::GetMemorySize(format);
 

@@ -7,8 +7,9 @@ namespace Eppo
 {
 	using AssetHandle = UUID;
 
-	struct Asset : public RefCounter
+	class Asset : public RefCounter
 	{
+	public:
 		AssetHandle Handle;
 
 		static AssetType GetStaticType() { return AssetType::None; }
