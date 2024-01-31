@@ -17,7 +17,7 @@ namespace Eppo
 	{
 	public:
 		VulkanContext(GLFWwindow* windowHandle);
-		virtual ~VulkanContext() = default;
+		~VulkanContext() = default;
 
 		void Init() override;
 		void Shutdown() override;

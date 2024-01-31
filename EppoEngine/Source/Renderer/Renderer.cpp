@@ -54,7 +54,6 @@ namespace Eppo
 
 	void RendererAPI::SetAPI(RendererAPIType type)
 	{
-		EPPO_ASSERT(type == RendererAPIType::Vulkan);
 		s_CurrentAPI = type;
 	}
 }

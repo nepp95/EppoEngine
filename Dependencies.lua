@@ -4,6 +4,7 @@ VulkanSdk = os.getenv("VULKAN_SDK")
 IncludeDir = {}
 IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
 IncludeDir["entt"] = "%{wks.location}/EppoEngine/Vendor/entt/single_include"
+IncludeDir["glad"] = "%{wks.location}/EppoEngine/Vendor/glad/include"
 IncludeDir["glfw"] = "%{wks.location}/EppoEngine/Vendor/glfw/include"
 IncludeDir["glm"] = "%{wks.location}/EppoEngine/Vendor/glm"
 IncludeDir["googletest"] = "%{wks.location}/EppoEngine/Vendor/googletest/googletest/include"
@@ -23,10 +24,12 @@ LibraryDir["vulkan"] = "%{VulkanSdk}/Lib"
 -- Libraries
 Library = {}
 
+Library["glad"] = "glad"
 Library["imgui"] = "imgui"
 Library["yaml_cpp"] = "yaml-cpp"
 
 if (os.target() == "windows") then
+    Library["glfw"] = "glfw"
     Library["vulkan"] = "%{LibraryDir.vulkan}/vulkan-1.lib"
     Library["assimp_debug"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
     Library["assimp_debug_dll"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"

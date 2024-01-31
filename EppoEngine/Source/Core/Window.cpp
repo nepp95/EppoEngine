@@ -19,14 +19,24 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Window::Window");
 
+		// GLFW initialization
 		int success = glfwInit();
 		EPPO_ASSERT(success);
 
-		#ifdef EPPO_DEBUG
-			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-		#endif
+		// GLFW error callback
+		glfwSetErrorCallback(GLFWErrorCallback);
 
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		// Platform specific window hints
+		if (RendererContext::GetAPI() == RendererAPIType::OpenGL)
+		{
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+			#ifdef EPPO_DEBUG
+				glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+			#endif
+		} else if (RendererContext::GetAPI() == RendererAPIType::Vulkan)
+		{
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		}
 
 		// Get primary monitor
 		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
