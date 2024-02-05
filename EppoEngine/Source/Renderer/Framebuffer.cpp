@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Framebuffer.h"
 
+#include "Platform/OpenGL/OpenGLFramebuffer.h"
 #include "Platform/Vulkan/VulkanFramebuffer.h"
 #include "Renderer/RendererAPI.h"
 
@@ -12,7 +13,7 @@ namespace Eppo
 		{
 			case RendererAPIType::OpenGL:
 			{
-				EPPO_ASSERT(false);
+				return Ref<OpenGLFramebuffer>::Create(specification).As<Framebuffer>();
 				break;
 			}
 

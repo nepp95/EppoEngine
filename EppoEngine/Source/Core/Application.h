@@ -53,14 +53,14 @@ namespace Eppo
 
 		void RenderGui();
 
-		void PushLayer(Layer* layer, bool overlay = false);
-		void PopLayer(Layer* layer, bool overlay = false);
+		void PushLayer(Ref<Layer> layer, bool overlay = false);
+		void PopLayer(Ref<Layer> layer, bool overlay = false);
 
 		Ref<Profiler> GetProfiler() const { return m_Profiler; }
 
 		static Application& Get() { return *s_Instance; }
-		Window& GetWindow() { return *m_Window; }
-		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
+		Window& GetWindow() const { return *m_Window; }
+		Ref<ImGuiLayer> GetImGuiLayer() const { return m_ImGuiLayer; }
 
 	private:
 		void Run();
@@ -74,7 +74,7 @@ namespace Eppo
 		Scope<Window> m_Window;
 		LayerStack m_LayerStack;
 
-		ImGuiLayer* m_ImGuiLayer;
+		Ref<ImGuiLayer> m_ImGuiLayer;
 		Ref<Profiler> m_Profiler;
 
 		bool m_IsRunning = true;

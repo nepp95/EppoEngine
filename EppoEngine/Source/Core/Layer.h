@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-	class Layer
+	class Layer : public RefCounter
 	{
 	public:
 		Layer(const std::string& name = "Layer");

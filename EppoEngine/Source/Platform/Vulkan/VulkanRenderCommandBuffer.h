@@ -27,11 +27,12 @@ namespace Eppo
 		VkCommandPool m_CommandPool;
 		std::vector<VkCommandBuffer> m_CommandBuffers;
 
+		uint32_t m_QueryIndex = 2;
+		uint32_t m_QueryCount = 6;
+
 		std::vector<VkQueryPool> m_QueryPools;
 		std::vector<std::vector<uint64_t>> m_Timestamps;
 		std::vector<std::vector<float>> m_TimestampDeltas;
-		uint32_t m_QueryIndex = 2;
-		uint32_t m_QueryCount = 6;
 
 		std::vector<VkQueryPool> m_PipelineQueryPools;
 		std::vector<PipelineStatistics> m_PipelineStatistics;

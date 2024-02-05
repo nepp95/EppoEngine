@@ -5,11 +5,11 @@
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Platform/Vulkan/VulkanIndexBuffer.h"
 #include "Platform/Vulkan/VulkanPipeline.h"
-#include "Platform/Vulkan/VulkanRenderCommandBuffer.h"
 #include "Platform/Vulkan/VulkanSwapchain.h"
 #include "Platform/Vulkan/VulkanUniformBuffer.h"
 #include "Platform/Vulkan/VulkanVertexBuffer.h"
 
+#include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 
@@ -146,8 +146,8 @@ namespace Eppo
 	{
 		switch (key)
 		{
-			case EnvironmentKeys::LightPosition:	m_EnvironmentBuffer.LightPosition = *(glm::vec3*)value;
-			case EnvironmentKeys::LightColor:		m_EnvironmentBuffer.LightColor = *(glm::vec4*)value;
+			case EnvironmentKeys::LightPosition:	m_EnvironmentBuffer.LightPosition = *(glm::vec3*)value; break;
+			case EnvironmentKeys::LightColor:		m_EnvironmentBuffer.LightColor = *(glm::vec4*)value; break;
 		}
 	}
 

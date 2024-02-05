@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "RenderCommandBuffer.h"
 
+#include "Platform/OpenGL/OpenGLRenderCommandBuffer.h"
 #include "Platform/Vulkan/VulkanRenderCommandBuffer.h"
 #include "Renderer/RendererAPI.h"
 
@@ -12,7 +13,7 @@ namespace Eppo
 		{
 			case RendererAPIType::OpenGL:
 			{
-				EPPO_ASSERT(false);
+				return Ref<OpenGLRenderCommandBuffer>::Create(count).As<RenderCommandBuffer>();
 				break;
 			}
 
