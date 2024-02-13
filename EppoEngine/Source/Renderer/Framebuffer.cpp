@@ -14,7 +14,6 @@ namespace Eppo
 			case RendererAPIType::OpenGL:
 			{
 				return Ref<OpenGLFramebuffer>::Create(specification).As<Framebuffer>();
-				break;
 			}
 
 			case RendererAPIType::Vulkan:
@@ -25,14 +24,5 @@ namespace Eppo
 			EPPO_ASSERT(false);
 			return nullptr;
 		}
-	}
-
-	void Framebuffer::Resize(uint32_t width, uint32_t height)
-	{
-		/*m_Specification.Width = width;
-		m_Specification.Height = height;
-
-		Cleanup();
-		Create();*/
 	}
 }

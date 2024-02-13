@@ -7,7 +7,7 @@
 namespace Eppo
 {
 	VulkanUniformBuffer::VulkanUniformBuffer(uint32_t size, uint32_t binding)
-		: m_Size(size), m_Binding(binding)
+		: UniformBuffer(size, binding)
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::UniformBuffer");
 

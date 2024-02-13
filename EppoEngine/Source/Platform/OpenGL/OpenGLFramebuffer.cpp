@@ -32,4 +32,24 @@ namespace Eppo
 	{
 		glDeleteFramebuffers(1, &m_RendererID);
 	}
+
+	void OpenGLFramebuffer::Resize(uint32_t width, uint32_t height)
+	{
+
+	}
+
+	Ref<Image> OpenGLFramebuffer::GetFinalImage() const
+	{
+		throw std::logic_error("The method or operation is not implemented.");
+	}
+
+	bool OpenGLFramebuffer::HasDepthAttachment() const
+	{
+		throw std::logic_error("The method or operation is not implemented.");
+	}
+
+	Ref<Image> OpenGLFramebuffer::GetDepthImage() const
+	{
+		throw std::logic_error("The method or operation is not implemented.");
+	}
 }

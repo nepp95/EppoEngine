@@ -19,11 +19,7 @@ namespace Eppo
 
 		const std::vector<VkDescriptorSet>& GetDescriptorSets(uint32_t frameIndex) { return m_DescriptorSets.at(frameIndex); }
 
-		const PipelineSpecification& GetSpecification() const override { return m_Specification; };
-
 	private:
-		PipelineSpecification m_Specification;
-
 		VkPipeline m_Pipeline;
 		VkPipelineLayout m_PipelineLayout;
 

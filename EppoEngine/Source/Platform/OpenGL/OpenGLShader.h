@@ -10,10 +10,15 @@ namespace Eppo
         OpenGLShader(const ShaderSpecification& specification);
         ~OpenGLShader();
 
-        const std::string& GetName() const override { return m_Name; }
+	protected:
+		void Reflect() override;
+
+	private:
+		void Link();
 
     private:
-        ShaderSpecification m_Specification;
-        std::string m_Name;
-    };
+		uint32_t m_RendererID;
+
+		std::unordered_map<uint32_t, std::vector<ShaderResource>> m_ShaderResources;
+	};
 }

@@ -33,7 +33,7 @@ namespace Eppo
 	}
 
 	VulkanPipeline::VulkanPipeline(const PipelineSpecification& specification)
-		: m_Specification(specification)
+		: Pipeline(specification)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanPipeline::VulkanPipeline");
 
@@ -279,5 +279,4 @@ namespace Eppo
 			writeDescriptor.pImageInfo = &depthImage->GetDescriptorImageInfo();
 		}*/
 	}
-
 }

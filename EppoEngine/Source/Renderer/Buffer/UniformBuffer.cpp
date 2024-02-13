@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "UniformBuffer.h"
 
+#include "Platform/OpenGL/OpenGLUniformBuffer.h"
 #include "Platform/Vulkan/VulkanUniformBuffer.h"
 #include "Renderer/RendererAPI.h"
 
@@ -12,8 +13,7 @@ namespace Eppo
 		{
 			case RendererAPIType::OpenGL:
 			{
-				EPPO_ASSERT(false);
-				break;
+				return Ref<OpenGLUniformBuffer>::Create(size, binding);
 			}
 
 			case RendererAPIType::Vulkan:

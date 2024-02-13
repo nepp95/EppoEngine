@@ -3,8 +3,7 @@
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Shader.h"
 #include "Renderer/VertexBufferLayout.h"
-
-struct VkPushConstantRange;
+#include "Platform/Vulkan/Vulkan.h"
 
 namespace Eppo
 {
@@ -25,8 +24,14 @@ namespace Eppo
 	public:
 		virtual ~Pipeline() {};
 
-		virtual const PipelineSpecification& GetSpecification() const = 0;
+		const PipelineSpecification& GetSpecification() const {	return m_Specification; }
 		
 		static Ref<Pipeline> Create(const PipelineSpecification& specification);
+
+	protected:
+		Pipeline(const PipelineSpecification& specification);
+
+	protected:
+		PipelineSpecification m_Specification;
 	};
 }

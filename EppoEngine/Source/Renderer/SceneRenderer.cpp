@@ -216,84 +216,95 @@ namespace Eppo
 		// TODO: Clear before?
 		Renderer::BeginRenderPass(m_CommandBuffer, m_ShadowPipeline);
 
-		Renderer::SubmitCommand([this]()
-		{
-			Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
-			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = m_CommandBuffer.As<VulkanRenderCommandBuffer>()->GetCurrentCommandBuffer();
-			uint32_t frameIndex = swapchain->GetCurrentImageIndex();
+		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
-			// Descriptor sets
-			const auto& descriptorSets = m_ShadowPipeline.As<VulkanPipeline>()->GetDescriptorSets(frameIndex);
+		Ref<VulkanPipeline> vulkanPipeline = m_ShadowPipeline.As<VulkanPipeline>();
+		vulkanPipeline->UpdateDescriptors(frameIndex, m_UniformBufferSet);
 
-			std::vector<VkWriteDescriptorSet> writeDescriptors;
-			{
-				VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-				writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				writeDescriptor.descriptorCount = 1;
-				writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				writeDescriptor.dstSet = descriptorSets[0];
-				writeDescriptor.dstBinding = 1;
-				writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer.As<VulkanUniformBuffer>()->GetDescriptorBufferInfo();
-			}
-
-			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-			vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
-
-			// Pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline.As<VulkanPipeline>()->GetPipeline());
-
-			VkExtent2D extent = swapchain->GetExtent();
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(),
-				0,
-				1,
-				&descriptorSets[0],
-				0,
-				nullptr
-			);
-
-			for (auto& [entity, dc] : m_DrawList)
-			{
-				for (const auto& submesh : dc.Mesh->GetSubmeshes())
-				{
-					// Vertex buffer Mesh
-					VkBuffer vb = { submesh.GetVertexBuffer().As<VulkanVertexBuffer>()->GetBuffer() };
-					VkDeviceSize offsets[] = { 0 };
-					vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-					// Index buffer
-					Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
-					vkCmdBindIndexBuffer(commandBuffer, indexBuffer.As<VulkanIndexBuffer>()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-					// Push constants
-					vkCmdPushConstants(commandBuffer, m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
-				
-					// Draw call
-					vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
-				}
-			}
-		});
+		for (auto& [entity, dc] : m_DrawList)
+			Renderer::RenderGeometry(m_CommandBuffer, m_ShadowPipeline, m_UniformBufferSet, dc.Mesh, dc.Transform);
 
 		Renderer::EndRenderPass(m_CommandBuffer);
 
 		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.ShadowQuery);
+
+		//Renderer::SubmitCommand([this]()
+		//{
+		//	Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		//	Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
+		//	VkCommandBuffer commandBuffer = m_CommandBuffer.As<VulkanRenderCommandBuffer>()->GetCurrentCommandBuffer();
+
+		//	// Descriptor sets
+		//	const auto& descriptorSets = m_ShadowPipeline.As<VulkanPipeline>()->GetDescriptorSets(frameIndex);
+
+		//	std::vector<VkWriteDescriptorSet> writeDescriptors;
+		//	{
+		//		VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
+		//		writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//		writeDescriptor.descriptorCount = 1;
+		//		writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		//		writeDescriptor.dstSet = descriptorSets[0];
+		//		writeDescriptor.dstBinding = 1;
+		//		writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer.As<VulkanUniformBuffer>()->GetDescriptorBufferInfo();
+		//	}
+
+		//	VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		//	vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
+
+		//	// Pipeline
+		//	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline.As<VulkanPipeline>()->GetPipeline());
+
+		//	VkExtent2D extent = swapchain->GetExtent();
+
+		//	VkViewport viewport{};
+		//	viewport.x = 0.0f;
+		//	viewport.y = 0.0f;
+		//	viewport.width = (float)extent.width;
+		//	viewport.height = (float)extent.height;
+		//	viewport.minDepth = 0.0f;
+		//	viewport.maxDepth = 1.0f;
+		//	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+		//	VkRect2D scissor{};
+		//	scissor.offset = { 0, 0 };
+		//	scissor.extent = extent;
+		//	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+		//	vkCmdBindDescriptorSets(
+		//		commandBuffer,
+		//		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		//		m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(),
+		//		0,
+		//		1,
+		//		&descriptorSets[0],
+		//		0,
+		//		nullptr
+		//	);
+
+		//	for (auto& [entity, dc] : m_DrawList)
+		//	{
+		//		for (const auto& submesh : dc.Mesh->GetSubmeshes())
+		//		{
+		//			// Vertex buffer Mesh
+		//			VkBuffer vb = { submesh.GetVertexBuffer().As<VulkanVertexBuffer>()->GetBuffer() };
+		//			VkDeviceSize offsets[] = { 0 };
+		//			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
+
+		//			// Index buffer
+		//			Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
+		//			vkCmdBindIndexBuffer(commandBuffer, indexBuffer.As<VulkanIndexBuffer>()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+		//			// Push constants
+		//			vkCmdPushConstants(commandBuffer, m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
+		//		
+		//			// Draw call
+		//			vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
+		//		}
+		//	}
+		//});
+
+		//Renderer::EndRenderPass(m_CommandBuffer);
+
+		//m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.ShadowQuery);
 	}
 }

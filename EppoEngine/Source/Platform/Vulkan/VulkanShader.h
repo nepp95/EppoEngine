@@ -24,14 +24,10 @@ namespace Eppo
 		const VkDescriptorSetLayout& GetDescriptorSetLayout(uint32_t set) const;
 		const std::unordered_map<uint32_t, std::vector<ShaderResource>>& GetShaderResources() const { return m_ShaderResources; }
 
-		const std::string& GetName() const override { return m_Name; }
+	protected:
+		void Reflect() override;
 
 	private:
-		std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source);
-		void Compile(ShaderStage stage, const std::string& source);
-		void CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources);
-
-		void Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes);
 		void CreatePipelineShaderInfos();
 		void CreateDescriptorSetLayout();
 
@@ -39,7 +35,6 @@ namespace Eppo
 		ShaderSpecification m_Specification;
 		std::string m_Name;
 
-		std::unordered_map<ShaderStage, std::vector<uint32_t>> m_ShaderBytes;
 		std::unordered_map<uint32_t, std::vector<ShaderResource>> m_ShaderResources;
 		std::vector<VkPipelineShaderStageCreateInfo> m_ShaderInfos;
 		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
@@ -51,8 +46,8 @@ namespace Eppo
 		{
 			switch (type)
 			{
-			case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			}
 
 			EPPO_ASSERT(false);
@@ -63,8 +58,8 @@ namespace Eppo
 		{
 			switch (stage)
 			{
-			case ShaderStage::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
-			case ShaderStage::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
+				case ShaderStage::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
+				case ShaderStage::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
 			}
 
 			EPPO_ASSERT(false);

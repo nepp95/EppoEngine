@@ -12,7 +12,7 @@ namespace Eppo
 		return m_UniformBufferSet.at(frame).at(set).at(binding);
 	}
 
-	void UniformBufferSet::Set(const Ref<UniformBuffer>& uniformBuffer, uint32_t frame, uint32_t set)
+	void UniformBufferSet::Set(Ref<UniformBuffer> uniformBuffer, uint32_t frame, uint32_t set)
 	{
 		m_UniformBufferSet[frame][set][uniformBuffer->GetBinding()] = uniformBuffer;
 	}
