@@ -8,7 +8,6 @@
 #include "Platform/Vulkan/VulkanRenderCommandBuffer.h"
 #include "Platform/Vulkan/VulkanVertexBuffer.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/ShaderLibrary.h"
 
 namespace Eppo
 {
@@ -20,8 +19,6 @@ namespace Eppo
 		Ref<DescriptorAllocator> DescriptorAllocator;
 		Ref<DescriptorLayoutCache> DescriptorLayoutCache;
 		std::vector<VkDescriptorPool> DescriptorPools;
-
-		Scope<ShaderLibrary> ShaderLibrary;
 	};
 
 	static RendererData* s_Data = nullptr;
@@ -32,8 +29,6 @@ namespace Eppo
 
 		// TODO: Remove shutdown in favor of destructor?
 		Shutdown();
-
-		delete s_Data;
 	}
 
 	void VulkanRenderer::Init()
@@ -86,6 +81,8 @@ namespace Eppo
 
 		s_Data->DescriptorLayoutCache->Shutdown();
 		s_Data->DescriptorAllocator->Shutdown();
+
+		delete s_Data;
 	}
 
 	uint32_t VulkanRenderer::GetCurrentFrameIndex() const
@@ -152,13 +149,6 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("VulkanRenderer::SubmitCommand");
 
 		s_Data->CommandQueue->AddCommand(command);
-	}
-
-	Ref<Shader> VulkanRenderer::GetShader(const std::string& name)
-	{
-		EPPO_PROFILE_FUNCTION("VulkanRenderer::GetShader");
-
-		return s_Data->ShaderLibrary->Get(name);
 	}
 
 	void VulkanRenderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform)

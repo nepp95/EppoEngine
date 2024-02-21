@@ -12,6 +12,8 @@ namespace Eppo
 		VulkanPipeline(const PipelineSpecification& specification);
 		~VulkanPipeline();
 
+		void UpdateUniforms(Ref<UniformBufferSet> uniformBufferSet) override;
+
 		void UpdateDescriptors(uint32_t frameIndex, Ref<UniformBufferSet> uniformBufferSet);
 
 		VkPipeline GetPipeline() const { return m_Pipeline; }

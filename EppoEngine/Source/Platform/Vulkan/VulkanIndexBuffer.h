@@ -13,11 +13,7 @@ namespace Eppo
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
 
-		uint32_t GetIndexCount() const override;
-
 	private:
-		uint32_t m_Size;
-
 		VkBuffer m_Buffer;
 		VmaAllocation m_Allocation;
 	};

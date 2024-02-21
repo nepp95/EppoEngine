@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "VertexBuffer.h"
 
+#include "Platform/OpenGL/OpenGLVertexBuffer.h"
 #include "Platform/Vulkan/VulkanVertexBuffer.h"
 #include "Renderer/RendererAPI.h"
 
@@ -12,8 +13,7 @@ namespace Eppo
 		{
 			case RendererAPIType::OpenGL:
 			{
-				EPPO_ASSERT(false);
-				break;
+				return Ref<OpenGLVertexBuffer>::Create(data, size).As<VertexBuffer>();
 			}
 
 			case RendererAPIType::Vulkan:
@@ -32,8 +32,7 @@ namespace Eppo
 		{
 			case RendererAPIType::OpenGL:
 			{
-				EPPO_ASSERT(false);
-				break;
+				return Ref<OpenGLVertexBuffer>::Create(size).As<VertexBuffer>();
 			}
 
 			case RendererAPIType::Vulkan:

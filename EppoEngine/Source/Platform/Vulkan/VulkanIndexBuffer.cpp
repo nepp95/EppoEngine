@@ -6,9 +6,10 @@
 namespace Eppo
 {
 	VulkanIndexBuffer::VulkanIndexBuffer(void* data, uint32_t size)
-		: m_Size(size)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanIndexBuffer::VulkanIndexBuffer");
+
+		m_Size = size;
 
 		// To stage or not to stage (staging buffer)
 		VkBufferCreateInfo stagingBufferInfo{};
@@ -55,10 +56,5 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("VulkanIndexBuffer::~VulkanIndexBuffer");
 
 		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
-	}
-
-	uint32_t VulkanIndexBuffer::GetIndexCount() const
-	{
-		return m_Size / sizeof(uint32_t);
 	}
 }

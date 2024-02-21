@@ -94,7 +94,6 @@ namespace Eppo
 
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
-		ImGui::DestroyContext();
 	}
 
 	void VulkanImGuiLayer::Begin()

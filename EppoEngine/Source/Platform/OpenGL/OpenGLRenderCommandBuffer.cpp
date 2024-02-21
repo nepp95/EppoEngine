@@ -10,6 +10,9 @@ namespace Eppo
 	OpenGLRenderCommandBuffer::OpenGLRenderCommandBuffer(uint32_t count)
 	{
 		m_Timestamps.resize(2);
+		for (auto& timestamp : m_Timestamps)
+			timestamp.resize(m_QueryCount);
+
 		m_PipelineStatistics.resize(2);
 	}
 

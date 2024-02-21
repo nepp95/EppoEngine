@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Platform/Vulkan/Vulkan.h"
+#include "Renderer/Buffer/UniformBufferSet.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Shader.h"
 #include "Renderer/VertexBufferLayout.h"
-#include "Platform/Vulkan/Vulkan.h"
 
 namespace Eppo
 {
@@ -25,6 +26,8 @@ namespace Eppo
 		virtual ~Pipeline() {};
 
 		const PipelineSpecification& GetSpecification() const {	return m_Specification; }
+
+		virtual void UpdateUniforms(Ref<UniformBufferSet> uniformBufferSet) = 0;
 		
 		static Ref<Pipeline> Create(const PipelineSpecification& specification);
 

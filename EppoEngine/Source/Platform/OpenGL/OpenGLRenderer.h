@@ -24,9 +24,6 @@ namespace Eppo
 		void ExecuteRenderCommands() override;
 		void SubmitCommand(RenderCommand command) override;
 
-		// Shaders
-		Ref<Shader> GetShader(const std::string& name) override;
-
 		// Geometry
 		void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform) override;
     };

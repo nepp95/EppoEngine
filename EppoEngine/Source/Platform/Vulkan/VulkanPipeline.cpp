@@ -5,6 +5,7 @@
 #include "Platform/Vulkan/VulkanFramebuffer.h"
 #include "Platform/Vulkan/VulkanShader.h"
 #include "Platform/Vulkan/VulkanUniformBuffer.h"
+#include "Renderer/Renderer.h"
 
 namespace Eppo
 {
@@ -239,8 +240,11 @@ namespace Eppo
 		vkDestroyPipelineLayout(device, m_PipelineLayout, nullptr);
 	}
 
-	void VulkanPipeline::UpdateDescriptors(uint32_t frameIndex, Ref<UniformBufferSet> uniformBufferSet)
+
+	void VulkanPipeline::UpdateUniforms(Ref<UniformBufferSet> uniformBufferSet)
 	{
+		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+
 		std::vector<VkWriteDescriptorSet> writeDescriptors;
 		{
 			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
@@ -266,6 +270,11 @@ namespace Eppo
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
+	}
+
+	void VulkanPipeline::UpdateDescriptors(uint32_t frameIndex, Ref<UniformBufferSet> uniformBufferSet)
+	{
+		
 
 		/*{
 			Ref<Image> depthImage = m_ShadowPipeline->GetSpecification().Framebuffer->GetDepthImage();

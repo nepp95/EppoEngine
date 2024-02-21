@@ -22,6 +22,7 @@ namespace Eppo
 
 	private:
 		uint32_t m_QueryIndex = 1;
+		uint32_t m_QueryCount = 3;
 
 		std::vector<std::vector<uint64_t>> m_Timestamps;
 

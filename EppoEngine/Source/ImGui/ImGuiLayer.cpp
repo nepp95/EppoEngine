@@ -33,6 +33,8 @@ namespace Eppo
 	void ImGuiLayer::OnDetach()
 	{
 		DestroyAPI();
+
+		ImGui::DestroyContext();
 	}
 
 	void ImGuiLayer::OnEvent(Event& e)

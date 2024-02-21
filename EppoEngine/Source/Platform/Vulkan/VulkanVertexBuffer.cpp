@@ -9,16 +9,18 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanVertexBuffer::VulkanVertexBuffer");
 
-		m_LocalStorage = Buffer::Copy(data, size);
-		CreateBuffer(VMA_MEMORY_USAGE_GPU_ONLY);
+		m_Size = size;
+
+		CreateBuffer(VMA_MEMORY_USAGE_GPU_ONLY, data);
 	}
 
 	VulkanVertexBuffer::VulkanVertexBuffer(uint32_t size)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanVertexBuffer::VulkanVertexBuffer");
 
-		m_LocalStorage.Allocate(size);
-		CreateBuffer(VMA_MEMORY_USAGE_CPU_TO_GPU);
+		m_Size = size;
+
+		CreateBuffer(VMA_MEMORY_USAGE_CPU_TO_GPU, nullptr);
 	}
 
 	VulkanVertexBuffer::~VulkanVertexBuffer()
@@ -26,24 +28,21 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("VulkanVertexBuffer::~VulkanVertexBuffer");
 
 		// TODO: Is this the memory leak :o
-		m_LocalStorage.Release();
 		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 
 	void VulkanVertexBuffer::SetData(void* data, uint32_t size)
 	{
 		EPPO_PROFILE_FUNCTION("VertexBuffer::SetData");
-		EPPO_ASSERT((size <= m_LocalStorage.Size));
+		EPPO_ASSERT(size == m_Size);
 		// TODO: Should only be possible with a dynamic buffer, keep track of memory type?
-
-		memcpy(m_LocalStorage.Data, (uint8_t*)data, size);
 
 		void* memData = VulkanAllocator::MapMemory(m_Allocation);
 		memcpy(memData, data, size);
 		VulkanAllocator::UnmapMemory(m_Allocation);
 	}
 
-	void VulkanVertexBuffer::CreateBuffer(VmaMemoryUsage usage)
+	void VulkanVertexBuffer::CreateBuffer(VmaMemoryUsage usage, void* data)
 	{
 		EPPO_PROFILE_FUNCTION("VertexBuffer::CreateBuffer");
 
@@ -51,7 +50,7 @@ namespace Eppo
 		{
 			VkBufferCreateInfo bufferInfo{};
 			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			bufferInfo.size = m_LocalStorage.Size;
+			bufferInfo.size = m_Size;
 			bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
 			m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, bufferInfo, usage);
@@ -61,7 +60,7 @@ namespace Eppo
 			// To stage or not to stage (staging buffer)
 			VkBufferCreateInfo stagingBufferInfo{};
 			stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			stagingBufferInfo.size = m_LocalStorage.Size;
+			stagingBufferInfo.size = m_Size;
 			stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 			stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -69,13 +68,13 @@ namespace Eppo
 			VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 			void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
-			memcpy(memData, m_LocalStorage.Data, m_LocalStorage.Size);
+			memcpy(memData, data, m_Size);
 			VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
 			// Device local buffer
 			VkBufferCreateInfo vertexBufferInfo{};
 			vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			vertexBufferInfo.size = m_LocalStorage.Size;
+			vertexBufferInfo.size = m_Size;
 			vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
 			m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
@@ -88,7 +87,7 @@ namespace Eppo
 			VkBufferCopy copyRegion{};
 			copyRegion.srcOffset = 0;
 			copyRegion.dstOffset = 0;
-			copyRegion.size = m_LocalStorage.Size;
+			copyRegion.size = m_Size;
 
 			vkCmdCopyBuffer(commandBuffer, stagingBuffer, m_Buffer, 1, &copyRegion);
 			logicalDevice->FlushCommandBuffer(commandBuffer);

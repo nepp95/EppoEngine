@@ -13,4 +13,9 @@ namespace Eppo
 	{
 
 	}
+
+	void OpenGLPipeline::UpdateUniforms(Ref<UniformBufferSet> uniformBufferSet)
+	{
+
+	}
 }

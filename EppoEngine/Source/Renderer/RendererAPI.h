@@ -27,9 +27,6 @@ namespace Eppo
 		virtual void ExecuteRenderCommands() = 0;
 		virtual void SubmitCommand(RenderCommand command) = 0;
 
-		// Shaders
-		virtual Ref<Shader> GetShader(const std::string& name) = 0;
-
 		// Geometry
 		virtual void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<UniformBufferSet> uniformBufferSet, Ref<Mesh> mesh, const glm::mat4& transform) = 0;
 	

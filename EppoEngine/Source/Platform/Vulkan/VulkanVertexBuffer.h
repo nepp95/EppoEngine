@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core/Buffer.h"
 #include "Platform/Vulkan/VulkanAllocator.h"
 #include "Renderer/Buffer/VertexBuffer.h"
 
@@ -18,11 +17,9 @@ namespace Eppo
 		VkBuffer GetBuffer() const { return m_Buffer; }
 
 	private:
-		void CreateBuffer(VmaMemoryUsage usage);
+		void CreateBuffer(VmaMemoryUsage usage, void* data);
 
 	private:
-		Buffer m_LocalStorage;
-
 		VkBuffer m_Buffer;
 		VmaAllocation m_Allocation;
 	};

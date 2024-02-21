@@ -1,14 +1,6 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
-// TODO: TEMP
-#include "Platform/Vulkan/VulkanContext.h"
-#include "Platform/Vulkan/VulkanIndexBuffer.h"
-#include "Platform/Vulkan/VulkanPipeline.h"
-#include "Platform/Vulkan/VulkanSwapchain.h"
-#include "Platform/Vulkan/VulkanUniformBuffer.h"
-#include "Platform/Vulkan/VulkanVertexBuffer.h"
-
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
@@ -187,22 +179,22 @@ namespace Eppo
 
 		Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
 
-		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-
 		// Descriptor sets
 		// TODO: Update materials through method
-		Ref<VulkanPipeline> vulkanPipeline = m_GeometryPipeline.As<VulkanPipeline>();
-		vulkanPipeline->UpdateDescriptors(frameIndex, m_UniformBufferSet);
+		m_GeometryPipeline->UpdateUniforms(m_UniformBufferSet);
 
-		EntityHandle handle;
+		EntityHandle handle = entt::null;
 		for (auto& [entity, dc] : m_DrawList)
 		{
 			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_UniformBufferSet, dc.Mesh, dc.Transform);
 			handle = entity;
 		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
-		Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_UniformBufferSet, m_DrawList[handle].Mesh, transform);
+		if (handle != entt::null)
+		{
+			glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
+			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_UniformBufferSet, m_DrawList[handle].Mesh, transform);
+		}
 
 		Renderer::EndRenderPass(m_CommandBuffer);
 
@@ -216,10 +208,7 @@ namespace Eppo
 		// TODO: Clear before?
 		Renderer::BeginRenderPass(m_CommandBuffer, m_ShadowPipeline);
 
-		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-
-		Ref<VulkanPipeline> vulkanPipeline = m_ShadowPipeline.As<VulkanPipeline>();
-		vulkanPipeline->UpdateDescriptors(frameIndex, m_UniformBufferSet);
+		m_ShadowPipeline->UpdateUniforms(m_UniformBufferSet);
 
 		for (auto& [entity, dc] : m_DrawList)
 			Renderer::RenderGeometry(m_CommandBuffer, m_ShadowPipeline, m_UniformBufferSet, dc.Mesh, dc.Transform);

@@ -10,6 +10,8 @@ namespace Eppo
 		OpenGLPipeline(const PipelineSpecification& specification);
 		virtual ~OpenGLPipeline();
 
+		void UpdateUniforms(Ref<UniformBufferSet> uniformBufferSet) override;
+
 	private:
 	};
 }
