@@ -32,12 +32,12 @@ namespace Eppo
 
     void OpenGLContext::BeginFrame()
     {
-
+		glClear(GL_COLOR_BUFFER_BIT);
     }
 
     void OpenGLContext::PresentFrame()
     {
-
+		glfwSwapBuffers(m_WindowHandle);
     }
 
     void OpenGLContext::OnResize()

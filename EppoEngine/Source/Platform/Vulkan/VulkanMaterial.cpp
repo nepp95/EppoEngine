@@ -5,6 +5,7 @@
 #include "Platform/Vulkan/VulkanImage.h"
 #include "Platform/Vulkan/VulkanRenderer.h"
 #include "Platform/Vulkan/VulkanShader.h"
+#include "Platform/Vulkan/VulkanTexture.h"
 #include "Renderer/Renderer.h"
 
 namespace Eppo
@@ -33,7 +34,7 @@ namespace Eppo
 
 		m_Texture = texture;
 
-		Ref<VulkanImage> vulkanImage = m_Texture->GetImage().As<VulkanImage>();
+		Ref<VulkanImage> vulkanImage = m_Texture.As<VulkanTexture>()->GetImage().As<VulkanImage>();
 		const auto& info = vulkanImage->GetImageInfo();
 
 		VkDescriptorImageInfo imageInfo{};

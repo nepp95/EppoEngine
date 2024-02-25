@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "IndexBuffer.h"
 
+#include "Platform/OpenGL/OpenGLIndexBuffer.h"
 #include "Platform/Vulkan/VulkanIndexBuffer.h"
 #include "Renderer/RendererAPI.h"
 
@@ -12,8 +13,7 @@ namespace Eppo
 		{
 			case RendererAPIType::OpenGL:
 			{
-				EPPO_ASSERT(false);
-				break;
+				return Ref<OpenGLIndexBuffer>::Create(data, size);
 			}
 
 			case RendererAPIType::Vulkan:

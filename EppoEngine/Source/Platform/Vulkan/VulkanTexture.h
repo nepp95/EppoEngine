@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core/Buffer.h"
 #include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/Texture.h"
 
@@ -13,22 +12,12 @@ namespace Eppo
         VulkanTexture(uint32_t width, uint32_t height, ImageFormat format, void* data);
         virtual ~VulkanTexture();
 
-        Ref<Image> GetImage() const override { return m_Image; }
-
-        uint32_t GetWidth() const override { return m_Width; }
-        uint32_t GetHeight() const override { return m_Height; }
+        Ref<Image> GetImage() const { return m_Image; }
 
         VkDescriptorSet& GetDescriptorSet() { return m_DescriptorSet; }
 
     private:
-        std::filesystem::path m_Filepath;
 		Ref<Image> m_Image;
-
-		Buffer m_ImageData;
-
 		VkDescriptorSet m_DescriptorSet;
-
-		uint32_t m_Width;
-		uint32_t m_Height;
     };
 }
