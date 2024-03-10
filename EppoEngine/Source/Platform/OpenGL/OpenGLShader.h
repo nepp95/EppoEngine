@@ -10,6 +10,9 @@ namespace Eppo
         OpenGLShader(const ShaderSpecification& specification);
         ~OpenGLShader();
 
+		void Bind() const;
+		void Unbind() const;
+
 	protected:
 		void Reflect() override;
 

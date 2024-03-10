@@ -48,6 +48,16 @@ namespace Eppo
 		glDeleteProgram(m_RendererID);
 	}
 
+	void OpenGLShader::Bind() const
+	{
+		glUseProgram(m_RendererID);
+	}
+
+	void OpenGLShader::Unbind() const
+	{
+		glUseProgram(0);
+	}
+
 	void OpenGLShader::Reflect()
 	{
 		m_ShaderResources[0] = {};
@@ -183,10 +193,10 @@ namespace Eppo
 		}
 
 		// Cleanup
-		for (auto id : shaderIDs)
+		/*for (auto id : shaderIDs)
 		{
 			glDetachShader(m_RendererID, id);
 			glDeleteShader(id);
-		}
+		}*/
 	}
 }

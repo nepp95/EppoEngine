@@ -20,9 +20,9 @@ namespace Eppo
 			{
 				return Ref<VulkanMaterial>::Create(shader).As<Material>();
 			}
-
-			EPPO_ASSERT(false);
-			return nullptr;
 		}
+
+		EPPO_ASSERT(false);
+		return nullptr;
 	}
 }

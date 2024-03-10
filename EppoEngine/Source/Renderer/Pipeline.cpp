@@ -24,9 +24,9 @@ namespace Eppo
 			{
 				return Ref<VulkanPipeline>::Create(specification).As<Pipeline>();
 			}
-
-			EPPO_ASSERT(false);
-			return nullptr;
 		}
+
+		EPPO_ASSERT(false);
+		return nullptr;
 	}
 }

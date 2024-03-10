@@ -9,6 +9,8 @@ namespace Eppo
 {
 	OpenGLRenderCommandBuffer::OpenGLRenderCommandBuffer(uint32_t count)
 	{
+		m_Queries.push_back(OpenGLQuery(m_QueryIndex));
+
 		m_Timestamps.resize(2);
 		for (auto& timestamp : m_Timestamps)
 			timestamp.resize(m_QueryCount);
@@ -17,17 +19,15 @@ namespace Eppo
 	}
 
 	OpenGLRenderCommandBuffer::~OpenGLRenderCommandBuffer()
-	{
-
-	}
+	{}
 
 	void OpenGLRenderCommandBuffer::Begin()
 	{
-		m_QueryIndex = 1;
+		m_QueryIndex = 0;
 
 		Renderer::SubmitCommand([this]()
 		{
-			glBeginQuery(GL_TIME_ELAPSED, 0);
+			m_Queries[m_QueryIndex].Begin();
 		});
 		
 		// TODO: Pipeline statistics
@@ -37,7 +37,7 @@ namespace Eppo
 	{
 		Renderer::SubmitCommand([this]()
 		{
-			glEndQuery(GL_TIME_ELAPSED);
+			m_Queries[m_QueryIndex].End();
 		});
 	}
 
@@ -45,31 +45,29 @@ namespace Eppo
 	{
 		Renderer::SubmitCommand([this]()
 		{
-			// TODO: Multiple image indexes
-			glGetQueryObjectui64v(0, GL_QUERY_RESULT, &m_Timestamps[0][0]);
-
+			m_Timestamps[0][m_QueryIndex] = m_Queries.at(m_QueryIndex).GetQueryResults();
 		});
 	}
 
 	uint32_t OpenGLRenderCommandBuffer::BeginTimestampQuery()
 	{
 		uint32_t queryIndex = m_QueryIndex;
-		m_QueryIndex++;
+		//m_QueryIndex++;
 
-		Renderer::SubmitCommand([this, queryIndex]()
-		{
-			glBeginQuery(GL_TIME_ELAPSED, queryIndex);
-		});
+		//Renderer::SubmitCommand([this, queryIndex]()
+		//	{
+		//		glBeginQuery(GL_TIME_ELAPSED, queryIndex);
+		//	});
 
 		return queryIndex;
 	}
 
 	void OpenGLRenderCommandBuffer::EndTimestampQuery(uint32_t queryIndex)
 	{
-		Renderer::SubmitCommand([this, queryIndex]()
-		{
-			glEndQuery(GL_TIME_ELAPSED);
-		});
+		//Renderer::SubmitCommand([this, queryIndex]()
+		//{
+		//	glEndQuery(GL_TIME_ELAPSED);
+		//});
 	}
 
 	float OpenGLRenderCommandBuffer::GetTimestamp(uint32_t imageIndex, uint32_t queryIndex) const

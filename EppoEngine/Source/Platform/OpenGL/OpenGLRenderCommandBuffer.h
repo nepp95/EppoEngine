@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Platform/OpenGL/OpenGLQuery.h"
 #include "Renderer/RenderCommandBuffer.h"
 
 namespace Eppo
@@ -21,9 +22,10 @@ namespace Eppo
 		const PipelineStatistics& GetPipelineStatistics(uint32_t imageIndex) const override;
 
 	private:
-		uint32_t m_QueryIndex = 1;
+		uint32_t m_QueryIndex = 0;
 		uint32_t m_QueryCount = 3;
 
+		std::vector<OpenGLQuery> m_Queries;
 		std::vector<std::vector<uint64_t>> m_Timestamps;
 
 		std::vector<PipelineStatistics> m_PipelineStatistics;

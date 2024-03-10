@@ -4,7 +4,9 @@
 #include "Core/Application.h"
 #include "Platform/OpenGL/OpenGL.h"
 #include "Platform/OpenGL/OpenGLIndexBuffer.h"
+#include "Platform/OpenGL/OpenGLPipeline.h"
 #include "Platform/OpenGL/OpenGLRenderCommandBuffer.h"
+#include "Platform/OpenGL/OpenGLShader.h"
 #include "Platform/OpenGL/OpenGLVertexBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
 
@@ -79,16 +81,20 @@ namespace Eppo
 			auto& app = Application::Get();
 
 			// TODO: Do we need this?
-			glViewport(0, 0, app.GetWindow().GetWidth(), app.GetWindow().GetHeight());
+			//glViewport(0, 0, app.GetWindow().GetWidth(), app.GetWindow().GetHeight());
 			
+			Ref<OpenGLPipeline> OGLPipeline = pipeline.As<OpenGLPipeline>();
+
 			for (const auto& submesh : mesh->GetSubmeshes())
 			{
-				submesh.GetVertexBuffer().As<OpenGLVertexBuffer>()->Bind();
-				
+				OGLPipeline->AddVertexBuffer(submesh.GetVertexBuffer());
+
+				// Bind vertex array
+				OGLPipeline->GetSpecification().Shader.As<OpenGLShader>()->Bind();
+				OGLPipeline->Bind();
+
 				Ref<OpenGLIndexBuffer> ib = submesh.GetIndexBuffer().As<OpenGLIndexBuffer>();
 				ib->Bind();
-
-				// bind vertex array
 				// do something with uniforms
 
 				// draw indexed
