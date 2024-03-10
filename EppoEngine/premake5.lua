@@ -27,6 +27,7 @@ project "EppoEngine"
         "Source",
 		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}",
+        "%{IncludeDir.glad}",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
@@ -46,6 +47,7 @@ project "EppoEngine"
         }
 
         links {
+            "%{Library.glad}",
             "%{Library.glfw}",
             "%{Library.imgui}",
             "%{Library.yaml_cpp}",
@@ -98,7 +100,7 @@ project "EppoEngine"
 			--"TRACY_ENABLE",
 		}
 
-    filter {"system:windows", "configurations:Debug"}
+    filter {"system:windows", "configurations:Release"}
         links {
 			"%{Library.assimp_release}",
             "%{Library.shaderc_release}",
@@ -111,7 +113,7 @@ project "EppoEngine"
         runtime "Release"
         optimize "On"
 
-    filter {"system:windows", "configurations:Debug"}
+    filter {"system:windows", "configurations:Dist"}
         links {
 			"%{Library.assimp_release}",
             "%{Library.shaderc_release}",

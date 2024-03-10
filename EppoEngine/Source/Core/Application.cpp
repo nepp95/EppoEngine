@@ -24,7 +24,7 @@ namespace Eppo
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
 		
 		// Create profiler
-		m_Profiler = CreateRef<Profiler>();
+		m_Profiler = Ref<Profiler>::Create();
 
 		// Create window
 		WindowSpecification windowSpec;
@@ -41,7 +41,7 @@ namespace Eppo
 		Renderer::Init();
 
 		// Add GUI layer
-		m_ImGuiLayer = new ImGuiLayer();
+		m_ImGuiLayer = ImGuiLayer::Create();
 		PushLayer(m_ImGuiLayer, true);
 	}
 
@@ -52,7 +52,7 @@ namespace Eppo
 
 		Renderer::Shutdown();
 
-		for (Layer* layer : m_LayerStack)
+		for (Ref<Layer> layer : m_LayerStack)
 			layer->OnDetach();
 
 		m_Window->Shutdown();
@@ -74,7 +74,7 @@ namespace Eppo
 		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::OnWindowClose));
 		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(Application::OnWindowResize));
 
-		for (Layer* layer : m_LayerStack)
+		for (Ref<Layer> layer : m_LayerStack)
 		{
 			if (e.Handled)
 				break;
@@ -89,13 +89,13 @@ namespace Eppo
 
 		m_ImGuiLayer->Begin();
 
-		for (Layer* layer : m_LayerStack)
+		for (Ref<Layer> layer : m_LayerStack)
 			layer->RenderGui();
 
 		m_ImGuiLayer->End();
 	}
 
-	void Application::PushLayer(Layer* layer, bool overlay)
+	void Application::PushLayer(Ref<Layer> layer, bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PushLayer");
 
@@ -105,7 +105,7 @@ namespace Eppo
 			m_LayerStack.PushLayer(layer);
 	}
 
-	void Application::PopLayer(Layer* layer, bool overlay)
+	void Application::PopLayer(Ref<Layer> layer, bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PopLayer");
 
@@ -120,7 +120,6 @@ namespace Eppo
 		while (m_IsRunning)
 		{
 			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
 
 			{
 				EPPO_PROFILE_FUNCTION("CPU Update");
@@ -131,7 +130,7 @@ namespace Eppo
 
 				m_Window->ProcessEvents();
 
-				for (Layer* layer : m_LayerStack)
+				for (Ref<Layer> layer : m_LayerStack)
 					layer->Update(timestep);
 			}
 
@@ -141,7 +140,7 @@ namespace Eppo
 					EPPO_PROFILE_FUNCTION("CPU Prepare Render");
 
 					// 2. Record commands
-					for (Layer* layer : m_LayerStack)
+					for (Ref<Layer> layer : m_LayerStack)
 						layer->Render();
 
 					Renderer::SubmitCommand([this]() { RenderGui();	});
@@ -149,19 +148,19 @@ namespace Eppo
 				{
 					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
 					EPPO_PROFILE_FUNCTION("CPU Wait");
-					swapchain->BeginFrame();
+					context->BeginFrame();
 				}
 				{
 					EPPO_PROFILE_FUNCTION("CPU Render");
 					Renderer::ExecuteRenderCommands();
-					swapchain->Present();
+					context->PresentFrame();
 				}
 			}
 
 			EPPO_PROFILE_FRAME_MARK;
 		}
 
-		RendererContext::Get()->WaitIdle();
+		//RendererContext::Get()->WaitIdle();
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
@@ -188,7 +187,7 @@ namespace Eppo
 		else
 			m_IsMinimized = false;
 
-		RendererContext::Get()->GetSwapchain()->OnResize();
+		RendererContext::Get()->OnResize();
 
 		return true;
 	}

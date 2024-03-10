@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
 #include "Renderer/Image.h"
 
 namespace Eppo
@@ -14,8 +13,8 @@ namespace Eppo
 
 		std::vector<ImageFormat> Attachments;
 
-		uint32_t Width;
-		uint32_t Height;
+		uint32_t Width = 0;
+		uint32_t Height = 0;
 
 		bool ClearColorOnLoad = true;
 		glm::vec4 ClearColor = { 0.5f, 0.5f, 0.5f, 1.0f };
@@ -24,42 +23,23 @@ namespace Eppo
 		float ClearDepth = 1.0f;
 	};
 
-	class Framebuffer
+	class Framebuffer : public RefCounter
 	{
 	public:
-		Framebuffer(const FramebufferSpecification& specification);
-		~Framebuffer();
+		virtual ~Framebuffer() {};
 
-		void Create();
-		void Cleanup();
-		void Resize(uint32_t width, uint32_t height);
+		virtual void Resize(uint32_t width, uint32_t height) = 0;
 
-		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
+		virtual const FramebufferSpecification& GetSpecification() const = 0;
 
-		Ref<Image> GetFinalImage() { return m_ImageAttachments[0]; };
+		virtual Ref<Image> GetFinalImage() const = 0;
 
-		VkFramebuffer GetFramebuffer() const { return m_Framebuffer; }
-		VkRenderPass GetRenderPass() const { return m_RenderPass; }
+		virtual bool HasDepthAttachment() const = 0;
+		virtual Ref<Image> GetDepthImage() const = 0;
 
-		uint32_t GetWidth() const { return m_Specification.Width; }
-		uint32_t GetHeight() const { return m_Specification.Height; }
-		VkExtent2D GetExtent() const { return { GetWidth(), GetHeight() }; }
+		virtual uint32_t GetWidth() const = 0;
+		virtual uint32_t GetHeight() const = 0;
 
-		const std::vector<VkClearValue>& GetClearValues() const { return m_ClearValues; }
-
-		bool HasDepthAttachment() const { return m_DepthTesting; }
-		Ref<Image> GetDepthImage() { return m_DepthImage; }
-
-	private:
-		FramebufferSpecification m_Specification;
-
-		VkFramebuffer m_Framebuffer;
-		VkRenderPass m_RenderPass;
-		std::vector<Ref<Image>> m_ImageAttachments;
-		Ref<Image> m_DepthImage;
-
-		std::vector<VkClearValue> m_ClearValues;
-
-		bool m_DepthTesting = false;
+		static Ref<Framebuffer> Create(const FramebufferSpecification& specification);
 	};
 }

@@ -34,7 +34,7 @@ namespace Eppo
 				return;
 
 			PanelData panelData;
-			panelData.Panel = CreateRef<T>(std::forward<Args>(args)...);
+			panelData.Panel = Ref<T>::Create(std::forward<Args>(args)...);
 			panelData.IsOpen = isOpen;
 
 			m_PanelData.insert({ name, panelData });

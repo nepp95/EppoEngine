@@ -4,6 +4,7 @@ VulkanSdk = os.getenv("VULKAN_SDK")
 IncludeDir = {}
 IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
 IncludeDir["entt"] = "%{wks.location}/EppoEngine/Vendor/entt/single_include"
+IncludeDir["glad"] = "%{wks.location}/EppoEngine/Vendor/glad/include"
 IncludeDir["glfw"] = "%{wks.location}/EppoEngine/Vendor/glfw/include"
 IncludeDir["glm"] = "%{wks.location}/EppoEngine/Vendor/glm"
 IncludeDir["googletest"] = "%{wks.location}/EppoEngine/Vendor/googletest/googletest/include"
@@ -23,10 +24,11 @@ LibraryDir["vulkan"] = "%{VulkanSdk}/Lib"
 -- Libraries
 Library = {}
 
+Library["glad"] = "glad"
 Library["imgui"] = "imgui"
 Library["yaml_cpp"] = "yaml-cpp"
 
-filter "system:windows"
+if (os.target() == "windows") then
     Library["glfw"] = "glfw"
     Library["vulkan"] = "%{LibraryDir.vulkan}/vulkan-1.lib"
     Library["assimp_debug"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
@@ -40,8 +42,7 @@ filter "system:windows"
     Library["spirv_cross_glsl_debug"] = "%{LibraryDir.vulkan}/spirv-cross-glsld.lib"
     Library["spirv_cross_glsl_release"] = "%{LibraryDir.vulkan}/spirv-cross-glsl.lib"
     Library["spirv_tools_debug"] = "%{LibraryDir.vulkan}/SPIRV-Toolsd.lib"
-
-filter "system:linux"
+else
     Library["glfw"] = "glfw3"
     Library["vulkan"] = "vulkan"
     Library["assimp"] = "assimp"
@@ -49,3 +50,4 @@ filter "system:linux"
     Library["spirv_cross"] = "spirv-cross-core"
     Library["spirv_cross_glsl"] = "spirv-cross-glsl"
     Library["spirv_tools"] = "SPIRV-Tools"
+end

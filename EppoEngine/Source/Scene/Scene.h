@@ -10,14 +10,14 @@ namespace Eppo
 	class Entity;
 	class SceneRenderer;
 
-	class Scene
+	class Scene : public RefCounter
 	{
 	public:
 		Scene() = default;
 		~Scene() = default;
 
 		void OnUpdate(float timestep);
-		void RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera);
+		void RenderEditor(Ref<SceneRenderer> sceneRenderer, const EditorCamera& editorCamera);
 
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);

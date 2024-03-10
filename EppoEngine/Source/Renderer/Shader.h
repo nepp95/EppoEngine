@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Renderer/Descriptor/DescriptorLayoutCache.h"
-#include "Renderer/Vulkan.h"
+#include "Core/Filesystem.h"
 
 namespace Eppo
 {
@@ -41,72 +40,62 @@ namespace Eppo
 		bool Optimize = false;
 	};
 
-	struct ShaderDescriptorSet
-	{
-		VkDescriptorPool DescriptorPool;
-		std::vector<VkDescriptorSet> DescriptorSets;
-	};
-
-	class Shader
+	class Shader : public RefCounter
 	{
 	public:
-		Shader(const ShaderSpecification& specification);
-		Shader(const Shader&) = delete;
-		Shader& operator=(const Shader&) = delete;
-		~Shader();
+		virtual ~Shader() {};
 
-		ShaderDescriptorSet AllocateDescriptorSet(uint32_t set);
-
-		const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageInfos() const { return m_ShaderInfos; }
-		const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts() const { return m_DescriptorSetLayouts; }
-		const VkDescriptorSetLayout& GetDescriptorSetLayout(uint32_t set) const;
-		const std::unordered_map<uint32_t, std::vector<ShaderResource>>& GetShaderResources() const { return m_ShaderResources; }
-
+		const ShaderSpecification& GetSpecification() const { return m_Specification; }
 		const std::string& GetName() const { return m_Name; }
 
-	private:
+		static Ref<Shader> Create(const ShaderSpecification& specification);
+
+	protected:
+		Shader(const ShaderSpecification& specification);
+
+		virtual void Reflect() = 0;
+
 		std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source);
 		void Compile(ShaderStage stage, const std::string& source);
 		void CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources);
-
-		void Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes);
-		void CreatePipelineShaderInfos();
-		void CreateDescriptorSetLayout();
-
-	private:
+	
+	protected:
 		ShaderSpecification m_Specification;
 		std::string m_Name;
 
 		std::unordered_map<ShaderStage, std::vector<uint32_t>> m_ShaderBytes;
-		std::unordered_map<uint32_t, std::vector<ShaderResource>> m_ShaderResources;
-		std::vector<VkPipelineShaderStageCreateInfo> m_ShaderInfos;
-		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
 	};
 
 	namespace Utils
 	{
-		static VkDescriptorType ShaderResourceTypeToVkDescriptorType(ShaderResourceType type)
+		inline std::filesystem::path GetCacheDirectory()
 		{
-			switch (type)
-			{
-				case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			}
+			if (!Filesystem::Exists("Resources/Shaders/Cache"))
+				std::filesystem::create_directories("Resources/Shaders/Cache");
 
-			EPPO_ASSERT(false);
-			return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+			return "Resources/Shaders/Cache";
 		}
 
-		static VkShaderStageFlagBits ShaderStageToVkShaderStage(ShaderStage stage)
+		inline ShaderStage StringToShaderStage(std::string_view stage)
+		{
+			if (stage == "vert")			return ShaderStage::Vertex;
+			if (stage == "frag")			return ShaderStage::Fragment;
+
+			EPPO_ASSERT(false);
+			return ShaderStage::None;
+		}
+
+		inline std::string ShaderStageToString(ShaderStage stage)
 		{
 			switch (stage)
 			{
-				case ShaderStage::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
-				case ShaderStage::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
+				case ShaderStage::Vertex:	return "vert";
+				case ShaderStage::Fragment:	return "frag";
 			}
 
 			EPPO_ASSERT(false);
-			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+			return "Invalid";
 		}
+
 	}
 }

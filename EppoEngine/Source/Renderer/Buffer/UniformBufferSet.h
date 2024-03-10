@@ -6,7 +6,7 @@
 
 namespace Eppo
 {
-	class UniformBufferSet
+	class UniformBufferSet : public RefCounter
 	{
 	public:
 		UniformBufferSet() = default;
@@ -15,7 +15,7 @@ namespace Eppo
 		void Create(const Ref<UniformBuffer> uniformBuffer);
 
 		Ref<UniformBuffer> Get(uint32_t frame, uint32_t set, uint32_t binding);
-		void Set(const Ref<UniformBuffer>& uniformBuffer, uint32_t frame, uint32_t set);
+		void Set(Ref<UniformBuffer> uniformBuffer, uint32_t frame, uint32_t set);
 
 	private:
 		// Frame --> Set --> Binding --> Uniform buffer

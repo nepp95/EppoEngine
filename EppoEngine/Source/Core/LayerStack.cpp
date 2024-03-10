@@ -3,7 +3,7 @@
 
 namespace Eppo
 {
-	void LayerStack::PushLayer(Layer* layer)
+	void LayerStack::PushLayer(Ref<Layer> layer)
 	{
 		EPPO_PROFILE_FUNCTION("LayerStack::PushLayer");
 
@@ -13,7 +13,7 @@ namespace Eppo
 		layer->OnAttach();
 	}
 
-	void LayerStack::PopLayer(Layer* layer)
+	void LayerStack::PopLayer(Ref<Layer> layer)
 	{
 		EPPO_PROFILE_FUNCTION("LayerStack::PopLayer");
 
@@ -27,7 +27,7 @@ namespace Eppo
 		}
 	}
 
-	void LayerStack::PushOverlay(Layer* layer)
+	void LayerStack::PushOverlay(Ref<Layer> layer)
 	{
 		EPPO_PROFILE_FUNCTION("LayerStack::PushOverlay");
 
@@ -35,7 +35,7 @@ namespace Eppo
 		layer->OnAttach();
 	}
 
-	void LayerStack::PopOverlay(Layer* layer)
+	void LayerStack::PopOverlay(Ref<Layer> layer)
 	{
 		EPPO_PROFILE_FUNCTION("LayerStack::PopOverlay");
 

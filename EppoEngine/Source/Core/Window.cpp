@@ -4,6 +4,7 @@
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
+#include "Renderer/RendererAPI.h"
 
 #include <GLFW/glfw3.h>
 
@@ -19,14 +20,24 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Window::Window");
 
+		// GLFW initialization
 		int success = glfwInit();
 		EPPO_ASSERT(success);
 
-		#ifdef EPPO_DEBUG
-			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-		#endif
+		// GLFW error callback
+		glfwSetErrorCallback(GLFWErrorCallback);
 
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		// Platform specific window hints
+		if (RendererAPI::Current() == RendererAPIType::OpenGL)
+		{
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+			#ifdef EPPO_DEBUG
+				glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+			#endif
+		} else if (RendererAPI::Current() == RendererAPIType::Vulkan)
+		{
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		}
 
 		// Get primary monitor
 		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
@@ -34,14 +45,18 @@ namespace Eppo
 
 		if (m_Specification.OverrideSpecification)
 		{
-			m_Specification.Width = mode->width;
-			m_Specification.Height = mode->height;
+			m_Width = mode->width;
+			m_Height = mode->height;
 			m_Specification.RefreshRate = mode->refreshRate;
+		} else
+		{
+			m_Width = m_Specification.Width;
+			m_Height = m_Specification.Height;
 		}
 
 		// Create window
-		EPPO_INFO("Creating window '{}' ({}x{}@{}Hz)", m_Specification.Title, m_Specification.Width, m_Specification.Height, m_Specification.RefreshRate);
-		m_Window = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Title.c_str(), nullptr, nullptr);
+		EPPO_INFO("Creating window '{}' ({}x{}@{}Hz)", m_Specification.Title, m_Width, m_Height, m_Specification.RefreshRate);
+		m_Window = glfwCreateWindow(m_Width, m_Height, m_Specification.Title.c_str(), nullptr, nullptr);
 	}
 
 	void Window::Init()
@@ -49,7 +64,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Window::Init");
 
 		// Create renderer context
-		m_Context = CreateRef<RendererContext>(m_Window);
+		m_Context = RendererContext::Create(m_Window);
 		m_Context->Init();
 
 		glfwSetWindowUserPointer(m_Window, &m_Callback);

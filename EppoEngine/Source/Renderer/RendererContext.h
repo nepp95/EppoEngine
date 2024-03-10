@@ -1,58 +1,30 @@
 #pragma once
 
-#include "Debug/Profiler.h"
-#include "Renderer/LogicalDevice.h"
-#include "Renderer/Swapchain.h"
-
-#include <deque>
-#include <functional>
-
 struct GLFWwindow;
 
 namespace Eppo
 {
-	class RendererContext
+	enum class RendererAPIType
+	{
+		OpenGL,
+		Vulkan
+	};
+
+	class RendererContext : public RefCounter
 	{
 	public:
-		RendererContext(GLFWwindow* windowHandle);
-		~RendererContext() = default;
+		virtual ~RendererContext() {}
 
-		void Init();
-		void Shutdown();
+		virtual void Init() = 0;
+		virtual void Shutdown() = 0;
 
-		void WaitIdle();
+		virtual void BeginFrame() = 0;
+		virtual void PresentFrame() = 0;
 
-		Ref<PhysicalDevice> GetPhysicalDevice() { return m_PhysicalDevice; }
-		Ref<LogicalDevice> GetLogicalDevice() { return m_LogicalDevice; }
-		Ref<Swapchain> GetSwapchain() { return m_Swapchain; }
-		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
-
-		//TracyVkCtx GetCurrentProfilerContext() { return m_TracyContexts[m_Swapchain->GetCurrentImageIndex()]; }
-
-		void SubmitResourceFree(std::function<void()> fn);
+		virtual void OnResize() = 0;
+		virtual GLFWwindow* GetWindowHandle() const = 0;
 
 		static Ref<RendererContext> Get();
-		VkInstance& GetVulkanInstance() { return m_VulkanInstance; }
-
-	private:
-		bool HasValidationSupport();
-		std::vector<const char*> GetRequiredExtensions();
-
-	private:
-		GLFWwindow* m_WindowHandle = nullptr;
-
-		VkInstance m_VulkanInstance;
-		VkDebugUtilsMessengerEXT m_DebugMessenger;
-
-		Ref<PhysicalDevice> m_PhysicalDevice;
-		Ref<LogicalDevice> m_LogicalDevice;
-		Ref<Swapchain> m_Swapchain;
-
-		// Vulkan resource management
-		std::deque<std::function<void()>> m_ResourceFreeCommands;
-		uint32_t m_ResourceFreeCommandCount = 0;
-
-		// Tracy profiler context
-		//std::vector<TracyVkCtx> m_TracyContexts;
+		static Ref<RendererContext> Create(void* windowHandle);
 	};
 }

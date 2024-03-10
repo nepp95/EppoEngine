@@ -10,7 +10,7 @@ from urllib.request import urlopen
 
 class VulkanConfiguration:
     requiredVulkanVersion = "1.3."
-    installVulkanVersion = "1.3.261.1"
+    installVulkanVersion = "1.3.275.0"
     vulkanDirectory = "./EppoEngine/Vendor/VulkanSDK"
 
     @classmethod

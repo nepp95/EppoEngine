@@ -30,7 +30,7 @@ namespace Eppo
 	// Tests
 	TEST(RefTest, Constructor)
 	{
-		Ref2<Base> ref = Ref2<Base>::Create();
+		Ref<Base> ref = Ref<Base>::Create();
 		
 		EXPECT_EQ(27, ref->GetVar());
 		EXPECT_EQ(1, ref.GetRefCount());
@@ -39,14 +39,14 @@ namespace Eppo
 
 	TEST(RefTest, Destructor)
 	{
-		Ref2<Base> ref = Ref2<Base>::Create();
+		Ref<Base> ref = Ref<Base>::Create();
 
 		EXPECT_EQ(27, ref->GetVar());
 		EXPECT_EQ(1, ref.GetRefCount());
 		EXPECT_TRUE(ref.Raw());
 
 		{
-			Ref2<Base> ref2 = ref;
+			Ref<Base> ref2 = ref;
 
 			EXPECT_EQ(27, ref->GetVar());
 			EXPECT_EQ(2, ref.GetRefCount());
@@ -62,14 +62,14 @@ namespace Eppo
 	// TODO: What if ref count was higher?
 	TEST(RefTest, CopyConstructor)
 	{
-		Ref2<Base> ref = Ref2<Base>::Create();
+		Ref<Base> ref = Ref<Base>::Create();
 
 		EXPECT_EQ(27, ref->GetVar());
 		EXPECT_EQ(1, ref.GetRefCount());
 		EXPECT_TRUE(ref.Raw());
 
 		{
-			Ref2<Base> targetRef(ref);
+			Ref<Base> targetRef(ref);
 			
 			EXPECT_EQ(27, ref->GetVar());
 			EXPECT_EQ(2, ref.GetRefCount());
@@ -85,14 +85,14 @@ namespace Eppo
 	// TODO: What if ref count was higher?
 	TEST(RefTest, CopyAssignment)
 	{
-		Ref2<Base> ref = Ref2<Base>::Create();
+		Ref<Base> ref = Ref<Base>::Create();
 
 		EXPECT_EQ(27, ref->GetVar());
 		EXPECT_EQ(1, ref.GetRefCount());
 		EXPECT_TRUE(ref.Raw());
 
 		{
-			Ref2<Base> targetRef = ref;
+			Ref<Base> targetRef = ref;
 
 			EXPECT_EQ(27, ref->GetVar());
 			EXPECT_EQ(2, ref.GetRefCount());
@@ -108,13 +108,13 @@ namespace Eppo
 	// TODO: What if ref count was higher?
 	TEST(RefTest, MoveConstructor)
 	{
-		Ref2<Base> ref = Ref2<Base>::Create();
+		Ref<Base> ref = Ref<Base>::Create();
 
 		EXPECT_EQ(27, ref->GetVar());
 		EXPECT_EQ(1, ref.GetRefCount());
 		EXPECT_TRUE(ref.Raw());
 
-		Ref2<Base> targetRef(std::move(ref));
+		Ref<Base> targetRef(std::move(ref));
 
 		EXPECT_EQ(27, targetRef->GetVar());
 		EXPECT_FALSE(ref.Raw());
@@ -124,13 +124,13 @@ namespace Eppo
 
 	TEST(RefTest, MoveAssignment)
 	{
-		Ref2<Base> ref = Ref2<Base>::Create();
+		Ref<Base> ref = Ref<Base>::Create();
 
 		EXPECT_EQ(27, ref->GetVar());
 		EXPECT_EQ(1, ref.GetRefCount());
 		EXPECT_TRUE(ref.Raw());
 
-		Ref2<Base> targetRef = std::move(ref);
+		Ref<Base> targetRef = std::move(ref);
 
 		EXPECT_EQ(27, targetRef->GetVar());
 		EXPECT_FALSE(ref.Raw());
@@ -138,14 +138,14 @@ namespace Eppo
 		EXPECT_TRUE(targetRef.Raw());
 	}
 
-	TEST(RefTest, CastToPolymorphicType)
+	TEST(RefTest, CastAssignment)
 	{
-		Ref2<Base> ref;
+		Ref<Base> ref;
 	
 		EXPECT_EQ(0, ref.GetRefCount());
 		EXPECT_FALSE(ref.Raw());
 	
-		Ref2<Child> childRef = Ref2<Child>::Create();
+		Ref<Child> childRef = Ref<Child>::Create();
 
 		EXPECT_EQ(27, childRef->GetVar());
 		EXPECT_EQ(72, childRef->GetVar2());
@@ -159,7 +159,38 @@ namespace Eppo
 		EXPECT_TRUE(ref.Raw());
 		EXPECT_EQ(ref.Raw(), childRef.Raw());
 
-		Ref2<Child> childRef2 = ref.As<Child>();
+		Ref<Child> childRef2 = ref.As<Child>();
+
+		EXPECT_EQ(27, childRef2->GetVar());
+		EXPECT_EQ(72, childRef2->GetVar2());
+		EXPECT_EQ(3, ref.GetRefCount());
+		EXPECT_TRUE(ref.Raw());
+		EXPECT_EQ(ref.Raw(), childRef.Raw());
+		EXPECT_EQ(ref.Raw(), childRef2.Raw());
+	}
+
+	TEST(RefTest, CastConstructor)
+	{
+		Ref<Base> ref;
+
+		EXPECT_EQ(0, ref.GetRefCount());
+		EXPECT_FALSE(ref.Raw());
+
+		Ref<Child> childRef = Ref<Child>::Create();
+
+		EXPECT_EQ(27, childRef->GetVar());
+		EXPECT_EQ(72, childRef->GetVar2());
+		EXPECT_EQ(1, childRef.GetRefCount());
+		EXPECT_TRUE(childRef.Raw());
+
+		ref = Ref<Base>(childRef);
+
+		EXPECT_EQ(27, ref->GetVar());
+		EXPECT_EQ(2, ref.GetRefCount());
+		EXPECT_TRUE(ref.Raw());
+		EXPECT_EQ(ref.Raw(), childRef.Raw());
+
+		Ref<Child> childRef2 = ref.As<Child>();
 
 		EXPECT_EQ(27, childRef2->GetVar());
 		EXPECT_EQ(72, childRef2->GetVar2());

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
+#include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 
@@ -12,25 +13,19 @@ namespace Eppo
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
 		: m_RenderSpecification(renderSpecification)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
-		Ref<Swapchain> swapchain = context->GetSwapchain();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-
-		m_CommandBuffer = CreateRef<RenderCommandBuffer>();
+		m_CommandBuffer = RenderCommandBuffer::Create();
 
 		// Geometry
 		{
 			FramebufferSpecification framebufferSpec;
 			framebufferSpec.Attachments = { ImageFormat::RGBA8, ImageFormat::Depth };
-			framebufferSpec.Width = swapchain->GetWidth();
-			framebufferSpec.Height = swapchain->GetHeight();
 			framebufferSpec.ClearColorOnLoad = true;
 			framebufferSpec.ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 			framebufferSpec.ClearDepthOnLoad = true;
 			framebufferSpec.ClearDepth = 1.0f;
 
 			PipelineSpecification pipelineSpec;
-			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			pipelineSpec.Framebuffer = Framebuffer::Create(framebufferSpec);
 			pipelineSpec.Shader = Renderer::GetShader("geometry");
 			pipelineSpec.Layout = {
 				{ ShaderDataType::Float3, "inPosition" },
@@ -43,7 +38,7 @@ namespace Eppo
 				{ VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float) }
 			};
 
-			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
+			m_GeometryPipeline = Pipeline::Create(pipelineSpec);
 		}
 
 		// Lighting
@@ -58,14 +53,12 @@ namespace Eppo
 
 			FramebufferSpecification framebufferSpec;
 			framebufferSpec.Attachments = { ImageFormat::Depth };
-			framebufferSpec.Width = swapchain->GetWidth();
-			framebufferSpec.Height = swapchain->GetHeight();
 			framebufferSpec.ClearColorOnLoad = false;
 			framebufferSpec.ClearDepthOnLoad = true;
 			framebufferSpec.ClearDepth = 1.0f;
 
 			PipelineSpecification pipelineSpec;
-			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			pipelineSpec.Framebuffer = Framebuffer::Create(framebufferSpec);
 			pipelineSpec.Shader = Renderer::GetShader("shadow");
 			pipelineSpec.Layout = {
 				{ ShaderDataType::Float3, "inPosition" },
@@ -77,21 +70,20 @@ namespace Eppo
 				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
 			};
 
-			m_ShadowPipeline = CreateRef<Pipeline>(pipelineSpec);
+			m_ShadowPipeline = Pipeline::Create(pipelineSpec);
 		}
 
 		// Uniform buffers
-		m_UniformBufferSet = CreateRef<UniformBufferSet>();
+		m_UniformBufferSet = Ref<UniformBufferSet>::Create();
 		// TODO: Set doesn't solve the problem of having one uniform buffer for multiple different pipeline layouts
-		/*for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(CameraData), 0), i, 0);
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1), i, 0);
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(EnvironmentData), 2), i, 0);
-		}*/
+			m_UniformBufferSet->Set(UniformBuffer::Create(sizeof(CameraData), 0), i, 0);
+			m_UniformBufferSet->Set(UniformBuffer::Create(sizeof(EnvironmentData), 1), i, 0);
+		}
 		
-		m_CameraUniformBuffer = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
-		m_EnvironmentUniformBuffer = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1);
+		m_CameraUniformBuffer = UniformBuffer::Create(sizeof(CameraData), 0);
+		m_EnvironmentUniformBuffer = UniformBuffer::Create(sizeof(EnvironmentData), 1);
 	}
 
 	void SceneRenderer::RenderGui()
@@ -146,8 +138,8 @@ namespace Eppo
 	{
 		switch (key)
 		{
-			case EnvironmentKeys::LightPosition:	m_EnvironmentBuffer.LightPosition = *(glm::vec3*)value;
-			case EnvironmentKeys::LightColor:		m_EnvironmentBuffer.LightColor = *(glm::vec4*)value;
+			case EnvironmentKeys::LightPosition:	m_EnvironmentBuffer.LightPosition = *(glm::vec3*)value; break;
+			case EnvironmentKeys::LightColor:		m_EnvironmentBuffer.LightColor = *(glm::vec4*)value; break;
 		}
 	}
 
@@ -187,56 +179,22 @@ namespace Eppo
 
 		Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
 
-		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-
 		// Descriptor sets
-		const auto& descriptorSets = m_GeometryPipeline->GetDescriptorSets(frameIndex);
+		// TODO: Update materials through method
+		m_GeometryPipeline->UpdateUniforms(m_UniformBufferSet);
 
-		std::vector<VkWriteDescriptorSet> writeDescriptors;
-		{
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 0;
-			writeDescriptor.pBufferInfo = &m_CameraUniformBuffer->GetDescriptorBufferInfo();
-		}
-
-		{
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 1;
-			writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
-		}
-
-		{
-			Ref<Image> depthImage = m_ShadowPipeline->GetSpecification().Framebuffer->GetDepthImage();
-
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 2;
-			writeDescriptor.pImageInfo = &depthImage->GetDescriptorImageInfo();
-		}
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
-
-		EntityHandle handle;
+		EntityHandle handle = entt::null;
 		for (auto& [entity, dc] : m_DrawList)
 		{
-			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, dc.Mesh, dc.Transform);
+			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_UniformBufferSet, dc.Mesh, dc.Transform);
 			handle = entity;
 		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
-		Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, m_DrawList[handle].Mesh, transform);
+		if (handle != entt::null)
+		{
+			glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
+			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_UniformBufferSet, m_DrawList[handle].Mesh, transform);
+		}
 
 		Renderer::EndRenderPass(m_CommandBuffer);
 
@@ -250,84 +208,92 @@ namespace Eppo
 		// TODO: Clear before?
 		Renderer::BeginRenderPass(m_CommandBuffer, m_ShadowPipeline);
 
-		Renderer::SubmitCommand([this]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
-			uint32_t frameIndex = swapchain->GetCurrentImageIndex();
+		m_ShadowPipeline->UpdateUniforms(m_UniformBufferSet);
 
-			// Descriptor sets
-			const auto& descriptorSets = m_ShadowPipeline->GetDescriptorSets(frameIndex);
-
-			std::vector<VkWriteDescriptorSet> writeDescriptors;
-			{
-				VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-				writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				writeDescriptor.descriptorCount = 1;
-				writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				writeDescriptor.dstSet = descriptorSets[0];
-				writeDescriptor.dstBinding = 1;
-				writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
-			}
-
-			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-			vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
-
-			// Pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline->GetPipeline());
-
-			VkExtent2D extent = swapchain->GetExtent();
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				m_ShadowPipeline->GetPipelineLayout(),
-				0,
-				1,
-				&descriptorSets[0],
-				0,
-				nullptr
-			);
-
-			for (auto& [entity, dc] : m_DrawList)
-			{
-				for (const auto& submesh : dc.Mesh->GetSubmeshes())
-				{
-					// Vertex buffer Mesh
-					VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
-					VkDeviceSize offsets[] = { 0 };
-					vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-					// Index buffer
-					Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
-					vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-					// Push constants
-					vkCmdPushConstants(commandBuffer, m_ShadowPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
-				
-					// Draw call
-					vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
-				}
-			}
-		});
+		for (auto& [entity, dc] : m_DrawList)
+			Renderer::RenderGeometry(m_CommandBuffer, m_ShadowPipeline, m_UniformBufferSet, dc.Mesh, dc.Transform);
 
 		Renderer::EndRenderPass(m_CommandBuffer);
 
 		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.ShadowQuery);
+
+		//Renderer::SubmitCommand([this]()
+		//{
+		//	Ref<VulkanContext> context = RendererContext::Get().As<VulkanContext>();
+		//	Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
+		//	VkCommandBuffer commandBuffer = m_CommandBuffer.As<VulkanRenderCommandBuffer>()->GetCurrentCommandBuffer();
+
+		//	// Descriptor sets
+		//	const auto& descriptorSets = m_ShadowPipeline.As<VulkanPipeline>()->GetDescriptorSets(frameIndex);
+
+		//	std::vector<VkWriteDescriptorSet> writeDescriptors;
+		//	{
+		//		VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
+		//		writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//		writeDescriptor.descriptorCount = 1;
+		//		writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		//		writeDescriptor.dstSet = descriptorSets[0];
+		//		writeDescriptor.dstBinding = 1;
+		//		writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer.As<VulkanUniformBuffer>()->GetDescriptorBufferInfo();
+		//	}
+
+		//	VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		//	vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
+
+		//	// Pipeline
+		//	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline.As<VulkanPipeline>()->GetPipeline());
+
+		//	VkExtent2D extent = swapchain->GetExtent();
+
+		//	VkViewport viewport{};
+		//	viewport.x = 0.0f;
+		//	viewport.y = 0.0f;
+		//	viewport.width = (float)extent.width;
+		//	viewport.height = (float)extent.height;
+		//	viewport.minDepth = 0.0f;
+		//	viewport.maxDepth = 1.0f;
+		//	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+		//	VkRect2D scissor{};
+		//	scissor.offset = { 0, 0 };
+		//	scissor.extent = extent;
+		//	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+		//	vkCmdBindDescriptorSets(
+		//		commandBuffer,
+		//		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		//		m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(),
+		//		0,
+		//		1,
+		//		&descriptorSets[0],
+		//		0,
+		//		nullptr
+		//	);
+
+		//	for (auto& [entity, dc] : m_DrawList)
+		//	{
+		//		for (const auto& submesh : dc.Mesh->GetSubmeshes())
+		//		{
+		//			// Vertex buffer Mesh
+		//			VkBuffer vb = { submesh.GetVertexBuffer().As<VulkanVertexBuffer>()->GetBuffer() };
+		//			VkDeviceSize offsets[] = { 0 };
+		//			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
+
+		//			// Index buffer
+		//			Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
+		//			vkCmdBindIndexBuffer(commandBuffer, indexBuffer.As<VulkanIndexBuffer>()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+		//			// Push constants
+		//			vkCmdPushConstants(commandBuffer, m_ShadowPipeline.As<VulkanPipeline>()->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
+		//		
+		//			// Draw call
+		//			vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
+		//		}
+		//	}
+		//});
+
+		//Renderer::EndRenderPass(m_CommandBuffer);
+
+		//m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.ShadowQuery);
 	}
 }

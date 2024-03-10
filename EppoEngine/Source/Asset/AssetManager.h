@@ -57,7 +57,7 @@ namespace Eppo
 			WriteRegistry();
 
 			// TODO: Safe?
-			return std::dynamic_pointer_cast<T>(asset);
+			return asset.As<T>();
 		}
 
 		template<typename T>
@@ -72,7 +72,7 @@ namespace Eppo
 
 			asset = m_Assets.at(handle);
 			
-			return std::dynamic_pointer_cast<T>(asset);
+			return asset.As<T>();
 		}
 
 		template<typename T>

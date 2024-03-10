@@ -6,7 +6,7 @@ namespace Eppo
 {
 	class PanelManager;
 
-	class Panel
+	class Panel : public RefCounter
 	{
 	public:
 		Panel(PanelManager& panelManager);

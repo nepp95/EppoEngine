@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Assert.h"
+
 namespace Eppo
 {
 	class RefCounter
@@ -21,111 +23,145 @@ namespace Eppo
 		}
 
 		template<typename T>
-		friend class Ref2;
+		friend class Ref;
 		
 	private:
 		uint32_t m_RefCount = 0;
 	};
 
 	template<typename T>
-	class Ref2
+	class Ref
 	{
 	public:
-		// Default constructor
-		Ref2()
+		// Default constructors
+		Ref()
+			: m_Object(nullptr)
 		{}
 
-		// Destructor
-		~Ref2()
-		{
-			if (m_Object)
-				DecRef();
-		}
-		
+		Ref(std::nullptr_t)
+			: m_Object(nullptr)
+		{}
+
 		// Construct from raw pointer
-		Ref2(T* object)
+		Ref(T* object)
 		{
+			static_assert(std::is_base_of_v<RefCounter, T>, "Class is not based on RefCounter!");
+
 			m_Object = object;
 			IncRef();
 		}
 
+		// Destructor
+		~Ref()
+		{
+			DecRef();
+		}
+		
 		// Copy constructor
-		Ref2(const Ref2& other)
+		Ref(const Ref<T>& other)
 		{
 			m_Object = other.m_Object;
 			IncRef();
+		}
+
+		template<typename T2>
+		Ref(const Ref<T2>& other)
+		{
+			m_Object = (T*)other.m_Object;
+			IncRef();
+		}
+
+		// Move constructor
+		Ref(Ref<T>&& other)
+		{
+			m_Object = other.m_Object;
+			other.m_Object = nullptr;
+		}
+
+		template<typename T2>
+		Ref(Ref<T2>&& other)
+		{
+			m_Object = (T*)other.m_Object;
+			other.m_Object = nullptr;
 		}
 
 		// Copy assignment operator
-		Ref2& operator=(const Ref2& other)
+		Ref& operator=(const Ref<T>& other)
 		{
-			m_Object = other.m_Object;
-			IncRef();
-		}
-
-		// Copy constructor child to base
-		template<typename T2>
-		Ref2<T>& operator=(const Ref2<T2>& other)
-		{
-			if (m_Object)
-				DecRef();
-
+			DecRef();
 			m_Object = other.m_Object;
 			IncRef();
 
 			return *this;
 		}
 
-		// Move constructor
-		Ref2(Ref2&& other) noexcept
+		template<typename T2>
+		Ref& operator=(const Ref<T2>& other)
 		{
-			m_Object = other.m_Object;
-			other.m_Object = nullptr;
+			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
+
+			DecRef();
+			m_Object = (T*)other.m_Object;
+			IncRef();
+
+			return *this;
 		}
 
 		// Move assignment operator
-		Ref2& operator=(Ref2&& other) noexcept
+		Ref& operator=(Ref<T>&& other)
 		{
 			m_Object = other.m_Object;
 			other.m_Object = nullptr;
 
-			return *m_Object;
+			return *this;
+		}
+
+		template<typename T2>
+		Ref& operator=(Ref<T2>&& other)
+		{
+			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
+
+			m_Object = (T*)other.m_Object;
+			other.m_Object = nullptr;
+
+			return *this;
 		}
 
 		// Raw pointer
-		const T* Raw() const
-		{
-			EPPO_ASSERT(m_Object);
-
-			return m_Object;
-		}
+		T* Raw() { return m_Object; }
+		const T* Raw() const { return m_Object;	}
 
 		// Pointer access
-		T* operator->() const
-		{
-			EPPO_ASSERT(m_Object);
+		T* operator->() { return m_Object; }
+		const T* operator->() const { return m_Object; }
 
-			return m_Object;
-		}
+		// References
+		T& operator*() { return *m_Object; }
+		const T& operator*() const { return *m_Object; }
+
+		// Comparison
+		operator bool() { return m_Object != nullptr; }
+		operator bool() const { return m_Object != nullptr; }
+
+		bool operator==(const Ref<T>& other) const { return m_Object == other.m_Object; }
+		bool operator!=(const Ref<T>& other) const { return !(*this == other); }
 
 		// Create
 		template<typename... Args>
-		static Ref2<T> Create(Args&&... args)
+		static Ref<T> Create(Args&&... args)
 		{
 			T* object = new T(std::forward<Args>(args)...);
 
-			return Ref2<T>(object);
+			return Ref<T>(object);
 		}
 
 		// Cast to polymorphic type
 		template<typename T2>
-		Ref2<T2>& As()
+		Ref<T2> As() const
 		{
-			EPPO_ASSERT(m_Object);
-			T2* ptr = dynamic_cast<T2*>(m_Object);
-			EPPO_ASSERT(ptr);
-			
-			return Ref2<T2>(ptr);
+			static_assert(std::is_base_of_v<T, T2> || std::is_base_of_v<T2, T>, "Class is not based on or used as base.");
+
+			return Ref<T2>(*this);
 		}
 
 		uint32_t GetRefCount() const
@@ -140,22 +176,22 @@ namespace Eppo
 		// Increase ref count
 		void IncRef() const
 		{
-			EPPO_ASSERT(m_Object);
-
-			m_Object->IncreaseRefCount();
+			if (m_Object)
+				m_Object->IncreaseRefCount();
 		}
 
 		// Decrease ref count
 		void DecRef() const
 		{
-			EPPO_ASSERT(m_Object);
-
-			m_Object->DecreaseRefCount();
-
-			if (m_Object->GetRefCount() == 0)
+			if (m_Object)
 			{
-				delete m_Object;
-				m_Object = nullptr;
+				m_Object->DecreaseRefCount();
+			
+				if (m_Object->GetRefCount() == 0)
+				{
+					delete m_Object;
+					m_Object = nullptr;
+				}
 			}
 		}
 
@@ -163,6 +199,6 @@ namespace Eppo
 		mutable T* m_Object = nullptr;
 
 		template<typename T2>
-		friend class Ref2;
+		friend class Ref;
 	};
 }

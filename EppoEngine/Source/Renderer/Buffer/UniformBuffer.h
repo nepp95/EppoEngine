@@ -1,32 +1,27 @@
 #pragma once
 
-#include "Renderer/Allocator.h"
 #include "Renderer/Shader.h"
 
 namespace Eppo
 {
-	class UniformBuffer
+	class UniformBuffer : public RefCounter
 	{
 	public:
-		UniformBuffer(uint32_t size, uint32_t binding);
-		~UniformBuffer();
-		UniformBuffer(const UniformBuffer&) = delete;
-		UniformBuffer& operator=(const UniformBuffer&) = delete;
+		virtual ~UniformBuffer() {};
 
-		void SetData(void* data, uint32_t size);
-
-		const std::vector<VkBuffer>& GetBuffers() const { return m_Buffers; }
-		const VkDescriptorBufferInfo& GetDescriptorBufferInfo() const { return m_DescriptorBufferInfo; }
+		virtual void SetData(void* data, uint32_t size) = 0;
+		
 		uint32_t GetBinding() const { return m_Binding; }
 
-	private:
+		static Ref<UniformBuffer> Create(uint32_t size, uint32_t binding);
+
+	protected:
+		UniformBuffer(uint32_t size, uint32_t binding)
+			: m_Size(size), m_Binding(binding)
+		{}
+
+	protected:
 		uint32_t m_Size;
 		uint32_t m_Binding;
-
-		std::vector<VkBuffer> m_Buffers;
-		std::vector<VmaAllocation> m_Allocations;
-		std::vector<void*> m_MappedMemory;
-
-		VkDescriptorBufferInfo m_DescriptorBufferInfo;
 	};
 }

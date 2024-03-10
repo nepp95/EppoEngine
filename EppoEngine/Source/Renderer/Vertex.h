@@ -1,10 +1,6 @@
 #pragma once
 
-#include "Vulkan.h"
-
 #include <glm/glm.hpp>
-
-#include <array>
 
 namespace Eppo
 {
