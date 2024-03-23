@@ -52,6 +52,7 @@ project "EppoEditor"
         }
 
         links {
+            "%{Library.glad}",
             "%{Library.glfw}",
             "%{Library.vulkan}",
             "%{Library.shaderc}",

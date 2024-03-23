@@ -27,6 +27,7 @@ project "EppoEngine"
         "Source",
 		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}",
+        "%{IncludeDir.glad}",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
@@ -46,6 +47,7 @@ project "EppoEngine"
         }
 
         links {
+			"%{Library.glad}",
             "%{Library.glfw}",
             "%{Library.imgui}",
             "%{Library.yaml_cpp}",

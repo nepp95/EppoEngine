@@ -19,8 +19,9 @@ namespace Eppo
 		static void Init();
 		static void Shutdown();
 
-		// Frame index
-		static uint32_t GetCurrentFrameIndex();
+		// Scene management
+		static void BeginScene(const EditorCamera& editorCamera);
+		static void EndScene();
 
 		// Render pass
 		static void BeginRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline);
@@ -32,11 +33,6 @@ namespace Eppo
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);
-
-		// Descriptor Sets
-		static Ref<DescriptorAllocator> GetDescriptorAllocator();
-		static Ref<DescriptorLayoutCache> GetDescriptorLayoutCache();
-		static VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo);
 
 		// Geometry
 		static void RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& environmentUB, const Ref<UniformBuffer>& cameraUB, const Ref<Mesh>& mesh, const glm::mat4& transform);
