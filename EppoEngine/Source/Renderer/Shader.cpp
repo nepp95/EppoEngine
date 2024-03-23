@@ -62,42 +62,24 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Shader::Shader");
 
+		// Read shader source
 		const std::string shaderSource = Filesystem::ReadText(m_Specification.Filepath);
-
-		// Preprocess shader
+		 
+		// Preprocess by shader stage
 		std::unordered_map<ShaderStage, std::string> sources = PreProcess(shaderSource);
-
-		// Compile or get cached shader
+		
+		// Compile or get cache
 		CompileOrGetCache(sources);
-
-		m_ShaderResources[0] = {};
-		m_ShaderResources[1] = {};
-		m_ShaderResources[2] = {};
-		m_ShaderResources[3] = {};
+		
+		// Reflection
 
 		for (auto&& [type, data] : m_ShaderBytes)
 			Reflect(type, data);
-
-		CreatePipelineShaderInfos();
-		CreateDescriptorSetLayout();
 	}
 
 	Shader::~Shader()
 	{
 		EPPO_PROFILE_FUNCTION("Shader::~Shader");
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		for (auto& shaderInfo : m_ShaderInfos)
-			vkDestroyShaderModule(device, shaderInfo.module, nullptr);
-	}
-
-	const VkDescriptorSetLayout& Shader::GetDescriptorSetLayout(uint32_t set) const
-	{
-		EPPO_PROFILE_FUNCTION("Shader::GetDescriptorSetLayout");
-		EPPO_ASSERT((set < m_DescriptorSetLayouts.size()));
-
-		return m_DescriptorSetLayouts.at(set);
 	}
 
 	std::unordered_map<ShaderStage, std::string> Shader::PreProcess(std::string_view source)
@@ -137,11 +119,12 @@ namespace Eppo
 
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
-		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+		options.SetTargetEnvironment(shaderc_target_env_opengl, shaderc_env_version_opengl_4_5);
 		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
 
 		// Compile source
-		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str());
+		auto var = compiler.PreprocessGlsl(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
+		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
 			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath.string());
