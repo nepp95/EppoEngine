@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "Texture.h"
 
-#include "Renderer/Allocator.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
 
+#include <glad/glad.h>
 #include <stb_image.h>
 
 namespace Eppo
@@ -18,214 +18,64 @@ namespace Eppo
 		int width, height, channels;
 		stbi_uc* data = nullptr;
 
-		m_ImageData.Data = stbi_load(filepath.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
-		m_ImageData.Size = width * height * channels;
-		m_Width = width;
-		m_Height = height;
+		stbi_set_flip_vertically_on_load(1);
 
-		EPPO_ASSERT(m_ImageData);
+		data = stbi_load(filepath.string().c_str(), &width, &height, &channels, 0);
 
-		ImageSpecification imageSpec;
-		imageSpec.Width = m_Width;
-		imageSpec.Height = m_Height;
-		imageSpec.Format = ImageFormat::RGBA8;
-		imageSpec.Usage = ImageUsage::Texture;
-
-		m_Image = CreateRef<Image>(imageSpec);
-
-		if (m_ImageData)
+		if (data)
 		{
-			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+			m_Width = width;
+			m_Height = height;
 
-			// Create a staging buffer for copy
-			VkBufferCreateInfo stagingBufferInfo{};
-			stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			stagingBufferInfo.size = m_ImageData.Size;
-			stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			if (channels == 4)
+			{
+				m_InternalFormat = GL_RGBA8;
+				m_DataFormat = GL_RGBA;
+			} else if (channels == 3)
+			{
+				m_InternalFormat = GL_RGB8;
+				m_DataFormat = GL_RGB;
+			}
 
-			VkBuffer stagingBuffer;
-			VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+			EPPO_ASSERT(m_InternalFormat & m_DataFormat);
 
-			// Map staging buffer memory
-			void* memData = Allocator::MapMemory(stagingBufferAlloc);
-			memcpy(memData, m_ImageData.Data, m_ImageData.Size);
-			Allocator::UnmapMemory(stagingBufferAlloc);
+			glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
+			glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
 
-			ImageInfo& info = m_Image->GetImageInfo();
+			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			// Image transition for data copy
-			VkImageMemoryBarrier barrier{};
-			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.image = info.Image;
-			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			barrier.subresourceRange.baseMipLevel = 0;
-			barrier.subresourceRange.levelCount = 1;
-			barrier.subresourceRange.layerCount = 1;
-			barrier.srcAccessMask = VK_ACCESS_NONE;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			
-			Ref<LogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
-			VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
+			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+			glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
 
-			// Data copy
-			VkBufferImageCopy copyRegion{};
-			copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			copyRegion.imageSubresource.baseArrayLayer = 0;
-			copyRegion.imageSubresource.layerCount = 1;
-			copyRegion.imageSubresource.mipLevel = 0;
-			copyRegion.imageExtent.width = m_Width;
-			copyRegion.imageExtent.height = m_Height;
-			copyRegion.imageExtent.depth = 1;
-			copyRegion.bufferOffset = 0;
-
-			vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, info.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-			// Image transition for shader read
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-			logicalDevice->FlushCommandBuffer(commandBuffer);
-
-			// Update image layout in descriptor image info
-			info.ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			// Clean up
-			Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
-			m_ImageData.Release();
+			stbi_image_free(data);
 		}
 	}
 
-	Texture::Texture(uint32_t width, uint32_t height, ImageFormat format, void* data)
+	Texture::Texture(uint32_t width, uint32_t height)
 		: m_Width(width), m_Height(height)
 	{
 		EPPO_PROFILE_FUNCTION("Texture::Texture");
 
-		uint32_t size = width * height * Utils::GetMemorySize(format);
+		m_InternalFormat = GL_RGBA8;
+		m_DataFormat = GL_RGBA;
 
-		if (data)
-		{
-			m_ImageData.Data = (uint8_t*)data;
-			m_ImageData.Size = size;
-		}
+		glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
+		glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
 
-		ImageSpecification imageSpec;
-		imageSpec.Width = m_Width;
-		imageSpec.Height = m_Height;
-		imageSpec.Format = ImageFormat::RGBA8;
-		imageSpec.Usage = ImageUsage::Texture;
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		m_Image = CreateRef<Image>(imageSpec);
-
-		if (m_ImageData)
-		{
-			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-			// Create a staging buffer for copy
-			VkBufferCreateInfo stagingBufferInfo{};
-			stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			stagingBufferInfo.size = m_ImageData.Size;
-			stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-			VkBuffer stagingBuffer;
-			VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-			// Map staging buffer memory
-			void* memData = Allocator::MapMemory(stagingBufferAlloc);
-			memcpy(memData, m_ImageData.Data, m_ImageData.Size);
-			Allocator::UnmapMemory(stagingBufferAlloc);
-
-			ImageInfo& info = m_Image->GetImageInfo();
-
-			// Image transition for data copy
-			VkImageMemoryBarrier barrier{};
-			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.image = info.Image;
-			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			barrier.subresourceRange.baseMipLevel = 0;
-			barrier.subresourceRange.levelCount = 1;
-			barrier.subresourceRange.layerCount = 1;
-			barrier.srcAccessMask = VK_ACCESS_NONE;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-			Ref<LogicalDevice> logicalDevice = RendererContext::Get()->GetLogicalDevice();
-			VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
-
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-			// Data copy
-			VkBufferImageCopy copyRegion{};
-			copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			copyRegion.imageSubresource.baseArrayLayer = 0;
-			copyRegion.imageSubresource.layerCount = 1;
-			copyRegion.imageSubresource.mipLevel = 0;
-			copyRegion.imageExtent.width = m_Width;
-			copyRegion.imageExtent.height = m_Height;
-			copyRegion.imageExtent.depth = 1;
-			copyRegion.bufferOffset = 0;
-
-			vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, info.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-			// Image transition for shader read
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-			logicalDevice->FlushCommandBuffer(commandBuffer);
-
-			// Create sampler
-			Ref<PhysicalDevice> physicalDevice = RendererContext::Get()->GetPhysicalDevice();
-
-			VkSamplerCreateInfo samplerInfo{};
-			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			samplerInfo.magFilter = VK_FILTER_LINEAR;
-			samplerInfo.minFilter = VK_FILTER_LINEAR;
-			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.anisotropyEnable = VK_TRUE;
-			samplerInfo.maxAnisotropy = physicalDevice->GetDeviceProperties().limits.maxSamplerAnisotropy;
-			samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-			samplerInfo.unnormalizedCoordinates = VK_FALSE;
-			samplerInfo.compareEnable = VK_FALSE;
-			samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			samplerInfo.mipLodBias = 0.0f;
-			samplerInfo.minLod = 0.0f;
-			samplerInfo.maxLod = 0.0f;
-
-			VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &info.Sampler), "Failed to create sampler!");
-
-			// Update image layout in descriptor image info
-			info.ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			// Clean up
-			Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
-		}
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	}
 
 	Texture::~Texture()
 	{
 		EPPO_PROFILE_FUNCTION("Texture::~Texture");
 
-		m_Image->Release();
+		glDeleteTextures(1, &m_RendererID);
 	}
 }

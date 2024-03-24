@@ -25,7 +25,6 @@
 
 // ImGui
 #include "ImGui/ScopedBegin.h"
-#include "ImGui/UI.h"
 
 // Renderer
 #include "Renderer/Camera/EditorCamera.h"

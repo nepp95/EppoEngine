@@ -1,10 +1,8 @@
 #pragma once
 
 #include "Renderer/Buffer/UniformBuffer.h"
-#include "Renderer/Buffer/UniformBufferSet.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Mesh/Mesh.h"
-#include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 
 #include <entt/entt.hpp>
@@ -62,13 +60,6 @@ namespace Eppo
 
 		// Command buffer
 		Ref<RenderCommandBuffer> m_CommandBuffer;
-
-		// Pipelines
-		Ref<Pipeline> m_GeometryPipeline;
-		Ref<Pipeline> m_ShadowPipeline;
-
-		// Uniform buffers
-		Ref<UniformBufferSet> m_UniformBufferSet;
 
 		struct CameraData
 		{

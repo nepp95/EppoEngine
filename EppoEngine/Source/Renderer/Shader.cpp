@@ -72,7 +72,6 @@ namespace Eppo
 		CompileOrGetCache(sources);
 		
 		// Reflection
-
 		for (auto&& [type, data] : m_ShaderBytes)
 			Reflect(type, data);
 	}
@@ -123,7 +122,9 @@ namespace Eppo
 		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
 
 		// Compile source
+		// todo: preprocess?
 		auto var = compiler.PreprocessGlsl(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
+		
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
@@ -197,28 +198,8 @@ namespace Eppo
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
-		EPPO_TRACE("    {} Push constant buffers", resources.push_constant_buffers.size());
 		EPPO_TRACE("    {} Uniform buffers", resources.uniform_buffers.size());
 		EPPO_TRACE("    {} Sampled images", resources.sampled_images.size());
-
-		if (!resources.push_constant_buffers.empty())
-		{
-			EPPO_TRACE("    Push constant buffers:");
-			EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
-
-			const auto& resource = resources.push_constant_buffers[0];
-			const auto& bufferType = compiler.get_type(resource.base_type_id);
-			uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
-			size_t memberCount = bufferType.member_types.size();
-
-			if (!resource.name.empty())
-				EPPO_TRACE("        {}", resource.name);
-			EPPO_TRACE("        Size = {}", bufferSize);
-			EPPO_TRACE("        Members = {}", memberCount);
-
-			for (size_t i = 0; i < memberCount; i++)
-				EPPO_TRACE("            Member: {} ({})", compiler.get_member_name(resource.base_type_id, i), compiler.get_type(resource.base_type_id).member_types[i]);
-		}
 
 		if (!resources.uniform_buffers.empty())
 		{
@@ -278,60 +259,5 @@ namespace Eppo
 			}
 		}
 		EPPO_TRACE("");
-	}
-
-	void Shader::CreatePipelineShaderInfos()
-	{
-		EPPO_PROFILE_FUNCTION("Shader::CreatePipelineShaderInfos");
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		for (const auto& [type, shaderBytes] : m_ShaderBytes)
-		{
-			VkShaderModuleCreateInfo shaderModuleInfo{};
-			shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-			shaderModuleInfo.codeSize = shaderBytes.size() * sizeof(uint32_t);
-			shaderModuleInfo.pCode = shaderBytes.data();
-
-			VkShaderModule shaderModule;
-			VK_CHECK(vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule), "Failed to create shader module!");
-
-			VkPipelineShaderStageCreateInfo shaderStageInfo{};
-			shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			shaderStageInfo.stage = Utils::ShaderStageToVkShaderStage(type);
-			shaderStageInfo.module = shaderModule;
-			shaderStageInfo.pName = "main";
-
-			m_ShaderInfos.push_back(shaderStageInfo);
-		}
-	}
-
-	void Shader::CreateDescriptorSetLayout()
-	{
-		EPPO_PROFILE_FUNCTION("Shader::CreateDescriptorSetLayout");
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		Ref<DescriptorLayoutCache> layoutCache = Renderer::GetDescriptorLayoutCache();
-
-		for (const auto& [set, setResources] : m_ShaderResources)
-		{
-			if (set >= m_DescriptorSetLayouts.size())
-				m_DescriptorSetLayouts.resize(set + 1);
-
-			m_DescriptorSetLayouts[set] = layoutCache->CreateLayout(setResources);
-		}
-
-		for (uint32_t i = 0; i < m_DescriptorSetLayouts.size(); i++)
-		{
-			if (!m_DescriptorSetLayouts[i])
-			{
-				VkDescriptorSetLayoutCreateInfo layoutInfo{};
-				layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-				layoutInfo.bindingCount = 0;
-				layoutInfo.pBindings = nullptr;
-
-				m_DescriptorSetLayouts[i] = layoutCache->CreateLayout(layoutInfo);
-			}
-		}
 	}
 }

@@ -61,8 +61,6 @@ namespace Eppo
 		void CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources);
 
 		void Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes);
-		void CreatePipelineShaderInfos();
-		void CreateDescriptorSetLayout();
 
 	private:
 		ShaderSpecification m_Specification;

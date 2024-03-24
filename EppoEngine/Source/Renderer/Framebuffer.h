@@ -1,27 +1,41 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
-#include "Renderer/Image.h"
-
 namespace Eppo
 {
+	enum class FramebufferTextureFormat
+	{
+		None = 0,
+
+		// Color
+		RGBA8,
+		
+		// Depth
+		DEPTH24STENCIL8,
+		Depth = DEPTH24STENCIL8
+	};
+
+	struct FramebufferTextureSpecification
+	{
+		FramebufferTextureSpecification() = default;
+		FramebufferTextureSpecification(FramebufferTextureFormat format)
+			: TextureFormat(format)
+		{}
+
+		FramebufferTextureFormat TextureFormat = FramebufferTextureFormat::None;
+	};
+
 	struct FramebufferSpecification
 	{
 		FramebufferSpecification() = default;
-		FramebufferSpecification(std::initializer_list<ImageFormat> attachments)
+		FramebufferSpecification(std::initializer_list<FramebufferTextureSpecification> attachments)
 			: Attachments(attachments)
 		{}
 
-		std::vector<ImageFormat> Attachments;
+		std::vector<FramebufferTextureSpecification> Attachments;
 
-		uint32_t Width;
-		uint32_t Height;
-
-		bool ClearColorOnLoad = true;
-		glm::vec4 ClearColor = { 0.5f, 0.5f, 0.5f, 1.0f };
-
-		bool ClearDepthOnLoad = false;
-		float ClearDepth = 1.0f;
+		uint32_t Width = 0;
+		uint32_t Height = 0;
+		uint32_t Samples = 1;
 	};
 
 	class Framebuffer
@@ -30,36 +44,27 @@ namespace Eppo
 		Framebuffer(const FramebufferSpecification& specification);
 		~Framebuffer();
 
-		void Create();
+		void Invalidate();
+
+		void Bind() const;
+		void Unbind() const;
+
 		void Cleanup();
 		void Resize(uint32_t width, uint32_t height);
 
 		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
 
-		Ref<Image> GetFinalImage() { return m_ImageAttachments[0]; };
-
-		VkFramebuffer GetFramebuffer() const { return m_Framebuffer; }
-		VkRenderPass GetRenderPass() const { return m_RenderPass; }
-
 		uint32_t GetWidth() const { return m_Specification.Width; }
 		uint32_t GetHeight() const { return m_Specification.Height; }
-		VkExtent2D GetExtent() const { return { GetWidth(), GetHeight() }; }
-
-		const std::vector<VkClearValue>& GetClearValues() const { return m_ClearValues; }
-
-		bool HasDepthAttachment() const { return m_DepthTesting; }
-		Ref<Image> GetDepthImage() { return m_DepthImage; }
 
 	private:
 		FramebufferSpecification m_Specification;
+		uint32_t m_RendererID;
 
-		VkFramebuffer m_Framebuffer;
-		VkRenderPass m_RenderPass;
-		std::vector<Ref<Image>> m_ImageAttachments;
-		Ref<Image> m_DepthImage;
+		std::vector<FramebufferTextureSpecification> m_ColorAttachmentSpecs;
+		FramebufferTextureSpecification m_DepthAttachmentSpec;
 
-		std::vector<VkClearValue> m_ClearValues;
-
-		bool m_DepthTesting = false;
+		std::vector<uint32_t> m_ColorAttachments;
+		uint32_t m_DepthAttachment;
 	};
 }

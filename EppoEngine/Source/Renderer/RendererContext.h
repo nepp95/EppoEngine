@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Debug/Profiler.h"
-#include "Renderer/LogicalDevice.h"
-#include "Renderer/Swapchain.h"
 
 #include <deque>
 #include <functional>

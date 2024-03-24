@@ -1,10 +1,8 @@
 #pragma once
 
 #include "Asset/Asset.h"
-#include "Core/Buffer.h"
-#include "Renderer/Image.h"
 
-typedef struct VkDescriptorSet_T* VkDescriptorSet;
+typedef unsigned int GLenum;
 
 namespace Eppo
 {
@@ -12,11 +10,8 @@ namespace Eppo
 	{
 	public:
 		Texture(const std::filesystem::path& filepath);
-		Texture(uint32_t width, uint32_t height, ImageFormat format, void* data);
+		Texture(uint32_t width, uint32_t height);
 		~Texture();
-
-		Ref<Image> GetImage() const { return m_Image; }
-		VkDescriptorSet& GetDescriptorSet() { return m_DescriptorSet; }
 
 		uint32_t GetWidth() const { return m_Width; }
 		uint32_t GetHeight() const { return m_Height; }
@@ -26,13 +21,12 @@ namespace Eppo
 
 	private:
 		std::filesystem::path m_Filepath;
-		Ref<Image> m_Image;
+		uint32_t m_RendererID;
 
-		Buffer m_ImageData;
+		uint32_t m_Width = 0;
+		uint32_t m_Height = 0;
 
-		VkDescriptorSet m_DescriptorSet;
-
-		uint32_t m_Width;
-		uint32_t m_Height;
+		GLenum m_InternalFormat;
+		GLenum m_DataFormat;
 	};
 }
