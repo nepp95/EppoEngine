@@ -12,84 +12,41 @@ namespace Eppo
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
 		: m_RenderSpecification(renderSpecification)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
-		Ref<Swapchain> swapchain = context->GetSwapchain();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-
 		m_CommandBuffer = CreateRef<RenderCommandBuffer>();
 
 		// Geometry
 		{
 			FramebufferSpecification framebufferSpec;
-			framebufferSpec.Attachments = { ImageFormat::RGBA8, ImageFormat::Depth };
-			framebufferSpec.Width = swapchain->GetWidth();
-			framebufferSpec.Height = swapchain->GetHeight();
-			framebufferSpec.ClearColorOnLoad = true;
-			framebufferSpec.ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-			framebufferSpec.ClearDepthOnLoad = true;
-			framebufferSpec.ClearDepth = 1.0f;
+			framebufferSpec.Attachments = { FramebufferTextureFormat::RGBA8 };
+			framebufferSpec.Width = 1920; // todo: make configurable
+			framebufferSpec.Height = 1080; // todo: make configurable
 
-			PipelineSpecification pipelineSpec;
-			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-			pipelineSpec.Shader = Renderer::GetShader("geometry");
+			/*pipelineSpec.Shader = Renderer::GetShader("geometry");
 			pipelineSpec.Layout = {
 				{ ShaderDataType::Float3, "inPosition" },
 				{ ShaderDataType::Float3, "inNormal" },
 				{ ShaderDataType::Float2, "inTexCoord" }
-			};
-			pipelineSpec.DepthTesting = true;
-			pipelineSpec.PushConstants = {
-				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) },
-				{ VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float) }
-			};
-
-			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
-		}
-
-		// Lighting
-		{
-			FramebufferSpecification framebufferSpec;
+			};*/
 		}
 
 		// PreDepth
 		{
 			// TODO: Create shadow map image
 			// TODO: Clear pass for clearing the shadow map image
-
-			FramebufferSpecification framebufferSpec;
+			/*FramebufferSpecification framebufferSpec;
 			framebufferSpec.Attachments = { ImageFormat::Depth };
 			framebufferSpec.Width = swapchain->GetWidth();
 			framebufferSpec.Height = swapchain->GetHeight();
-			framebufferSpec.ClearColorOnLoad = false;
-			framebufferSpec.ClearDepthOnLoad = true;
-			framebufferSpec.ClearDepth = 1.0f;
 
-			PipelineSpecification pipelineSpec;
-			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
 			pipelineSpec.Shader = Renderer::GetShader("shadow");
 			pipelineSpec.Layout = {
 				{ ShaderDataType::Float3, "inPosition" },
 				{ ShaderDataType::Float3, "inNormal" },
 				{ ShaderDataType::Float2, "inTexCoord" }
-			};
-			pipelineSpec.DepthTesting = true;
-			pipelineSpec.PushConstants = {
-				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
-			};
-
-			m_ShadowPipeline = CreateRef<Pipeline>(pipelineSpec);
+			};*/
 		}
 
 		// Uniform buffers
-		m_UniformBufferSet = CreateRef<UniformBufferSet>();
-		// TODO: Set doesn't solve the problem of having one uniform buffer for multiple different pipeline layouts
-		/*for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-		{
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(CameraData), 0), i, 0);
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1), i, 0);
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(EnvironmentData), 2), i, 0);
-		}*/
-		
 		m_CameraUniformBuffer = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
 		m_EnvironmentUniformBuffer = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1);
 	}
@@ -98,9 +55,7 @@ namespace Eppo
 	{
 		ImGui::Begin("Performance");
 
-		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
-
-		ImGui::Text("GPU Time: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex));
+		/*ImGui::Text("GPU Time: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex));
 		ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.GeometryQuery));
 		ImGui::Text("Shadow Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.ShadowQuery));
 
@@ -113,7 +68,7 @@ namespace Eppo
 		ImGui::Text("Vertex Shader Invocations: %llu", pipelineStats.VertexShaderInvocations);
 		ImGui::Text("Clipping Invocations: %llu", pipelineStats.ClippingInvocations);
 		ImGui::Text("Clipping Primitives: %llu", pipelineStats.ClippingPrimitives);
-		ImGui::Text("Fragment Shader Invocations: %llu", pipelineStats.FragmentShaderInvocations);
+		ImGui::Text("Fragment Shader Invocations: %llu", pipelineStats.FragmentShaderInvocations);*/
 
 		ImGui::End();
 	}
@@ -140,20 +95,6 @@ namespace Eppo
 	void SceneRenderer::EndScene()
 	{
 		Flush();
-	}
-
-	void SceneRenderer::SetEnvironment(EnvironmentKeys key, void* value)
-	{
-		switch (key)
-		{
-			case EnvironmentKeys::LightPosition:	m_EnvironmentBuffer.LightPosition = *(glm::vec3*)value;
-			case EnvironmentKeys::LightColor:		m_EnvironmentBuffer.LightColor = *(glm::vec4*)value;
-		}
-	}
-
-	Ref<Image> SceneRenderer::GetFinalPassImage()
-	{
-		return m_GeometryPipeline->GetSpecification().Framebuffer->GetFinalImage();
 	}
 
 	void SceneRenderer::SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId)
@@ -183,52 +124,7 @@ namespace Eppo
 
 	void SceneRenderer::GeometryPass()
 	{
-		m_TimestampQueries.GeometryQuery = m_CommandBuffer->BeginTimestampQuery();
-
-		Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
-
-		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-
-		// Descriptor sets
-		const auto& descriptorSets = m_GeometryPipeline->GetDescriptorSets(frameIndex);
-
-		std::vector<VkWriteDescriptorSet> writeDescriptors;
-		{
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 0;
-			writeDescriptor.pBufferInfo = &m_CameraUniformBuffer->GetDescriptorBufferInfo();
-		}
-
-		{
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 1;
-			writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
-		}
-
-		{
-			Ref<Image> depthImage = m_ShadowPipeline->GetSpecification().Framebuffer->GetDepthImage();
-
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 2;
-			writeDescriptor.pImageInfo = &depthImage->GetDescriptorImageInfo();
-		}
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
-
-		EntityHandle handle;
+		/*EntityHandle handle;
 		for (auto& [entity, dc] : m_DrawList)
 		{
 			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, dc.Mesh, dc.Transform);
@@ -236,98 +132,33 @@ namespace Eppo
 		}
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
-		Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, m_DrawList[handle].Mesh, transform);
-
-		Renderer::EndRenderPass(m_CommandBuffer);
-
-		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.GeometryQuery);
+		Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, m_DrawList[handle].Mesh, transform);*/
 	}
 
 	void SceneRenderer::ShadowPass()
 	{
-		m_TimestampQueries.ShadowQuery = m_CommandBuffer->BeginTimestampQuery();
+		//Renderer::SubmitCommand([this]()
+		//{
+		//	for (auto& [entity, dc] : m_DrawList)
+		//	{
+		//		for (const auto& submesh : dc.Mesh->GetSubmeshes())
+		//		{
+		//			// Vertex buffer Mesh
+		//			VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
+		//			VkDeviceSize offsets[] = { 0 };
+		//			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
-		// TODO: Clear before?
-		Renderer::BeginRenderPass(m_CommandBuffer, m_ShadowPipeline);
+		//			// Index buffer
+		//			Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
+		//			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-		Renderer::SubmitCommand([this]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
-			uint32_t frameIndex = swapchain->GetCurrentImageIndex();
-
-			// Descriptor sets
-			const auto& descriptorSets = m_ShadowPipeline->GetDescriptorSets(frameIndex);
-
-			std::vector<VkWriteDescriptorSet> writeDescriptors;
-			{
-				VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-				writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				writeDescriptor.descriptorCount = 1;
-				writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				writeDescriptor.dstSet = descriptorSets[0];
-				writeDescriptor.dstBinding = 1;
-				writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
-			}
-
-			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-			vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
-
-			// Pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline->GetPipeline());
-
-			VkExtent2D extent = swapchain->GetExtent();
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				m_ShadowPipeline->GetPipelineLayout(),
-				0,
-				1,
-				&descriptorSets[0],
-				0,
-				nullptr
-			);
-
-			for (auto& [entity, dc] : m_DrawList)
-			{
-				for (const auto& submesh : dc.Mesh->GetSubmeshes())
-				{
-					// Vertex buffer Mesh
-					VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
-					VkDeviceSize offsets[] = { 0 };
-					vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-					// Index buffer
-					Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
-					vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-					// Push constants
-					vkCmdPushConstants(commandBuffer, m_ShadowPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
-				
-					// Draw call
-					vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
-				}
-			}
-		});
-
-		Renderer::EndRenderPass(m_CommandBuffer);
-
-		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.ShadowQuery);
+		//			// Push constants
+		//			vkCmdPushConstants(commandBuffer, m_ShadowPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
+		//		
+		//			// Draw call
+		//			vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
+		//		}
+		//	}
+		//});
 	}
 }

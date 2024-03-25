@@ -133,7 +133,7 @@ namespace Eppo
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
+		//UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();

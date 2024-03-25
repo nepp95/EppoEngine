@@ -25,12 +25,6 @@ namespace Eppo
 		uint32_t Meshes = 0;
 	};
 
-	enum class EnvironmentKeys
-	{
-		LightPosition,
-		LightColor
-	};
-
 	class SceneRenderer
 	{
 	public:
@@ -40,10 +34,6 @@ namespace Eppo
 
 		void BeginScene(const EditorCamera& editorCamera);
 		void EndScene();
-
-		void SetEnvironment(EnvironmentKeys key, void* value);
-
-		Ref<Image> GetFinalPassImage();
 
 		void SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId);
 
@@ -90,11 +80,5 @@ namespace Eppo
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;
-
-		struct TimestampQueries
-		{
-			uint32_t GeometryQuery = UINT32_MAX;
-			uint32_t ShadowQuery = UINT32_MAX;
-		} m_TimestampQueries;
 	};
 }

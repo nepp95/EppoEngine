@@ -2,7 +2,6 @@
 #include "Renderer.h"
 
 #include "Renderer/Buffer/IndexBuffer.h"
-#include "Renderer/Pipeline.h"
 #include "Renderer/RendererContext.h"
 #include "Renderer/ShaderLibrary.h"
 

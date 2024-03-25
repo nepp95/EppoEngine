@@ -157,4 +157,9 @@ namespace Eppo
 
 		glfwPollEvents();
 	}
+
+	void Window::SwapBuffers()
+	{
+		glfwSwapBuffers(m_Window);
+	}
 }

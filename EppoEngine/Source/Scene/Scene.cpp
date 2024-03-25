@@ -22,8 +22,8 @@ namespace Eppo
 			for (const EntityHandle entity : view)
 			{
 				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
-				sceneRenderer->SetEnvironment(EnvironmentKeys::LightPosition, &tc.Translation);
-				sceneRenderer->SetEnvironment(EnvironmentKeys::LightColor, &dlc.Color);
+				//sceneRenderer->SetEnvironment(EnvironmentKeys::LightPosition, &tc.Translation);
+				//sceneRenderer->SetEnvironment(EnvironmentKeys::LightColor, &dlc.Color);
 				break;
 			}
 		}
