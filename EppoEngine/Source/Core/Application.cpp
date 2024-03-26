@@ -128,8 +128,6 @@ namespace Eppo
 				float timestep = time - m_LastFrameTime;
 				m_LastFrameTime = time;
 
-				m_Window->ProcessEvents();
-
 				for (Layer* layer : m_LayerStack)
 					layer->Update(timestep);
 			}
@@ -148,6 +146,7 @@ namespace Eppo
 				{
 					EPPO_PROFILE_FUNCTION("CPU Render");
 					Renderer::ExecuteRenderCommands();
+					m_Window->ProcessEvents();
 					m_Window->SwapBuffers();
 				}
 			}

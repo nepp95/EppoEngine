@@ -1,5 +1,5 @@
 #stage vert
-#version 450
+#version 450 core
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
@@ -8,16 +8,16 @@ layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec3 outFragPosition;
 layout(location = 2) out vec3 outViewPosition;
 
-layout(set = 0, binding = 0) uniform Camera
+layout(binding = 0) uniform Camera
 {
 	mat4 View;
 	mat4 Projection;
 	mat4 ViewProjection;
 } uCamera;
 
-layout(push_constant) uniform Transform
+layout(binding = 1) uniform Transform
 {
-	layout(offset = 0) mat4 Transform;
+	mat4 Transform;
 } uTransform;
 
 void main()
@@ -39,7 +39,7 @@ layout(location = 1) in vec3 inFragPosition;
 layout(location = 2) in vec3 inViewPosition;
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 1) uniform Environment
+layout(binding = 2) uniform Environment
 {
 	mat4 LightView;
 	mat4 LightProjection;
@@ -48,12 +48,12 @@ layout(set = 0, binding = 1) uniform Environment
 	vec3 LightColor;
 } uEnvironment;
 
-layout(set = 0, binding = 2) uniform sampler2D uShadowMap;
+layout(binding = 3) uniform sampler2D uShadowMap;
 
-layout(push_constant) uniform Material
+layout(binding = 4) uniform Material
 {
-	layout(offset = 64) vec3 AlbedoColor;
-	layout(offset = 80) float Roughness;
+	vec3 AlbedoColor;
+	float Roughness;
 } uMaterial;
 
 float CalculateShadow(vec4 fragPos)

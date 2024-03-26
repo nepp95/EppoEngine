@@ -26,8 +26,7 @@ namespace Eppo
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 
 		// Open scene
-		//OpenScene("Resources/Scenes/Test.epposcene");
-		NewScene();
+		OpenScene("Resources/Scenes/Test.epposcene");
 
 		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
 	}
@@ -39,6 +38,9 @@ namespace Eppo
 	
 	void EditorLayer::Update(float timestep)
 	{
+		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
+			m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
+
 		m_EditorCamera.OnUpdate(timestep);
 		m_ActiveScene->OnUpdate(timestep);
 	}
@@ -133,7 +135,7 @@ namespace Eppo
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		//UI::Image(m_ViewportRenderer->GetFinalPassImage(), ImGui::GetContentRegionAvail());
+		ImGui::Image((ImTextureID)(m_ViewportRenderer->GetFinalImageID()), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();

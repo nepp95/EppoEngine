@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
-
 namespace Eppo
 {
 	// For compatibility with all devices, we only use 4 different sets
@@ -59,7 +57,7 @@ namespace Eppo
 		std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source);
 		void Compile(ShaderStage stage, const std::string& source);
 		void CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources);
-
+		void CreateProgram();
 		void Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes);
 
 	private:

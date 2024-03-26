@@ -17,9 +17,11 @@ namespace Eppo
 		// Geometry
 		{
 			FramebufferSpecification framebufferSpec;
-			framebufferSpec.Attachments = { FramebufferTextureFormat::RGBA8 };
+			framebufferSpec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
 			framebufferSpec.Width = 1920; // todo: make configurable
 			framebufferSpec.Height = 1080; // todo: make configurable
+
+			m_Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
 
 			/*pipelineSpec.Shader = Renderer::GetShader("geometry");
 			pipelineSpec.Layout = {
@@ -47,8 +49,9 @@ namespace Eppo
 		}
 
 		// Uniform buffers
-		m_CameraUniformBuffer = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
-		m_EnvironmentUniformBuffer = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1);
+		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
+		m_TransformUB = CreateRef<UniformBuffer>(sizeof(glm::mat4), 1);
+		m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 2);
 	}
 
 	void SceneRenderer::RenderGui()
@@ -73,20 +76,27 @@ namespace Eppo
 		ImGui::End();
 	}
 
+	void SceneRenderer::Resize(uint32_t width, uint32_t height)
+	{
+		m_Framebuffer->Resize(width, height);
+	}
+
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
-		// Prepare scene rendering
+		// Reset statistics
+		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
+
+		// Camera UB
 		m_CameraBuffer.View = editorCamera.GetViewMatrix();
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
-		m_CameraUniformBuffer->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+		m_CameraUB->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
-		// Matrices
+		// Environment UB
 		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 125.0f);
 		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
-
-		m_EnvironmentUniformBuffer->SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
+		m_EnvironmentUB->SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
 
 		// Cleanup from last draw
 		m_DrawList.clear(); // TODO: Do this at flush or begin scene?
@@ -108,7 +118,7 @@ namespace Eppo
 	{
 		m_CommandBuffer->Begin();
 
-		//PrepareRender();
+		PrepareRender();
 		
 		ShadowPass();
 		GeometryPass();
@@ -119,20 +129,33 @@ namespace Eppo
 
 	void SceneRenderer::PrepareRender()
 	{
+		m_Framebuffer->Bind();
 
+		Renderer::Clear();
+
+		m_Framebuffer->Unbind();
 	}
 
 	void SceneRenderer::GeometryPass()
 	{
-		/*EntityHandle handle;
+		EntityHandle handle;
 		for (auto& [entity, dc] : m_DrawList)
 		{
-			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, dc.Mesh, dc.Transform);
+			m_Framebuffer->Bind();
+
+			m_TransformUB->SetData(&dc.Transform, sizeof(glm::mat4));
+
+			Renderer::RenderGeometry(m_CommandBuffer, dc.Mesh);
 			handle = entity;
+
+			m_Framebuffer->Unbind();
+
+			m_RenderStatistics.DrawCalls++;
+			m_RenderStatistics.Meshes++;
 		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
-		Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, m_DrawList[handle].Mesh, transform);*/
+		//glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
+		//Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, m_DrawList[handle].Mesh, transform);*/
 	}
 
 	void SceneRenderer::ShadowPass()

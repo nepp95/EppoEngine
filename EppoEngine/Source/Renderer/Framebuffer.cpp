@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Framebuffer.h"
 
+#include "Renderer/Renderer.h"
+
 #include <glad/glad.h>
 
 namespace Eppo
@@ -91,7 +93,7 @@ namespace Eppo
 	{
 		for (auto specification : m_Specification.Attachments)
 		{
-			if (Utils::IsDepthFormat(specification.TextureFormat))
+			if (!Utils::IsDepthFormat(specification.TextureFormat))
 				m_ColorAttachmentSpecs.emplace_back(specification);
 			else
 				m_DepthAttachmentSpec = specification;
@@ -116,7 +118,7 @@ namespace Eppo
 		}
 
 		glCreateFramebuffers(1, &m_RendererID);
-		Bind();
+		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
 
 		bool multisampled = m_Specification.Samples > 1;
 
@@ -169,17 +171,23 @@ namespace Eppo
 
 		EPPO_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-		Unbind();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	void Framebuffer::Bind() const
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
+		Renderer::SubmitCommand([this]()
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
+		});
 	}
 
 	void Framebuffer::Unbind() const
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Renderer::SubmitCommand([this]()
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		});
 	}
 
 	void Framebuffer::Cleanup()
@@ -196,6 +204,9 @@ namespace Eppo
 			EPPO_WARN("Attempted to resize framebuffer to {}, {}. Operation canceled.", width, height);
 			return;
 		}
+
+		if (m_Specification.Width == width && m_Specification.Height == height)
+			return;
 
 		m_Specification.Width = width;
 		m_Specification.Height = height;

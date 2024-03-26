@@ -3,6 +3,8 @@
 #include "Asset/Asset.h"
 #include "Renderer/Mesh/Submesh.h"
 
+struct aiNode;
+
 namespace Eppo
 {
 	class Mesh : public Asset

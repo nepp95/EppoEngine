@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "UniformBuffer.h"
 
+#include "Renderer/Renderer.h"
+
 #include <glad/glad.h>
 
 namespace Eppo
@@ -24,9 +26,11 @@ namespace Eppo
 
 	void UniformBuffer::SetData(void* data, uint32_t size)
 	{
-		EPPO_PROFILE_FUNCTION("UniformBuffer::SetData");
-		EPPO_ASSERT(size == m_Size);
+		Renderer::SubmitCommand([this, size, data](){
+			EPPO_PROFILE_FUNCTION("UniformBuffer::SetData");
+			EPPO_ASSERT(size == m_Size);
 
-		glNamedBufferSubData(m_RendererID, 0, size, data);
+			glNamedBufferSubData(m_RendererID, 0, size, data);
+		});
 	}
 }

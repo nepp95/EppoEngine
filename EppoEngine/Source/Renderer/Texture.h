@@ -16,6 +16,8 @@ namespace Eppo
 		uint32_t GetWidth() const { return m_Width; }
 		uint32_t GetHeight() const { return m_Height; }
 
+		uint32_t GetRendererID() const { return m_RendererID; }
+
 		// Asset
 		static AssetType GetStaticType() { return AssetType::Texture; }
 

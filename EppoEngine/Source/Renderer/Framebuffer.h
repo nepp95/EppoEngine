@@ -52,6 +52,8 @@ namespace Eppo
 		void Cleanup();
 		void Resize(uint32_t width, uint32_t height);
 
+		uint32_t GetColorAttachmentID() const { return m_ColorAttachments[0]; }
+
 		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
 
 		uint32_t GetWidth() const { return m_Specification.Width; }

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Renderer/Buffer/UniformBuffer.h"
 #include "Renderer/Camera/EditorCamera.h"
+#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Material.h"
-#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Shader.h"
+#include "Renderer/UniformBuffer.h"
 
 namespace Eppo
 {
@@ -24,11 +24,12 @@ namespace Eppo
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
+		static void Clear();
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);
 
 		// Geometry
-		//static void RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& environmentUB, const Ref<UniformBuffer>& cameraUB, const Ref<Mesh>& mesh, const glm::mat4& transform);
+		static void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Mesh> mesh);
 	};
 }

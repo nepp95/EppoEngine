@@ -1,12 +1,10 @@
 #include "pch.h"
 #include "Shader.h"
 
-#include "Core/Buffer.h"
 #include "Core/Filesystem.h"
 #include "Core/Hash.h"
-#include "Renderer/Renderer.h"
-#include "Renderer/RendererContext.h"
 
+#include <glad/glad.h>
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
@@ -33,6 +31,18 @@ namespace Eppo
 
 			EPPO_ASSERT(false);
 			return (shaderc_shader_kind)-1;
+		}
+
+		static GLenum ShaderStageToGLStage(ShaderStage stage)
+		{
+			switch (stage)
+			{
+				case ShaderStage::Vertex:	return GL_VERTEX_SHADER;
+				case ShaderStage::Fragment:	return GL_FRAGMENT_SHADER;
+			}
+
+			EPPO_ASSERT(false);
+			return 0;
 		}
 
 		static std::string ShaderStageToString(ShaderStage stage)
@@ -70,6 +80,7 @@ namespace Eppo
 		
 		// Compile or get cache
 		CompileOrGetCache(sources);
+		CreateProgram();
 		
 		// Reflection
 		for (auto&& [type, data] : m_ShaderBytes)
@@ -79,6 +90,16 @@ namespace Eppo
 	Shader::~Shader()
 	{
 		EPPO_PROFILE_FUNCTION("Shader::~Shader");
+	}
+
+	void Shader::Bind() const
+	{
+		glUseProgram(m_RendererID);
+	}
+
+	void Shader::Unbind() const
+	{
+		glUseProgram(0);
 	}
 
 	std::unordered_map<ShaderStage, std::string> Shader::PreProcess(std::string_view source)
@@ -122,9 +143,6 @@ namespace Eppo
 		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
 
 		// Compile source
-		// todo: preprocess?
-		auto var = compiler.PreprocessGlsl(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
-		
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
@@ -135,14 +153,16 @@ namespace Eppo
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
 
+
+
 		// Write cache
-		std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
-		Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
+		//std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
+		//Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
 
 		// Write cache hash
-		std::string cacheHashPath = cachePath + ".hash";
-		uint64_t hash = Hash::GenerateFnv(source);
-		Filesystem::WriteText(cacheHashPath, std::to_string(hash));
+		//std::string cacheHashPath = cachePath + ".hash";
+		//uint64_t hash = Hash::GenerateFnv(source);
+		//Filesystem::WriteText(cacheHashPath, std::to_string(hash));
 	}
 
 	void Shader::CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources)
@@ -188,6 +208,68 @@ namespace Eppo
 				Compile(stage, source);
 			}
 		}
+	}
+
+	void Shader::CreateProgram()
+	{
+		uint32_t program = glCreateProgram();
+
+		std::array<uint32_t, 2> shaderIDs;
+		int index = 0;
+		for (auto&& [stage, spirv] : m_ShaderBytes)
+		{
+			spirv_cross::CompilerGLSL glslCompiler(spirv);
+			auto& source = glslCompiler.compile();
+
+			uint32_t shader = glCreateShader(Utils::ShaderStageToGLStage(stage));
+
+			const GLchar* sourceCStr = source.c_str();
+			glShaderSource(shader, 1, &sourceCStr, 0);
+			glCompileShader(shader);
+
+			int isCompiled = 0;
+			glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+			if (isCompiled == GL_FALSE)
+			{
+				int maxLength = 0;
+				glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+				std::vector<char> infoLog(maxLength);
+				glGetShaderInfoLog(shader, maxLength, &maxLength, &infoLog[0]);
+
+				glDeleteShader(shader);
+
+				EPPO_ERROR("{}", infoLog.data());
+				EPPO_ASSERT(false);
+			}
+
+			glAttachShader(program, shader);
+			shaderIDs[index++] = shader;
+		}
+
+		glLinkProgram(program);
+
+		int isLinked = 0;
+		glGetProgramiv(program, GL_LINK_STATUS, (int*)&isLinked);
+		if (isLinked == GL_FALSE)
+		{
+			GLint maxLength;
+			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+
+			std::vector<char> infoLog(maxLength);
+			glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
+			EPPO_ERROR("Shader linking failed ({}):\n{}", m_Specification.Filepath.string(), infoLog.data());
+
+			glDeleteProgram(program);
+
+			for (auto id : shaderIDs)
+				glDeleteShader(id);
+		}
+
+		for (auto id : shaderIDs)
+			glDetachShader(program, id);
+
+		m_RendererID = program;
 	}
 
 	void Shader::Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes)
