@@ -122,4 +122,5 @@ void main()
 	// Output
 	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
 	outColor = vec4(result, 1.0);
+	outColor = vec4(uMaterial.AlbedoColor, 1.0);
 }

@@ -59,7 +59,8 @@ namespace Eppo
 		// Framebuffers
 		Ref<Framebuffer> m_Framebuffer;
 
-		struct CameraData // Binding 0
+		// Binding 0
+		struct CameraData
 		{
 			glm::mat4 View;
 			glm::mat4 Projection;
@@ -67,9 +68,11 @@ namespace Eppo
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUB;
 
+		// Binding 1
 		glm::mat4 m_Transform;
 		Ref<UniformBuffer> m_TransformUB;
 
+		// Binding 2
 		struct EnvironmentData
 		{
 			glm::mat4 LightView;
@@ -79,6 +82,17 @@ namespace Eppo
 			glm::vec3 LightColor;
 		} m_EnvironmentBuffer;
 		Ref<UniformBuffer> m_EnvironmentUB;
+
+		// Binding 3
+		// Shadowmap
+
+		// Binding 4
+		struct MaterialData
+		{
+			glm::vec3 AlbedoColor;
+			float Roughness;
+		} m_MaterialBuffer;
+		Ref<UniformBuffer> m_MaterialUB;
 
 		// Draw commands
 		struct DrawCommand

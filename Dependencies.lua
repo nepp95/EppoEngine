@@ -12,7 +12,6 @@ IncludeDir["imgui"] = "%{wks.location}/EppoEngine/Vendor/imgui"
 IncludeDir["spdlog"] = "%{wks.location}/EppoEngine/Vendor/spdlog/include"
 IncludeDir["stb"] = "%{wks.location}/EppoEngine/Vendor/stb"
 IncludeDir["tracy"] = "%{wks.location}/EppoEngine/Vendor/tracy/public"
-IncludeDir["vma"] = "%{wks.location}/EppoEngine/Vendor/vulkan-memory-allocator"
 IncludeDir["vulkan"] = "%{VulkanSdk}/Include"
 IncludeDir["yaml_cpp"] = "%{wks.location}/EppoEngine/Vendor/yaml-cpp/include"
 
@@ -30,7 +29,6 @@ Library["yaml_cpp"] = "yaml-cpp"
 
 if (os.target() == "windows") then
     Library["glfw"] = "glfw"
-    Library["vulkan"] = "%{LibraryDir.vulkan}/vulkan-1.lib"
     Library["assimp_debug"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
     Library["assimp_debug_dll"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"
     Library["assimp_release"] = "%{LibraryDir.assimp}/Release/assimp-vc143-mt.lib"
@@ -44,7 +42,6 @@ if (os.target() == "windows") then
     Library["spirv_tools_debug"] = "%{LibraryDir.vulkan}/SPIRV-Toolsd.lib"
 else
     Library["glfw"] = "glfw3"
-    Library["vulkan"] = "vulkan"
     Library["assimp"] = "assimp"
     Library["shaderc"] = "shaderc_shared"
     Library["spirv_cross"] = "spirv-cross-core"

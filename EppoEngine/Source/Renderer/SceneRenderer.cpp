@@ -52,6 +52,7 @@ namespace Eppo
 		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
 		m_TransformUB = CreateRef<UniformBuffer>(sizeof(glm::mat4), 1);
 		m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 2);
+		m_MaterialUB = CreateRef<UniformBuffer>(sizeof(MaterialData), 4);
 	}
 
 	void SceneRenderer::RenderGui()
@@ -90,13 +91,13 @@ namespace Eppo
 		m_CameraBuffer.View = editorCamera.GetViewMatrix();
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
-		m_CameraUB->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Environment UB
 		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 125.0f);
 		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
-		m_EnvironmentUB->SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
+		m_EnvironmentUB->RT_SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
 
 		// Cleanup from last draw
 		m_DrawList.clear(); // TODO: Do this at flush or begin scene?
@@ -116,24 +117,24 @@ namespace Eppo
 
 	void SceneRenderer::Flush()
 	{
-		m_CommandBuffer->Begin();
+		m_CommandBuffer->RT_Begin();
 
 		PrepareRender();
 		
 		ShadowPass();
 		GeometryPass();
 
-		m_CommandBuffer->End();
-		m_CommandBuffer->Submit();
+		m_CommandBuffer->RT_End();
+		m_CommandBuffer->RT_Submit();
 	}
 
 	void SceneRenderer::PrepareRender()
 	{
-		m_Framebuffer->Bind();
+		m_Framebuffer->RT_Bind();
 
-		Renderer::Clear();
+		Renderer::RT_Clear();
 
-		m_Framebuffer->Unbind();
+		m_Framebuffer->RT_Unbind();
 	}
 
 	void SceneRenderer::GeometryPass()
@@ -141,14 +142,14 @@ namespace Eppo
 		EntityHandle handle;
 		for (auto& [entity, dc] : m_DrawList)
 		{
-			m_Framebuffer->Bind();
+			m_Framebuffer->RT_Bind();
 
-			m_TransformUB->SetData(&dc.Transform, sizeof(glm::mat4));
+			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
 
-			Renderer::RenderGeometry(m_CommandBuffer, dc.Mesh);
+			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
 			handle = entity;
 
-			m_Framebuffer->Unbind();
+			m_Framebuffer->RT_Unbind();
 
 			m_RenderStatistics.DrawCalls++;
 			m_RenderStatistics.Meshes++;

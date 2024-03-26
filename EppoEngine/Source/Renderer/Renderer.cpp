@@ -13,8 +13,6 @@ namespace Eppo
 	struct RendererData
 	{
 		RenderCommandQueue CommandQueue;
-
-		// Shaders
 		Scope<ShaderLibrary> ShaderLibrary;
 	};
 
@@ -28,7 +26,6 @@ namespace Eppo
 
 		// Load shaders
 		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
-		//s_Data->ShaderLibrary->Load("Resources/Shaders/test.glsl");
 		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
 		s_Data->ShaderLibrary->Load("Resources/Shaders/shadow.glsl");
 	}
@@ -50,43 +47,6 @@ namespace Eppo
 		
 	}
 
-	/*void Renderer::BeginRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline)
-	{
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		uint32_t frameIndex = GetCurrentFrameIndex();
-		vkResetDescriptorPool(device, s_Data->DescriptorPools[frameIndex], 0);
-
-		SubmitCommand([renderCommandBuffer, pipeline]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-
-			Ref<Framebuffer> framebuffer = pipeline->GetSpecification().Framebuffer;
-
-			VkRenderPassBeginInfo renderPassInfo{};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = framebuffer->GetExtent();
-			renderPassInfo.framebuffer = framebuffer->GetFramebuffer();
-			renderPassInfo.renderPass = framebuffer->GetRenderPass();
-			renderPassInfo.clearValueCount = framebuffer->GetClearValues().size();
-			renderPassInfo.pClearValues = framebuffer->GetClearValues().data();
-
-			vkCmdBeginRenderPass(renderCommandBuffer->GetCurrentCommandBuffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		});
-	}
-
-	void Renderer::EndRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer)
-	{
-		SubmitCommand([renderCommandBuffer]()
-		{
-			EPPO_PROFILE_FUNCTION("Renderer::EndRenderPass");
-
-			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
-			vkCmdEndRenderPass(commandBuffer);
-		});
-	}*/
-
 	void Renderer::ExecuteRenderCommands()
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::ExecuteRenderCommands");
@@ -101,7 +61,7 @@ namespace Eppo
 		s_Data->CommandQueue.AddCommand(command);
 	}
 
-	void Renderer::Clear()
+	void Renderer::RT_Clear()
 	{
 		SubmitCommand([]()
 		{
@@ -114,12 +74,14 @@ namespace Eppo
 		return s_Data->ShaderLibrary->Get(name);
 	}
 
-	void Renderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Mesh> mesh)
+	void Renderer::RT_RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<UniformBuffer> materialUB, Ref<Mesh> mesh)
 	{
-		SubmitCommand([renderCommandBuffer, mesh]()
+		SubmitCommand([renderCommandBuffer, materialUB, mesh]()
 		{
 			for (const auto& submesh : mesh->GetSubmeshes())
 			{
+				materialUB->RT_SetData((void*)&mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
+
 				// Bind shader
 				s_Data->ShaderLibrary->Get("geometry")->Bind();
 

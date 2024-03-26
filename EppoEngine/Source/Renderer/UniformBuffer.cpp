@@ -24,9 +24,18 @@ namespace Eppo
 		glDeleteBuffers(1, &m_RendererID);
 	}
 
-	void UniformBuffer::SetData(void* data, uint32_t size)
+	void UniformBuffer::RT_SetData(void* data)
 	{
-		Renderer::SubmitCommand([this, size, data](){
+		Renderer::SubmitCommand([this, data]()
+		{
+			glNamedBufferSubData(m_RendererID, 0, m_Size, data);
+		});
+	}
+
+	void UniformBuffer::RT_SetData(void* data, uint32_t size)
+	{
+		Renderer::SubmitCommand([this, size, data]()
+		{
 			EPPO_PROFILE_FUNCTION("UniformBuffer::SetData");
 			EPPO_ASSERT(size == m_Size);
 

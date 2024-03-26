@@ -24,12 +24,12 @@ namespace Eppo
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
-		static void Clear();
+		static void RT_Clear();
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);
 
 		// Geometry
-		static void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Mesh> mesh);
+		static void RT_RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<UniformBuffer> materialUB, Ref<Mesh> mesh);
 	};
 }

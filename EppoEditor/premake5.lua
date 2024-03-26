@@ -21,9 +21,7 @@ project "EppoEditor"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
-        "%{IncludeDir.tracy}",
-		"%{IncludeDir.vulkan}",
-		"%{IncludeDir.vma}"
+        "%{IncludeDir.tracy}"
     }
 
     links {
@@ -47,14 +45,12 @@ project "EppoEditor"
         }
 
         libdirs {
-            "/usr/local/lib",
-            "%{LibraryDir.vulkan}"
+            "/usr/local/lib"
         }
 
         links {
             "%{Library.glad}",
             "%{Library.glfw}",
-            "%{Library.vulkan}",
             "%{Library.shaderc}",
             "%{Library.spirv_cross}",
             "%{Library.spirv_cross_glsl}",

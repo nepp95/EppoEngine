@@ -174,7 +174,7 @@ namespace Eppo
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void Framebuffer::Bind() const
+	void Framebuffer::RT_Bind() const
 	{
 		Renderer::SubmitCommand([this]()
 		{
@@ -182,7 +182,7 @@ namespace Eppo
 		});
 	}
 
-	void Framebuffer::Unbind() const
+	void Framebuffer::RT_Unbind() const
 	{
 		Renderer::SubmitCommand([this]()
 		{

@@ -10,7 +10,8 @@ namespace Eppo
 		UniformBuffer(uint32_t size, uint32_t binding);
 		~UniformBuffer();
 
-		void SetData(void* data, uint32_t size);
+		void RT_SetData(void* data);
+		void RT_SetData(void* data, uint32_t size);
 		uint32_t GetBinding() const { return m_Binding; }
 
 	private:

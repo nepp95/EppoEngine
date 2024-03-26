@@ -19,7 +19,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("RenderCommandBuffer::~RenderCommandBuffer");
 	}
 
-	void RenderCommandBuffer::Begin()
+	void RenderCommandBuffer::RT_Begin()
 	{
 		EPPO_PROFILE_FUNCTION("RenderCommandBuffer::Begin");
 
@@ -29,7 +29,7 @@ namespace Eppo
 		});
 	}
 
-	void RenderCommandBuffer::End()
+	void RenderCommandBuffer::RT_End()
 	{
 		EPPO_PROFILE_FUNCTION("RenderCommandBuffer::End");
 
@@ -39,7 +39,7 @@ namespace Eppo
 		});
 	}
 
-	void RenderCommandBuffer::Submit()
+	void RenderCommandBuffer::RT_Submit()
 	{
 		EPPO_PROFILE_FUNCTION("RenderCommandBuffer::Submit");
 
