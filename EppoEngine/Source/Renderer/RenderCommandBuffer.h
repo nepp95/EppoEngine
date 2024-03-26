@@ -12,6 +12,8 @@ namespace Eppo
 		void RT_End();
 		void RT_Submit();
 
+		uint64_t GetTimestamp() const { return m_Timestamp; }
+
 	private:
 		uint32_t m_QueryRendererID;
 		uint64_t m_Timestamp;

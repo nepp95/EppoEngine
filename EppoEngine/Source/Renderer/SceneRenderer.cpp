@@ -59,8 +59,8 @@ namespace Eppo
 	{
 		ImGui::Begin("Performance");
 
-		/*ImGui::Text("GPU Time: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex));
-		ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.GeometryQuery));
+		ImGui::Text("GPU Time: %.3fms", (float)m_CommandBuffer->GetTimestamp() * 0.000001f);
+		/*ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.GeometryQuery));
 		ImGui::Text("Shadow Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.ShadowQuery));
 
 		ImGui::Separator();
