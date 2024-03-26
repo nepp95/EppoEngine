@@ -21,31 +21,19 @@ namespace Eppo
 			framebufferSpec.Width = 1920; // todo: make configurable
 			framebufferSpec.Height = 1080; // todo: make configurable
 
-			m_Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-
-			/*pipelineSpec.Shader = Renderer::GetShader("geometry");
-			pipelineSpec.Layout = {
-				{ ShaderDataType::Float3, "inPosition" },
-				{ ShaderDataType::Float3, "inNormal" },
-				{ ShaderDataType::Float2, "inTexCoord" }
-			};*/
+			m_GeometryFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
 		}
 
 		// PreDepth
 		{
-			// TODO: Create shadow map image
-			// TODO: Clear pass for clearing the shadow map image
-			/*FramebufferSpecification framebufferSpec;
-			framebufferSpec.Attachments = { ImageFormat::Depth };
-			framebufferSpec.Width = swapchain->GetWidth();
-			framebufferSpec.Height = swapchain->GetHeight();
+			m_ShadowMap = CreateRef<Texture>(1024, 1024);
 
-			pipelineSpec.Shader = Renderer::GetShader("shadow");
-			pipelineSpec.Layout = {
-				{ ShaderDataType::Float3, "inPosition" },
-				{ ShaderDataType::Float3, "inNormal" },
-				{ ShaderDataType::Float2, "inTexCoord" }
-			};*/
+			FramebufferSpecification framebufferSpec;
+			framebufferSpec.ExistingTextures = { m_ShadowMap };
+			framebufferSpec.Width = 1024; // todo: make configurable
+			framebufferSpec.Height = 1024; // todo: make configurable
+
+			//m_PreDepthFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
 		}
 
 		// Uniform buffers
@@ -60,26 +48,18 @@ namespace Eppo
 		ImGui::Begin("Performance");
 
 		ImGui::Text("GPU Time: %.3fms", (float)m_CommandBuffer->GetTimestamp() * 0.000001f);
-		/*ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.GeometryQuery));
-		ImGui::Text("Shadow Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.ShadowQuery));
 
 		ImGui::Separator();
 
-		const auto& pipelineStats = m_CommandBuffer->GetPipelineStatistics(imageIndex);
-		ImGui::Text("Pipeline statistics:");
-		ImGui::Text("Input Assembly Vertices: %llu", pipelineStats.InputAssemblyVertices);
-		ImGui::Text("Input Assembly Primitives: %llu", pipelineStats.InputAssemblyPrimitives);
-		ImGui::Text("Vertex Shader Invocations: %llu", pipelineStats.VertexShaderInvocations);
-		ImGui::Text("Clipping Invocations: %llu", pipelineStats.ClippingInvocations);
-		ImGui::Text("Clipping Primitives: %llu", pipelineStats.ClippingPrimitives);
-		ImGui::Text("Fragment Shader Invocations: %llu", pipelineStats.FragmentShaderInvocations);*/
+		ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCalls);
+		ImGui::Text("Meshes: %u", m_RenderStatistics.Meshes);
 
 		ImGui::End();
 	}
 
 	void SceneRenderer::Resize(uint32_t width, uint32_t height)
 	{
-		m_Framebuffer->Resize(width, height);
+		m_GeometryFramebuffer->Resize(width, height);
 	}
 
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
@@ -94,6 +74,8 @@ namespace Eppo
 		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Environment UB
+		m_EnvironmentBuffer.LightColor = glm::vec3(1.0f);
+		m_EnvironmentBuffer.LightPosition = glm::vec3(0.0f, 0.0f, -30.0f);
 		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 125.0f);
 		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
@@ -121,7 +103,7 @@ namespace Eppo
 
 		PrepareRender();
 		
-		ShadowPass();
+		//ShadowPass();
 		GeometryPass();
 
 		m_CommandBuffer->RT_End();
@@ -130,59 +112,55 @@ namespace Eppo
 
 	void SceneRenderer::PrepareRender()
 	{
-		m_Framebuffer->RT_Bind();
-
+		m_GeometryFramebuffer->RT_Bind();
 		Renderer::RT_Clear();
+		m_GeometryFramebuffer->RT_Unbind();
 
-		m_Framebuffer->RT_Unbind();
+		//m_PreDepthFramebuffer->RT_Bind();
+		//Renderer::RT_Clear();
+		//m_PreDepthFramebuffer->RT_Unbind();
 	}
 
 	void SceneRenderer::GeometryPass()
 	{
+		Renderer::GetShader("geometry")->RT_Bind();
+
+		m_GeometryFramebuffer->RT_Bind();
+
 		EntityHandle handle;
 		for (auto& [entity, dc] : m_DrawList)
 		{
-			m_Framebuffer->RT_Bind();
-
 			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
 
 			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
 			handle = entity;
 
-			m_Framebuffer->RT_Unbind();
-
 			m_RenderStatistics.DrawCalls++;
 			m_RenderStatistics.Meshes++;
 		}
 
-		//glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
-		//Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, m_DrawList[handle].Mesh, transform);*/
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
+		m_TransformUB->RT_SetData(&transform, sizeof(glm::mat4));
+
+		Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, m_DrawList[handle].Mesh);
+
+		m_GeometryFramebuffer->RT_Unbind();
 	}
 
 	void SceneRenderer::ShadowPass()
 	{
-		//Renderer::SubmitCommand([this]()
-		//{
-		//	for (auto& [entity, dc] : m_DrawList)
-		//	{
-		//		for (const auto& submesh : dc.Mesh->GetSubmeshes())
-		//		{
-		//			// Vertex buffer Mesh
-		//			VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
-		//			VkDeviceSize offsets[] = { 0 };
-		//			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
+		Renderer::GetShader("shadow")->RT_Bind();
+		
+		for (auto& [entity, dc] : m_DrawList)
+		{
+			m_PreDepthFramebuffer->RT_Bind();
 
-		//			// Index buffer
-		//			Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
-		//			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
+			// TODO: Bind rendererid from framebuffer whaaaaaaaat? GLBINDTEXTURE
 
-		//			// Push constants
-		//			vkCmdPushConstants(commandBuffer, m_ShadowPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
-		//		
-		//			// Draw call
-		//			vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
-		//		}
-		//	}
-		//});
+			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+
+			m_PreDepthFramebuffer->RT_Unbind();
+		}
 	}
 }

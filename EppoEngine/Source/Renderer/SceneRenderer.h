@@ -40,7 +40,7 @@ namespace Eppo
 
 		void SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId);
 
-		uint32_t GetFinalImageID() const { return m_Framebuffer->GetColorAttachmentID(); }
+		uint32_t GetFinalImageID() const { return m_GeometryFramebuffer->GetColorAttachmentID(); }
 
 	private:
 		void Flush();
@@ -57,7 +57,8 @@ namespace Eppo
 		Ref<RenderCommandBuffer> m_CommandBuffer;
 
 		// Framebuffers
-		Ref<Framebuffer> m_Framebuffer;
+		Ref<Framebuffer> m_GeometryFramebuffer;
+		Ref<Framebuffer> m_PreDepthFramebuffer;
 
 		// Binding 0
 		struct CameraData
@@ -84,7 +85,7 @@ namespace Eppo
 		Ref<UniformBuffer> m_EnvironmentUB;
 
 		// Binding 3
-		// Shadowmap
+		Ref<Texture> m_ShadowMap;
 
 		// Binding 4
 		struct MaterialData

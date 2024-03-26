@@ -82,9 +82,6 @@ namespace Eppo
 			{
 				materialUB->RT_SetData((void*)&mesh->GetMaterial(submesh.GetMaterialIndex()).DiffuseColor);
 
-				// Bind shader
-				s_Data->ShaderLibrary->Get("geometry")->Bind();
-
 				// Bind vertex array
 				Ref<VertexArray> vao = submesh.GetVertexArray();
 				vao->Bind();

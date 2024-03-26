@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/Texture.h"
+
 namespace Eppo
 {
 	enum class FramebufferTextureFormat
@@ -32,6 +34,7 @@ namespace Eppo
 		{}
 
 		std::vector<FramebufferTextureSpecification> Attachments;
+		std::vector<Ref<Texture>> ExistingTextures;
 
 		uint32_t Width = 0;
 		uint32_t Height = 0;
@@ -53,6 +56,7 @@ namespace Eppo
 		void Resize(uint32_t width, uint32_t height);
 
 		uint32_t GetColorAttachmentID() const { return m_ColorAttachments[0]; }
+		uint32_t GetDepthAttachmentID() const { return m_DepthAttachment; }
 
 		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
 

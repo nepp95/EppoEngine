@@ -39,7 +39,10 @@ namespace Eppo
 	void EditorLayer::Update(float timestep)
 	{
 		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
+		{
+			m_EditorCamera.SetViewportSize(glm::vec2(m_ViewportWidth, m_ViewportHeight));
 			m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
+		}
 
 		m_EditorCamera.OnUpdate(timestep);
 		m_ActiveScene->OnUpdate(timestep);

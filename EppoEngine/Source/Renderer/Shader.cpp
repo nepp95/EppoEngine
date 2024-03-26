@@ -3,6 +3,7 @@
 
 #include "Core/Filesystem.h"
 #include "Core/Hash.h"
+#include "Renderer/Renderer.h"
 
 #include <glad/glad.h>
 #include <shaderc/shaderc.hpp>
@@ -92,14 +93,20 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Shader::~Shader");
 	}
 
-	void Shader::Bind() const
+	void Shader::RT_Bind() const
 	{
-		glUseProgram(m_RendererID);
+		Renderer::SubmitCommand([this]()
+		{
+			glUseProgram(m_RendererID);
+		});
 	}
 
-	void Shader::Unbind() const
+	void Shader::RT_Unbind() const
 	{
-		glUseProgram(0);
+		Renderer::SubmitCommand([this]()
+		{
+			glUseProgram(0);
+		});
 	}
 
 	std::unordered_map<ShaderStage, std::string> Shader::PreProcess(std::string_view source)

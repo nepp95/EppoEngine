@@ -1,31 +1,10 @@
-Scene: test
+Scene: Test
 Entities:
-  - Entity: 5458791196844811793
-    TagComponent:
-      Tag: Light
-    TransformComponent:
-      Translation: [0, 0, 0]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    MeshComponent:
-      MeshHandle: 5345703082771143640
-    DirectionalLightComponent:
-      Color: [1, 1, 1, 1]
-      Intensity: 1
-  - Entity: 3710366019641617553
-    TagComponent:
-      Tag: Big Cube
-    TransformComponent:
-      Translation: [-30.5, 16.5, 0]
-      Rotation: [0, 0, 0]
-      Scale: [78.5, 1.89999998, 59.9000015]
-    MeshComponent:
-      MeshHandle: 5345703082771143640
   - Entity: 15859226382881889157
     TagComponent:
       Tag: Small Cube 1
     TransformComponent:
-      Translation: [-4.4000001, 0, 0]
+      Translation: [-9.39999962, 0, -16.6000004]
       Rotation: [1.5, 0.600000024, 0.300000012]
       Scale: [1, 1, 1]
     MeshComponent:
@@ -34,7 +13,7 @@ Entities:
     TagComponent:
       Tag: Small Cube 2
     TransformComponent:
-      Translation: [18.1000004, 0.400000006, -2.20000005]
+      Translation: [-2.20000005, -3.0999999, -14.8000002]
       Rotation: [-0.400000006, -0.600000024, -0.300000012]
       Scale: [1, 1, 1]
     MeshComponent:
