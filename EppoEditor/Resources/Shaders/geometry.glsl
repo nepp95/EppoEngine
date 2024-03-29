@@ -1,45 +1,28 @@
 #stage vert
-#version 450
+#version 450 core
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 layout(location = 0) out vec3 outNormal;
-layout(location = 1) out vec3 outFragPosition;
-layout(location = 2) out vec3 outViewPosition;
+layout(location = 1) out vec2 outTexCoord;
+layout(location = 2) out vec3 outFragPosition;
+layout(location = 3) out vec4 outFragPosLightSpace;
 
-layout(set = 0, binding = 0) uniform Camera
+layout(binding = 0) uniform Camera
 {
 	mat4 View;
 	mat4 Projection;
 	mat4 ViewProjection;
+	vec3 Position;
 } uCamera;
 
-layout(push_constant) uniform Transform
+layout(binding = 1) uniform Transform
 {
-	layout(offset = 0) mat4 Transform;
+	mat4 Transform;
 } uTransform;
 
-void main()
-{
-	outNormal = inNormal;
-	outFragPosition = vec3(uTransform.Transform * vec4(inPosition, 1.0));
-
-	vec4 worldPosition = uTransform.Transform * vec4(inPosition, 1.0);
-	outViewPosition = vec3(uCamera.View * vec4(worldPosition.xyz, 1.0));
-
-	gl_Position = uCamera.ViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
-}
-
-#stage frag
-#version 450
-
-layout(location = 0) in vec3 inNormal;
-layout(location = 1) in vec3 inFragPosition;
-layout(location = 2) in vec3 inViewPosition;
-layout(location = 0) out vec4 outColor;
-
-layout(set = 0, binding = 1) uniform Environment
+layout(binding = 2) uniform Environment
 {
 	mat4 LightView;
 	mat4 LightProjection;
@@ -48,15 +31,51 @@ layout(set = 0, binding = 1) uniform Environment
 	vec3 LightColor;
 } uEnvironment;
 
-layout(set = 0, binding = 2) uniform sampler2D uShadowMap;
-
-layout(push_constant) uniform Material
+void main()
 {
-	layout(offset = 64) vec3 AlbedoColor;
-	layout(offset = 80) float Roughness;
+	outNormal = transpose(inverse(mat3(uTransform.Transform))) * inNormal;
+	outTexCoord = inTexCoord;
+	outFragPosition = vec3(uTransform.Transform * vec4(inPosition, 1.0));
+	outFragPosLightSpace = uEnvironment.LightViewProjection * vec4(outFragPosition, 1.0);
+
+	gl_Position = uCamera.ViewProjection * uTransform.Transform * vec4(inPosition, 1.0); // outFragPosition <<?
+}
+
+#stage frag
+#version 450
+
+layout(location = 0) in vec3 inNormal;
+layout(location = 1) in vec2 inTexCoord;
+layout(location = 2) in vec3 inFragPosition;
+layout(location = 3) in vec4 inFragPosLightSpace;
+layout(location = 0) out vec4 outColor;
+
+layout(binding = 0) uniform sampler2D uShadowMap;
+
+layout(binding = 0) uniform Camera
+{
+	mat4 View;
+	mat4 Projection;
+	mat4 ViewProjection;
+	vec3 Position;
+} uCamera;
+
+layout(binding = 2) uniform Environment
+{
+	mat4 LightView;
+	mat4 LightProjection;
+	mat4 LightViewProjection;
+	vec3 LightPosition;
+	vec3 LightColor;
+} uEnvironment;
+
+layout(binding = 4) uniform Material
+{
+	vec3 AlbedoColor;
+	float Roughness;
 } uMaterial;
 
-float CalculateShadow(vec4 fragPos)
+float CalculateShadow(vec4 fragPos, vec3 normal, vec3 lightDir)
 {
 	// Transform fragPos from clip space to ndc -1 to 1
 	vec3 ndcCoords = fragPos.xyz / fragPos.w;
@@ -71,7 +90,8 @@ float CalculateShadow(vec4 fragPos)
 	float currentDepth = ndcCoords.z;
 
 	// Check if fragment is in shadow
-	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+	float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
 
 	return shadow;
 }
@@ -85,7 +105,7 @@ void main()
 	// Ia = ambient intensity
 	// Ka = ambient intensity coefficient
 	// I = light intensity
-	float ambientIntensity = 0.1;
+	float ambientIntensity = 0.5;
 	vec3 ambient = ambientIntensity * uEnvironment.LightColor;
 
 	// Diffuse
@@ -98,7 +118,7 @@ void main()
 	vec3 nNormal = normalize(inNormal);
 	vec3 nLightDirection = normalize(uEnvironment.LightPosition - inFragPosition);
 
-	vec3 diffuseIntensity = uEnvironment.LightColor * max(dot(nNormal, nLightDirection), 0.0); // * roughness
+	float diffuseIntensity = max(dot(nLightDirection, nNormal), 0.0);
 	vec3 diffuse = diffuseIntensity * uEnvironment.LightColor;
 
 	// Specular
@@ -109,15 +129,14 @@ void main()
 	// R = normalized reflected light direction vector
 	// V = normalized view direction vector
 	// n = shininess coefficient
-	vec3 nViewDirection = normalize(inViewPosition - inFragPosition);
-	vec3 nReflectDirection = normalize(reflect(-nLightDirection, nNormal));
-	
-	float specularIntensity = 0.5;
-	vec3 specular = specularIntensity * uEnvironment.LightColor * max(dot(nViewDirection, nReflectDirection), 0.0);
+	vec3 nViewDirection = normalize(uCamera.Position - inFragPosition);
+	vec3 nHalfwayDirection = normalize(nLightDirection + nViewDirection);
+
+	float spec = pow(max(dot(nNormal, nHalfwayDirection), 0.0), 64.0);
+	vec3 specular = spec * uEnvironment.LightColor;
 
 	// Shadow
-	vec4 fragPosLightSpace = uEnvironment.LightViewProjection * vec4(inFragPosition, 1.0);
-	float shadow = CalculateShadow(fragPosLightSpace);
+	float shadow = CalculateShadow(inFragPosLightSpace, nNormal, nLightDirection);
 
 	// Output
 	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;

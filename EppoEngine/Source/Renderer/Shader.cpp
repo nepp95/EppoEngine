@@ -1,12 +1,11 @@
 #include "pch.h"
 #include "Shader.h"
 
-#include "Core/Buffer.h"
 #include "Core/Filesystem.h"
 #include "Core/Hash.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/RendererContext.h"
 
+#include <glad/glad.h>
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
@@ -33,6 +32,18 @@ namespace Eppo
 
 			EPPO_ASSERT(false);
 			return (shaderc_shader_kind)-1;
+		}
+
+		static GLenum ShaderStageToGLStage(ShaderStage stage)
+		{
+			switch (stage)
+			{
+				case ShaderStage::Vertex:	return GL_VERTEX_SHADER;
+				case ShaderStage::Fragment:	return GL_FRAGMENT_SHADER;
+			}
+
+			EPPO_ASSERT(false);
+			return 0;
 		}
 
 		static std::string ShaderStageToString(ShaderStage stage)
@@ -62,42 +73,40 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Shader::Shader");
 
+		// Read shader source
 		const std::string shaderSource = Filesystem::ReadText(m_Specification.Filepath);
-
-		// Preprocess shader
+		 
+		// Preprocess by shader stage
 		std::unordered_map<ShaderStage, std::string> sources = PreProcess(shaderSource);
-
-		// Compile or get cached shader
+		
+		// Compile or get cache
 		CompileOrGetCache(sources);
-
-		m_ShaderResources[0] = {};
-		m_ShaderResources[1] = {};
-		m_ShaderResources[2] = {};
-		m_ShaderResources[3] = {};
-
+		CreateProgram();
+		
+		// Reflection
 		for (auto&& [type, data] : m_ShaderBytes)
 			Reflect(type, data);
-
-		CreatePipelineShaderInfos();
-		CreateDescriptorSetLayout();
 	}
 
 	Shader::~Shader()
 	{
 		EPPO_PROFILE_FUNCTION("Shader::~Shader");
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		for (auto& shaderInfo : m_ShaderInfos)
-			vkDestroyShaderModule(device, shaderInfo.module, nullptr);
 	}
 
-	const VkDescriptorSetLayout& Shader::GetDescriptorSetLayout(uint32_t set) const
+	void Shader::RT_Bind() const
 	{
-		EPPO_PROFILE_FUNCTION("Shader::GetDescriptorSetLayout");
-		EPPO_ASSERT((set < m_DescriptorSetLayouts.size()));
+		Renderer::SubmitCommand([this]()
+		{
+			glUseProgram(m_RendererID);
+		});
+	}
 
-		return m_DescriptorSetLayouts.at(set);
+	void Shader::RT_Unbind() const
+	{
+		Renderer::SubmitCommand([this]()
+		{
+			glUseProgram(0);
+		});
 	}
 
 	std::unordered_map<ShaderStage, std::string> Shader::PreProcess(std::string_view source)
@@ -137,11 +146,11 @@ namespace Eppo
 
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
-		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+		options.SetTargetEnvironment(shaderc_target_env_opengl, shaderc_env_version_opengl_4_5);
 		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
 
 		// Compile source
-		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str());
+		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
 			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath.string());
@@ -151,14 +160,16 @@ namespace Eppo
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
 
+
+
 		// Write cache
-		std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
-		Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
+		//std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
+		//Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
 
 		// Write cache hash
-		std::string cacheHashPath = cachePath + ".hash";
-		uint64_t hash = Hash::GenerateFnv(source);
-		Filesystem::WriteText(cacheHashPath, std::to_string(hash));
+		//std::string cacheHashPath = cachePath + ".hash";
+		//uint64_t hash = Hash::GenerateFnv(source);
+		//Filesystem::WriteText(cacheHashPath, std::to_string(hash));
 	}
 
 	void Shader::CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources)
@@ -206,6 +217,68 @@ namespace Eppo
 		}
 	}
 
+	void Shader::CreateProgram()
+	{
+		uint32_t program = glCreateProgram();
+
+		std::array<uint32_t, 2> shaderIDs;
+		int index = 0;
+		for (auto&& [stage, spirv] : m_ShaderBytes)
+		{
+			spirv_cross::CompilerGLSL glslCompiler(spirv);
+			auto& source = glslCompiler.compile();
+
+			uint32_t shader = glCreateShader(Utils::ShaderStageToGLStage(stage));
+
+			const GLchar* sourceCStr = source.c_str();
+			glShaderSource(shader, 1, &sourceCStr, 0);
+			glCompileShader(shader);
+
+			int isCompiled = 0;
+			glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+			if (isCompiled == GL_FALSE)
+			{
+				int maxLength = 0;
+				glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+				std::vector<char> infoLog(maxLength);
+				glGetShaderInfoLog(shader, maxLength, &maxLength, &infoLog[0]);
+
+				glDeleteShader(shader);
+
+				EPPO_ERROR("{}", infoLog.data());
+				EPPO_ASSERT(false);
+			}
+
+			glAttachShader(program, shader);
+			shaderIDs[index++] = shader;
+		}
+
+		glLinkProgram(program);
+
+		int isLinked = 0;
+		glGetProgramiv(program, GL_LINK_STATUS, (int*)&isLinked);
+		if (isLinked == GL_FALSE)
+		{
+			GLint maxLength;
+			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+
+			std::vector<char> infoLog(maxLength);
+			glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
+			EPPO_ERROR("Shader linking failed ({}):\n{}", m_Specification.Filepath.string(), infoLog.data());
+
+			glDeleteProgram(program);
+
+			for (auto id : shaderIDs)
+				glDeleteShader(id);
+		}
+
+		for (auto id : shaderIDs)
+			glDetachShader(program, id);
+
+		m_RendererID = program;
+	}
+
 	void Shader::Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes)
 	{
 		EPPO_PROFILE_FUNCTION("Shader::Reflect");
@@ -214,28 +287,8 @@ namespace Eppo
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
-		EPPO_TRACE("    {} Push constant buffers", resources.push_constant_buffers.size());
 		EPPO_TRACE("    {} Uniform buffers", resources.uniform_buffers.size());
 		EPPO_TRACE("    {} Sampled images", resources.sampled_images.size());
-
-		if (!resources.push_constant_buffers.empty())
-		{
-			EPPO_TRACE("    Push constant buffers:");
-			EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
-
-			const auto& resource = resources.push_constant_buffers[0];
-			const auto& bufferType = compiler.get_type(resource.base_type_id);
-			uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
-			size_t memberCount = bufferType.member_types.size();
-
-			if (!resource.name.empty())
-				EPPO_TRACE("        {}", resource.name);
-			EPPO_TRACE("        Size = {}", bufferSize);
-			EPPO_TRACE("        Members = {}", memberCount);
-
-			for (size_t i = 0; i < memberCount; i++)
-				EPPO_TRACE("            Member: {} ({})", compiler.get_member_name(resource.base_type_id, i), compiler.get_type(resource.base_type_id).member_types[i]);
-		}
 
 		if (!resources.uniform_buffers.empty())
 		{
@@ -295,60 +348,5 @@ namespace Eppo
 			}
 		}
 		EPPO_TRACE("");
-	}
-
-	void Shader::CreatePipelineShaderInfos()
-	{
-		EPPO_PROFILE_FUNCTION("Shader::CreatePipelineShaderInfos");
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-		for (const auto& [type, shaderBytes] : m_ShaderBytes)
-		{
-			VkShaderModuleCreateInfo shaderModuleInfo{};
-			shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-			shaderModuleInfo.codeSize = shaderBytes.size() * sizeof(uint32_t);
-			shaderModuleInfo.pCode = shaderBytes.data();
-
-			VkShaderModule shaderModule;
-			VK_CHECK(vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule), "Failed to create shader module!");
-
-			VkPipelineShaderStageCreateInfo shaderStageInfo{};
-			shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			shaderStageInfo.stage = Utils::ShaderStageToVkShaderStage(type);
-			shaderStageInfo.module = shaderModule;
-			shaderStageInfo.pName = "main";
-
-			m_ShaderInfos.push_back(shaderStageInfo);
-		}
-	}
-
-	void Shader::CreateDescriptorSetLayout()
-	{
-		EPPO_PROFILE_FUNCTION("Shader::CreateDescriptorSetLayout");
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		Ref<DescriptorLayoutCache> layoutCache = Renderer::GetDescriptorLayoutCache();
-
-		for (const auto& [set, setResources] : m_ShaderResources)
-		{
-			if (set >= m_DescriptorSetLayouts.size())
-				m_DescriptorSetLayouts.resize(set + 1);
-
-			m_DescriptorSetLayouts[set] = layoutCache->CreateLayout(setResources);
-		}
-
-		for (uint32_t i = 0; i < m_DescriptorSetLayouts.size(); i++)
-		{
-			if (!m_DescriptorSetLayouts[i])
-			{
-				VkDescriptorSetLayoutCreateInfo layoutInfo{};
-				layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-				layoutInfo.bindingCount = 0;
-				layoutInfo.pBindings = nullptr;
-
-				m_DescriptorSetLayouts[i] = layoutCache->CreateLayout(layoutInfo);
-			}
-		}
 	}
 }

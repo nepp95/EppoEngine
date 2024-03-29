@@ -1,44 +1,50 @@
 #pragma once
 
-#include "Renderer/Buffer/UniformBuffer.h"
 #include "Renderer/Camera/EditorCamera.h"
-#include "Renderer/Descriptor/DescriptorBuilder.h"
-#include "Renderer/Framebuffer.h"
-#include "Renderer/Material.h"
 #include "Renderer/Mesh/Mesh.h"
-#include "Renderer/Pipeline.h"
+#include "Renderer/Framebuffer.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Shader.h"
+#include "Renderer/UniformBuffer.h"
+
+typedef unsigned int GLenum;
 
 namespace Eppo
 {
+	enum class FaceCulling
+	{
+		FRONT_LEFT = 1024,
+		FRONT_RIGHT,
+		BACK_LEFT,
+		BACK_RIGHT,
+		FRONT,
+		BACK,
+		LEFT,
+		RIGHT,
+		FRONT_AND_BACK
+	};
+
 	class Renderer
 	{
 	public:
 		static void Init();
 		static void Shutdown();
 
-		// Frame index
-		static uint32_t GetCurrentFrameIndex();
-
-		// Render pass
-		static void BeginRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline);
-		static void EndRenderPass(const Ref<RenderCommandBuffer>& renderCommandBuffer);
+		// Scene management
+		static void BeginScene(const EditorCamera& editorCamera);
+		static void EndScene();
 
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
+		static void RT_Clear(bool color = true, bool depth = true);
+		static void RT_SetFaceCulling(FaceCulling face);
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);
 
-		// Descriptor Sets
-		static Ref<DescriptorAllocator> GetDescriptorAllocator();
-		static Ref<DescriptorLayoutCache> GetDescriptorLayoutCache();
-		static VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetAllocateInfo& allocInfo);
-
 		// Geometry
-		static void RenderGeometry(const Ref<RenderCommandBuffer>& renderCommandBuffer, const Ref<Pipeline>& pipeline, const Ref<UniformBuffer>& environmentUB, const Ref<UniformBuffer>& cameraUB, const Ref<Mesh>& mesh, const glm::mat4& transform);
+		static void RT_RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<UniformBuffer> materialUB, Ref<Mesh> mesh);
 	};
 }

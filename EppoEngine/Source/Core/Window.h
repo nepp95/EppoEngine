@@ -31,9 +31,14 @@ namespace Eppo
 		void Shutdown();
 
 		void ProcessEvents();
+		void SwapBuffers();
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
-		Ref<RendererContext> GetRendererContext() { return m_Context; }
+		uint32_t GetWidth() const { return m_Specification.Width; }
+		uint32_t GetHeight() const { return m_Specification.Height; }
+
+		GLFWwindow* GetNativeWindow() const { return m_Window; }
+		Ref<RendererContext> GetRendererContext() const { return m_Context; }
 
 	private:
 		WindowSpecification m_Specification;

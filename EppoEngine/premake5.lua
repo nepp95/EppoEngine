@@ -27,13 +27,13 @@ project "EppoEngine"
         "Source",
 		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}",
+        "%{IncludeDir.glad}",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.tracy}",
-        "%{IncludeDir.vma}",
         "%{IncludeDir.vulkan}",
 		"%{IncludeDir.yaml_cpp}"
     }
@@ -46,10 +46,10 @@ project "EppoEngine"
         }
 
         links {
+			"%{Library.glad}",
             "%{Library.glfw}",
             "%{Library.imgui}",
-            "%{Library.yaml_cpp}",
-            "%{Library.vulkan}"
+            "%{Library.yaml_cpp}"
         }
 
         removefiles {

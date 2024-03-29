@@ -44,5 +44,12 @@ namespace Eppo
 
 		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(MeshVertex));
 		m_IndexBuffer = CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+		m_VertexArray = CreateRef<VertexArray>(m_VertexBuffer, m_IndexBuffer);
+
+		m_VertexArray->SetLayout({
+			{ ShaderDataType::Float3, "inPosition" },
+			{ ShaderDataType::Float3, "inNormal" },
+			{ ShaderDataType::Float2, "inTexCoord" }
+		});
 	}
 }

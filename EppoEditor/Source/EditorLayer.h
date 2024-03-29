@@ -37,14 +37,13 @@ namespace Eppo
 		Ref<Scene> m_ActiveScene;
 		std::filesystem::path m_ActiveScenePath;
 
-		EditorCamera m_EditorCamera{ 30.0f, 1.778f };
+		EditorCamera m_EditorCamera;
 
-		uint32_t m_ViewportWidth;
-		uint32_t m_ViewportHeight;
+		uint32_t m_ViewportWidth = 0;
+		uint32_t m_ViewportHeight = 0;
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
 
 		PanelManager& m_PanelManager;
-		Ref<Texture> m_TestTexture;
 	};
 }

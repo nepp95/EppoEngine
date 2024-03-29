@@ -120,7 +120,6 @@ namespace Eppo
 		while (m_IsRunning)
 		{
 			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
 
 			{
 				EPPO_PROFILE_FUNCTION("CPU Update");
@@ -128,8 +127,6 @@ namespace Eppo
 				float time = (float)glfwGetTime();
 				float timestep = time - m_LastFrameTime;
 				m_LastFrameTime = time;
-
-				m_Window->ProcessEvents();
 
 				for (Layer* layer : m_LayerStack)
 					layer->Update(timestep);
@@ -147,21 +144,15 @@ namespace Eppo
 					Renderer::SubmitCommand([this]() { RenderGui();	});
 				}
 				{
-					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
-					EPPO_PROFILE_FUNCTION("CPU Wait");
-					swapchain->BeginFrame();
-				}
-				{
 					EPPO_PROFILE_FUNCTION("CPU Render");
 					Renderer::ExecuteRenderCommands();
-					swapchain->Present();
+					m_Window->ProcessEvents();
+					m_Window->SwapBuffers();
 				}
 			}
 
 			EPPO_PROFILE_FRAME_MARK;
 		}
-
-		RendererContext::Get()->WaitIdle();
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
@@ -187,8 +178,6 @@ namespace Eppo
 		}
 		else
 			m_IsMinimized = false;
-
-		RendererContext::Get()->GetSwapchain()->OnResize();
 
 		return true;
 	}

@@ -23,10 +23,9 @@ namespace Eppo
 		EPPO_ASSERT(success);
 
 		#ifdef EPPO_DEBUG
-			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+			glfwSetErrorCallback(GLFWErrorCallback);
+			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		#endif
-
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 		// Get primary monitor
 		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
@@ -157,5 +156,10 @@ namespace Eppo
 		EPPO_PROFILE_FN("CPU Update", "Process Events");
 
 		glfwPollEvents();
+	}
+
+	void Window::SwapBuffers()
+	{
+		glfwSwapBuffers(m_Window);
 	}
 }

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
+#include "Asset/AssetManager.h"
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 
@@ -12,126 +13,84 @@ namespace Eppo
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
 		: m_RenderSpecification(renderSpecification)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
-		Ref<Swapchain> swapchain = context->GetSwapchain();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-
 		m_CommandBuffer = CreateRef<RenderCommandBuffer>();
 
 		// Geometry
 		{
 			FramebufferSpecification framebufferSpec;
-			framebufferSpec.Attachments = { ImageFormat::RGBA8, ImageFormat::Depth };
-			framebufferSpec.Width = swapchain->GetWidth();
-			framebufferSpec.Height = swapchain->GetHeight();
-			framebufferSpec.ClearColorOnLoad = true;
-			framebufferSpec.ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-			framebufferSpec.ClearDepthOnLoad = true;
-			framebufferSpec.ClearDepth = 1.0f;
+			framebufferSpec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
+			framebufferSpec.Width = 1920; // todo: make configurable
+			framebufferSpec.Height = 1080; // todo: make configurable
 
-			PipelineSpecification pipelineSpec;
-			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-			pipelineSpec.Shader = Renderer::GetShader("geometry");
-			pipelineSpec.Layout = {
-				{ ShaderDataType::Float3, "inPosition" },
-				{ ShaderDataType::Float3, "inNormal" },
-				{ ShaderDataType::Float2, "inTexCoord" }
-			};
-			pipelineSpec.DepthTesting = true;
-			pipelineSpec.PushConstants = {
-				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) },
-				{ VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec3) + sizeof(float) }
-			};
-
-			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
-		}
-
-		// Lighting
-		{
-			FramebufferSpecification framebufferSpec;
+			m_GeometryFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
 		}
 
 		// PreDepth
 		{
-			// TODO: Create shadow map image
-			// TODO: Clear pass for clearing the shadow map image
+			TextureSpecification textureSpec;
+			textureSpec.Format = TextureFormat::Depth;
+			textureSpec.Width = 2048;
+			textureSpec.Height = 2048;
+
+			m_ShadowMap = CreateRef<Texture>(textureSpec);
 
 			FramebufferSpecification framebufferSpec;
-			framebufferSpec.Attachments = { ImageFormat::Depth };
-			framebufferSpec.Width = swapchain->GetWidth();
-			framebufferSpec.Height = swapchain->GetHeight();
-			framebufferSpec.ClearColorOnLoad = false;
-			framebufferSpec.ClearDepthOnLoad = true;
-			framebufferSpec.ClearDepth = 1.0f;
+			framebufferSpec.ExistingDepthTexture = m_ShadowMap;
+			framebufferSpec.Width = 2048;
+			framebufferSpec.Height = 2048;
 
-			PipelineSpecification pipelineSpec;
-			pipelineSpec.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-			pipelineSpec.Shader = Renderer::GetShader("shadow");
-			pipelineSpec.Layout = {
-				{ ShaderDataType::Float3, "inPosition" },
-				{ ShaderDataType::Float3, "inNormal" },
-				{ ShaderDataType::Float2, "inTexCoord" }
-			};
-			pipelineSpec.DepthTesting = true;
-			pipelineSpec.PushConstants = {
-				{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4) }
-			};
-
-			m_ShadowPipeline = CreateRef<Pipeline>(pipelineSpec);
+			m_PreDepthFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
 		}
 
 		// Uniform buffers
-		m_UniformBufferSet = CreateRef<UniformBufferSet>();
-		// TODO: Set doesn't solve the problem of having one uniform buffer for multiple different pipeline layouts
-		/*for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-		{
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(CameraData), 0), i, 0);
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1), i, 0);
-			m_UniformBufferSet->Set(CreateRef<UniformBuffer>(sizeof(EnvironmentData), 2), i, 0);
-		}*/
-		
-		m_CameraUniformBuffer = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
-		m_EnvironmentUniformBuffer = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 1);
+		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
+		m_TransformUB = CreateRef<UniformBuffer>(sizeof(glm::mat4), 1);
+		m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 2);
+		m_MaterialUB = CreateRef<UniformBuffer>(sizeof(MaterialData), 4);
 	}
 
 	void SceneRenderer::RenderGui()
 	{
 		ImGui::Begin("Performance");
 
-		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
-
-		ImGui::Text("GPU Time: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex));
-		ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.GeometryQuery));
-		ImGui::Text("Shadow Pass: %.3fms", m_CommandBuffer->GetTimestamp(imageIndex, m_TimestampQueries.ShadowQuery));
+		ImGui::Text("GPU Time: %.3fms", (float)m_CommandBuffer->GetTimestamp() * 0.000001f);
 
 		ImGui::Separator();
 
-		const auto& pipelineStats = m_CommandBuffer->GetPipelineStatistics(imageIndex);
-		ImGui::Text("Pipeline statistics:");
-		ImGui::Text("Input Assembly Vertices: %llu", pipelineStats.InputAssemblyVertices);
-		ImGui::Text("Input Assembly Primitives: %llu", pipelineStats.InputAssemblyPrimitives);
-		ImGui::Text("Vertex Shader Invocations: %llu", pipelineStats.VertexShaderInvocations);
-		ImGui::Text("Clipping Invocations: %llu", pipelineStats.ClippingInvocations);
-		ImGui::Text("Clipping Primitives: %llu", pipelineStats.ClippingPrimitives);
-		ImGui::Text("Fragment Shader Invocations: %llu", pipelineStats.FragmentShaderInvocations);
+		ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCalls);
+		ImGui::Text("Meshes: %u", m_RenderStatistics.Meshes);
+		ImGui::Text("Light position: %.3f, %.3f, %.3f", m_EnvironmentBuffer.LightPosition.x, m_EnvironmentBuffer.LightPosition.y, m_EnvironmentBuffer.LightPosition.z);
+		ImGui::Text("Camera position: %.3f, %.3f, %.3f", m_TempC->GetPosition().x, m_TempC->GetPosition().y, m_TempC->GetPosition().z);
+		ImGui::Text("Camera yaw: %.3f", m_TempC->GetYaw());
+		ImGui::Text("Camera pitch: %.3f", m_TempC->GetPitch());
 
 		ImGui::End();
 	}
 
+	void SceneRenderer::Resize(uint32_t width, uint32_t height)
+	{
+		m_GeometryFramebuffer->Resize(width, height);
+	}
+
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
-		// Prepare scene rendering
+		m_TempC = const_cast<EditorCamera*>(&editorCamera);
+
+		// Reset statistics
+		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
+
+		// Camera UB
 		m_CameraBuffer.View = editorCamera.GetViewMatrix();
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
-		m_CameraUniformBuffer->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+		m_CameraBuffer.Position = editorCamera.GetPosition();
+		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
-		// Matrices
+		// Environment UB
 		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 125.0f);
+		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 75.0f);
 		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
-
-		m_EnvironmentUniformBuffer->SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
+		m_EnvironmentUB->RT_SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
 
 		// Cleanup from last draw
 		m_DrawList.clear(); // TODO: Do this at flush or begin scene?
@@ -142,192 +101,94 @@ namespace Eppo
 		Flush();
 	}
 
-	void SceneRenderer::SetEnvironment(EnvironmentKeys key, void* value)
+	void SceneRenderer::SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId)
 	{
-		switch (key)
-		{
-			case EnvironmentKeys::LightPosition:	m_EnvironmentBuffer.LightPosition = *(glm::vec3*)value;
-			case EnvironmentKeys::LightColor:		m_EnvironmentBuffer.LightColor = *(glm::vec4*)value;
-		}
-	}
-
-	Ref<Image> SceneRenderer::GetFinalPassImage()
-	{
-		return m_GeometryPipeline->GetSpecification().Framebuffer->GetFinalImage();
-	}
-
-	void SceneRenderer::SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId)
-	{
-		auto& drawCommand = m_DrawList[entityId];
+		auto& drawCommand = m_DrawList.emplace_back();
+		drawCommand.Handle = entityId;
 		drawCommand.Mesh = mesh;
 		drawCommand.Transform = transform;
 	}
 
 	void SceneRenderer::Flush()
 	{
-		m_CommandBuffer->Begin();
+		m_CommandBuffer->RT_Begin();
 
-		//PrepareRender();
+		PrepareRender();
 		
-		ShadowPass();
+		PreDepthPass();
 		GeometryPass();
 
-		m_CommandBuffer->End();
-		m_CommandBuffer->Submit();
+		m_CommandBuffer->RT_End();
+		m_CommandBuffer->RT_Submit();
 	}
 
 	void SceneRenderer::PrepareRender()
 	{
+		// Render light position
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), m_EnvironmentBuffer.LightPosition);
+		auto& mesh = m_DrawList[0];
+		//SubmitMesh(transform, mesh.Mesh, EntityHandle());
 
+		if (temp)
+		{
+			if (m_EnvironmentBuffer.LightPosition.x > 25.0f)
+				temp = false;
+			m_EnvironmentBuffer.LightPosition.x += 0.01f;
+		}
+		else
+		{
+			if (m_EnvironmentBuffer.LightPosition.x < -25.0f)
+				temp = true;
+			m_EnvironmentBuffer.LightPosition.x -= 0.01f;
+		}
+
+		// Clear framebuffers
+		m_GeometryFramebuffer->RT_Bind();
+		Renderer::RT_Clear();
+		m_GeometryFramebuffer->RT_Unbind();
+
+		m_PreDepthFramebuffer->RT_Bind();
+		Renderer::RT_Clear(false, true);
+		m_PreDepthFramebuffer->RT_Unbind();
+	}
+
+	void SceneRenderer::PreDepthPass()
+	{
+		Renderer::GetShader("predepth")->RT_Bind();
+
+		m_PreDepthFramebuffer->RT_Bind();
+		Renderer::RT_SetFaceCulling(FaceCulling::FRONT);
+
+		for (auto& dc : m_DrawList)
+		{
+			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
+
+			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+
+			m_RenderStatistics.DrawCalls++;
+		}
+
+		Renderer::RT_SetFaceCulling(FaceCulling::BACK);
+		m_PreDepthFramebuffer->RT_Unbind();
 	}
 
 	void SceneRenderer::GeometryPass()
 	{
-		m_TimestampQueries.GeometryQuery = m_CommandBuffer->BeginTimestampQuery();
+		Renderer::GetShader("geometry")->RT_Bind();
 
-		Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
+		m_GeometryFramebuffer->RT_Bind();
 
-		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-
-		// Descriptor sets
-		const auto& descriptorSets = m_GeometryPipeline->GetDescriptorSets(frameIndex);
-
-		std::vector<VkWriteDescriptorSet> writeDescriptors;
+		for (auto& dc : m_DrawList)
 		{
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 0;
-			writeDescriptor.pBufferInfo = &m_CameraUniformBuffer->GetDescriptorBufferInfo();
+			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
+			m_ShadowMap->RT_Bind();
+
+			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+
+			m_RenderStatistics.DrawCalls++;
+			m_RenderStatistics.Meshes++;
 		}
 
-		{
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 1;
-			writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
-		}
-
-		{
-			Ref<Image> depthImage = m_ShadowPipeline->GetSpecification().Framebuffer->GetDepthImage();
-
-			VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-			writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			writeDescriptor.dstSet = descriptorSets[0];
-			writeDescriptor.dstBinding = 2;
-			writeDescriptor.pImageInfo = &depthImage->GetDescriptorImageInfo();
-		}
-
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
-		vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
-
-		EntityHandle handle;
-		for (auto& [entity, dc] : m_DrawList)
-		{
-			Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, dc.Mesh, dc.Transform);
-			handle = entity;
-		}
-
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
-		Renderer::RenderGeometry(m_CommandBuffer, m_GeometryPipeline, m_EnvironmentUniformBuffer, m_CameraUniformBuffer, m_DrawList[handle].Mesh, transform);
-
-		Renderer::EndRenderPass(m_CommandBuffer);
-
-		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.GeometryQuery);
-	}
-
-	void SceneRenderer::ShadowPass()
-	{
-		m_TimestampQueries.ShadowQuery = m_CommandBuffer->BeginTimestampQuery();
-
-		// TODO: Clear before?
-		Renderer::BeginRenderPass(m_CommandBuffer, m_ShadowPipeline);
-
-		Renderer::SubmitCommand([this]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
-			uint32_t frameIndex = swapchain->GetCurrentImageIndex();
-
-			// Descriptor sets
-			const auto& descriptorSets = m_ShadowPipeline->GetDescriptorSets(frameIndex);
-
-			std::vector<VkWriteDescriptorSet> writeDescriptors;
-			{
-				VkWriteDescriptorSet& writeDescriptor = writeDescriptors.emplace_back();
-				writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				writeDescriptor.descriptorCount = 1;
-				writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				writeDescriptor.dstSet = descriptorSets[0];
-				writeDescriptor.dstBinding = 1;
-				writeDescriptor.pBufferInfo = &m_EnvironmentUniformBuffer->GetDescriptorBufferInfo();
-			}
-
-			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-			vkUpdateDescriptorSets(device, writeDescriptors.size(), writeDescriptors.data(), 0, nullptr);
-
-			// Pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline->GetPipeline());
-
-			VkExtent2D extent = swapchain->GetExtent();
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				m_ShadowPipeline->GetPipelineLayout(),
-				0,
-				1,
-				&descriptorSets[0],
-				0,
-				nullptr
-			);
-
-			for (auto& [entity, dc] : m_DrawList)
-			{
-				for (const auto& submesh : dc.Mesh->GetSubmeshes())
-				{
-					// Vertex buffer Mesh
-					VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
-					VkDeviceSize offsets[] = { 0 };
-					vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-					// Index buffer
-					Ref<IndexBuffer> indexBuffer = submesh.GetIndexBuffer();
-					vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-					// Push constants
-					vkCmdPushConstants(commandBuffer, m_ShadowPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &dc.Transform);
-				
-					// Draw call
-					vkCmdDrawIndexed(commandBuffer, indexBuffer->GetIndexCount(), 1, 0, 0, 0);
-				}
-			}
-		});
-
-		Renderer::EndRenderPass(m_CommandBuffer);
-
-		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.ShadowQuery);
+		m_GeometryFramebuffer->RT_Unbind();
 	}
 }
