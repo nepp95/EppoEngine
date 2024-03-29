@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Buffer.h"
 #include "Renderer/Shader.h"
 
 namespace Eppo

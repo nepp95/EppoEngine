@@ -48,7 +48,7 @@ layout(binding = 2) uniform Environment
 	vec3 LightColor;
 } uEnvironment;
 
-layout(binding = 3) uniform sampler2D uShadowMap;
+layout(binding = 0) uniform sampler2D uShadowMap;
 
 layout(binding = 4) uniform Material
 {
@@ -85,7 +85,7 @@ void main()
 	// Ia = ambient intensity
 	// Ka = ambient intensity coefficient
 	// I = light intensity
-	float ambientIntensity = 0.1;
+	float ambientIntensity = 0.5;
 	vec3 ambient = ambientIntensity * uEnvironment.LightColor;
 
 	// Diffuse
@@ -120,7 +120,7 @@ void main()
 	float shadow = CalculateShadow(fragPosLightSpace);
 
 	// Output
-	vec3 result = (ambient * (diffuse + specular)) * uMaterial.AlbedoColor;
-	//vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
+	//vec3 result = (ambient * (diffuse + specular)) * uMaterial.AlbedoColor;
+	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
 	outColor = vec4(result, 1.0);
 }

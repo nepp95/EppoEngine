@@ -113,7 +113,10 @@ namespace Eppo
 
 			case AssetType::Texture:
 			{
-				asset = CreateRef<Texture>(filepath);
+				TextureSpecification textureSpec;
+				textureSpec.Filepath = filepath;
+
+				asset = CreateRef<Texture>(textureSpec);
 				asset->Handle = metadata.Handle;
 				return true;
 			}

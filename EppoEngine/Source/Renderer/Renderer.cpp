@@ -61,11 +61,16 @@ namespace Eppo
 		s_Data->CommandQueue.AddCommand(command);
 	}
 
-	void Renderer::RT_Clear()
+	void Renderer::RT_Clear(bool color, bool depth)
 	{
-		SubmitCommand([]()
+		SubmitCommand([color, depth]()
 		{
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			if (color && !depth)
+				glClear(GL_COLOR_BUFFER_BIT);
+			else if (!color && depth)
+				glClear(GL_DEPTH_BUFFER_BIT);
+			else if (color && depth)
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		});
 	}
 

@@ -38,7 +38,7 @@ namespace Eppo
 		void BeginScene(const EditorCamera& editorCamera);
 		void EndScene();
 
-		void SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId);
+		void SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId);
 
 		uint32_t GetFinalImageID() const { return m_GeometryFramebuffer->GetColorAttachmentID(); }
 
@@ -47,8 +47,9 @@ namespace Eppo
 
 		void PrepareRender();
 
+		void PreDepthPass();
+		void DepthPass();
 		void GeometryPass();
-		void ShadowPass();
 
 	private:
 		RenderSpecification m_RenderSpecification;
@@ -79,8 +80,8 @@ namespace Eppo
 			glm::mat4 LightView;
 			glm::mat4 LightProjection;
 			glm::mat4 LightViewProjection;
-			glm::vec3 LightPosition = { 0.0f, 0.0f, 0.0f };
-			glm::vec3 LightColor;
+			glm::vec3 LightPosition = glm::vec3(0.0f, 10.0f, -50.0f);
+			glm::vec3 LightColor = glm::vec3(1.0f);
 		} m_EnvironmentBuffer;
 		Ref<UniformBuffer> m_EnvironmentUB;
 
@@ -98,13 +99,19 @@ namespace Eppo
 		// Draw commands
 		struct DrawCommand
 		{
+			EntityHandle Handle;
 			Ref<Mesh> Mesh;
 			glm::mat4 Transform;
 		};
 		
-		std::map<EntityHandle, DrawCommand> m_DrawList;
+		std::vector<DrawCommand> m_DrawList;
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;
+
+
+
+		bool temp = true;
+		EditorCamera* m_TempC;
 	};
 }

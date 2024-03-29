@@ -9,67 +9,75 @@
 
 namespace Eppo
 {
-	Texture::Texture(const std::filesystem::path& filepath)
-		: m_Filepath(filepath)
+	namespace Utils
 	{
-		EPPO_PROFILE_FUNCTION("Texture::Texture");
-
-		// Read pixels
-		int width, height, channels;
-		stbi_uc* data = nullptr;
-
-		stbi_set_flip_vertically_on_load(1);
-
-		data = stbi_load(filepath.string().c_str(), &width, &height, &channels, 0);
-
-		if (data)
+		static GLenum TextureFormatToGLInternalFormat(TextureFormat format)
 		{
-			m_Width = width;
-			m_Height = height;
-
-			if (channels == 4)
+			switch (format)
 			{
-				m_InternalFormat = GL_RGBA8;
-				m_DataFormat = GL_RGBA;
-			} else if (channels == 3)
-			{
-				m_InternalFormat = GL_RGB8;
-				m_DataFormat = GL_RGB;
+				case TextureFormat::RGB:	return GL_RGB8;
+				case TextureFormat::RGBA:	return GL_RGBA8;
+				case TextureFormat::Depth:	return GL_DEPTH_COMPONENT;
 			}
 
-			EPPO_ASSERT(m_InternalFormat & m_DataFormat);
+			EPPO_ASSERT(false);
+			return 0;
+		}
 
-			glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
-			glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
+		static GLenum TextureFormatToGLDataFormat(TextureFormat format)
+		{
+			switch (format)
+			{
+				case TextureFormat::RGB:	return GL_RGB;
+				case TextureFormat::RGBA:	return GL_RGBA;
+				case TextureFormat::Depth:	return GL_DEPTH24_STENCIL8;
+			}
 
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-			glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
-
-			stbi_image_free(data);
+			EPPO_ASSERT(false);
+			return 0;
 		}
 	}
 
-	Texture::Texture(uint32_t width, uint32_t height)
-		: m_Width(width), m_Height(height)
+	Texture::Texture(const TextureSpecification& specification)
+		: m_Specification(specification)
 	{
 		EPPO_PROFILE_FUNCTION("Texture::Texture");
 
-		m_InternalFormat = GL_RGBA8;
-		m_DataFormat = GL_RGBA;
-
 		glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
-		glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
 
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		if (!m_Specification.Filepath.empty())
+		{
+			// Read pixels
+			int width, height, channels;
+			stbi_uc* data = nullptr;
 
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			stbi_set_flip_vertically_on_load(1);
+
+			data = stbi_load(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 0);
+
+			if (data)
+			{
+				m_Specification.Width = width;
+				m_Specification.Height = height;
+
+				if (channels == 4)
+					m_Specification.Format = TextureFormat::RGBA;
+				else if (channels == 3)
+					m_Specification.Format = TextureFormat::RGB;
+
+				glTextureStorage2D(m_RendererID, 1, Utils::TextureFormatToGLInternalFormat(m_Specification.Format), width, height);
+				SetupParameters();
+				glTextureSubImage2D(m_RendererID, 0, 0, 0, width, height, Utils::TextureFormatToGLDataFormat(m_Specification.Format), GL_UNSIGNED_BYTE, data);
+				
+				stbi_image_free(data);
+			}
+		} else
+		{
+			glBindTexture(GL_TEXTURE_2D, m_RendererID);
+			glTexStorage2D(GL_TEXTURE_2D, 1, Utils::TextureFormatToGLDataFormat(m_Specification.Format), m_Specification.Width, m_Specification.Height);
+			//glTextureStorage2D(m_RendererID, 1, Utils::TextureFormatToGLInternalFormat(m_Specification.Format), m_Specification.Width, m_Specification.Height);
+			SetupParameters();
+		}
 	}
 
 	Texture::~Texture()
@@ -77,5 +85,22 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Texture::~Texture");
 
 		glDeleteTextures(1, &m_RendererID);
+	}
+
+	void Texture::RT_Bind() const
+	{
+		Renderer::SubmitCommand([this]()
+		{
+			glBindTexture(GL_TEXTURE_2D, m_RendererID);
+		});
+	}
+
+	void Texture::SetupParameters() const
+	{
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	}
 }

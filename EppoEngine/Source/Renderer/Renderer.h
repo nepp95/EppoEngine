@@ -24,7 +24,7 @@ namespace Eppo
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
-		static void RT_Clear();
+		static void RT_Clear(bool color = true, bool depth = true);
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);

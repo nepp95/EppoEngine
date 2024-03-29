@@ -6,15 +6,34 @@ typedef unsigned int GLenum;
 
 namespace Eppo
 {
+	enum class TextureFormat
+	{
+		RGB,
+		RGBA,
+
+		Depth
+	};
+
+	struct TextureSpecification
+	{
+		std::filesystem::path Filepath;
+
+		TextureFormat Format;
+
+		uint32_t Width;
+		uint32_t Height;
+	};
+
 	class Texture : public Asset
 	{
 	public:
-		Texture(const std::filesystem::path& filepath);
-		Texture(uint32_t width, uint32_t height);
+		Texture(const TextureSpecification& specification);
 		~Texture();
 
-		uint32_t GetWidth() const { return m_Width; }
-		uint32_t GetHeight() const { return m_Height; }
+		void RT_Bind() const;
+
+		uint32_t GetWidth() const { return m_Specification.Width; }
+		uint32_t GetHeight() const { return m_Specification.Height; }
 
 		uint32_t GetRendererID() const { return m_RendererID; }
 
@@ -22,13 +41,10 @@ namespace Eppo
 		static AssetType GetStaticType() { return AssetType::Texture; }
 
 	private:
-		std::filesystem::path m_Filepath;
+		void SetupParameters() const;
+
+	private:
 		uint32_t m_RendererID;
-
-		uint32_t m_Width = 0;
-		uint32_t m_Height = 0;
-
-		GLenum m_InternalFormat;
-		GLenum m_DataFormat;
+		TextureSpecification m_Specification;
 	};
 }

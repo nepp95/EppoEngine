@@ -91,7 +91,7 @@ namespace Eppo
 	Framebuffer::Framebuffer(const FramebufferSpecification& specification)
 		: m_Specification(specification)
 	{
-		for (auto specification : m_Specification.Attachments)
+		for (auto& specification : m_Specification.Attachments)
 		{
 			if (!Utils::IsDepthFormat(specification.TextureFormat))
 				m_ColorAttachmentSpecs.emplace_back(specification);
@@ -159,6 +159,12 @@ namespace Eppo
 			}
 		}
 
+		if (m_Specification.ExistingDepthTexture)
+		{
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_Specification.ExistingDepthTexture->GetRendererID(), 0);
+			glReadBuffer(GL_NONE);
+		}
+
 		if (m_ColorAttachments.size() > 1)
 		{
 			EPPO_ASSERT(m_ColorAttachments.size() <= 4);
@@ -179,6 +185,7 @@ namespace Eppo
 		Renderer::SubmitCommand([this]()
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
+			glViewport(0, 0, m_Specification.Width, m_Specification.Height);
 		});
 	}
 

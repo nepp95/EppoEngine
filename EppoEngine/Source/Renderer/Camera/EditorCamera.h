@@ -30,14 +30,14 @@ namespace Eppo
 	private:
 		glm::mat4 m_ViewMatrix;
 
-		glm::vec3 m_Position = { 0.0f, 0.0f, 5.0f };
+		glm::vec3 m_Position = glm::vec3(0.0f, 0.0f, -50.0f);
 		glm::vec3 m_FrontDirection = glm::vec3(0.0f, 0.0f, -1.0f);
 		glm::vec3 m_UpDirection;
 		glm::vec3 m_RightDirection;
 		glm::vec3 m_WorldUpDirection = glm::vec3(0.0f, 1.0f, 0.0f);
 
 		float m_Pitch = 0.0f;
-		float m_Yaw = -90.0f;
+		float m_Yaw = 90.0f;
 
 		float m_MovementSpeed = 3.0f;
 		float m_MouseSensitivity = 0.1f;

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
+#include "Asset/AssetManager.h"
 #include "Renderer/Renderer.h"
 #include "Scene/Scene.h"
 
@@ -26,14 +27,19 @@ namespace Eppo
 
 		// PreDepth
 		{
-			m_ShadowMap = CreateRef<Texture>(1024, 1024);
+			TextureSpecification textureSpec;
+			textureSpec.Format = TextureFormat::Depth;
+			textureSpec.Width = 2048;
+			textureSpec.Height = 2048;
+
+			m_ShadowMap = CreateRef<Texture>(textureSpec);
 
 			FramebufferSpecification framebufferSpec;
-			framebufferSpec.ExistingTextures = { m_ShadowMap };
-			framebufferSpec.Width = 1024; // todo: make configurable
-			framebufferSpec.Height = 1024; // todo: make configurable
+			framebufferSpec.ExistingDepthTexture = m_ShadowMap;
+			framebufferSpec.Width = 2048;
+			framebufferSpec.Height = 2048;
 
-			//m_PreDepthFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			m_PreDepthFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
 		}
 
 		// Uniform buffers
@@ -53,6 +59,10 @@ namespace Eppo
 
 		ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCalls);
 		ImGui::Text("Meshes: %u", m_RenderStatistics.Meshes);
+		ImGui::Text("Light position: %.3f, %.3f, %.3f", m_EnvironmentBuffer.LightPosition.x, m_EnvironmentBuffer.LightPosition.y, m_EnvironmentBuffer.LightPosition.z);
+		ImGui::Text("Camera position: %.3f, %.3f, %.3f", m_TempC->GetPosition().x, m_TempC->GetPosition().y, m_TempC->GetPosition().z);
+		ImGui::Text("Camera yaw: %.3f", m_TempC->GetYaw());
+		ImGui::Text("Camera pitch: %.3f", m_TempC->GetPitch());
 
 		ImGui::End();
 	}
@@ -64,6 +74,8 @@ namespace Eppo
 
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
+		m_TempC = const_cast<EditorCamera*>(&editorCamera);
+
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
@@ -74,10 +86,8 @@ namespace Eppo
 		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Environment UB
-		m_EnvironmentBuffer.LightColor = glm::vec3(1.0f);
-		m_EnvironmentBuffer.LightPosition = glm::vec3(0.0f, 0.0f, -30.0f);
 		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 125.0f);
+		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 75.0f);
 		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
 		m_EnvironmentUB->RT_SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
 
@@ -90,9 +100,10 @@ namespace Eppo
 		Flush();
 	}
 
-	void SceneRenderer::SubmitMesh(const glm::mat4& transform, const Ref<Mesh>& mesh, EntityHandle entityId)
+	void SceneRenderer::SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId)
 	{
-		auto& drawCommand = m_DrawList[entityId];
+		auto& drawCommand = m_DrawList.emplace_back();
+		drawCommand.Handle = entityId;
 		drawCommand.Mesh = mesh;
 		drawCommand.Transform = transform;
 	}
@@ -103,7 +114,8 @@ namespace Eppo
 
 		PrepareRender();
 		
-		//ShadowPass();
+		PreDepthPass();
+		DepthPass();
 		GeometryPass();
 
 		m_CommandBuffer->RT_End();
@@ -112,13 +124,55 @@ namespace Eppo
 
 	void SceneRenderer::PrepareRender()
 	{
+		// Render light position
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), m_EnvironmentBuffer.LightPosition);
+		auto& mesh = m_DrawList[0];
+		//SubmitMesh(transform, mesh.Mesh, EntityHandle());
+
+		if (temp)
+		{
+			if (m_EnvironmentBuffer.LightPosition.x > 25.0f)
+				temp = false;
+			m_EnvironmentBuffer.LightPosition.x += 0.01f;
+		}
+		else
+		{
+			if (m_EnvironmentBuffer.LightPosition.x < -25.0f)
+				temp = true;
+			m_EnvironmentBuffer.LightPosition.x -= 0.01f;
+		}
+
+		// Clear framebuffers
 		m_GeometryFramebuffer->RT_Bind();
 		Renderer::RT_Clear();
 		m_GeometryFramebuffer->RT_Unbind();
 
-		//m_PreDepthFramebuffer->RT_Bind();
-		//Renderer::RT_Clear();
-		//m_PreDepthFramebuffer->RT_Unbind();
+		m_PreDepthFramebuffer->RT_Bind();
+		Renderer::RT_Clear(false, true);
+		m_PreDepthFramebuffer->RT_Unbind();
+	}
+
+	void SceneRenderer::PreDepthPass()
+	{
+		Renderer::GetShader("shadow")->RT_Bind();
+
+		m_PreDepthFramebuffer->RT_Bind();
+
+		for (auto& dc : m_DrawList)
+		{
+			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
+
+			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+
+			m_RenderStatistics.DrawCalls++;
+		}
+
+		m_PreDepthFramebuffer->RT_Unbind();
+	}
+
+	void SceneRenderer::DepthPass()
+	{
+
 	}
 
 	void SceneRenderer::GeometryPass()
@@ -127,40 +181,17 @@ namespace Eppo
 
 		m_GeometryFramebuffer->RT_Bind();
 
-		EntityHandle handle;
-		for (auto& [entity, dc] : m_DrawList)
+		for (auto& dc : m_DrawList)
 		{
 			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
+			m_ShadowMap->RT_Bind();
 
 			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
-			handle = entity;
 
 			m_RenderStatistics.DrawCalls++;
 			m_RenderStatistics.Meshes++;
 		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(m_EnvironmentBuffer.LightPosition));
-		m_TransformUB->RT_SetData(&transform, sizeof(glm::mat4));
-
-		Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, m_DrawList[handle].Mesh);
-
 		m_GeometryFramebuffer->RT_Unbind();
-	}
-
-	void SceneRenderer::ShadowPass()
-	{
-		Renderer::GetShader("shadow")->RT_Bind();
-		
-		for (auto& [entity, dc] : m_DrawList)
-		{
-			m_PreDepthFramebuffer->RT_Bind();
-
-			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
-			// TODO: Bind rendererid from framebuffer whaaaaaaaat? GLBINDTEXTURE
-
-			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
-
-			m_PreDepthFramebuffer->RT_Unbind();
-		}
 	}
 }

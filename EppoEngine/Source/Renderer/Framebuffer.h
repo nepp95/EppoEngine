@@ -34,7 +34,7 @@ namespace Eppo
 		{}
 
 		std::vector<FramebufferTextureSpecification> Attachments;
-		std::vector<Ref<Texture>> ExistingTextures;
+		Ref<Texture> ExistingDepthTexture;
 
 		uint32_t Width = 0;
 		uint32_t Height = 0;
