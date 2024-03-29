@@ -83,6 +83,7 @@ namespace Eppo
 		m_CameraBuffer.View = editorCamera.GetViewMatrix();
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
+		m_CameraBuffer.Position = editorCamera.GetPosition();
 		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Environment UB
@@ -115,7 +116,6 @@ namespace Eppo
 		PrepareRender();
 		
 		PreDepthPass();
-		DepthPass();
 		GeometryPass();
 
 		m_CommandBuffer->RT_End();
@@ -154,9 +154,10 @@ namespace Eppo
 
 	void SceneRenderer::PreDepthPass()
 	{
-		Renderer::GetShader("shadow")->RT_Bind();
+		Renderer::GetShader("predepth")->RT_Bind();
 
 		m_PreDepthFramebuffer->RT_Bind();
+		Renderer::RT_SetFaceCulling(FaceCulling::FRONT);
 
 		for (auto& dc : m_DrawList)
 		{
@@ -167,12 +168,8 @@ namespace Eppo
 			m_RenderStatistics.DrawCalls++;
 		}
 
+		Renderer::RT_SetFaceCulling(FaceCulling::BACK);
 		m_PreDepthFramebuffer->RT_Unbind();
-	}
-
-	void SceneRenderer::DepthPass()
-	{
-
 	}
 
 	void SceneRenderer::GeometryPass()

@@ -5,6 +5,11 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 
+layout(binding = 1) uniform Transform
+{
+	mat4 Transform;
+} uTransform;
+
 layout(binding = 2) uniform Environment
 {
 	mat4 LightView;
@@ -13,11 +18,6 @@ layout(binding = 2) uniform Environment
 	vec3 LightPosition;
 	vec3 LightColor;
 } uEnvironment;
-
-layout(binding = 1) uniform Transform
-{
-	mat4 Transform;
-} uTransform;
 
 void main()
 {

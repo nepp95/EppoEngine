@@ -9,8 +9,23 @@
 #include "Renderer/Shader.h"
 #include "Renderer/UniformBuffer.h"
 
+typedef unsigned int GLenum;
+
 namespace Eppo
 {
+	enum class FaceCulling
+	{
+		FRONT_LEFT = 1024,
+		FRONT_RIGHT,
+		BACK_LEFT,
+		BACK_RIGHT,
+		FRONT,
+		BACK,
+		LEFT,
+		RIGHT,
+		FRONT_AND_BACK
+	};
+
 	class Renderer
 	{
 	public:
@@ -25,6 +40,7 @@ namespace Eppo
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
 		static void RT_Clear(bool color = true, bool depth = true);
+		static void RT_SetFaceCulling(FaceCulling face);
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);

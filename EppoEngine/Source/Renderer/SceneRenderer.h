@@ -48,7 +48,6 @@ namespace Eppo
 		void PrepareRender();
 
 		void PreDepthPass();
-		void DepthPass();
 		void GeometryPass();
 
 	private:
@@ -67,6 +66,7 @@ namespace Eppo
 			glm::mat4 View;
 			glm::mat4 Projection;
 			glm::mat4 ViewProjection;
+			glm::vec3 Position;
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUB;
 

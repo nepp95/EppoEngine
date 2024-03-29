@@ -27,7 +27,7 @@ namespace Eppo
 		// Load shaders
 		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
 		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
-		s_Data->ShaderLibrary->Load("Resources/Shaders/shadow.glsl");
+		s_Data->ShaderLibrary->Load("Resources/Shaders/predepth.glsl");
 	}
 
 	void Renderer::Shutdown()
@@ -71,6 +71,14 @@ namespace Eppo
 				glClear(GL_DEPTH_BUFFER_BIT);
 			else if (color && depth)
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		});
+	}
+
+	void Renderer::RT_SetFaceCulling(FaceCulling face)
+	{
+		SubmitCommand([face]()
+		{
+			glCullFace((GLenum)face);
 		});
 	}
 
