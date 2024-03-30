@@ -105,7 +105,7 @@ void main()
 	// Ia = ambient intensity
 	// Ka = ambient intensity coefficient
 	// I = light intensity
-	float ambientIntensity = 0.5;
+	float ambientIntensity = 0.2;
 	vec3 ambient = ambientIntensity * uEnvironment.LightColor;
 
 	// Diffuse

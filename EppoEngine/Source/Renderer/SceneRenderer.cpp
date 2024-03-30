@@ -29,6 +29,8 @@ namespace Eppo
 		{
 			TextureSpecification textureSpec;
 			textureSpec.Format = TextureFormat::Depth;
+			textureSpec.Wrap = TextureWrap::CLAMP_TO_BORDER;
+			textureSpec.BorderColor = glm::vec4(1.0f);
 			textureSpec.Width = 2048;
 			textureSpec.Height = 2048;
 
@@ -60,9 +62,6 @@ namespace Eppo
 		ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCalls);
 		ImGui::Text("Meshes: %u", m_RenderStatistics.Meshes);
 		ImGui::Text("Light position: %.3f, %.3f, %.3f", m_EnvironmentBuffer.LightPosition.x, m_EnvironmentBuffer.LightPosition.y, m_EnvironmentBuffer.LightPosition.z);
-		ImGui::Text("Camera position: %.3f, %.3f, %.3f", m_TempC->GetPosition().x, m_TempC->GetPosition().y, m_TempC->GetPosition().z);
-		ImGui::Text("Camera yaw: %.3f", m_TempC->GetYaw());
-		ImGui::Text("Camera pitch: %.3f", m_TempC->GetPitch());
 
 		ImGui::End();
 	}
@@ -74,7 +73,7 @@ namespace Eppo
 
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
-		m_TempC = const_cast<EditorCamera*>(&editorCamera);
+		m_CommandBuffer->RT_Begin();
 
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
@@ -88,7 +87,7 @@ namespace Eppo
 
 		// Environment UB
 		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-		m_EnvironmentBuffer.LightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 75.0f);
+		m_EnvironmentBuffer.LightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 100.0f);
 		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
 		m_EnvironmentUB->RT_SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
 
@@ -111,8 +110,6 @@ namespace Eppo
 
 	void SceneRenderer::Flush()
 	{
-		m_CommandBuffer->RT_Begin();
-
 		PrepareRender();
 		
 		PreDepthPass();

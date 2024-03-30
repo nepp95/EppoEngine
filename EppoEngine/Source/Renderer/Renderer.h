@@ -31,10 +31,6 @@ namespace Eppo
 		static void Init();
 		static void Shutdown();
 
-		// Scene management
-		static void BeginScene(const EditorCamera& editorCamera);
-		static void EndScene();
-
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);

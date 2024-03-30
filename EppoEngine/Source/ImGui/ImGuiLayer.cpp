@@ -25,16 +25,19 @@ namespace Eppo
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable docking
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable multi-viewport
 
+		float fontSize = 14.0f;
+		io.FontDefault = io.Fonts->AddFontFromFileTTF("Resources/Fonts/DroidSans.ttf", fontSize);
+
 		ImGui::StyleColorsDark();
 
 		// When viewports are enabled we tweak WindowRounding so platform windows can look identical
-		/*ImGuiStyle& style = ImGui::GetStyle();
+		ImGuiStyle& style = ImGui::GetStyle();
 
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			style.WindowRounding = 0.0f;
 			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-		}*/
+		}
 
 		Application& app = Application::Get();
 		GLFWwindow* window = static_cast<GLFWwindow*>(app.GetWindow().GetNativeWindow());

@@ -5,6 +5,7 @@
 #include "Renderer/RendererContext.h"
 
 #include <glad/glad.h>
+#include <glm/gtc/type_ptr.hpp>
 #include <stb_image.h>
 
 namespace Eppo
@@ -31,6 +32,49 @@ namespace Eppo
 				case TextureFormat::RGB:	return GL_RGB;
 				case TextureFormat::RGBA:	return GL_RGBA;
 				case TextureFormat::Depth:	return GL_DEPTH24_STENCIL8;
+			}
+
+			EPPO_ASSERT(false);
+			return 0;
+		}
+
+		static GLenum TextureWrapToGLTextureWrap(TextureWrap wrap)
+		{
+			switch (wrap)
+			{
+				case TextureWrap::CLAMP_TO_EDGE:		return GL_CLAMP_TO_EDGE;
+				case TextureWrap::CLAMP_TO_BORDER:		return GL_CLAMP_TO_BORDER;
+				case TextureWrap::MIRRORED_REPEAT:		return GL_MIRRORED_REPEAT;
+				case TextureWrap::REPEAT:				return GL_REPEAT;
+				case TextureWrap::MIRROR_CLAMP_TO_EDGE:	return GL_MIRROR_CLAMP_TO_EDGE;
+			}
+
+			EPPO_ASSERT(false);
+			return 0;
+		}
+
+		static GLenum TextureMinFilterToGLMinFilter(TextureMinFilter filter)
+		{
+			switch (filter)
+			{
+				case TextureMinFilter::NEAREST:					return GL_NEAREST;
+				case TextureMinFilter::LINEAR:					return GL_LINEAR;
+				case TextureMinFilter::NEAREST_MIPMAP_NEAREST:	return GL_NEAREST_MIPMAP_NEAREST;
+				case TextureMinFilter::LINEAR_MIPMAP_NEAREST:	return GL_LINEAR_MIPMAP_NEAREST;
+				case TextureMinFilter::NEAREST_MIPMAP_LINEAR:	return GL_NEAREST_MIPMAP_LINEAR;
+				case TextureMinFilter::LINEAR_MIPMAP_LINEAR:	return GL_LINEAR_MIPMAP_LINEAR;
+			}
+
+			EPPO_ASSERT(false);
+			return 0;
+		}
+
+		static GLenum TextureMaxFilterToGLMaxFilter(TextureMaxFilter filter)
+		{
+			switch (filter)
+			{
+				case TextureMaxFilter::NEAREST:	return GL_NEAREST;
+				case TextureMaxFilter::LINEAR:	return GL_LINEAR;
 			}
 
 			EPPO_ASSERT(false);
@@ -97,10 +141,12 @@ namespace Eppo
 
 	void Texture::SetupParameters() const
 	{
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, Utils::TextureMinFilterToGLMinFilter(m_Specification.MinFilter));
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, Utils::TextureMaxFilterToGLMaxFilter(m_Specification.MaxFilter));
 
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, Utils::TextureWrapToGLTextureWrap(m_Specification.Wrap));
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, Utils::TextureWrapToGLTextureWrap(m_Specification.Wrap));
+
+		glTextureParameterfv(m_RendererID, GL_TEXTURE_BORDER_COLOR, glm::value_ptr(m_Specification.BorderColor));
 	}
 }

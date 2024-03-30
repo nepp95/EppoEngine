@@ -37,16 +37,6 @@ namespace Eppo
 		delete s_Data;
 	}
 
-	void Renderer::BeginScene(const EditorCamera& editorCamera)
-	{
-		
-	}
-
-	void Renderer::EndScene()
-	{
-		
-	}
-
 	void Renderer::ExecuteRenderCommands()
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::ExecuteRenderCommands");

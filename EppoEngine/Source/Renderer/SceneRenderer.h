@@ -112,6 +112,5 @@ namespace Eppo
 
 
 		bool temp = true;
-		EditorCamera* m_TempC;
 	};
 }
