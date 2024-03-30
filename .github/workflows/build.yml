@@ -31,9 +31,11 @@ jobs:
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: Vendor/Premake/Bin/Premake5.exe vs2022
 
-      - name: "Build and Test (Debug)"
+      - name: "Build (Debug)"
         run: msbuild /m /p:Configuration=Debug EppoEngine.sln
-          Bin/Release-windows-x86_64/EppoTesting/EppoTesting.exe
+
+      - name: "Test (Debug)"
+        run: Bin/Release-windows-x86_64/EppoTesting/EppoTesting.exe
       
       - name: "Build and Test (Release)"
         run: msbuild /m /p:Configuration=Release EppoEngine.sln
