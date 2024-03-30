@@ -32,5 +32,5 @@ workspace "EppoEngine"
 
     group "Tools"
         include "EppoEditor"
-        --include "EppoTesting"
+        include "EppoTesting"
     group ""

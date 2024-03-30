@@ -83,7 +83,7 @@ project "EppoEditor"
 			--"TRACY_ENABLE"
 		}
 
-    filter {"system:windows", "configurations:Debug"}
+    filter {"system:windows", "configurations:Release"}
 		postbuildcommands {
 			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
 		}
@@ -93,7 +93,7 @@ project "EppoEditor"
         runtime "Release"
         optimize "On"
 
-    filter {"system:windows", "configurations:Debug"}
+    filter {"system:windows", "configurations:Dist"}
 		postbuildcommands {
 			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
 		}

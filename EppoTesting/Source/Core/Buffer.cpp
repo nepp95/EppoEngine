@@ -151,7 +151,6 @@ namespace Eppo
 		EXPECT_TRUE(buffer.Data);
 
 		ScopedBuffer scopedBuffer(buffer);
-		buffer.Release();
 
 		EXPECT_EQ(1024, scopedBuffer.Size());
 		EXPECT_TRUE(scopedBuffer.Data());
