@@ -147,7 +147,7 @@ namespace Eppo
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_opengl, shaderc_env_version_opengl_4_5);
-		options.SetOptimizationLevel(shaderc_optimization_level_zero); // TODO: ZERO OPTIMIZATION?...
+		options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
 		// Compile source
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);

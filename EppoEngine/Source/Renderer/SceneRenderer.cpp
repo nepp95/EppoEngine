@@ -92,7 +92,7 @@ namespace Eppo
 		m_EnvironmentUB->RT_SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
 
 		// Cleanup from last draw
-		m_DrawList.clear(); // TODO: Do this at flush or begin scene?
+		m_DrawList.clear();
 	}
 
 	void SceneRenderer::EndScene()
