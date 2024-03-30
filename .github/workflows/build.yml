@@ -35,6 +35,7 @@ jobs:
         run: msbuild /m /p:Configuration=Debug EppoEngine.sln
 
       - name: "Test (Debug)"
+        working-directory: ${{env.GITHUB_WORKSPACE}}
         run: Bin/Release-windows-x86_64/EppoTesting/EppoTesting.exe
       
       - name: "Build and Test (Release)"
