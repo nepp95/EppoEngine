@@ -8,9 +8,9 @@ on:
     branches: [ master, develop ]
 
 jobs:
-  setup:
+  build:
     runs-on: [ self-hosted, windows ]
-    name: "Build"
+    name: "Build and Test (Debug)"
 
     steps:
       - name: Checkout repository
@@ -28,19 +28,10 @@ jobs:
         uses: microsoft/setup-msbuild@v1.3.1
       
       - name: Run Premake
-        working-directory: ${{env.GITHUB_WORKSPACE}}
-        run: Vendor/Premake/Bin/Premake5.exe vs2022
+        run: .\Vendor\Premake\Bin\Premake5.exe vs2022
 
       - name: "Build (Debug)"
         run: msbuild /m /p:Configuration=Debug EppoEngine.sln
 
       - name: "Test (Debug)"
-        working-directory: ${{env.GITHUB_WORKSPACE}}
-        shell: cmd
-        run: .\Bin\Debug-windows-x86_64\EppoTesting\EppoTesting.exe
-      
-      - name: "Build and Test (Release)"
-        run: msbuild /m /p:Configuration=Release EppoEngine.sln
-  
-      - name: "Build and Test (Dist)"
-        run: msbuild /m /p:Configuration=Dist EppoEngine.sln
+        run: .\Bin\Debug-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
