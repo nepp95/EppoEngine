@@ -36,6 +36,7 @@ jobs:
 
       - name: "Test (Debug)"
         working-directory: ${{env.GITHUB_WORKSPACE}}
+        shell: cmd
         run: Bin/Release-windows-x86_64/EppoTesting/EppoTesting.exe
       
       - name: "Build and Test (Release)"
