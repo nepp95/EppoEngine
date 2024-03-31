@@ -37,7 +37,7 @@ jobs:
         run: .\Bin\Debug-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
       
       - name: "Save test output"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: TestOutput-Debug
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
@@ -71,7 +71,7 @@ jobs:
         run: .\Bin\Release-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
       
       - name: "Save test output"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: TestOutput-Release
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
@@ -105,7 +105,7 @@ jobs:
         run: .\Bin\Dist-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
       
       - name: "Save test output"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: TestOutput-Dist
           path: ${{env.RUNNER_TEMP}}/testoutput.xml

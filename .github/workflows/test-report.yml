@@ -21,7 +21,7 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           artifact: TestOutput-Debug
-          name: ThisIsTheName
+          name: Test Report Debug
           path: '*.xml'
           reporter: jest-junit
 
@@ -29,7 +29,7 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           artifact: TestOutput-Release
-          name: ThisIsTheName
+          name: Test Report Release
           path: '*.xml'
           reporter: jest-junit
 
@@ -37,6 +37,6 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           artifact: TestOutput-Dist
-          name: ThisIsTheName
+          name: Test Report Dist
           path: '*.xml'
           reporter: jest-junit
