@@ -1,11 +1,11 @@
-name: CI
+name: master
 
 on:
   workflow_dispatch:
   push:
-    branches: [ master, develop ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master ]
 
 jobs:
   debug:
