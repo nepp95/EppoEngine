@@ -1,0 +1,42 @@
+name: Test Report
+
+on:
+  workflow_run:
+    workflows: [ CI ]
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  debug:
+    runs-on: [ self-hosted, windows ]
+    name: "Create test report"
+
+    steps:
+      - name: "Create test report (Debug)"
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: TestOutput-Debug
+          name: ThisIsTheName
+          path: '*.xml'
+          reporter: jest-junit
+
+      - name: "Create test report (Release)"
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: TestOutput-Release
+          name: ThisIsTheName
+          path: '*.xml'
+          reporter: jest-junit
+
+      - name: "Create test report (Dist)"
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: TestOutput-Dist
+          name: ThisIsTheName
+          path: '*.xml'
+          reporter: jest-junit

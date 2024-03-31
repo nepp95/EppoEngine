@@ -1,4 +1,4 @@
-name: EppoEngine CI
+name: CI
 
 on:
   workflow_dispatch:
@@ -42,14 +42,6 @@ jobs:
           name: TestOutput-Debug
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
         
-      - name: "Create test report"
-        uses: dorny/test-reporter@v1
-        with:
-          artifact: TestOutput-Debug
-          name: ThisIsTheName
-          path: '*.xml'
-          reporter: jest-junit
-  
   release:
     runs-on: [ self-hosted, windows ]
     name: "Build and Test (Release)"
@@ -83,14 +75,6 @@ jobs:
         with:
           name: TestOutput-Release
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
-      
-      - name: "Create test report"
-        uses: dorny/test-reporter@v1
-        with:
-          artifact: TestOutput-Release
-          name: ThisIsTheName
-          path: '*.xml'
-          reporter: jest-junit
 
   dist:
     runs-on: [ self-hosted, windows ]
@@ -125,11 +109,3 @@ jobs:
         with:
           name: TestOutput-Dist
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
-      
-      - name: "Create test report"
-        uses: dorny/test-reporter@v1
-        with:
-          artifact: TestOutput-Dist
-          name: ThisIsTheName
-          path: '*.xml'
-          reporter: jest-junit
