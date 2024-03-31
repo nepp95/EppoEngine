@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Renderer/Descriptor/DescriptorLayoutCache.h"
-#include "Renderer/Vulkan.h"
-
 namespace Eppo
 {
 	// For compatibility with all devices, we only use 4 different sets
@@ -12,10 +9,11 @@ namespace Eppo
 	// Set 2 = Per frame material data
 	// Set 3 = Per frame object data
 
-	enum class ShaderType
+	enum class ShaderStage
 	{
-		Vertex = 0,
-		Fragment = 1
+		None = 0,
+		Vertex,
+		Fragment
 	};
 
 	enum class ShaderResourceType
@@ -26,7 +24,7 @@ namespace Eppo
 
 	struct ShaderResource
 	{
-		ShaderType Type;
+		ShaderStage Type;
 		ShaderResourceType ResourceType;
 		uint32_t Binding = 0;
 		uint32_t Size = 0;
@@ -36,57 +34,39 @@ namespace Eppo
 
 	struct ShaderSpecification
 	{
-		std::unordered_map<ShaderType, std::filesystem::path> ShaderSources;
+		std::filesystem::path Filepath;
+		bool Optimize = false;
 	};
 
 	class Shader
 	{
 	public:
-		Shader(const ShaderSpecification& specification, const Ref<DescriptorLayoutCache>& layoutCache);
+		Shader(const ShaderSpecification& specification);
+		Shader(const Shader&) = delete;
+		Shader& operator=(const Shader&) = delete;
 		~Shader();
 
-		const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageInfos() const { return m_ShaderInfos; }
-		const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts() const { return m_DescriptorSetLayouts; }
-		const VkDescriptorSetLayout& GetDescriptorSetLayout(uint32_t set) const;
+		void RT_Bind() const;
+		void RT_Unbind() const;
+
 		const std::unordered_map<uint32_t, std::vector<ShaderResource>>& GetShaderResources() const { return m_ShaderResources; }
 
+		const std::string& GetName() const { return m_Name; }
+
 	private:
-		void Compile(ShaderType type, const std::filesystem::path& filepath);
-		void Reflect(ShaderType type, const std::vector<uint32_t>& shaderBytes);
-		void CreatePipelineShaderInfos();
-		void CreateDescriptorSetLayout(const Ref<DescriptorLayoutCache>& layoutCache);
+		std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source);
+		void Compile(ShaderStage stage, const std::string& source);
+		void CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources);
+		void CreateProgram();
+		void Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes);
 
 	private:
 		ShaderSpecification m_Specification;
+		std::string m_Name;
 
-		std::unordered_map<ShaderType, std::vector<uint32_t>> m_ShaderBytes;
+		uint32_t m_RendererID;
+
+		std::unordered_map<ShaderStage, std::vector<uint32_t>> m_ShaderBytes;
 		std::unordered_map<uint32_t, std::vector<ShaderResource>> m_ShaderResources;
-		std::vector<VkPipelineShaderStageCreateInfo> m_ShaderInfos;
-		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
 	};
-
-	namespace Utils
-	{
-		static VkDescriptorType ShaderResourceTypeToVkDescriptorType(ShaderResourceType type)
-		{
-			switch (type)
-			{
-				case ShaderResourceType::Sampler:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				case ShaderResourceType::UniformBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			}
-
-			EPPO_ASSERT(false);
-		}
-
-		static VkShaderStageFlagBits ShaderTypeToVkShaderStage(ShaderType type)
-		{
-			switch (type)
-			{
-				case ShaderType::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
-				case ShaderType::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
-			}
-
-			EPPO_ASSERT(false);
-		}
-	}
 }

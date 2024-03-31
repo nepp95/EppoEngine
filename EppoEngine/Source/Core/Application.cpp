@@ -1,9 +1,10 @@
 #include "pch.h"
 #include "Application.h"
 
+#include "Core/Filesystem.h"
 #include "Renderer/Renderer.h"
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 namespace Eppo
 {
@@ -21,6 +22,9 @@ namespace Eppo
 		// Set working directory
 		if (!m_Specification.WorkingDirectory.empty())
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
+		
+		// Create profiler
+		m_Profiler = CreateRef<Profiler>();
 
 		// Create window
 		WindowSpecification windowSpec;
@@ -33,6 +37,7 @@ namespace Eppo
 		m_Window->SetEventCallback([this](Event& e) { Application::OnEvent(e);  });
 
 		// Initialize systems
+		Filesystem::Init();
 		Renderer::Init();
 
 		// Add GUI layer
@@ -115,7 +120,6 @@ namespace Eppo
 		while (m_IsRunning)
 		{
 			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
 
 			{
 				EPPO_PROFILE_FUNCTION("CPU Update");
@@ -123,8 +127,6 @@ namespace Eppo
 				float time = (float)glfwGetTime();
 				float timestep = time - m_LastFrameTime;
 				m_LastFrameTime = time;
-
-				m_Window->ProcessEvents();
 
 				for (Layer* layer : m_LayerStack)
 					layer->Update(timestep);
@@ -135,34 +137,22 @@ namespace Eppo
 				{
 					EPPO_PROFILE_FUNCTION("CPU Prepare Render");
 
-					// 1. Start command buffer
-					Renderer::BeginFrame();
-
 					// 2. Record commands
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
 
 					Renderer::SubmitCommand([this]() { RenderGui();	});
-
-					// 3. End command buffer
-					Renderer::EndFrame();
-				}
-				{
-					// 4. Execute all of the above between beginning the swapchain frame and presenting it (Render queue)
-					EPPO_PROFILE_FUNCTION("CPU Wait");
-					swapchain->BeginFrame();
 				}
 				{
 					EPPO_PROFILE_FUNCTION("CPU Render");
 					Renderer::ExecuteRenderCommands();
-					swapchain->Present();
+					m_Window->ProcessEvents();
+					m_Window->SwapBuffers();
 				}
 			}
 
 			EPPO_PROFILE_FRAME_MARK;
 		}
-
-		RendererContext::Get()->WaitIdle();
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
@@ -188,8 +178,6 @@ namespace Eppo
 		}
 		else
 			m_IsMinimized = false;
-
-		RendererContext::Get()->GetSwapchain()->OnResize();
 
 		return true;
 	}

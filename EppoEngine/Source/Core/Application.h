@@ -2,6 +2,7 @@
 
 #include "Core/LayerStack.h"
 #include "Core/Window.h"
+#include "Debug/Profiler.h"
 #include "Event/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
 
@@ -23,7 +24,7 @@ namespace Eppo
 
 		const char* operator[](int index) const
 		{
-			EPPO_ASSERT(index < Count);
+			EPPO_ASSERT((index < Count));
 			if (index >= Count)
 				return "";
 			return Args[index];
@@ -55,8 +56,11 @@ namespace Eppo
 		void PushLayer(Layer* layer, bool overlay = false);
 		void PopLayer(Layer* layer, bool overlay = false);
 
+		const Ref<Profiler>& GetProfiler() const { return m_Profiler; }
+
 		static Application& Get() { return *s_Instance; }
 		Window& GetWindow() { return *m_Window; }
+		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
 
 	private:
 		void Run();
@@ -71,6 +75,7 @@ namespace Eppo
 		LayerStack m_LayerStack;
 
 		ImGuiLayer* m_ImGuiLayer;
+		Ref<Profiler> m_Profiler;
 
 		bool m_IsRunning = true;
 		bool m_IsMinimized = false;

@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Asset/Asset.h"
 #include "Core/UUID.h"
 
 #include <glm/glm.hpp>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/ext/matrix_transform.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -31,7 +33,7 @@ namespace Eppo
 			: Tag(tag)
 		{}
 
-		operator std::string() { return Tag; }
+		operator std::string&() { return Tag; }
 		operator const std::string&() const { return Tag; }
 	};
 
@@ -55,17 +57,32 @@ namespace Eppo
 		}
 	};
 
-	struct ColorComponent
+	struct SpriteComponent
 	{
+		AssetHandle TextureHandle = 0;
 		glm::vec4 Color = glm::vec4(1.0f);
 
-		ColorComponent() = default;
-		ColorComponent(const ColorComponent&) = default;
-		ColorComponent(const glm::vec4& color)
+		SpriteComponent() = default;
+		SpriteComponent(const SpriteComponent&) = default;
+		SpriteComponent(const glm::vec4& color)
 			: Color(color)
 		{}
+	};
 
-		operator glm::vec4() { return Color; }
-		operator const glm::vec4&() const { return Color; }
+	struct MeshComponent
+	{
+		AssetHandle MeshHandle = 0;
+
+		MeshComponent() = default;
+		MeshComponent(const MeshComponent&) = default;
+	};
+
+	struct DirectionalLightComponent
+	{
+		glm::vec4 Color = glm::vec4(1.0f);
+		float Intensity = 1.0f;
+
+		DirectionalLightComponent() = default;
+		DirectionalLightComponent(const DirectionalLightComponent&) = default;
 	};
 }

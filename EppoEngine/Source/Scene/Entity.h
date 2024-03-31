@@ -63,6 +63,9 @@ namespace Eppo
 		{
 			return !(*this == other);
 		}
+		
+		const std::string& GetName() { return GetComponent<TagComponent>(); }
+		const UUID& GetUUID() { return GetComponent<IDComponent>(); }
 
 	private:
 		EntityHandle m_EntityHandle = entt::null;

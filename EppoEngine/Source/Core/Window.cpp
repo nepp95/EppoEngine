@@ -5,7 +5,7 @@
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 namespace Eppo
 {
@@ -23,10 +23,9 @@ namespace Eppo
 		EPPO_ASSERT(success);
 
 		#ifdef EPPO_DEBUG
-			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+			glfwSetErrorCallback(GLFWErrorCallback);
+			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		#endif
-
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 		// Get primary monitor
 		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
@@ -129,14 +128,14 @@ namespace Eppo
 		glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
 		{
 			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
-			MouseScrolledEvent e(xOffset, yOffset);
+			MouseScrolledEvent e((float)xOffset, (float)yOffset);
 			callback(e);
 		});
 
 		glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double xPos, double yPos)
 		{
 			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
-			MouseMovedEvent e(xPos, yPos);
+			MouseMovedEvent e((float)xPos, (float)yPos);
 			callback(e);
 		});
 	}
@@ -154,7 +153,13 @@ namespace Eppo
 	void Window::ProcessEvents()
 	{
 		EPPO_PROFILE_FUNCTION("Window::ProcessEvents");
+		EPPO_PROFILE_FN("CPU Update", "Process Events");
 
 		glfwPollEvents();
+	}
+
+	void Window::SwapBuffers()
+	{
+		glfwSwapBuffers(m_Window);
 	}
 }

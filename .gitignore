@@ -6,9 +6,13 @@
 *.sln
 
 # Binaries
-Bin
-Bin-Int
+/Bin
+/Bin-Int
+/Vendor/Premake
 
 # Cache
-*.shadercache
+/EppoEditor/Resources/Shaders/Cache
 __pycache__
+
+# Build system
+Makefile

@@ -2,21 +2,47 @@
 #include "RendererContext.h"
 
 #include "Core/Application.h"
-#include "Renderer/Allocator.h"
 
-#include <glfw/glfw3.h>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 namespace Eppo
 {
-	RendererContext* RendererContext::s_Instance = nullptr;
+	static void DebugCallback(unsigned int source, unsigned int type, unsigned int id, unsigned int severity, int length, const char* message, const void* userParam)
+	{
+		switch (severity)
+		{
+			case GL_DEBUG_SEVERITY_HIGH:
+			{
+				EPPO_ERROR(message);
+				return;
+			}
+
+			case GL_DEBUG_SEVERITY_MEDIUM:
+			{
+				EPPO_WARN(message);
+				return;
+			}
+
+			case GL_DEBUG_SEVERITY_LOW:
+			{
+				EPPO_INFO(message);
+				return;
+			}
+
+			case GL_DEBUG_SEVERITY_NOTIFICATION:
+			{
+				EPPO_TRACE(message);
+				return;
+			}
+		}
+	}
 
 	RendererContext::RendererContext(GLFWwindow* windowHandle)
 		: m_WindowHandle(windowHandle)
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::RendererContext");
 
-		EPPO_ASSERT(!s_Instance);
-		s_Instance = this;
 		EPPO_ASSERT(windowHandle);
 	}
 
@@ -24,103 +50,35 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::Init");
 
-		// Vulkan instance
-		if (VulkanConfig::EnableValidation)
-			EPPO_ASSERT(HasValidationSupport());
+		glfwMakeContextCurrent(m_WindowHandle);
+		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+		EPPO_ASSERT(status);
 
-		VkApplicationInfo appInfo{};
-		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "EppoEngine";
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.pEngineName = "EppoEngine";
-		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion = VK_API_VERSION_1_3;
+		EPPO_INFO("GPU Info:");
+		EPPO_INFO("\tVendor: {}", glGetString(GL_VENDOR));
+		EPPO_INFO("\tModel: {}", glGetString(GL_RENDERER));
+		EPPO_INFO("\tVersion: {}", glGetString(GL_VERSION));
 
-		auto extensions = GetRequiredExtensions();
+		EPPO_ASSERT(GLVersion.major > 4 || (GLVersion.major == 4 && GLVersion.minor >= 5));
 
-		VkInstanceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		createInfo.pApplicationInfo = &appInfo;
-		createInfo.enabledExtensionCount = (uint32_t)extensions.size();
-		createInfo.ppEnabledExtensionNames = extensions.data();
+		#ifdef EPPO_DEBUG
+			glEnable(GL_DEBUG_OUTPUT);
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+			glDebugMessageCallback(DebugCallback, nullptr);
+			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
+		#endif
 
-		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-		if (VulkanConfig::EnableValidation)
-		{
-			debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			debugCreateInfo.pfnUserCallback = DebugCallback;
-			debugCreateInfo.pUserData = nullptr;
-
-			createInfo.enabledLayerCount = (uint32_t)VulkanConfig::ValidationLayers.size();
-			createInfo.ppEnabledLayerNames = VulkanConfig::ValidationLayers.data();
-			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-		}
-		else
-		{
-			createInfo.enabledLayerCount = 0;
-			createInfo.pNext = nullptr;
-		}
-
-		VK_CHECK(vkCreateInstance(&createInfo, nullptr, &m_VulkanInstance), "Failed to create instance!");
-
-		// Debug messenger
-		if (VulkanConfig::EnableValidation)
-			VK_CHECK(CreateDebugUtilsMessengerEXT(m_VulkanInstance, &debugCreateInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!");
-
-		// Devices
-		m_PhysicalDevice = CreateRef<PhysicalDevice>();
-		m_LogicalDevice = CreateRef<LogicalDevice>(m_PhysicalDevice);
-
-		// Allocator
-		Allocator::Init();
-
-		// Swapchain
-		m_Swapchain = CreateRef<Swapchain>();
-		
-		// Profiler
-		m_TracyContexts.resize(VulkanConfig::MaxFramesInFlight);
-		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-			m_TracyContexts[i] = TracyVkContext(m_PhysicalDevice->GetNativeDevice(), m_LogicalDevice->GetNativeDevice(), m_LogicalDevice->GetGraphicsQueue(), m_Swapchain->m_CommandBuffers[i]);
-
-		SubmitResourceFree([=]()
-		{
-			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-				TracyVkDestroy(m_TracyContexts[i]);
-		});
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glFrontFace(GL_CW);
+		glCullFace(GL_BACK);
 	}
 
 	void RendererContext::Shutdown()
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::Shutdown");
-
-		for (uint32_t i = 0; i < m_ResourceFreeCommandCount; i++)
-		{
-			m_ResourceFreeCommands.back()();
-			m_ResourceFreeCommands.pop_back();
-		}
-
-		if (VulkanConfig::EnableValidation)
-			DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
-	
-		vkDestroyInstance(m_VulkanInstance, nullptr);
-	}
-
-	void RendererContext::WaitIdle()
-	{
-		EPPO_PROFILE_FUNCTION("RendererContext::WaitIdle");
-
-		VkDevice device = m_LogicalDevice->GetNativeDevice();
-		vkDeviceWaitIdle(device);
-	}
-
-	void RendererContext::SubmitResourceFree(std::function<void()> fn)
-	{
-		EPPO_PROFILE_FUNCTION("RendererContext::SubmitResourceFree");
-
-		m_ResourceFreeCommands.push_back(fn);
-		m_ResourceFreeCommandCount++;
 	}
 
 	Ref<RendererContext> RendererContext::Get()
@@ -128,50 +86,5 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("RendererContext::Get");
 
 		return Application::Get().GetWindow().GetRendererContext();
-	}
-
-	bool RendererContext::HasValidationSupport()
-	{
-		EPPO_PROFILE_FUNCTION("RendererContext::HasValidationSupport");
-
-		uint32_t layerCount = 0;
-		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-		std::vector<VkLayerProperties> availableLayers(layerCount);
-		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-		for (const char* layerName : VulkanConfig::ValidationLayers)
-		{
-			bool layerFound{ false };
-
-			for (const auto& layerProperties : availableLayers)
-			{
-				if (strcmp(layerName, layerProperties.layerName) == 0)
-				{
-					layerFound = true;
-					break;
-				}
-			}
-
-			if (!layerFound)
-				return false;
-		}
-
-		return true;
-	}
-
-	std::vector<const char*> RendererContext::GetRequiredExtensions()
-	{
-		EPPO_PROFILE_FUNCTION("RendererContext::GetRequiredExtensions");
-
-		uint32_t glfwExtensionCount{ 0 };
-		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-		if (VulkanConfig::EnableValidation)
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-		return extensions;
 	}
 }

@@ -15,10 +15,11 @@ print("\nUpdating submodules...")
 subprocess.call(["git", "submodule", "update", "--init", "--recursive"])
 
 if (premakeInstalled):
+    print("\nRunning premake...")
     if platform.system() == "Windows":
-        print("\nRunning premake...")
         subprocess.call([os.path.abspath("./Scripts/GenerateProjects-Win.bat"), "nopause"])
-
+    if platform.system() == "Linux":
+        subprocess.call([os.path.abspath("./Scripts/GenerateProjects-Linux.sh"), "nopause"])
     print("\nSetup completed!")
 else:
     print("\nEngine requires Premake to generate project files!")

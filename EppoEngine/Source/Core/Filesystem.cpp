@@ -6,6 +6,7 @@ namespace Eppo
 	struct FilesystemData
 	{
 		std::filesystem::path RootPath;
+		std::filesystem::path AssetPath;
 	};
 
 	FilesystemData* s_Data;
@@ -17,6 +18,7 @@ namespace Eppo
 		s_Data = new FilesystemData();
 
 		s_Data->RootPath = std::filesystem::current_path();
+		s_Data->AssetPath = s_Data->RootPath / "Resources";
 	}
 
 	void Filesystem::Shutdown()
@@ -24,6 +26,16 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Filesystem::Shutdown");
 
 		delete s_Data;
+	}
+
+	const std::filesystem::path& Filesystem::GetAppRootDirectory()
+	{
+		return s_Data->RootPath;
+	}
+
+	const std::filesystem::path& Filesystem::GetAssetsDirectory()
+	{
+		return s_Data->AssetPath;
 	}
 
 	bool Filesystem::Exists(const std::filesystem::path& path)
@@ -43,16 +55,39 @@ namespace Eppo
 
 		std::streampos end = stream.tellg();
 		stream.seekg(0, std::ios::beg);
-		uint32_t fileSize = end - stream.tellg();
+		size_t fileSize = end - stream.tellg();
 
 		if (fileSize == 0)
 			return {};
 
-		Buffer buffer(fileSize);
+		Buffer buffer((uint32_t)fileSize);
 		stream.read(buffer.As<char>(), fileSize);
 		stream.close();
 
 		return buffer;
+	}
+
+	std::string Filesystem::ReadText(const std::filesystem::path& filepath)
+	{
+		EPPO_PROFILE_FUNCTION("Filesystem::ReadText");
+
+		std::string text;
+
+		std::ifstream stream(filepath, std::ios::binary | std::ios::in);
+		if (!stream)
+			return text;
+
+		stream.seekg(0, std::ios::end);
+		size_t size = stream.tellg();
+
+		if (size != -1)
+		{
+			text.resize(size);
+			stream.seekg(0, std::ios::beg);
+			stream.read(&text[0], text.size());
+		}
+
+		return text;
 	}
 
 	void Filesystem::WriteBytes(const std::filesystem::path& filepath, Buffer buffer, bool overwrite)
@@ -80,6 +115,20 @@ namespace Eppo
 		EPPO_ASSERT(stream);
 
 		stream.write((char*)buffer.data(), buffer.size() * sizeof(uint32_t));
+		stream.close();
+	}
+
+	void Filesystem::WriteText(const std::filesystem::path& filepath, const std::string& text, bool overwrite)
+	{
+		EPPO_PROFILE_FUNCTION("Filesystem::WriteText");
+
+		if (Exists(filepath) && !overwrite)
+			return;
+
+		std::ofstream stream(filepath);
+		EPPO_ASSERT(stream);
+
+		stream.write(text.c_str(), text.size());
 		stream.close();
 	}
 }

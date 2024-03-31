@@ -16,3 +16,9 @@
 [submodule "EppoEngine/Vendor/entt"]
 	path = EppoEngine/Vendor/entt
 	url = https://github.com/nepp95/entt.git
+[submodule "EppoEngine/Vendor/yaml-cpp"]
+	path = EppoEngine/Vendor/yaml-cpp
+	url = https://github.com/nepp95/yaml-cpp.git
+[submodule "EppoEngine/Vendor/googletest"]
+	path = EppoEngine/Vendor/googletest
+	url = https://github.com/nepp95/googletest.git

@@ -1,34 +1,80 @@
 #pragma once
 
-#include "Core/Buffer.h"
-#include "Renderer/Image.h"
+#include "Asset/Asset.h"
 
-typedef struct VkDescriptorSet_T* VkDescriptorSet;
+typedef unsigned int GLenum;
 
 namespace Eppo
 {
-	class Texture
+	enum class TextureWrap
+	{
+		CLAMP_TO_EDGE,
+		CLAMP_TO_BORDER,
+		MIRRORED_REPEAT,
+		REPEAT,
+		MIRROR_CLAMP_TO_EDGE
+	};
+
+	enum class TextureMinFilter
+	{
+		NEAREST,
+		LINEAR,
+		NEAREST_MIPMAP_NEAREST,
+		LINEAR_MIPMAP_NEAREST,
+		NEAREST_MIPMAP_LINEAR,
+		LINEAR_MIPMAP_LINEAR
+	};
+
+	enum class TextureMaxFilter
+	{
+		NEAREST,
+		LINEAR
+	};
+
+	enum class TextureFormat
+	{
+		RGB,
+		RGBA,
+
+		Depth
+	};
+
+	struct TextureSpecification
+	{
+		std::filesystem::path Filepath;
+
+		TextureFormat Format;
+
+		TextureMinFilter MinFilter = TextureMinFilter::LINEAR;
+		TextureMaxFilter MaxFilter = TextureMaxFilter::LINEAR;
+		TextureWrap Wrap = TextureWrap::REPEAT;
+		glm::vec4 BorderColor = glm::vec4(0.0f);
+
+		uint32_t Width;
+		uint32_t Height;
+	};
+
+	class Texture : public Asset
 	{
 	public:
-		Texture(const std::filesystem::path& filepath);
-		Texture(uint32_t width, uint32_t height, ImageFormat format, void* data);
+		Texture(const TextureSpecification& specification);
 		~Texture();
 
-		Ref<Image> GetImage() const { return m_Image; }
-		VkDescriptorSet& GetDescriptorSet() { return m_DescriptorSet; }
+		void RT_Bind() const;
 
-		uint32_t GetWidth() const { return m_Width; }
-		uint32_t GetHeight() const { return m_Height; }
+		uint32_t GetWidth() const { return m_Specification.Width; }
+		uint32_t GetHeight() const { return m_Specification.Height; }
+
+		uint32_t GetRendererID() const { return m_RendererID; }
+
+		// Asset
+		static AssetType GetStaticType() { return AssetType::Texture; }
 
 	private:
-		std::filesystem::path m_Filepath;
-		Ref<Image> m_Image;
+		void SetupParameters() const;
 
-		Buffer m_ImageData;
-
-		VkDescriptorSet m_DescriptorSet;
-
-		uint32_t m_Width;
-		uint32_t m_Height;
+	private:
+		uint32_t m_RendererID;
+		TextureSpecification m_Specification;
 	};
 }

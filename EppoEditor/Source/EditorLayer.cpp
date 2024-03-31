@@ -1,64 +1,56 @@
 #include "EditorLayer.h"
 
+#include "Panel/ContentBrowserPanel.h"
+#include "Panel/PropertyPanel.h"
+#include "Panel/SceneHierarchyPanel.h"
+
 #include <imgui/imgui.h>
-#include <backends/imgui_impl_vulkan.h>
 
 namespace Eppo
 {
+	static const std::string CONTENT_BROWSER_PANEL = "ContentBrowserPanel";
+	static const std::string PROPERTY_PANEL = "PropertyPanel";
+	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
+
 	EditorLayer::EditorLayer()
-		: Layer("EditorLayer")
+		: Layer("EditorLayer"), m_PanelManager(PanelManager::Get())
 	{}
 
 	void EditorLayer::OnAttach()
 	{
-		m_ActiveScene = CreateRef<Scene>();
+		// Setup UI panels
+		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
+		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
+		m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 1");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.9f, 0.2f, 0.2f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { -0.5f, -0.5f, 0.0f };
-		}
+		m_PanelManager.SetSceneContext(m_ActiveScene);
 
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 2");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.9f, 0.2f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { 0.5f, 0.5f, 0.0f };
-		}
+		// Open scene
+		OpenScene("Resources/Scenes/Test.epposcene");
 
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 3");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.2f, 0.9f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { -0.5f, 0.5f, 0.0f };
-		}
-
-		{
-			Entity entity = m_ActiveScene->CreateEntity("Entity 4");
-			entity.AddComponent<ColorComponent>(glm::vec4(0.2f, 0.5f, 0.5f, 1.0f));
-			auto& tc = entity.GetComponent<TransformComponent>();
-			tc.Translation = { 0.5f, -0.5f, 0.0f };
-		}
-
-		m_TestTexture = CreateRef<Texture>("Resources/Textures/Icons/Directory.png");
+		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
 	}
 	
 	void EditorLayer::OnDetach()
 	{
-		m_TestTexture.reset();
+		AssetManager::Get().Shutdown();
 	}
 	
 	void EditorLayer::Update(float timestep)
 	{
-		m_EditorCamera.OnUpdate(timestep);
+		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
+		{
+			m_EditorCamera.SetViewportSize(glm::vec2(m_ViewportWidth, m_ViewportHeight));
+			m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
+		}
 
+		m_EditorCamera.OnUpdate(timestep);
 		m_ActiveScene->OnUpdate(timestep);
 	}
 	
 	void EditorLayer::Render()
 	{
-		m_ActiveScene->Render(m_EditorCamera);
+		m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
 	}
 
 	void EditorLayer::RenderGui()
@@ -114,30 +106,157 @@ namespace Eppo
 
 		style.WindowMinSize.x = minWinSizeX;
 
+		// Menubar
+		if (ImGui::BeginMenuBar())
+		{
+			if (ImGui::BeginMenu("File"))
+			{
+				if (ImGui::MenuItem("Save Scene", "CTRL+S"))
+					SaveScene();
+
+				if (ImGui::MenuItem("Open Scene", "CTRL+O"))
+					OpenScene();
+
+				if (ImGui::MenuItem("Exit"))
+					Application::Get().Close();
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMenuBar();
+		}
+
 		// Viewport
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0 ));
 		ImGui::Begin("Viewport");
 
-		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+		m_ViewportFocused = ImGui::IsWindowFocused();
+		m_ViewportHovered = ImGui::IsWindowHovered();
+		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
 
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		ImGui::Text("This is text");
+		ImGui::Image((ImTextureID)(m_ViewportRenderer->GetFinalImageID()), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
 
-		UI::Image(m_ActiveScene->GetFinalImage(), ImGui::GetContentRegionAvail());
+		ImGui::End(); // Viewport
+		ImGui::PopStyleVar();
 
-		ImGui::End();
+		// Panels
+		m_PanelManager.RenderGui();
 
-		// Settings
-		ImGui::Begin("Settings");
-		ImGui::Text("Here I will put settings... Sometime... Never...");
-		ImGui::End();
+		// Performance
+		m_ViewportRenderer->RenderGui();
+		/*ImGui::Begin("Performance");
 
-		ImGui::End();
+		const auto& profileData = Application::Get().GetProfiler()->GetProfileData();
+		for (const auto& [category, results] : profileData)
+		{
+			ImGui::Text("%s", category.c_str());
+
+			std::chrono::microseconds totalCategoryTime = std::chrono::microseconds::zero();
+
+			for (const auto& [tag, time] : results)
+			{
+				ImGui::Text("  %s: %.3fms", tag.c_str(), time.count() / 1000.0f);
+				totalCategoryTime += time;
+			}
+
+			ImGui::Text("Total time: %.3fms", totalCategoryTime.count() / 1000.0f);
+			ImGui::Separator();
+		}
+		*/
+		Application::Get().GetProfiler()->Clear();
+
+		//ImGui::End(); // Performance
+
+		ImGui::End(); // DockSpace
 	}
 
 	void EditorLayer::OnEvent(Event& e)
 	{
+		EventDispatcher dispatcher(e);
 
+		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
+	}
+
+	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
+	{
+		if (e.IsRepeat())
+			return false;
+
+		bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
+		bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
+		bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
+
+		switch (e.GetKeyCode())
+		{
+			case Key::O:
+			{
+				if (control)
+					OpenScene();
+				break;
+			}
+
+			case Key::S:
+			{
+				if (control)
+					SaveScene();
+				break;
+			}
+		}
+
+		return false;
+	}
+
+	void EditorLayer::NewScene()
+	{
+		m_ActiveScene = CreateRef<Scene>();
+		m_ActiveScenePath = std::filesystem::path();
+
+		m_PanelManager.SetSceneContext(m_ActiveScene);
+	}
+
+	void EditorLayer::SaveScene()
+	{
+		if (m_ActiveScenePath.empty())
+			m_ActiveScenePath = FileDialog::SaveFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+
+		SaveScene(m_ActiveScenePath);
+	}
+
+	void EditorLayer::SaveScene(const std::filesystem::path& filepath)
+	{
+		SceneSerializer serializer(m_ActiveScene);
+		serializer.Serialize(m_ActiveScenePath);
+	}
+
+	void EditorLayer::OpenScene()
+	{
+		std::filesystem::path filepath = FileDialog::OpenFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+
+		if (!filepath.empty())
+			OpenScene(filepath);
+	}
+
+	void EditorLayer::OpenScene(const std::filesystem::path& filepath)
+	{
+		if (filepath.extension().string() != ".epposcene")
+		{
+			EPPO_ERROR("Could not load '{}' because it is not a scene file!", filepath.string());
+			return;
+		}
+
+		Ref<Scene> newScene = CreateRef<Scene>();
+		SceneSerializer serializer(newScene);
+
+		if (serializer.Deserialize(filepath))
+		{
+			m_ActiveScene = newScene;
+			m_ActiveScenePath = filepath;
+			
+			m_PanelManager.SetSceneContext(m_ActiveScene);
+		}
 	}
 }

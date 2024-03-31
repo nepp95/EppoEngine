@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
-
 namespace Eppo
 {
 	class RenderCommandBuffer
@@ -10,16 +8,14 @@ namespace Eppo
 		RenderCommandBuffer(uint32_t count = 0);
 		~RenderCommandBuffer();
 
-		void Begin();
-		void End();
-		void Submit();
+		void RT_Begin();
+		void RT_End();
+		void RT_Submit();
 
-		VkCommandBuffer GetCurrentCommandBuffer() const;
+		uint64_t GetTimestamp() const { return m_Timestamp; }
 
 	private:
-		VkCommandPool m_CommandPool;
-		std::vector<VkCommandBuffer> m_CommandBuffers;
-		
-		std::vector<VkFence> m_Fences;
+		uint32_t m_QueryRendererID;
+		uint64_t m_Timestamp;
 	};
 }

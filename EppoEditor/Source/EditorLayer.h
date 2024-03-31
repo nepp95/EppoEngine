@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Panel/PanelManager.h"
+
 #include <EppoEngine.h>
 
 namespace Eppo
@@ -20,12 +22,28 @@ namespace Eppo
 		void OnEvent(Event& e) override;
 
 	private:
+		bool OnKeyPressed(KeyPressedEvent& e);
+
+		void NewScene();
+		void SaveScene();
+		void SaveScene(const std::filesystem::path& filepath);
+		void OpenScene();
+		void OpenScene(const std::filesystem::path& filepath);
+
+	private:
+		// Scene
+		Ref<SceneRenderer> m_ViewportRenderer;
+
 		Ref<Scene> m_ActiveScene;
-		EditorCamera m_EditorCamera = EditorCamera(30.0f, 1.778f);
+		std::filesystem::path m_ActiveScenePath;
 
-		uint32_t m_ViewportWidth;
-		uint32_t m_ViewportHeight;
+		EditorCamera m_EditorCamera;
 
-		Ref<Texture> m_TestTexture;
+		uint32_t m_ViewportWidth = 0;
+		uint32_t m_ViewportHeight = 0;
+		bool m_ViewportFocused = false;
+		bool m_ViewportHovered = false;
+
+		PanelManager& m_PanelManager;
 	};
 }
