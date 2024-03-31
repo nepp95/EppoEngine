@@ -30,10 +30,10 @@ jobs:
       - name: Run Premake
         run: .\Vendor\Premake\Bin\Premake5.exe vs2022
 
-      - name: "Build (Debug)"
+      - name: "Build"
         run: msbuild /m /p:Configuration=Debug EppoEngine.sln
 
-      - name: "Test (Debug)"
+      - name: "Test"
         run: .\Bin\Debug-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
       
       - name: "Save test output"
@@ -41,6 +41,13 @@ jobs:
         with:
           name: TestOutput-Debug
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
+        
+      - name: "Create test report"
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: TestOutput-Debug
+          path: '*.xml'
+          reporter: jest-junit
   
   release:
     runs-on: [ self-hosted, windows ]
@@ -64,10 +71,10 @@ jobs:
       - name: Run Premake
         run: .\Vendor\Premake\Bin\Premake5.exe vs2022
 
-      - name: "Build (Release)"
+      - name: "Build"
         run: msbuild /m /p:Configuration=Release EppoEngine.sln
 
-      - name: "Test (Release)"
+      - name: "Test"
         run: .\Bin\Release-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
       
       - name: "Save test output"
@@ -75,6 +82,13 @@ jobs:
         with:
           name: TestOutput-Release
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
+      
+      - name: "Create test report"
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: TestOutput-Release
+          path: '*.xml'
+          reporter: jest-junit
 
   dist:
     runs-on: [ self-hosted, windows ]
@@ -98,10 +112,10 @@ jobs:
       - name: Run Premake
         run: .\Vendor\Premake\Bin\Premake5.exe vs2022
 
-      - name: "Build (Dist)"
+      - name: "Build"
         run: msbuild /m /p:Configuration=Dist EppoEngine.sln
 
-      - name: "Test (Dist)"
+      - name: "Test"
         run: .\Bin\Dist-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
       
       - name: "Save test output"
@@ -109,3 +123,10 @@ jobs:
         with:
           name: TestOutput-Dist
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
+      
+      - name: "Create test report"
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: TestOutput-Dist
+          path: '*.xml'
+          reporter: jest-junit
