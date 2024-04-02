@@ -77,6 +77,37 @@ layout(binding = 4) uniform Material
 	float Roughness;
 } uMaterial;
 
+float CalculateShadow(vec4 fragPos, vec3 normal, vec3 lightDir);
+
+void main()
+{
+	// using the Phong Reflection Model: https://en.wikipedia.org/wiki/Phong_reflection_model
+
+	// Ambient
+	vec3 ambient = uDirectionalLight.AmbientColor.rgb;
+
+	// Diffuse
+	vec3 nNormal = normalize(inNormal);
+	vec3 nLightDirection = normalize(-uDirectionalLight.Direction.xyz);
+
+	float diffuseIntensity = max(dot(nNormal, nLightDirection), 0.0);
+	vec3 diffuse = diffuseIntensity * uDirectionalLight.AlbedoColor.rgb;
+
+	// Specular
+	vec3 nViewDirection = normalize(uCamera.Position.xyz - inFragPosition);
+	vec3 reflectDirection = reflect(-nLightDirection, nNormal);
+
+	float spec = pow(max(dot(nViewDirection, reflectDirection), 0.0), 64.0);
+	vec3 specular = spec * uDirectionalLight.SpecularColor.rgb;
+
+	// Shadow
+	float shadow = CalculateShadow(inFragPosLightSpace, nNormal, nLightDirection);
+
+	// Output
+	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
+	outColor = vec4(result, 1.0);
+}
+
 float CalculateShadow(vec4 fragPos, vec3 normal, vec3 lightDir)
 {
 	// Transform fragPos from clip space to ndc -1 to 1
@@ -105,57 +136,10 @@ float CalculateShadow(vec4 fragPos, vec3 normal, vec3 lightDir)
 		}
 	}
 
-	shadow /= 0.9;
+	shadow /= 9.0;
 
 	if (ndcCoords.z > 1.0)
 		shadow = 0.0;
 
 	return shadow;
-}
-
-void main()
-{
-	// using the Phong Reflection Model: https://en.wikipedia.org/wiki/Phong_reflection_model
-
-	// Ambient
-	// Ia = Ka * I
-	// Ia = ambient intensity
-	// Ka = ambient intensity coefficient
-	// I = light intensity
-	vec3 ambient = uDirectionalLight.AmbientColor.rgb;
-
-	// Diffuse
-	// Id = Kd * I * max(dot(N, L), 0)
-	// Id = diffuse intensity
-	// Kd = diffuse intensity coefficient
-	// I = light intensity
-	// N = normalized surface normal vector
-	// L = normalized light direction vector
-	vec3 nNormal = normalize(inNormal);
-	vec3 nLightDirection = normalize(-uDirectionalLight.Direction.xyz);
-
-	float diffuseIntensity = max(dot(nNormal, nLightDirection), 0.0);
-	vec3 diffuse = diffuseIntensity * uDirectionalLight.AlbedoColor.rgb;
-
-	// Specular
-	// Is = Ks * I * (max(dot(R, V), 0)n
-	// Is = specular intensity
-	// Ks = specular intensity coefficient
-	// I = light intensity
-	// R = normalized reflected light direction vector
-	// V = normalized view direction vector
-	// n = shininess coefficient
-	vec3 nViewDirection = normalize(uCamera.Position.xyz - inFragPosition);
-	vec3 reflectDirection = reflect(-nLightDirection, nNormal);
-
-	float spec = pow(max(dot(nViewDirection, reflectDirection), 0.0), 64.0);
-	vec3 specular = spec * uDirectionalLight.SpecularColor.rgb;
-
-	// Shadow
-	float shadow = CalculateShadow(inFragPosLightSpace, nNormal, nLightDirection);
-
-	// Output
-	//vec3 result = ambient + diffuse + specular;
-	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
-	outColor = vec4(result, 1.0);
 }

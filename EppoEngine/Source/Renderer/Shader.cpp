@@ -160,8 +160,6 @@ namespace Eppo
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
 
-
-
 		// Write cache
 		//std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
 		//Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
