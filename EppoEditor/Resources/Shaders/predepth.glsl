@@ -10,18 +10,19 @@ layout(binding = 1) uniform Transform
 	mat4 Transform;
 } uTransform;
 
-layout(binding = 2) uniform Environment
+layout(binding = 2) uniform DirectionalLight
 {
-	mat4 LightView;
-	mat4 LightProjection;
-	mat4 LightViewProjection;
-	vec3 LightPosition;
-	vec3 LightColor;
-} uEnvironment;
+	mat4 View;
+	mat4 Projection;
+	vec4 Direction;
+	vec4 AlbedoColor;
+	vec4 AmbientColor;
+	vec4 SpecularColor;
+} uDirectionalLight;
 
 void main()
 {
-	gl_Position = uEnvironment.LightViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
+	gl_Position = uDirectionalLight.Projection * uDirectionalLight.View * uTransform.Transform * vec4(inPosition, 1.0);
 }
 
 #stage frag

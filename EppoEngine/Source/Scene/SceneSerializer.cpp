@@ -192,8 +192,10 @@ namespace Eppo
 				if (c)
 				{
 					auto& dlc = newEntity.AddComponent<DirectionalLightComponent>();
-					dlc.Color = c["Color"].as<glm::vec4>();
-					dlc.Intensity = c["Intensity"].as<float>();
+					dlc.Direction = c["Direction"].as<glm::vec3>();
+					dlc.AlbedoColor = c["Albedo"].as<glm::vec4>();
+					dlc.AmbientColor = c["Ambient"].as<glm::vec4>();
+					dlc.SpecularColor = c["Specular"].as<glm::vec4>();
 				}
 			}
 		}
@@ -264,8 +266,10 @@ namespace Eppo
 			out << YAML::BeginMap;
 
 			auto& c = entity.GetComponent<DirectionalLightComponent>();
-			out << YAML::Key << "Color" << YAML::Value << c.Color;
-			out << YAML::Key << "Intensity" << YAML::Value << c.Intensity;
+			out << YAML::Key << "Direction" << YAML::Value << c.Direction;
+			out << YAML::Key << "Albedo" << YAML::Value << c.AlbedoColor;
+			out << YAML::Key << "Ambient" << YAML::Value << c.AmbientColor;
+			out << YAML::Key << "Specular" << YAML::Value << c.SpecularColor;
 
 			out << YAML::EndMap;
 		}

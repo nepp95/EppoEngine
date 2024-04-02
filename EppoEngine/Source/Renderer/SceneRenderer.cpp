@@ -47,7 +47,7 @@ namespace Eppo
 		// Uniform buffers
 		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
 		m_TransformUB = CreateRef<UniformBuffer>(sizeof(glm::mat4), 1);
-		m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), 2);
+		m_DirectionalLightUB = CreateRef<UniformBuffer>(sizeof(DirectionalLightData), 2);
 		m_MaterialUB = CreateRef<UniformBuffer>(sizeof(MaterialData), 4);
 	}
 
@@ -61,7 +61,6 @@ namespace Eppo
 
 		ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCalls);
 		ImGui::Text("Meshes: %u", m_RenderStatistics.Meshes);
-		ImGui::Text("Light position: %.3f, %.3f, %.3f", m_EnvironmentBuffer.LightPosition.x, m_EnvironmentBuffer.LightPosition.y, m_EnvironmentBuffer.LightPosition.z);
 
 		ImGui::End();
 	}
@@ -82,14 +81,8 @@ namespace Eppo
 		m_CameraBuffer.View = editorCamera.GetViewMatrix();
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
-		m_CameraBuffer.Position = editorCamera.GetPosition();
+		m_CameraBuffer.Position = glm::vec4(editorCamera.GetPosition(), 0.0f);
 		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
-
-		// Environment UB
-		m_EnvironmentBuffer.LightView = glm::lookAt(m_EnvironmentBuffer.LightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-		m_EnvironmentBuffer.LightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 100.0f);
-		m_EnvironmentBuffer.LightViewProjection = m_EnvironmentBuffer.LightProjection * m_EnvironmentBuffer.LightView;
-		m_EnvironmentUB->RT_SetData(&m_EnvironmentBuffer, sizeof(m_EnvironmentBuffer));
 
 		// Cleanup from last draw
 		m_DrawList.clear();
@@ -98,6 +91,16 @@ namespace Eppo
 	void SceneRenderer::EndScene()
 	{
 		Flush();
+	}
+
+	void SceneRenderer::SubmitDirectionalLight(const DirectionalLightComponent& dlc)
+	{
+		m_DirectionalLightBuffer.View = glm::lookAt(-dlc.Direction, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_DirectionalLightBuffer.Projection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 100.0f);
+		m_DirectionalLightBuffer.Direction = glm::vec4(dlc.Direction, 0.0f);
+		m_DirectionalLightBuffer.AlbedoColor = dlc.AlbedoColor;
+		m_DirectionalLightBuffer.AmbientColor = dlc.AmbientColor;
+		m_DirectionalLightBuffer.SpecularColor = dlc.SpecularColor;
 	}
 
 	void SceneRenderer::SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId)
@@ -121,23 +124,7 @@ namespace Eppo
 
 	void SceneRenderer::PrepareRender()
 	{
-		// Render light position
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), m_EnvironmentBuffer.LightPosition);
-		auto& mesh = m_DrawList[0];
-		//SubmitMesh(transform, mesh.Mesh, EntityHandle());
-
-		if (temp)
-		{
-			if (m_EnvironmentBuffer.LightPosition.x > 25.0f)
-				temp = false;
-			m_EnvironmentBuffer.LightPosition.x += 0.01f;
-		}
-		else
-		{
-			if (m_EnvironmentBuffer.LightPosition.x < -25.0f)
-				temp = true;
-			m_EnvironmentBuffer.LightPosition.x -= 0.01f;
-		}
+		m_DirectionalLightUB->RT_SetData(&m_DirectionalLightBuffer, sizeof(DirectionalLightData));
 
 		// Clear framebuffers
 		m_GeometryFramebuffer->RT_Bind();

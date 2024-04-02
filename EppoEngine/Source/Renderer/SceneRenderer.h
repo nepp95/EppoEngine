@@ -5,6 +5,7 @@
 #include "Renderer/Framebuffer.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/UniformBuffer.h"
+#include "Scene/Components.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
@@ -38,6 +39,7 @@ namespace Eppo
 		void BeginScene(const EditorCamera& editorCamera);
 		void EndScene();
 
+		void SubmitDirectionalLight(const DirectionalLightComponent& dlc);
 		void SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId);
 
 		uint32_t GetFinalImageID() const { return m_GeometryFramebuffer->GetColorAttachmentID(); }
@@ -66,7 +68,7 @@ namespace Eppo
 			glm::mat4 View;
 			glm::mat4 Projection;
 			glm::mat4 ViewProjection;
-			glm::vec3 Position;
+			glm::vec4 Position;
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUB;
 
@@ -75,15 +77,16 @@ namespace Eppo
 		Ref<UniformBuffer> m_TransformUB;
 
 		// Binding 2
-		struct EnvironmentData
+		struct DirectionalLightData
 		{
-			glm::mat4 LightView;
-			glm::mat4 LightProjection;
-			glm::mat4 LightViewProjection;
-			glm::vec3 LightPosition = glm::vec3(0.0f, 10.0f, -50.0f);
-			glm::vec3 LightColor = glm::vec3(1.0f);
-		} m_EnvironmentBuffer;
-		Ref<UniformBuffer> m_EnvironmentUB;
+			glm::mat4 View;
+			glm::mat4 Projection;
+			glm::vec4 Direction;
+			glm::vec4 AlbedoColor;
+			glm::vec4 AmbientColor;
+			glm::vec4 SpecularColor;
+		} m_DirectionalLightBuffer;
+		Ref<UniformBuffer> m_DirectionalLightUB;
 
 		// Binding 3
 		Ref<Texture> m_ShadowMap;
@@ -108,9 +111,5 @@ namespace Eppo
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;
-
-
-
-		bool temp = true;
 	};
 }

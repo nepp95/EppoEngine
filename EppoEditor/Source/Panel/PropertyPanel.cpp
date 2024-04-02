@@ -194,8 +194,35 @@ namespace Eppo
 
 		DrawComponent<DirectionalLightComponent>(entity, [](auto& component)
 		{
-			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
-			ImGui::DragFloat("Intensity", &component.Intensity, 0.05f);
+			if (ImGui::BeginTable("##", 4))
+			{
+				ImGui::TableNextColumn();
+				ImGui::Text("Direction");
+
+				ImGui::TableNextColumn();
+				if (ImGui::Button("X"))
+					component.Direction.x = 0.0f;
+				ImGui::SameLine();
+				ImGui::DragFloat("##DirectionX", &component.Direction.x, 0.1f);
+
+				ImGui::TableNextColumn();
+				if (ImGui::Button("Y"))
+					component.Direction.y = 0.0f;
+				ImGui::SameLine();
+				ImGui::DragFloat("##DirectionY", &component.Direction.y, 0.1f);
+
+				ImGui::TableNextColumn();
+				if (ImGui::Button("Z"))
+					component.Direction.z = 0.0f;
+				ImGui::SameLine();
+				ImGui::DragFloat("##DirectionZ", &component.Direction.z, 0.1f);
+
+				ImGui::EndTable();
+			}
+
+			ImGui::ColorEdit4("Albedo Color", glm::value_ptr(component.AlbedoColor));
+			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(component.AmbientColor));
+			ImGui::ColorEdit4("Specular Color", glm::value_ptr(component.SpecularColor));
 		}, std::string("Directional Light"));
 	}
 

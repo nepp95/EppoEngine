@@ -79,8 +79,10 @@ namespace Eppo
 
 	struct DirectionalLightComponent
 	{
-		glm::vec4 Color = glm::vec4(1.0f);
-		float Intensity = 1.0f;
+		glm::vec3 Direction;
+		glm::vec4 AlbedoColor = glm::vec4(1.0f);
+		glm::vec4 AmbientColor = glm::vec4(1.0f);
+		glm::vec4 SpecularColor = glm::vec4(1.0f);
 
 		DirectionalLightComponent() = default;
 		DirectionalLightComponent(const DirectionalLightComponent&) = default;
