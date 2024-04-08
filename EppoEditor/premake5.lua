@@ -7,6 +7,10 @@ project "EppoEditor"
     targetdir ("%{wks.location}/Bin/" .. OutputDir .. "/%{prj.name}")
     objdir ("%{wks.location}/Bin-Int/" .. OutputDir .. "/%{prj.name}")
 
+	dependson {
+		"EppoScripting"
+	}
+
     files {
         "Source/**.h",
         "Source/**.cpp"
@@ -71,7 +75,8 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Debug"}
 		postbuildcommands {
-			'{COPY} "%{Library.assimp_debug_dll}" "%{cfg.targetdir}"'
+			'{COPY} "%{Library.assimp_debug_dll}" "%{cfg.targetdir}"',
+            '{COPY} "%{Library.mono_debug_dll}" "%{cfg.targetdir}"'
 		}
 
     filter "configurations:Release"
@@ -85,7 +90,8 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Release"}
 		postbuildcommands {
-			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
+			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"',
+            '{COPY} "%{Library.mono_release_dll}" "%{cfg.targetdir}"'
 		}
 
     filter "configurations:Dist"
@@ -95,5 +101,6 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Dist"}
 		postbuildcommands {
-			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
+			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"',
+            '{COPY} "%{Library.mono_release_dll}" "%{cfg.targetdir}"'
 		}

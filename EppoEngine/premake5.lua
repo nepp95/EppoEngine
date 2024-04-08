@@ -31,6 +31,7 @@ project "EppoEngine"
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
+        "%{IncludeDir.mono}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.tracy}",
@@ -49,7 +50,11 @@ project "EppoEngine"
 			"%{Library.glad}",
             "%{Library.glfw}",
             "%{Library.imgui}",
-            "%{Library.yaml_cpp}"
+            "%{Library.yaml_cpp}",
+			"%{Library.winsock}",
+			"%{Library.winmm}",
+			"%{Library.winversion}",
+			"%{Library.bcrypt}",
         }
 
         removefiles {
@@ -84,6 +89,7 @@ project "EppoEngine"
 
         links {
 			"%{Library.assimp_debug}",
+            "%{Library.mono_debug}",
             "%{Library.shaderc_debug}",
             "%{Library.spirv_cross_debug}",
             "%{Library.spirv_cross_glsl_debug}"
@@ -101,6 +107,7 @@ project "EppoEngine"
     filter {"system:windows", "configurations:Release"}
         links {
 			"%{Library.assimp_release}",
+            "%{Library.mono_release}",
             "%{Library.shaderc_release}",
             "%{Library.spirv_cross_release}",
             "%{Library.spirv_cross_glsl_release}"
@@ -114,6 +121,7 @@ project "EppoEngine"
     filter {"system:windows", "configurations:Dist"}
         links {
 			"%{Library.assimp_release}",
+            "%{Library.mono_release}",
             "%{Library.shaderc_release}",
             "%{Library.spirv_cross_release}",
             "%{Library.spirv_cross_glsl_release}"
