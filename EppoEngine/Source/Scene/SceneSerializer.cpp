@@ -123,14 +123,14 @@ namespace Eppo
 		}
 		catch (YAML::ParserException e)
 		{
-			EPPO_ERROR("Failed to load scene file '{}'!", filepath.string());
+			EPPO_ERROR("Failed to load scene file '{}'!", filepath);
 			EPPO_ERROR("YAML Error: {}", e.what());
 			return false;
 		}
 
 		if (!data["Scene"])
 		{
-			EPPO_ERROR("Failed to load scene file '{}'! Not a scene file!", filepath.string());
+			EPPO_ERROR("Failed to load scene file '{}'! Not a scene file!", filepath);
 			return false;
 		}
 
