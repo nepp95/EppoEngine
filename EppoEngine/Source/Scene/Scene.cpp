@@ -8,10 +8,9 @@
 
 namespace Eppo
 {
-	void Scene::OnUpdate(float timestep)
+	void Scene::OnUpdateRuntime(float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
-		EPPO_PROFILE_FN("CPU Update", "Update Scene");
 	}
 
 	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
