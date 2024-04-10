@@ -15,36 +15,42 @@ IncludeDir["tracy"] = "%{wks.location}/EppoEngine/Vendor/tracy/public"
 IncludeDir["vulkan"] = "%{VulkanSdk}/Include"
 IncludeDir["yaml_cpp"] = "%{wks.location}/EppoEngine/Vendor/yaml-cpp/include"
 
--- Library directories
-LibraryDir = {}
-LibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/bin"
-LibraryDir["vulkan"] = "%{VulkanSdk}/Lib"
+-- Static Library directories
+StaticLibraryDir = {}
+StaticLibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/lib"
+StaticLibraryDir["vulkan"] = "%{VulkanSdk}/Lib"
 
--- Libraries
-Library = {}
-
-Library["glad"] = "glad"
-Library["imgui"] = "imgui"
-Library["yaml_cpp"] = "yaml-cpp"
+-- Static Libraries
+StaticLibrary = {}
+StaticLibrary["glad"] = "glad"
+StaticLibrary["imgui"] = "imgui"
+StaticLibrary["yaml_cpp"] = "yaml-cpp"
 
 if (os.target() == "windows") then
-    Library["glfw"] = "glfw"
-    Library["assimp_debug"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
-    Library["assimp_debug_dll"] = "%{LibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"
-    Library["assimp_release"] = "%{LibraryDir.assimp}/Release/assimp-vc143-mt.lib"
-    Library["assimp_release_dll"] = "%{LibraryDir.assimp}/Release/assimp-vc143-mt.dll"
-    Library["shaderc_debug"] = "%{LibraryDir.vulkan}/shaderc_sharedd.lib"
-    Library["shaderc_release"] = "%{LibraryDir.vulkan}/shaderc_shared.lib"
-    Library["spirv_cross_debug"] = "%{LibraryDir.vulkan}/spirv-cross-cored.lib"
-    Library["spirv_cross_release"] = "%{LibraryDir.vulkan}/spirv-cross-core.lib"
-    Library["spirv_cross_glsl_debug"] = "%{LibraryDir.vulkan}/spirv-cross-glsld.lib"
-    Library["spirv_cross_glsl_release"] = "%{LibraryDir.vulkan}/spirv-cross-glsl.lib"
-    Library["spirv_tools_debug"] = "%{LibraryDir.vulkan}/SPIRV-Toolsd.lib"
+    StaticLibrary["glfw"] = "glfw"
+    StaticLibrary["assimp_debug"] = "%{StaticLibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
+    StaticLibrary["assimp_release"] = "%{StaticLibraryDir.assimp}/Release/assimp-vc143-mt.lib"
+    StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_sharedd.lib"
+    StaticLibrary["shaderc_release"] = "%{StaticLibraryDir.vulkan}/shaderc_shared.lib"
+    StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-cored.lib"
+    StaticLibrary["spirv_cross_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
+    StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsld.lib"
+    StaticLibrary["spirv_cross_glsl_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
+    StaticLibrary["spirv_tools_debug"] = "%{StaticLibraryDir.vulkan}/SPIRV-Toolsd.lib"
 else
-    Library["glfw"] = "glfw3"
-    Library["assimp"] = "assimp"
-    Library["shaderc"] = "shaderc_shared"
-    Library["spirv_cross"] = "spirv-cross-core"
-    Library["spirv_cross_glsl"] = "spirv-cross-glsl"
-    Library["spirv_tools"] = "SPIRV-Tools"
+    StaticLibrary["glfw"] = "glfw3"
+    StaticLibrary["assimp"] = "assimp"
+    StaticLibrary["shaderc"] = "shaderc_shared"
+    StaticLibrary["spirv_cross"] = "spirv-cross-core"
+    StaticLibrary["spirv_cross_glsl"] = "spirv-cross-glsl"
+    StaticLibrary["spirv_tools"] = "SPIRV-Tools"
 end
+
+-- Dynamic Library directories
+DynamicLibraryDir = {}
+DynamicLibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/bin"
+
+-- Dynamic Libraries
+DynamicLibrary = {}
+DynamicLibrary["assimp_debug"] = "%{DynamicLibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"
+DynamicLibrary["assimp_release"] = "%{DynamicLibraryDir.assimp}/Release/assimp-vc143-mt.dll"

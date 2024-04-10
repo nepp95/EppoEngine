@@ -46,10 +46,10 @@ project "EppoEngine"
         }
 
         links {
-			"%{Library.glad}",
-            "%{Library.glfw}",
-            "%{Library.imgui}",
-            "%{Library.yaml_cpp}"
+			"%{StaticLibrary.glad}",
+            "%{StaticLibrary.glfw}",
+            "%{StaticLibrary.imgui}",
+            "%{StaticLibrary.yaml_cpp}"
         }
 
         removefiles {
@@ -83,10 +83,10 @@ project "EppoEngine"
     filter {"system:windows", "configurations:Debug"}
 
         links {
-			"%{Library.assimp_debug}",
-            "%{Library.shaderc_debug}",
-            "%{Library.spirv_cross_debug}",
-            "%{Library.spirv_cross_glsl_debug}"
+			"%{StaticLibrary.assimp_debug}",
+            "%{StaticLibrary.shaderc_debug}",
+            "%{StaticLibrary.spirv_cross_debug}",
+            "%{StaticLibrary.spirv_cross_glsl_debug}"
         }
 
     filter "configurations:Release"
@@ -100,10 +100,10 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Release"}
         links {
-			"%{Library.assimp_release}",
-            "%{Library.shaderc_release}",
-            "%{Library.spirv_cross_release}",
-            "%{Library.spirv_cross_glsl_release}"
+			"%{StaticLibrary.assimp_release}",
+            "%{StaticLibrary.shaderc_release}",
+            "%{StaticLibrary.spirv_cross_release}",
+            "%{StaticLibrary.spirv_cross_glsl_release}"
         }
     
     filter "configurations:Dist"
@@ -113,8 +113,8 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Dist"}
         links {
-			"%{Library.assimp_release}",
-            "%{Library.shaderc_release}",
-            "%{Library.spirv_cross_release}",
-            "%{Library.spirv_cross_glsl_release}"
+			"%{StaticLibrary.assimp_release}",
+            "%{StaticLibrary.shaderc_release}",
+            "%{StaticLibrary.spirv_cross_release}",
+            "%{StaticLibrary.spirv_cross_glsl_release}"
         }
