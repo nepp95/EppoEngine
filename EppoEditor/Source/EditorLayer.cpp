@@ -18,6 +18,10 @@ namespace Eppo
 
 	void EditorLayer::OnAttach()
 	{
+		// Load resources
+		m_IconPlay = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/PlayButton.png"));
+		m_IconStop = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/StopButton.png"));
+
 		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
@@ -44,8 +48,20 @@ namespace Eppo
 			m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
 		}
 
-		m_EditorCamera.OnUpdate(timestep);
-		m_ActiveScene->OnUpdate(timestep);
+		switch (m_SceneState)
+		{
+			case SceneState::Edit:
+			{
+				m_EditorCamera.OnUpdate(timestep);
+				break;
+			}
+
+			case SceneState::Play:
+			{
+				m_ActiveScene->OnUpdateRuntime(timestep);
+				break;
+			}
+		}
 	}
 	
 	void EditorLayer::Render()
@@ -148,29 +164,30 @@ namespace Eppo
 
 		// Performance
 		m_ViewportRenderer->RenderGui();
-		/*ImGui::Begin("Performance");
 
-		const auto& profileData = Application::Get().GetProfiler()->GetProfileData();
-		for (const auto& [category, results] : profileData)
+		// Toolbar
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+		ImGui::Begin("Scene Control", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+		float buttonSize = ImGui::GetWindowHeight() - 4.0f;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+		ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (buttonSize * 0.5f));
+
+		if (m_SceneState == SceneState::Edit)
 		{
-			ImGui::Text("%s", category.c_str());
-
-			std::chrono::microseconds totalCategoryTime = std::chrono::microseconds::zero();
-
-			for (const auto& [tag, time] : results)
-			{
-				ImGui::Text("  %s: %.3fms", tag.c_str(), time.count() / 1000.0f);
-				totalCategoryTime += time;
-			}
-
-			ImGui::Text("Total time: %.3fms", totalCategoryTime.count() / 1000.0f);
-			ImGui::Separator();
+			if (ImGui::ImageButton("##Play", (ImTextureID)m_IconPlay->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+				OnScenePlay();
+		} else if (m_SceneState == SceneState::Play)
+		{
+			if (ImGui::ImageButton("##Stop", (ImTextureID)m_IconStop->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+				OnSceneStop();
 		}
-		*/
-		Application::Get().GetProfiler()->Clear();
 
-		//ImGui::End(); // Performance
-
+		ImGui::PopStyleVar(3);
+		ImGui::End(); // Scene Control
+	
 		ImGui::End(); // DockSpace
 	}
 
@@ -208,6 +225,26 @@ namespace Eppo
 		}
 
 		return false;
+	}
+
+	void EditorLayer::OnScenePlay()
+	{
+		if (!m_ActiveScene)
+			return;
+
+		m_SceneState = SceneState::Play;
+
+		m_ActiveScene->OnRuntimeStart();
+	}
+
+	void EditorLayer::OnSceneStop()
+	{
+		if (!m_ActiveScene)
+			return;
+
+		m_ActiveScene->OnRuntimeStop();
+
+		m_SceneState = SceneState::Edit;
 	}
 
 	void EditorLayer::NewScene()

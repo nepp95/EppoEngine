@@ -24,6 +24,9 @@ namespace Eppo
 	private:
 		bool OnKeyPressed(KeyPressedEvent& e);
 
+		void OnScenePlay();
+		void OnSceneStop();
+
 		void NewScene();
 		void SaveScene();
 		void SaveScene(const std::filesystem::path& filepath);
@@ -33,17 +36,29 @@ namespace Eppo
 	private:
 		// Scene
 		Ref<SceneRenderer> m_ViewportRenderer;
-
 		Ref<Scene> m_ActiveScene;
 		std::filesystem::path m_ActiveScenePath;
-
+		
+		// Editor
+		PanelManager& m_PanelManager;
 		EditorCamera m_EditorCamera;
 
+		// Viewport
 		uint32_t m_ViewportWidth = 0;
 		uint32_t m_ViewportHeight = 0;
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
 
-		PanelManager& m_PanelManager;
+		// Scene state
+		enum class SceneState
+		{
+			Edit,
+			Play
+		};
+		SceneState m_SceneState = SceneState::Edit;
+
+		// Resources
+		Ref<Texture> m_IconPlay;
+		Ref<Texture> m_IconStop;
 	};
 }
