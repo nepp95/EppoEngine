@@ -52,6 +52,11 @@ namespace Eppo
 
 		uint32_t Width;
 		uint32_t Height;
+
+		TextureSpecification() = default;
+		TextureSpecification(const std::filesystem::path& filepath)
+			: Filepath(filepath)
+		{}
 	};
 
 	class Texture : public Asset

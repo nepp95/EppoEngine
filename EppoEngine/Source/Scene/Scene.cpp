@@ -46,6 +46,20 @@ namespace Eppo
 		sceneRenderer->EndScene();
 	}
 
+	void Scene::OnRuntimeStart()
+	{
+		m_IsRunning = true;
+
+		OnPhysicsStart();
+	}
+
+	void Scene::OnRuntimeStop()
+	{
+		m_IsRunning = false;
+
+		OnPhysicsStop();
+	}
+
 	Entity Scene::CreateEntity(const std::string& name)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::CreateEntity");
@@ -73,5 +87,13 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
 
 		m_Registry.destroy(entity);
+	}
+
+	void Scene::OnPhysicsStart()
+	{
+	}
+
+	void Scene::OnPhysicsStop()
+	{
 	}
 }
