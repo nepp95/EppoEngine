@@ -55,6 +55,7 @@ namespace Eppo
 			DrawAddComponentEntry<SpriteComponent>("Sprite");
 			DrawAddComponentEntry<MeshComponent>("Mesh");
 			DrawAddComponentEntry<DirectionalLightComponent>("Directional Light");
+			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
 
 			ImGui::EndPopup();
 		}
@@ -224,6 +225,31 @@ namespace Eppo
 			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(component.AmbientColor));
 			ImGui::ColorEdit4("Specular Color", glm::value_ptr(component.SpecularColor));
 		}, std::string("Directional Light"));
+
+		DrawComponent<RigidBodyComponent>(entity, [](auto& component)
+		{
+			const char* bodyTypes[] = { "Static", "Dynamic", "Kinematic" };
+			const char* currentBodyType = bodyTypes[(int)component.Type];
+
+			if (ImGui::BeginCombo("Body Type", currentBodyType))
+			{
+				for (uint32_t i = 0; i < 2; i++)
+				{
+					bool isSelected = currentBodyType == bodyTypes[i];
+
+					if (ImGui::Selectable(bodyTypes[i], isSelected))
+					{
+						currentBodyType = bodyTypes[i];
+						component.Type = (RigidBodyComponent::BodyType)i;
+					}
+
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
+		}, std::string("Rigid Body"));
 	}
 
 	template<typename T>
