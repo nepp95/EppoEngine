@@ -200,6 +200,15 @@ namespace Eppo
 			}
 
 			{
+				auto c = entity["ScriptComponent"];
+				if (c)
+				{
+					auto& sc = newEntity.AddComponent<ScriptComponent>();
+					sc.ClassName = c["ClassName"].as<std::string>();
+				}
+			}
+			
+			{
 				auto c = entity["RigidBodyComponent"];
 				if (c)
 				{
@@ -283,6 +292,17 @@ namespace Eppo
 			out << YAML::EndMap;
 		}
 
+		if (entity.HasComponent<ScriptComponent>())
+		{
+			out << YAML::Key << "ScriptComponent" << YAML::Value;
+			out << YAML::BeginMap;
+
+			auto& c = entity.GetComponent<ScriptComponent>();
+			out << YAML::Key << "ClassName" << YAML::Value << c.ClassName;
+			
+			out << YAML::EndMap;
+		}
+		
 		if (entity.HasComponent<RigidBodyComponent>())
 		{
 			out << YAML::Key << "RigidBodyComponent" << YAML::Value;

@@ -21,8 +21,7 @@ IncludeDir["yaml_cpp"] = "%{wks.location}/EppoEngine/Vendor/yaml-cpp/include"
 StaticLibraryDir = {}
 StaticLibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/lib"
 StaticLibraryDir["bullet"] = "%{wks.location}/EppoEngine/Vendor/bullet/lib"
-StaticLibraryDir["mono_bin"] = "%{wks.location}/EppoEngine/Vendor/mono/bin"
-StaticLibraryDir["mono_lib"] = "%{wks.location}/EppoEngine/Vendor/mono/lib"
+StaticLibraryDir["mono"] = "%{wks.location}/EppoEngine/Vendor/mono/lib"
 StaticLibraryDir["vulkan"] = "%{VulkanSdk}/Lib"
 
 -- Static Libraries
@@ -46,10 +45,8 @@ if (os.target() == "windows") then
     StaticLibrary["bullet_inversedynamics_release"] = "%{StaticLibraryDir.bullet}/Release/BulletInverseDynamics.lib"
     StaticLibrary["bullet_softbody_release"] = "%{StaticLibraryDir.bullet}/Release/BulletSoftBody.lib"
     StaticLibrary["bullet_linearmath_release"] = "%{StaticLibraryDir.bullet}/Release/LinearMath.lib"
-    StaticLibrary["mono_debug"] = "%{StaticLibraryDir.mono_lib}/Debug/libmono-static-sgen.lib"
-    StaticLibrary["mono_debug_dll"] = "%{StaticLibraryDir.mono_bin}/Debug/mono-2.0-sgen.dll"
-    StaticLibrary["mono_release"] = "%{StaticLibraryDir.mono_lib}/Release/libmono-static-sgen.lib"
-    StaticLibrary["mono_release_dll"] = "%{StaticLibraryDir.mono_bin}/Release/mono-2.0-sgen.dll"
+    StaticLibrary["mono_debug"] = "%{StaticLibraryDir.mono}/Debug/libmono-static-sgen.lib"
+    StaticLibrary["mono_release"] = "%{StaticLibraryDir.mono}/Release/libmono-static-sgen.lib"
     StaticLibrary["assimp_debug"] = "%{StaticLibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
     StaticLibrary["assimp_release"] = "%{StaticLibraryDir.assimp}/Release/assimp-vc143-mt.lib"
     StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_sharedd.lib"
@@ -74,8 +71,11 @@ end
 -- Dynamic Library directories
 DynamicLibraryDir = {}
 DynamicLibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/bin"
+DynamicLibraryDir["mono"] = "%{wks.location}/EppoEngine/Vendor/mono/bin"
 
 -- Dynamic Libraries
 DynamicLibrary = {}
 DynamicLibrary["assimp_debug"] = "%{DynamicLibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"
 DynamicLibrary["assimp_release"] = "%{DynamicLibraryDir.assimp}/Release/assimp-vc143-mt.dll"
+DynamicLibrary["mono_debug"] = "%{DynamicLibraryDir.mono}/Debug/mono-2.0-sgen.dll"
+DynamicLibrary["mono_release"] = "%{DynamicLibraryDir.mono}/Release/mono-2.0-sgen.dll"

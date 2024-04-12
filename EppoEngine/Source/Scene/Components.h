@@ -88,6 +88,14 @@ namespace Eppo
 		DirectionalLightComponent(const DirectionalLightComponent&) = default;
 	};
 
+	struct ScriptComponent
+	{
+		std::string ClassName;
+
+		ScriptComponent() = default;
+		ScriptComponent(const ScriptComponent&) = default;
+	};
+	
 	struct RigidBodyComponent
 	{
 		enum class BodyType { Static, Dynamic, Kinematic };

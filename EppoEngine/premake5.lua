@@ -51,7 +51,7 @@ project "EppoEngine"
 			"%{StaticLibrary.glad}",
             "%{StaticLibrary.glfw}",
             "%{StaticLibrary.imgui}",
-            "%{StaticLibrary.yaml_cpp}"
+            "%{StaticLibrary.yaml_cpp}",
 			"%{StaticLibrary.winsock}",
 			"%{StaticLibrary.winmm}",
 			"%{StaticLibrary.winversion}",

@@ -3,6 +3,7 @@
 
 #include "Core/Filesystem.h"
 #include "Renderer/Renderer.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <GLFW/glfw3.h>
 
@@ -39,6 +40,7 @@ namespace Eppo
 		// Initialize systems
 		Filesystem::Init();
 		Renderer::Init();
+		ScriptEngine::Init();
 
 		// Add GUI layer
 		m_ImGuiLayer = new ImGuiLayer();
@@ -50,6 +52,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Application::~Application");
 		EPPO_INFO("Shutting down...");
 
+		ScriptEngine::Shutdown();
 		Renderer::Shutdown();
 
 		for (Layer* layer : m_LayerStack)

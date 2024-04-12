@@ -4,12 +4,16 @@ namespace Eppo
 {
 	public class Entity
 	{
-		public Entity()
+		public readonly ulong ID;
+
+		protected Entity()
 		{
-			Print();
-			PrintInt(1);
-			PrintInts(1, 2);
-			PrintCustom("Niels");
+			ID = 0;
+		}
+
+		internal Entity(ulong id)
+		{
+			ID = id;
 		}
 
 		public void Print()

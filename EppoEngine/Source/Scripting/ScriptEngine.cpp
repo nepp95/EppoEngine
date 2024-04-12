@@ -5,6 +5,7 @@
 #include "Core/Filesystem.h"
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptGlue.h"
+#include "Scripting/ScriptInstance.h"
 
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
@@ -121,6 +122,9 @@ namespace Eppo
 
 		Ref<ScriptClass> EntityClass;
 		std::unordered_map<std::string, Ref<ScriptClass>> ScriptClasses;
+		std::unordered_map<UUID, Ref<ScriptInstance>> ScriptInstances;
+
+		Ref<Scene> SceneContext;
 
 		#if defined(EPPO_DEBUG)
 			bool EnableDebugging = true;
@@ -187,6 +191,16 @@ namespace Eppo
 		s_Data->RootDomain = nullptr;
 
 		delete s_Data;
+	}
+
+	void ScriptEngine::OnRuntimeStart(Ref<Scene> scene)
+	{
+
+	}
+
+	void ScriptEngine::OnRuntimeStop()
+	{
+
 	}
 
 	MonoObject* ScriptEngine::InstantiateClass(MonoClass* monoClass)

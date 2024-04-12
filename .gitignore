@@ -3,12 +3,15 @@
 .vscode
 
 *.vcxproj*
+*.csproj*
 *.sln
 
 # Binaries
 /Bin
 /Bin-Int
 /Vendor/Premake
+/EppoEditor/Resources/Scripts
+/EppoEditor/Scripts/Intermediates
 
 # Cache
 /EppoEditor/Resources/Shaders/Cache

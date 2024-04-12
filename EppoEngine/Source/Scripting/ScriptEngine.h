@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Scene/Scene.h"
+
 typedef struct _MonoAssembly MonoAssembly;
 typedef struct _MonoClass MonoClass;
 typedef struct _MonoDomain MonoDomain;
@@ -16,6 +18,9 @@ namespace Eppo
 	public:
 		static void Init();
 		static void Shutdown();
+
+		static void OnRuntimeStart(Ref<Scene> scene);
+		static void OnRuntimeStop();
 
 		static MonoObject* InstantiateClass(MonoClass* monoClass);
 
