@@ -26,6 +26,7 @@ project "EppoEngine"
     includedirs {
         "Source",
 		"%{IncludeDir.assimp}",
+        "%{IncludeDir.bullet}",
 		"%{IncludeDir.entt}",
         "%{IncludeDir.glad}",
         "%{IncludeDir.glfw}",
@@ -47,14 +48,14 @@ project "EppoEngine"
         }
 
         links {
-			"%{Library.glad}",
-            "%{Library.glfw}",
-            "%{Library.imgui}",
-            "%{Library.yaml_cpp}",
-			"%{Library.winsock}",
-			"%{Library.winmm}",
-			"%{Library.winversion}",
-			"%{Library.bcrypt}",
+			"%{StaticLibrary.glad}",
+            "%{StaticLibrary.glfw}",
+            "%{StaticLibrary.imgui}",
+            "%{StaticLibrary.yaml_cpp}"
+			"%{StaticLibrary.winsock}",
+			"%{StaticLibrary.winmm}",
+			"%{StaticLibrary.winversion}",
+			"%{StaticLibrary.bcrypt}",
         }
 
         removefiles {
@@ -88,11 +89,17 @@ project "EppoEngine"
     filter {"system:windows", "configurations:Debug"}
 
         links {
-			"%{Library.assimp_debug}",
-            "%{Library.mono_debug}",
-            "%{Library.shaderc_debug}",
-            "%{Library.spirv_cross_debug}",
-            "%{Library.spirv_cross_glsl_debug}"
+			"%{StaticLibrary.assimp_debug}",
+            "%{StaticLibrary.bullet_common_debug}",
+            "%{StaticLibrary.bullet_collision_debug}",
+            "%{StaticLibrary.bullet_dynamics_debug}",
+            "%{StaticLibrary.bullet_inversedynamics_debug}",
+            "%{StaticLibrary.bullet_softbody_debug}",
+            "%{StaticLibrary.bullet_linearmath_debug}",
+            "%{StaticLibrary.mono_debug}",
+            "%{StaticLibrary.shaderc_debug}",
+            "%{StaticLibrary.spirv_cross_debug}",
+            "%{StaticLibrary.spirv_cross_glsl_debug}"
         }
 
     filter "configurations:Release"
@@ -106,11 +113,17 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Release"}
         links {
-			"%{Library.assimp_release}",
-            "%{Library.mono_release}",
-            "%{Library.shaderc_release}",
-            "%{Library.spirv_cross_release}",
-            "%{Library.spirv_cross_glsl_release}"
+			"%{StaticLibrary.assimp_release}",
+            "%{StaticLibrary.bullet_common_release}",
+            "%{StaticLibrary.bullet_collision_release}",
+            "%{StaticLibrary.bullet_dynamics_release}",
+            "%{StaticLibrary.bullet_inversedynamics_release}",
+            "%{StaticLibrary.bullet_softbody_release}",
+            "%{StaticLibrary.bullet_linearmath_release}",
+            "%{StaticLibrary.mono_release}",
+            "%{StaticLibrary.shaderc_release}",
+            "%{StaticLibrary.spirv_cross_release}",
+            "%{StaticLibrary.spirv_cross_glsl_release}"
         }
     
     filter "configurations:Dist"
@@ -120,9 +133,15 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Dist"}
         links {
-			"%{Library.assimp_release}",
-            "%{Library.mono_release}",
-            "%{Library.shaderc_release}",
-            "%{Library.spirv_cross_release}",
-            "%{Library.spirv_cross_glsl_release}"
+			"%{StaticLibrary.assimp_release}",
+            "%{StaticLibrary.bullet_common_release}",
+            "%{StaticLibrary.bullet_collision_release}",
+            "%{StaticLibrary.bullet_dynamics_release}",
+            "%{StaticLibrary.bullet_inversedynamics_release}",
+            "%{StaticLibrary.bullet_softbody_release}",
+            "%{StaticLibrary.bullet_linearmath_release}",
+            "%{StaticLibrary.mono_release}",
+            "%{StaticLibrary.shaderc_release}",
+            "%{StaticLibrary.spirv_cross_release}",
+            "%{StaticLibrary.spirv_cross_glsl_release}"
         }

@@ -1,6 +1,6 @@
 # EppoEngine
-[![Master Build](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml)
-[![Development Build](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/nepp95/EppoEngine/actions/workflows/build.yml)
+[![Master Build](https://github.com/nepp95/EppoEngine/actions/workflows/ci-master.yml/badge.svg?branch=master)](https://github.com/nepp95/EppoEngine/actions/workflows/ci-master.yml)
+[![Development Build](https://github.com/nepp95/EppoEngine/actions/workflows/ci-develop.yml/badge.svg?branch=develop)](https://github.com/nepp95/EppoEngine/actions/workflows/ci-develop.yml)
 
 ## Introduction
 
@@ -11,11 +11,12 @@ Where I have used C++ in conjuction with OpenGL and C# for scripting - which is 
 ## Planned Features
 
 I will be focussing on creating a MVP as soon as possible, which will include the following:
-- Basic Vulkan rendering setup
-    - Render primitives (triangles, quads, circles, lines)
-    - Render images from file
-    - Render a scene within ImGui
+- Basic rendering setup
+    - Render 3D meshes
+    - Render billboards
 - Basic light sources and shadows
+    - Directional light
+    - Point light
 - User input
     - Controlling the camera
     - Tweaking parameters in runtime
@@ -24,13 +25,12 @@ After this, I will be shifting my focus to more advanced topics and also some fe
 - Audio
 - Networking
 - Postprocessing FX
-
-As a final point; I also want to dip my toes into raytracing and multithreading. Whether they will be part of the MVP or come after is yet to be seen, but I will at some point experiment with them.
+- Scripting language
 
 ## Installation
+*Note: Currently, Windows is the only supported platform.*
 
 ### Windows
-*Note: Currently, Windows is the only supported platform.*
 
 1. `git clone https://github.com/nepp95/EppoEngine.git` to a folder of your choosing.
 2. Run `Setup.bat` from the `Scripts` folder.
