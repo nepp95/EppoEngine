@@ -198,6 +198,16 @@ namespace Eppo
 					dlc.SpecularColor = c["Specular"].as<glm::vec4>();
 				}
 			}
+
+			{
+				auto c = entity["RigidBodyComponent"];
+				if (c)
+				{
+					auto& rbc = newEntity.AddComponent<RigidBodyComponent>();
+					rbc.Type = (RigidBodyComponent::BodyType)c["BodyType"].as<int>();
+					rbc.Mass = c["Mass"].as<float>();
+				}
+			}
 		}
 
 		return true;
@@ -270,6 +280,18 @@ namespace Eppo
 			out << YAML::Key << "Albedo" << YAML::Value << c.AlbedoColor;
 			out << YAML::Key << "Ambient" << YAML::Value << c.AmbientColor;
 			out << YAML::Key << "Specular" << YAML::Value << c.SpecularColor;
+
+			out << YAML::EndMap;
+		}
+
+		if (entity.HasComponent<RigidBodyComponent>())
+		{
+			out << YAML::Key << "RigidBodyComponent" << YAML::Value;
+			out << YAML::BeginMap;
+
+			auto& c = entity.GetComponent<RigidBodyComponent>();
+			out << YAML::Key << "BodyType" << YAML::Value << (int)c.Type;
+			out << YAML::Key << "Mass" << YAML::Value << c.Mass;
 
 			out << YAML::EndMap;
 		}

@@ -87,4 +87,17 @@ namespace Eppo
 		DirectionalLightComponent() = default;
 		DirectionalLightComponent(const DirectionalLightComponent&) = default;
 	};
+
+	struct RigidBodyComponent
+	{
+		enum class BodyType { Static, Dynamic, Kinematic };
+		BodyType Type = BodyType::Static;
+
+		float Mass = 1.0f;
+
+		void* RuntimeBody = nullptr;
+
+		RigidBodyComponent() = default;
+		RigidBodyComponent(const RigidBodyComponent&) = default;
+	};
 }

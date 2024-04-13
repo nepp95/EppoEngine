@@ -9,6 +9,9 @@ Entities:
       Scale: [30, 1, 30]
     MeshComponent:
       MeshHandle: 5345703082771143640
+    RigidBodyComponent:
+      BodyType: 0
+      Mass: 1
   - Entity: 5455157477212647122
     TagComponent:
       Tag: Small Cube 2
@@ -18,6 +21,9 @@ Entities:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshHandle: 5345703082771143640
+    RigidBodyComponent:
+      BodyType: 1
+      Mass: 1
   - Entity: 15859226382881889157
     TagComponent:
       Tag: Small Cube 1
@@ -27,6 +33,9 @@ Entities:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshHandle: 5345703082771143640
+    RigidBodyComponent:
+      BodyType: 1
+      Mass: 1
   - Entity: 10455494823149247745
     TagComponent:
       Tag: Sky Light

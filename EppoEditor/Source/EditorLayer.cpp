@@ -27,12 +27,12 @@ namespace Eppo
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
-		m_PanelManager.SetSceneContext(m_ActiveScene);
+		m_PanelManager.SetSceneContext(m_EditorScene);
 
 		// Open scene
 		OpenScene("Resources/Scenes/Test.epposcene");
 
-		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
+		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, RenderSpecification());
 	}
 	
 	void EditorLayer::OnDetach()
@@ -66,7 +66,20 @@ namespace Eppo
 	
 	void EditorLayer::Render()
 	{
-		m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
+		switch (m_SceneState)
+		{
+			case SceneState::Edit:
+			{
+				m_EditorScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
+				break;
+			}
+
+			case SceneState::Play:
+			{
+				m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
+				break;
+			}
+		}
 	}
 
 	void EditorLayer::RenderGui()
@@ -229,12 +242,15 @@ namespace Eppo
 
 	void EditorLayer::OnScenePlay()
 	{
-		if (!m_ActiveScene)
+		if (!m_EditorScene)
 			return;
 
 		m_SceneState = SceneState::Play;
 
+		m_ActiveScene = Scene::Copy(m_EditorScene);
 		m_ActiveScene->OnRuntimeStart();
+
+		m_PanelManager.SetSceneContext(m_ActiveScene);
 	}
 
 	void EditorLayer::OnSceneStop()
@@ -242,17 +258,20 @@ namespace Eppo
 		if (!m_ActiveScene)
 			return;
 
-		m_ActiveScene->OnRuntimeStop();
-
 		m_SceneState = SceneState::Edit;
+
+		m_ActiveScene->OnRuntimeStop();
+		m_ActiveScene = m_EditorScene;
+
+		m_PanelManager.SetSceneContext(m_ActiveScene);
 	}
 
 	void EditorLayer::NewScene()
 	{
-		m_ActiveScene = CreateRef<Scene>();
+		m_EditorScene = CreateRef<Scene>();
 		m_ActiveScenePath = std::filesystem::path();
 
-		m_PanelManager.SetSceneContext(m_ActiveScene);
+		m_PanelManager.SetSceneContext(m_EditorScene);
 	}
 
 	void EditorLayer::SaveScene()
@@ -265,7 +284,7 @@ namespace Eppo
 
 	void EditorLayer::SaveScene(const std::filesystem::path& filepath)
 	{
-		SceneSerializer serializer(m_ActiveScene);
+		SceneSerializer serializer(m_EditorScene);
 		serializer.Serialize(m_ActiveScenePath);
 	}
 
@@ -290,10 +309,10 @@ namespace Eppo
 
 		if (serializer.Deserialize(filepath))
 		{
-			m_ActiveScene = newScene;
+			m_EditorScene = newScene;
 			m_ActiveScenePath = filepath;
 			
-			m_PanelManager.SetSceneContext(m_ActiveScene);
+			m_PanelManager.SetSceneContext(m_EditorScene);
 		}
 	}
 }
