@@ -205,6 +205,7 @@ namespace Eppo
 				{
 					auto& rbc = newEntity.AddComponent<RigidBodyComponent>();
 					rbc.Type = (RigidBodyComponent::BodyType)c["BodyType"].as<int>();
+					rbc.Mass = c["Mass"].as<float>();
 				}
 			}
 		}
@@ -290,6 +291,7 @@ namespace Eppo
 
 			auto& c = entity.GetComponent<RigidBodyComponent>();
 			out << YAML::Key << "BodyType" << YAML::Value << (int)c.Type;
+			out << YAML::Key << "Mass" << YAML::Value << c.Mass;
 
 			out << YAML::EndMap;
 		}

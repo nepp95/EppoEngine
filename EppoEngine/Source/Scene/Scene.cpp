@@ -221,11 +221,10 @@ namespace Eppo
 			bTransform.setOrigin(btVector3(transform.Translation.x, transform.Translation.y, transform.Translation.z));
 			bTransform.setRotation(Utils::GlmToBullet(glm::quat(transform.Rotation)));
 
+			bool isDynamic = rigidbody.Type == RigidBodyComponent::BodyType::Dynamic;
 			btScalar mass(0.0f);
-			if (rigidbody.Type == RigidBodyComponent::BodyType::Dynamic)
-				mass = 1.0f;
-
-			bool isDynamic = (mass != 0.0f);
+			if (isDynamic)
+				mass = rigidbody.Mass;
 
 			btVector3 localInertia(btVector3(0.0f, 0.0f, 0.0f));
 			if (isDynamic)
