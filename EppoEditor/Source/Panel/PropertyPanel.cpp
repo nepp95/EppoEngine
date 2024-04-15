@@ -55,6 +55,7 @@ namespace Eppo
 			DrawAddComponentEntry<SpriteComponent>("Sprite");
 			DrawAddComponentEntry<MeshComponent>("Mesh");
 			DrawAddComponentEntry<DirectionalLightComponent>("Directional Light");
+			DrawAddComponentEntry<ScriptComponent>("Script");
 			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
 
 			ImGui::EndPopup();
@@ -225,6 +226,27 @@ namespace Eppo
 			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(component.AmbientColor));
 			ImGui::ColorEdit4("Specular Color", glm::value_ptr(component.SpecularColor));
 		}, std::string("Directional Light"));
+
+		DrawComponent<ScriptComponent>(entity, [](auto& component)
+		{
+			std::string& name = component.ClassName;
+
+			if (ImGui::BeginCombo("Class", name.c_str()))
+			{
+				for (const auto& [className, scriptClass] : ScriptEngine::GetScriptClasses())
+				{
+					bool isSelected = className == name;
+
+					if (ImGui::Selectable(className.c_str(), isSelected))
+						name = className;
+
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
+		});
 
 		DrawComponent<RigidBodyComponent>(entity, [](auto& component)
 		{

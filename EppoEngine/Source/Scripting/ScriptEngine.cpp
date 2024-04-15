@@ -3,7 +3,6 @@
 
 #include "Core/Buffer.h"
 #include "Core/Filesystem.h"
-#include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptGlue.h"
 #include "Scripting/ScriptInstance.h"
 
@@ -80,31 +79,6 @@ namespace Eppo
 
 			return ScriptFieldType::None;
 		}
-
-		static std::string ScriptFieldTypeToString(ScriptFieldType type)
-		{
-			switch (type)
-			{
-				case ScriptFieldType::Float:	return "Float";
-				case ScriptFieldType::Double:	return "Double";
-				case ScriptFieldType::Bool:		return "Bool";
-				case ScriptFieldType::Char:		return "Char";
-				case ScriptFieldType::Int16:	return "Int16";
-				case ScriptFieldType::Int32:	return "Int32";
-				case ScriptFieldType::Int64:	return "Int64";
-				case ScriptFieldType::Byte:		return "Byte";
-				case ScriptFieldType::UInt16:	return "UInt16";
-				case ScriptFieldType::UInt32:	return "UInt32";
-				case ScriptFieldType::UInt64:	return "UInt64";
-				case ScriptFieldType::Vector2:	return "Vector2";
-				case ScriptFieldType::Vector3:	return "Vector3";
-				case ScriptFieldType::Vector4:	return "Vector4";
-				case ScriptFieldType::Entity:	return "Entity";
-			}
-
-			EPPO_ASSERT(false);
-			return "None";
-		}
 	}
 
 	struct ScriptEngineData
@@ -121,10 +95,12 @@ namespace Eppo
 		std::filesystem::path AppAssemblyFilepath;
 
 		Ref<ScriptClass> EntityClass;
-		std::unordered_map<std::string, Ref<ScriptClass>> ScriptClasses;
-		std::unordered_map<UUID, Ref<ScriptInstance>> ScriptInstances;
 
-		Ref<Scene> SceneContext;
+		std::unordered_map<std::string, Ref<ScriptClass>> EntityScriptClasses;
+		std::unordered_map<UUID, Ref<ScriptInstance>> EntityScriptInstances;
+		std::unordered_map<UUID, ScriptFieldMap> EntityScriptFields;
+
+		Scene* SceneContext;
 
 		#if defined(EPPO_DEBUG)
 			bool EnableDebugging = true;
@@ -145,10 +121,7 @@ namespace Eppo
 		if (!status)
 			EPPO_ERROR("Failed to load EppoScripting assembly!");
 
-		ScriptGlue::RegisterFunctions();
-		LoadAssemblyClasses();
-
-		s_Data->EntityClass = CreateRef<ScriptClass>("Eppo", "Entity", true);
+		LoadAppAssembly("Projects/Assets/Scripts/Binaries/Sandbox.dll");
 
 		MonoObject* instance = s_Data->EntityClass->Instantiate();
 
@@ -193,14 +166,70 @@ namespace Eppo
 		delete s_Data;
 	}
 
-	void ScriptEngine::OnRuntimeStart(Ref<Scene> scene)
+	bool ScriptEngine::LoadAppAssembly(const std::filesystem::path& filepath)
 	{
+		// Load assembly
+		s_Data->AppAssemblyFilepath = filepath;
+		s_Data->AppAssembly = Utils::LoadMonoAssembly(filepath, s_Data->EnableDebugging);
+		if (s_Data->AppAssembly == nullptr)
+			return false;
 
+		s_Data->AppAssemblyImage = mono_assembly_get_image(s_Data->AppAssembly);
+
+		// Register internal calls
+		ScriptGlue::RegisterFunctions();
+
+		// Load assembly classes
+		LoadAssemblyClasses();
+
+		// Create base entity class
+		s_Data->EntityClass = CreateRef<ScriptClass>("Eppo", "Entity", true);
+
+		return true;
+	}
+
+	void ScriptEngine::OnRuntimeStart(Scene* scene)
+	{
+		s_Data->SceneContext = scene;
 	}
 
 	void ScriptEngine::OnRuntimeStop()
 	{
+		s_Data->SceneContext = nullptr;
+		s_Data->EntityScriptInstances.clear();
+	}
 
+	void ScriptEngine::OnCreateEntity(Entity entity)
+	{
+		const auto& sc = entity.GetComponent<ScriptComponent>();
+		if (EntityClassExists(sc.ClassName))
+		{
+			UUID uuid = entity.GetUUID();
+
+			Ref<ScriptInstance> instance = CreateRef<ScriptInstance>(s_Data->EntityScriptClasses.at(sc.ClassName), entity);
+			s_Data->EntityScriptInstances[uuid] = instance;
+
+			auto it = s_Data->EntityScriptFields.find(uuid);
+			if (it != s_Data->EntityScriptFields.end())
+			{
+				const ScriptFieldMap& fieldMap = it->second;
+				for (const auto& [name, fieldInstance] : fieldMap)
+				{
+					instance->SetFieldValue(name, fieldInstance.m_Buffer);
+				}
+			}
+
+			instance->InvokeOnCreate();
+		}
+	}
+
+	void ScriptEngine::OnUpdateEntity(Entity entity, float timestep)
+	{
+		UUID uuid = entity.GetUUID();
+		EPPO_ASSERT(s_Data->EntityScriptInstances.find(uuid) != s_Data->EntityScriptInstances.end());
+
+		Ref<ScriptInstance> instance = s_Data->EntityScriptInstances.at(uuid);
+		instance->InvokeOnUpdate(timestep);
 	}
 
 	MonoObject* ScriptEngine::InstantiateClass(MonoClass* monoClass)
@@ -209,6 +238,11 @@ namespace Eppo
 		mono_runtime_object_init(instance);
 
 		return instance;
+	}
+
+	bool ScriptEngine::EntityClassExists(const std::string& fullName)
+	{
+		return s_Data->EntityScriptClasses.find(fullName) != s_Data->EntityScriptClasses.end();
 	}
 
 	MonoImage* ScriptEngine::GetCoreAssemblyImage()
@@ -224,6 +258,11 @@ namespace Eppo
 	Ref<ScriptClass> ScriptEngine::GetEntityClass()
 	{
 		return s_Data->EntityClass;
+	}
+
+	std::unordered_map<std::string, Ref<ScriptClass>>& ScriptEngine::GetScriptClasses()
+	{
+		return s_Data->EntityScriptClasses;
 	}
 
 	void ScriptEngine::InitMono()
@@ -258,7 +297,7 @@ namespace Eppo
 
 	void ScriptEngine::LoadAssemblyClasses()
 	{
-		const MonoTableInfo* typeDefinitionsTable = mono_image_get_table_info(s_Data->CoreAssemblyImage, MONO_TABLE_TYPEDEF);
+		const MonoTableInfo* typeDefinitionsTable = mono_image_get_table_info(s_Data->AppAssemblyImage, MONO_TABLE_TYPEDEF);
 		int32_t numTypes = mono_table_info_get_rows(typeDefinitionsTable);
 		MonoClass* entityClass = mono_class_from_name(s_Data->CoreAssemblyImage, "Eppo", "Entity");
 
@@ -268,8 +307,8 @@ namespace Eppo
 			uint32_t cols[MONO_TYPEDEF_SIZE];
 			mono_metadata_decode_row(typeDefinitionsTable, i, cols, MONO_TYPEDEF_SIZE);
 
-			const char* nameSpace = mono_metadata_string_heap(s_Data->CoreAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
-			const char* name = mono_metadata_string_heap(s_Data->CoreAssemblyImage, cols[MONO_TYPEDEF_NAME]);
+			const char* nameSpace = mono_metadata_string_heap(s_Data->AppAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
+			const char* name = mono_metadata_string_heap(s_Data->AppAssemblyImage, cols[MONO_TYPEDEF_NAME]);
 
 			std::string fullName;
 			if (strlen(nameSpace) != 0)
@@ -280,19 +319,19 @@ namespace Eppo
 			// TodO: Filter out module?
 
 			// Get mono class handle from name
-			MonoClass* monoClass = mono_class_from_name(s_Data->CoreAssemblyImage, nameSpace, name);
+			MonoClass* monoClass = mono_class_from_name(s_Data->AppAssemblyImage, nameSpace, name);
 
 			// We're looking for all classes EXCEPT the entity class
 			if (monoClass == entityClass)
 				continue;
 
 			bool isEntity = mono_class_is_subclass_of(monoClass, entityClass, false);
-			if (isEntity)
+			if (!isEntity)
 				continue;
 
 			// Create a reference to the class and process it's fields
 			Ref<ScriptClass> scriptClass = CreateRef<ScriptClass>(monoClass);
-			s_Data->ScriptClasses.insert_or_assign(fullName, scriptClass);
+			s_Data->EntityScriptClasses.insert_or_assign(fullName, scriptClass);
 
 			uint32_t numFields = mono_class_num_fields(monoClass);
 

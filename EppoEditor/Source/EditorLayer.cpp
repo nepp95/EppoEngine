@@ -30,7 +30,7 @@ namespace Eppo
 		m_PanelManager.SetSceneContext(m_EditorScene);
 
 		// Open scene
-		OpenScene("Resources/Scenes/Test.epposcene");
+		OpenScene("Resources/Scenes/Test.epscene");
 
 		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, RenderSpecification());
 	}
@@ -277,7 +277,7 @@ namespace Eppo
 	void EditorLayer::SaveScene()
 	{
 		if (m_ActiveScenePath.empty())
-			m_ActiveScenePath = FileDialog::SaveFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+			m_ActiveScenePath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
 
 		SaveScene(m_ActiveScenePath);
 	}
@@ -290,7 +290,7 @@ namespace Eppo
 
 	void EditorLayer::OpenScene()
 	{
-		std::filesystem::path filepath = FileDialog::OpenFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+		std::filesystem::path filepath = FileDialog::OpenFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
 
 		if (!filepath.empty())
 			OpenScene(filepath);
@@ -298,7 +298,7 @@ namespace Eppo
 
 	void EditorLayer::OpenScene(const std::filesystem::path& filepath)
 	{
-		if (filepath.extension().string() != ".epposcene")
+		if (filepath.extension().string() != ".epscene")
 		{
 			EPPO_ERROR("Could not load '{}' because it is not a scene file!", filepath.string());
 			return;

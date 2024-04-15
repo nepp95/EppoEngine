@@ -1,7 +1,10 @@
 #pragma once
 
-#include "Scripting/ScriptEngine.h"
 #include "Scripting/ScriptField.h"
+
+typedef struct _MonoClass MonoClass;
+typedef struct _MonoMethod MonoMethod;
+typedef struct _MonoObject MonoObject;
 
 namespace Eppo
 {

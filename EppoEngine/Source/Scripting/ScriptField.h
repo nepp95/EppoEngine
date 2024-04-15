@@ -26,6 +26,8 @@ namespace Eppo
 	class ScriptFieldInstance
 	{
 	public:
+		ScriptField Field;
+
 		ScriptFieldInstance()
 		{
 			memset(m_Buffer, 0, sizeof(m_Buffer));
@@ -46,7 +48,6 @@ namespace Eppo
 		}
 
 	private:
-		ScriptField m_Field;
 		uint8_t m_Buffer[16];
 
 		friend class ScriptEngine;

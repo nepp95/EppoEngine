@@ -3,6 +3,8 @@
 
 #include "Scripting/ScriptEngine.h"
 
+#include <mono/jit/jit.h>
+
 namespace Eppo
 {
 	ScriptInstance::ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity)
@@ -34,33 +36,29 @@ namespace Eppo
 		}
 	}
 
-	template<typename T>
-	void ScriptInstance::SetFieldValue(const std::string& name, const T& value)
+	bool ScriptInstance::GetFieldValueInternal(const std::string& name, void* buffer)
 	{
-		static_assert(sizeof(T) <= 16, "Type too large!");
-
 		const auto& fields = m_ScriptClass->GetFields();
 		auto it = fields.find(name);
 		if (it == fields.end())
-			return;
+			return false;
 
 		const ScriptField& field = it->second;
-		mono_field_set_value(m_Instance, field.ClassField, (void*)&value); // might be cause of issue
+		mono_field_get_value(m_Instance, field.ClassField, buffer);
+
+		return true;
 	}
 
-	template<typename T>
-	T ScriptInstance::GetFieldValue(const std::string& name)
+	bool ScriptInstance::SetFieldValueInternal(const std::string& name, const void* value)
 	{
-		static_assert(sizeof(T) <= 16, "Type too large!");
-
 		const auto& fields = m_ScriptClass->GetFields();
 		auto it = fields.find(name);
 		if (it == fields.end())
-			return T();
+			return false;
 
 		const ScriptField& field = it->second;
-		mono_field_get_value(m_Instance, field.ClassField, s_FieldValueBuffer);
+		mono_field_set_value(m_Instance, field.ClassField, (void*)value);
 
-		return *(T*)s_FieldValueBuffer;
+		return true;
 	}
 }

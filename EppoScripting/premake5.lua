@@ -3,8 +3,8 @@ project "EppoScripting"
     language "C#"
     dotnetframework "4.8"
 
-    targetdir ("%{wks.location}/EppoEditor/Resources/Scripts")
-    objdir ("%{wks.location}/EppoEditor/Scripts/Intermediates")
+    targetdir ("../EppoEditor/Resources/Scripts")
+    objdir ("../EppoEditor/Scripts/Intermediates")
 
     files {
         "Source/**.cs",

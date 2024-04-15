@@ -5,6 +5,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/SceneRenderer.h"
 #include "Scene/Entity.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <bullet/btBulletDynamicsCommon.h>
 
@@ -19,6 +20,17 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
 
+		// Scripts
+		{
+			auto view = m_Registry.view<ScriptComponent>();
+			for (auto e : view)
+			{
+				Entity entity(e, this);
+				ScriptEngine::OnUpdateEntity(entity, timestep);
+			}
+		}
+
+		// Physics
 		m_PhysicsWorld->stepSimulation(timestep, 10);
 
 		auto view = m_Registry.view<RigidBodyComponent>();
@@ -76,6 +88,14 @@ namespace Eppo
 		m_IsRunning = true;
 
 		OnPhysicsStart();
+		ScriptEngine::OnRuntimeStart(this);
+
+		auto view = m_Registry.view<ScriptComponent>();
+		for (auto e : view)
+		{
+			Entity entity(e, this);
+			ScriptEngine::OnCreateEntity(entity);
+		}
 	}
 
 	void Scene::OnRuntimeStop()
@@ -83,6 +103,7 @@ namespace Eppo
 		m_IsRunning = false;
 
 		OnPhysicsStop();
+		ScriptEngine::OnRuntimeStop();
 	}
 
 	Ref<Scene> Scene::Copy(Ref<Scene> scene)
@@ -109,6 +130,7 @@ namespace Eppo
 		CopyComponent<SpriteComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<MeshComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<DirectionalLightComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<RigidBodyComponent>(srcRegistry, dstRegistry, entityMap);
 
 		return newScene;
@@ -165,6 +187,7 @@ namespace Eppo
 		TryCopyComponent<SpriteComponent>(entity, newEntity);
 		TryCopyComponent<MeshComponent>(entity, newEntity);
 		TryCopyComponent<DirectionalLightComponent>(entity, newEntity);
+		TryCopyComponent<ScriptComponent>(entity, newEntity);
 		TryCopyComponent<RigidBodyComponent>(entity, newEntity);
 
 		return newEntity;

@@ -37,6 +37,8 @@ namespace Eppo
 		Entity DuplicateEntity(Entity entity);
 		void DestroyEntity(Entity entity);
 
+		bool IsRunning() const { return m_IsRunning; }
+
 	private:
 		void OnPhysicsStart();
 		void OnPhysicsStop();
