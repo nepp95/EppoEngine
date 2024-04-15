@@ -37,6 +37,7 @@ namespace Eppo
 		void Resize(uint32_t width, uint32_t height);
 
 		void BeginScene(const EditorCamera& editorCamera);
+		void BeginScene(const Camera& camera, const glm::mat4& transform);
 		void EndScene();
 
 		void SubmitDirectionalLight(const DirectionalLightComponent& dlc);

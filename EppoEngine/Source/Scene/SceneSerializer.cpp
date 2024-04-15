@@ -208,6 +208,21 @@ namespace Eppo
 					rbc.Mass = c["Mass"].as<float>();
 				}
 			}
+
+			{
+				auto c = entity["CameraComponent"];
+				if (c)
+				{
+					auto& cc = newEntity.AddComponent<CameraComponent>();
+					cc.Camera.SetProjectionType((ProjectionType)c["ProjectionType"].as<int>());
+					cc.Camera.SetPerspectiveFov(c["PerspectiveFov"].as<float>());
+					cc.Camera.SetPerspectiveNearClip(c["PerspectiveNearClip"].as<float>());
+					cc.Camera.SetPerspectiveFarClip(c["PerspectiveFarClip"].as<float>());
+					cc.Camera.SetOrthographicSize(c["OrthographicSize"].as<float>());
+					cc.Camera.SetOrthographicNearClip(c["OrthographicNearClip"].as<float>());
+					cc.Camera.SetOrthographicFarClip(c["OrthographicFarClip"].as<float>());
+				}
+			}
 		}
 
 		return true;
@@ -292,6 +307,25 @@ namespace Eppo
 			auto& c = entity.GetComponent<RigidBodyComponent>();
 			out << YAML::Key << "BodyType" << YAML::Value << (int)c.Type;
 			out << YAML::Key << "Mass" << YAML::Value << c.Mass;
+
+			out << YAML::EndMap;
+		}
+
+		if (entity.HasComponent<CameraComponent>())
+		{
+			out << YAML::Key << "CameraComponent" << YAML::Value;
+			out << YAML::BeginMap;
+
+			auto& c = entity.GetComponent<CameraComponent>();
+			auto& cc = c.Camera;
+
+			out << YAML::Key << "ProjectionType" << YAML::Value << (int)cc.GetProjectionType();
+			out << YAML::Key << "PerspectiveFov" << YAML::Value << cc.GetPerspectiveFov();
+			out << YAML::Key << "PerspectiveNearClip" << YAML::Value << cc.GetPerspectiveNearClip();
+			out << YAML::Key << "PerspectiveFarClip" << YAML::Value << cc.GetPerspectiveFarClip();
+			out << YAML::Key << "OrthographicSize" << YAML::Value << cc.GetOrthographicSize();
+			out << YAML::Key << "OrthographicNearClip" << YAML::Value << cc.GetOrthographicNearClip();
+			out << YAML::Key << "OrthographicFarClip" << YAML::Value << cc.GetOrthographicFarClip();
 
 			out << YAML::EndMap;
 		}

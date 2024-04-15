@@ -1,16 +1,43 @@
 Scene: Test
 Entities:
-  - Entity: 5455157477212647123
+  - Entity: 216671377127321184
     TagComponent:
-      Tag: Plateau
+      Tag: Camera
     TransformComponent:
-      Translation: [0, -7, -20]
+      Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
-      Scale: [30, 1, 30]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      ProjectionType: 1
+      PerspectiveFov: 0.785398185
+      PerspectiveNearClip: 0.00999999978
+      PerspectiveFarClip: 1000
+      OrthographicSize: 10
+      OrthographicNearClip: -1
+      OrthographicFarClip: 1
+  - Entity: 10455494823149247745
+    TagComponent:
+      Tag: Sky Light
+    TransformComponent:
+      Translation: [0, 10, -50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    DirectionalLightComponent:
+      Direction: [-0.200000003, -1, -0.300000012]
+      Albedo: [0.5, 0.5, 0.5, 1]
+      Ambient: [0.200000003, 0.200000003, 0.200000003, 1]
+      Specular: [1, 1, 1, 1]
+  - Entity: 15859226382881889157
+    TagComponent:
+      Tag: Small Cube 1
+    TransformComponent:
+      Translation: [-5, 0, -25]
+      Rotation: [1.5, 0.600000024, 0.300000012]
+      Scale: [1, 1, 1]
     MeshComponent:
       MeshHandle: 5345703082771143640
     RigidBodyComponent:
-      BodyType: 0
+      BodyType: 1
       Mass: 1
   - Entity: 5455157477212647122
     TagComponent:
@@ -24,27 +51,15 @@ Entities:
     RigidBodyComponent:
       BodyType: 1
       Mass: 1
-  - Entity: 15859226382881889157
+  - Entity: 5455157477212647123
     TagComponent:
-      Tag: Small Cube 1
+      Tag: Plateau
     TransformComponent:
-      Translation: [-5, 0, -25]
-      Rotation: [1.5, 0.600000024, 0.300000012]
-      Scale: [1, 1, 1]
+      Translation: [0, -7, -20]
+      Rotation: [0, 0, 0]
+      Scale: [30, 1, 30]
     MeshComponent:
       MeshHandle: 5345703082771143640
     RigidBodyComponent:
-      BodyType: 1
+      BodyType: 0
       Mass: 1
-  - Entity: 10455494823149247745
-    TagComponent:
-      Tag: Sky Light
-    TransformComponent:
-      Translation: [0, 10, -50]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    DirectionalLightComponent:
-      Direction: [-0.200000003, -1, -0.300000012]
-      Albedo: [0.5, 0.5, 0.5, 1]
-      Ambient: [0.200000003, 0.200000003, 0.200000003, 1]
-      Specular: [1, 1, 1, 1]
