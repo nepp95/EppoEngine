@@ -33,6 +33,12 @@ Entities:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshHandle: 5345703082771143640
+    ScriptComponent:
+      ClassName: Sandbox.Player
+      Fields:
+        - Name: Speed
+          Type: Float
+          Data: 15
     RigidBodyComponent:
       BodyType: 1
       Mass: 1

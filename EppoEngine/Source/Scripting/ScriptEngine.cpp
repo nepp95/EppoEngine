@@ -122,35 +122,6 @@ namespace Eppo
 			EPPO_ERROR("Failed to load EppoScripting assembly!");
 
 		LoadAppAssembly("Projects/Assets/Scripts/Binaries/Sandbox.dll");
-
-		MonoObject* instance = s_Data->EntityClass->Instantiate();
-
-		{
-			MonoMethod* method = s_Data->EntityClass->GetMethod("Print", 0);
-			s_Data->EntityClass->InvokeMethod(instance, method);
-		}
-
-		{
-			MonoMethod* method = s_Data->EntityClass->GetMethod("PrintInt", 1);
-			int value = 5;
-			void* param = &value;
-			s_Data->EntityClass->InvokeMethod(instance, method, &param);
-		}
-
-		{
-			MonoMethod* method = s_Data->EntityClass->GetMethod("PrintInts", 2);
-			int value = 5;
-			int value2 = 10;
-			void* params[2] = { &value, &value2 };
-			s_Data->EntityClass->InvokeMethod(instance, method, params);
-		}
-
-		{
-			MonoMethod* method = s_Data->EntityClass->GetMethod("PrintCustom", 1);
-			MonoString* monoStr = mono_string_new(s_Data->AppDomain, "Kees");
-			void* param = monoStr;
-			s_Data->EntityClass->InvokeMethod(instance, method, &param);
-		}
 	}
 
 	void ScriptEngine::Shutdown()
@@ -178,6 +149,7 @@ namespace Eppo
 
 		// Register internal calls
 		ScriptGlue::RegisterFunctions();
+		ScriptGlue::RegisterComponents();
 
 		// Load assembly classes
 		LoadAssemblyClasses();
@@ -253,6 +225,11 @@ namespace Eppo
 	MonoImage* ScriptEngine::GetAppAssemblyImage()
 	{
 		return s_Data->AppAssemblyImage;
+	}
+
+	Scene* ScriptEngine::GetSceneContext()
+	{
+		return s_Data->SceneContext;
 	}
 
 	Ref<ScriptClass> ScriptEngine::GetEntityClass()

@@ -4,23 +4,37 @@ namespace Sandbox
 {
 	public class Player : Entity
 	{
-		public float Timestep = 0.0f;
-		public int Count = 0;
+		private RigidBodyComponent m_RigidBody;
+
+		public float Speed = 0.0f;
 
 		void OnCreate()
 		{
-			Log.Info($"Created player entity from C# with UUID: {ID}");
+			m_RigidBody = GetComponent<RigidBodyComponent>();
 		}
 
 		void OnUpdate(float timestep)
 		{
-			Timestep += timestep;
+			float speed = Speed;
+			Vector3 velocity = Vector3.Zero;
 
-			if (Timestep - Count > 1.0f)
-			{
-				Log.Info($"Tickie tick! {Count} ticks.");
-				Count++;
-			}
+			if (Input.IsKeyPressed(KeyCode.W))
+				velocity.Z = 1.0f;
+			else if (Input.IsKeyPressed(KeyCode.S))
+				velocity.Z = -1.0f;
+			if (Input.IsKeyPressed(KeyCode.A))
+				velocity.X = -1.0f;
+			else if (Input.IsKeyPressed(KeyCode.D))
+				velocity.X = 1.0f;
+
+			if (Input.IsKeyPressed(KeyCode.Space))
+				velocity.Y = 1.0f;
+			else if (Input.IsKeyPressed(KeyCode.LeftControl))
+				velocity.Y = -1.0f;
+
+			velocity *= speed * timestep;
+
+			m_RigidBody.ApplyLinearImpulse(velocity);
 		}
 	}
 }

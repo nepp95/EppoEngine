@@ -34,6 +34,7 @@ namespace Eppo
 
 		static MonoImage* GetCoreAssemblyImage();
 		static MonoImage* GetAppAssemblyImage();
+		static Scene* GetSceneContext();
 
 		static Ref<ScriptClass> GetEntityClass();
 		static Ref<ScriptClass> GetEntityClass(const std::string& name);

@@ -63,7 +63,7 @@ namespace Eppo
 			auto& transform = entity.GetComponent<TransformComponent>();
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
-			btRigidBody* body = (btRigidBody*)rigidbody.RuntimeBody;
+			btRigidBody* body = rigidbody.RuntimeBody.GetBody();
 			btTransform trans;
 
 			if (body && body->getMotionState())
@@ -200,6 +200,8 @@ namespace Eppo
 		auto& tag = entity.AddComponent<TagComponent>();
 		tag = name.empty() ? "Entity" : name;
 
+		m_EntityMap[uuid] = entity;
+
 		return entity;
 	}
 
@@ -222,7 +224,30 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
 
+		m_EntityMap.erase(entity.GetUUID());
 		m_Registry.destroy(entity);
+	}
+
+	Entity Scene::FindEntityByUUID(UUID uuid)
+	{
+		auto it = m_EntityMap.find(uuid);
+		if (it != m_EntityMap.end())
+			return Entity(it->second, this);
+
+		return {};
+	}
+
+	Entity Scene::FindEntityByName(const std::string& name)
+	{
+		auto view = m_Registry.view<TagComponent>();
+		for (auto e : view)
+		{
+			const auto& tc = view.get<TagComponent>(e);
+			if (tc.Tag == name)
+				return Entity(e, this);
+		}
+
+		return {};
 	}
 
 	void Scene::OnPhysicsStart()
@@ -258,7 +283,7 @@ namespace Eppo
 			btRigidBody* body = new btRigidBody(rbInfo);
 
 			m_PhysicsWorld->addRigidBody(body);
-			rigidbody.RuntimeBody = body;
+			rigidbody.RuntimeBody = RigidBody(body);
 		}
 	}
 
@@ -285,7 +310,7 @@ namespace Eppo
 			Entity entity(e, this);
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
-			rigidbody.RuntimeBody = nullptr;
+			rigidbody.RuntimeBody.ClearBody();
 		}
 
 		delete m_PhysicsWorld;
