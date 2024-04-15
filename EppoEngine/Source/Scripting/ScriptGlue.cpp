@@ -47,6 +47,22 @@ namespace Eppo
 		return it->second(entity);
 	}
 
+	static uint64_t Entity_FindEntityByName(MonoString* name)
+	{
+		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+
+		char* cStr = mono_string_to_utf8(name);
+		std::string nameStr(cStr);
+		mono_free(cStr);
+
+		Entity entity = scene->FindEntityByName(nameStr);
+		if (!entity)
+			return 0;
+
+		return entity.GetUUID();
+	}
+
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* outTranslation)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
@@ -89,15 +105,22 @@ namespace Eppo
 		rb.RuntimeBody.ApplyLinearImpulse(*impulse);
 	}
 
+	static MonoObject* GetScriptInstance(UUID uuid)
+	{
+		return ScriptEngine::GetManagedInstance(uuid);
+	}
+
 	void ScriptGlue::RegisterFunctions()
 	{
 		EPPO_ADD_INTERNAL_CALL(Log);
 		EPPO_ADD_INTERNAL_CALL(Input_IsKeyPressed);
 		EPPO_ADD_INTERNAL_CALL(Entity_HasComponent);
+		EPPO_ADD_INTERNAL_CALL(Entity_FindEntityByName);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 		EPPO_ADD_INTERNAL_CALL(RigidBodyComponent_ApplyLinearImpulse);
 		EPPO_ADD_INTERNAL_CALL(RigidBodyComponent_ApplyLinearImpulseToCenter);
+		EPPO_ADD_INTERNAL_CALL(GetScriptInstance);
 	}
 
 	void ScriptGlue::RegisterComponents()

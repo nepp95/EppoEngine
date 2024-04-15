@@ -264,6 +264,14 @@ namespace Eppo
 		return s_Data->EntityScriptClasses;
 	}
 
+	MonoObject* ScriptEngine::GetManagedInstance(UUID uuid)
+	{
+		auto it = s_Data->EntityScriptInstances.find(uuid);
+		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
+
+		return it->second->GetManagedObject();
+	}
+
 	void ScriptEngine::InitMono()
 	{
 		mono_set_assemblies_path("Mono/lib");

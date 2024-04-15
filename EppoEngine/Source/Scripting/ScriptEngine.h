@@ -41,6 +41,8 @@ namespace Eppo
 		static Ref<ScriptInstance> GetEntityInstance(UUID uuid);
 		static ScriptFieldMap& GetScriptFieldMap(UUID uuid);
 		static std::unordered_map<std::string, Ref<ScriptClass>>& GetEntityClasses();
+		
+		static MonoObject* GetManagedInstance(UUID uuid);
 
 	private:
 		static void InitMono();

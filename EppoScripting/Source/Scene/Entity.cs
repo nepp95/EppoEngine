@@ -62,7 +62,7 @@ namespace Eppo
 			return InternalCalls.Entity_HasComponent(ID, componentType);
 		}
 
-		public T GetComponent<T>() where T: Component, new()
+		public T GetComponent<T>() where T : Component, new()
 		{
 			if (!HasComponent<T>())
 				return null;
@@ -73,6 +73,21 @@ namespace Eppo
 			};
 
 			return component;
+		}
+
+		public T As<T>() where T : Entity, new()
+		{
+			object instance = InternalCalls.GetScriptInstance(ID);
+			return instance as T;
+		}
+
+		public static Entity FindEntityByName(string name)
+		{
+			ulong uuid = InternalCalls.Entity_FindEntityByName(name);
+			if (uuid == 0)
+				return null;
+
+			return new Entity(uuid);
 		}
 	}
 }

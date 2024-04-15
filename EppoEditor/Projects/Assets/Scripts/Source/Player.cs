@@ -4,13 +4,13 @@ namespace Sandbox
 {
 	public class Player : Entity
 	{
-		private RigidBodyComponent m_RigidBody;
+		private RigidBodyComponent RigidBody;
 
 		public float Speed = 0.0f;
 
 		void OnCreate()
 		{
-			m_RigidBody = GetComponent<RigidBodyComponent>();
+			RigidBody = GetComponent<RigidBodyComponent>();
 		}
 
 		void OnUpdate(float timestep)
@@ -19,9 +19,9 @@ namespace Sandbox
 			Vector3 velocity = Vector3.Zero;
 
 			if (Input.IsKeyPressed(KeyCode.W))
-				velocity.Z = 1.0f;
-			else if (Input.IsKeyPressed(KeyCode.S))
 				velocity.Z = -1.0f;
+			else if (Input.IsKeyPressed(KeyCode.S))
+				velocity.Z = 1.0f;
 			if (Input.IsKeyPressed(KeyCode.A))
 				velocity.X = -1.0f;
 			else if (Input.IsKeyPressed(KeyCode.D))
@@ -33,8 +33,7 @@ namespace Sandbox
 				velocity.Y = -1.0f;
 
 			velocity *= speed * timestep;
-
-			m_RigidBody.ApplyLinearImpulse(velocity);
+			RigidBody.ApplyLinearImpulse(velocity);
 		}
 	}
 }
