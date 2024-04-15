@@ -5,6 +5,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/SceneRenderer.h"
 #include "Scene/Entity.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <bullet/btBulletDynamicsCommon.h>
 
@@ -52,6 +53,17 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
 
+		// Scripts
+		{
+			auto view = m_Registry.view<ScriptComponent>();
+			for (auto e : view)
+			{
+				Entity entity(e, this);
+				ScriptEngine::OnUpdateEntity(entity, timestep);
+			}
+		}
+
+		// Physics
 		m_PhysicsWorld->stepSimulation(timestep, 10);
 
 		auto view = m_Registry.view<RigidBodyComponent>();
@@ -61,7 +73,7 @@ namespace Eppo
 			auto& transform = entity.GetComponent<TransformComponent>();
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
-			btRigidBody* body = (btRigidBody*)rigidbody.RuntimeBody;
+			btRigidBody* body = rigidbody.RuntimeBody.GetBody();
 			btTransform trans;
 
 			if (body && body->getMotionState())
@@ -115,6 +127,14 @@ namespace Eppo
 		m_IsRunning = true;
 
 		OnPhysicsStart();
+		ScriptEngine::OnRuntimeStart(this);
+
+		auto view = m_Registry.view<ScriptComponent>();
+		for (auto e : view)
+		{
+			Entity entity(e, this);
+			ScriptEngine::OnCreateEntity(entity);
+		}
 	}
 
 	void Scene::OnRuntimeStop()
@@ -122,6 +142,7 @@ namespace Eppo
 		m_IsRunning = false;
 
 		OnPhysicsStop();
+		ScriptEngine::OnRuntimeStop();
 	}
 
 	Ref<Scene> Scene::Copy(Ref<Scene> scene)
@@ -148,6 +169,7 @@ namespace Eppo
 		CopyComponent<SpriteComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<MeshComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<DirectionalLightComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<RigidBodyComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
 
@@ -193,6 +215,8 @@ namespace Eppo
 		auto& tag = entity.AddComponent<TagComponent>();
 		tag = name.empty() ? "Entity" : name;
 
+		m_EntityMap[uuid] = entity;
+
 		return entity;
 	}
 
@@ -205,6 +229,7 @@ namespace Eppo
 		TryCopyComponent<SpriteComponent>(entity, newEntity);
 		TryCopyComponent<MeshComponent>(entity, newEntity);
 		TryCopyComponent<DirectionalLightComponent>(entity, newEntity);
+		TryCopyComponent<ScriptComponent>(entity, newEntity);
 		TryCopyComponent<RigidBodyComponent>(entity, newEntity);
 		TryCopyComponent<CameraComponent>(entity, newEntity);
 
@@ -215,7 +240,30 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
 
+		m_EntityMap.erase(entity.GetUUID());
 		m_Registry.destroy(entity);
+	}
+
+	Entity Scene::FindEntityByUUID(UUID uuid)
+	{
+		auto it = m_EntityMap.find(uuid);
+		if (it != m_EntityMap.end())
+			return Entity(it->second, this);
+
+		return {};
+	}
+
+	Entity Scene::FindEntityByName(const std::string& name)
+	{
+		auto view = m_Registry.view<TagComponent>();
+		for (auto e : view)
+		{
+			const auto& tc = view.get<TagComponent>(e);
+			if (tc.Tag == name)
+				return Entity(e, this);
+		}
+
+		return {};
 	}
 
 	void Scene::OnPhysicsStart()
@@ -251,7 +299,7 @@ namespace Eppo
 			btRigidBody* body = new btRigidBody(rbInfo);
 
 			m_PhysicsWorld->addRigidBody(body);
-			rigidbody.RuntimeBody = body;
+			rigidbody.RuntimeBody = RigidBody(body);
 		}
 	}
 
@@ -278,7 +326,7 @@ namespace Eppo
 			Entity entity(e, this);
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
-			rigidbody.RuntimeBody = nullptr;
+			rigidbody.RuntimeBody.ClearBody();
 		}
 
 		delete m_PhysicsWorld;

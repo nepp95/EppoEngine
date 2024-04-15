@@ -38,5 +38,8 @@
 #include "Scene/Scene.h"
 #include "Scene/SceneSerializer.h"
 
+// Scripting
+#include "Scripting/ScriptEngine.h"
+
 // Utility
 #include "Platform/FileDialog.h"

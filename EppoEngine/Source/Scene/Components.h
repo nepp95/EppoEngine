@@ -2,6 +2,7 @@
 
 #include "Asset/Asset.h"
 #include "Core/UUID.h"
+#include "Physics/RigidBody.h"
 #include "Renderer/Camera/SceneCamera.h"
 
 #include <glm/glm.hpp>
@@ -89,6 +90,14 @@ namespace Eppo
 		DirectionalLightComponent(const DirectionalLightComponent&) = default;
 	};
 
+	struct ScriptComponent
+	{
+		std::string ClassName;
+
+		ScriptComponent() = default;
+		ScriptComponent(const ScriptComponent&) = default;
+	};
+	
 	struct RigidBodyComponent
 	{
 		enum class BodyType { Static, Dynamic, Kinematic };
@@ -96,7 +105,7 @@ namespace Eppo
 
 		float Mass = 1.0f;
 
-		void* RuntimeBody = nullptr;
+		RigidBody RuntimeBody;
 
 		RigidBodyComponent() = default;
 		RigidBodyComponent(const RigidBodyComponent&) = default;

@@ -7,6 +7,10 @@ project "EppoEditor"
     targetdir ("%{wks.location}/Bin/" .. OutputDir .. "/%{prj.name}")
     objdir ("%{wks.location}/Bin-Int/" .. OutputDir .. "/%{prj.name}")
 
+	dependson {
+		"EppoScripting"
+	}
+
     files {
         "Source/**.h",
         "Source/**.cpp"
@@ -72,6 +76,7 @@ project "EppoEditor"
     filter {"system:windows", "configurations:Debug"}
 		postbuildcommands {
 			'{COPY} "%{DynamicLibrary.assimp_debug}" "%{cfg.targetdir}"',
+            '{COPY} "%{DynamicLibrary.mono_debug}" "%{cfg.targetdir}"'
 		}
 
     filter "configurations:Release"
@@ -86,6 +91,7 @@ project "EppoEditor"
     filter {"system:windows", "configurations:Release"}
 		postbuildcommands {
 			'{COPY} "%{DynamicLibrary.assimp_release}" "%{cfg.targetdir}"',
+            '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
 		}
 
     filter "configurations:Dist"
@@ -96,4 +102,5 @@ project "EppoEditor"
     filter {"system:windows", "configurations:Dist"}
 		postbuildcommands {
 			'{COPY} "%{DynamicLibrary.assimp_release}" "%{cfg.targetdir}"',
+            '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
 		}

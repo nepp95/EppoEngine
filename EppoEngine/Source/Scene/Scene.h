@@ -41,6 +41,11 @@ namespace Eppo
 		Entity DuplicateEntity(Entity entity);
 		void DestroyEntity(Entity entity);
 
+		Entity FindEntityByUUID(UUID uuid);
+		Entity FindEntityByName(const std::string& name);
+
+		bool IsRunning() const { return m_IsRunning; }
+
 	private:
 		void OnPhysicsStart();
 		void OnPhysicsStop();
@@ -49,6 +54,7 @@ namespace Eppo
 
 	private:
 		entt::registry m_Registry;
+		std::unordered_map<UUID, entt::entity> m_EntityMap;
 
 		btDiscreteDynamicsWorld* m_PhysicsWorld = nullptr;
 

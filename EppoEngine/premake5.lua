@@ -32,6 +32,7 @@ project "EppoEngine"
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
+        "%{IncludeDir.mono}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.tracy}",
@@ -50,7 +51,11 @@ project "EppoEngine"
 			"%{StaticLibrary.glad}",
             "%{StaticLibrary.glfw}",
             "%{StaticLibrary.imgui}",
-            "%{StaticLibrary.yaml_cpp}"
+            "%{StaticLibrary.yaml_cpp}",
+			"%{StaticLibrary.winsock}",
+			"%{StaticLibrary.winmm}",
+			"%{StaticLibrary.winversion}",
+			"%{StaticLibrary.bcrypt}",
         }
 
         removefiles {
@@ -91,6 +96,7 @@ project "EppoEngine"
             "%{StaticLibrary.bullet_inversedynamics_debug}",
             "%{StaticLibrary.bullet_softbody_debug}",
             "%{StaticLibrary.bullet_linearmath_debug}",
+            "%{StaticLibrary.mono_debug}",
             "%{StaticLibrary.shaderc_debug}",
             "%{StaticLibrary.spirv_cross_debug}",
             "%{StaticLibrary.spirv_cross_glsl_debug}"
@@ -114,6 +120,7 @@ project "EppoEngine"
             "%{StaticLibrary.bullet_inversedynamics_release}",
             "%{StaticLibrary.bullet_softbody_release}",
             "%{StaticLibrary.bullet_linearmath_release}",
+            "%{StaticLibrary.mono_release}",
             "%{StaticLibrary.shaderc_release}",
             "%{StaticLibrary.spirv_cross_release}",
             "%{StaticLibrary.spirv_cross_glsl_release}"
@@ -133,6 +140,7 @@ project "EppoEngine"
             "%{StaticLibrary.bullet_inversedynamics_release}",
             "%{StaticLibrary.bullet_softbody_release}",
             "%{StaticLibrary.bullet_linearmath_release}",
+            "%{StaticLibrary.mono_release}",
             "%{StaticLibrary.shaderc_release}",
             "%{StaticLibrary.spirv_cross_release}",
             "%{StaticLibrary.spirv_cross_glsl_release}"

@@ -76,7 +76,7 @@ namespace Eppo
 
 		if (!Filesystem::Exists(metadata.Filepath))
 		{
-			EPPO_ERROR("Trying to load asset which does not exists: {}", metadata.Filepath.string());
+			EPPO_ERROR("Trying to load asset which does not exists: {}", metadata.Filepath);
 			return;
 		}
 
@@ -87,7 +87,7 @@ namespace Eppo
 
 		if (!LoadData(metadata.Filepath, asset))
 		{
-			EPPO_ERROR("Failed to load asset: {}", metadata.Filepath.string());
+			EPPO_ERROR("Failed to load asset: {}", metadata.Filepath);
 			return;
 		}
 
@@ -145,7 +145,7 @@ namespace Eppo
 		}
 		catch (YAML::ParserException e)
 		{
-			EPPO_ERROR("Failed to load asset registry file '{}'!", assetRegistryFile.string());
+			EPPO_ERROR("Failed to load asset registry file '{}'!", assetRegistryFile);
 			EPPO_ERROR("YAML Error: {}", e.what());
 			return;
 		}
@@ -155,7 +155,7 @@ namespace Eppo
 			std::filesystem::path filepath = asset["Filepath"].as<std::string>();
 			if (!Filesystem::Exists(filepath))
 			{
-				EPPO_WARN("Asset with filepath '{}' has been removed from the asset registry because it does not exist!", filepath.string());
+				EPPO_WARN("Asset with filepath '{}' has been removed from the asset registry because it does not exist!", filepath);
 				continue;
 			}
 

@@ -153,7 +153,7 @@ namespace Eppo
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
-			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath.string());
+			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath);
 			EPPO_ERROR(result.GetErrorMessage());
 			EPPO_ASSERT(false);
 		}
@@ -263,7 +263,7 @@ namespace Eppo
 
 			std::vector<char> infoLog(maxLength);
 			glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
-			EPPO_ERROR("Shader linking failed ({}):\n{}", m_Specification.Filepath.string(), infoLog.data());
+			EPPO_ERROR("Shader linking failed ({}):\n{}", m_Specification.Filepath, infoLog.data());
 
 			glDeleteProgram(program);
 

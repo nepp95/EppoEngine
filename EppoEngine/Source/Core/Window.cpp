@@ -40,6 +40,8 @@ namespace Eppo
 
 		// Create window
 		EPPO_INFO("Creating window '{}' ({}x{}@{}Hz)", m_Specification.Title, m_Specification.Width, m_Specification.Height, m_Specification.RefreshRate);
+		glfwWindowHint(GLFW_POSITION_X, 25);
+		glfwWindowHint(GLFW_POSITION_Y, 50);
 		m_Window = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Title.c_str(), nullptr, nullptr);
 	}
 

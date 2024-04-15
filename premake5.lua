@@ -28,6 +28,7 @@ workspace "EppoEngine"
 
     group "Core"
         include "EppoEngine"
+        include "EppoScripting"
     group ""
 
     group "Tools"

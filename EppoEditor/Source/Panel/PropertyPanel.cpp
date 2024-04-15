@@ -1,5 +1,10 @@
 #include "PropertyPanel.h"
 
+#include "Scripting/ScriptClass.h"
+#include "Scripting/ScriptEngine.h"
+#include "Scripting/ScriptField.h"
+#include "Scripting/ScriptInstance.h"
+
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Eppo
@@ -55,6 +60,7 @@ namespace Eppo
 			DrawAddComponentEntry<SpriteComponent>("Sprite");
 			DrawAddComponentEntry<MeshComponent>("Mesh");
 			DrawAddComponentEntry<DirectionalLightComponent>("Directional Light");
+			DrawAddComponentEntry<ScriptComponent>("Script");
 			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
 			DrawAddComponentEntry<CameraComponent>("Camera");
 
@@ -226,6 +232,459 @@ namespace Eppo
 			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(component.AmbientColor));
 			ImGui::ColorEdit4("Specular Color", glm::value_ptr(component.SpecularColor));
 		}, std::string("Directional Light"));
+
+		DrawComponent<ScriptComponent>(entity, [entity, scene = GetSceneContext()](auto& component) mutable
+		{
+			std::string& name = component.ClassName;
+
+			if (ImGui::BeginCombo("Class", name.c_str()))
+			{
+				for (const auto& [className, scriptClass] : ScriptEngine::GetEntityClasses())
+				{
+					bool isSelected = className == name;
+
+					if (ImGui::Selectable(className.c_str(), isSelected))
+						name = className;
+
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
+
+			UUID uuid = entity.GetUUID();
+
+			if (scene->IsRunning())
+			{
+				Ref<ScriptInstance> instance = ScriptEngine::GetEntityInstance(uuid);
+				if (instance)
+				{
+					const auto& fields = instance->GetScriptClass()->GetFields();
+					for (const auto& [name, field] : fields)
+					{
+						switch (field.Type)
+						{
+							case ScriptFieldType::Float:
+							{
+								float data = instance->GetFieldValue<float>(name);
+								if (ImGui::InputFloat(name.c_str(), &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Double:
+							{
+								double data = instance->GetFieldValue<double>(name);
+								if (ImGui::InputDouble(name.c_str(), &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Bool:
+							{
+								bool data = instance->GetFieldValue<bool>(name);
+								if (ImGui::Checkbox(name.c_str(), &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Char:
+							{
+								int8_t data = instance->GetFieldValue<int8_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S8, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Int16:
+							{
+								int16_t data = instance->GetFieldValue<int16_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S16, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Int32:
+							{
+								int32_t data = instance->GetFieldValue<int32_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S32, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Int64:
+							{
+								int64_t data = instance->GetFieldValue<int64_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S64, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Byte:
+							{
+								uint8_t data = instance->GetFieldValue<uint8_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U8, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::UInt16:
+							{
+								uint16_t data = instance->GetFieldValue<uint16_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U16, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::UInt32:
+							{
+								uint32_t data = instance->GetFieldValue<uint32_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U32, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::UInt64:
+							{
+								uint64_t data = instance->GetFieldValue<uint64_t>(name);
+								if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U64, &data))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Vector2:
+							{
+								glm::vec2 data = instance->GetFieldValue<glm::vec2>(name);
+								if (ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Vector3:
+							{
+								glm::vec3 data = instance->GetFieldValue<glm::vec3>(name);
+								if (ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+
+							case ScriptFieldType::Vector4:
+							{
+								glm::vec4 data = instance->GetFieldValue<glm::vec4>(name);
+								if (ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+									instance->SetFieldValue(name, data);
+								break;
+							}
+						}
+					}
+				}
+			} else
+			{
+				Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(name);
+				if (entityClass)
+				{
+					const auto& fields = entityClass->GetFields();
+					auto& entityFields = ScriptEngine::GetScriptFieldMap(uuid);
+
+					for (const auto& [name, field] : fields)
+					{
+						auto it = entityFields.find(name);
+						if (it != entityFields.end())
+						{
+							ScriptFieldInstance& scriptField = it->second;
+
+							switch (field.Type)
+							{
+								case ScriptFieldType::Float:
+								{
+									float data = scriptField.GetValue<float>();
+									if (ImGui::InputFloat(name.c_str(), &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Double:
+								{
+									double data = scriptField.GetValue<double>();
+									if (ImGui::InputDouble(name.c_str(), &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Bool:
+								{
+									bool data = scriptField.GetValue<bool>();
+									if (ImGui::Checkbox(name.c_str(), &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Char:
+								{
+									int8_t data = scriptField.GetValue<int8_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S8, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Int16:
+								{
+									int16_t data = scriptField.GetValue<int16_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S16, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Int32:
+								{
+									int32_t data = scriptField.GetValue<int32_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S32, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Int64:
+								{
+									int64_t data = scriptField.GetValue<int64_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S64, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Byte:
+								{
+									uint8_t data = scriptField.GetValue<uint8_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U8, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::UInt16:
+								{
+									uint16_t data = scriptField.GetValue<uint16_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U16, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::UInt32:
+								{
+									uint32_t data = scriptField.GetValue<uint32_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U32, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::UInt64:
+								{
+									uint64_t data = scriptField.GetValue<uint64_t>();
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U64, &data))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Vector2:
+								{
+									glm::vec2 data = scriptField.GetValue<glm::vec2>();
+									if (ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Vector3:
+								{
+									glm::vec3 data = scriptField.GetValue<glm::vec3>();
+									if (ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+										scriptField.SetValue(data);
+									break;
+								}
+
+								case ScriptFieldType::Vector4:
+								{
+									glm::vec4 data = scriptField.GetValue<glm::vec4>();
+									if (ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+										scriptField.SetValue(data);
+									break;
+								}
+							}
+						} else
+						{
+							switch (field.Type)
+							{
+								case ScriptFieldType::Float:
+								{
+									float data = 0.0f;
+									if (ImGui::InputFloat(name.c_str(), &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Double:
+								{
+									double data = 0.0;
+									if (ImGui::InputDouble(name.c_str(), &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Bool:
+								{
+									bool data = false;
+									if (ImGui::Checkbox(name.c_str(), &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Char:
+								{
+									int8_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S8, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Int16:
+								{
+									int16_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S16, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Int32:
+								{
+									int32_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S32, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Int64:
+								{
+									int64_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S64, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Byte:
+								{
+									uint8_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U8, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::UInt16:
+								{
+									uint16_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U16, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::UInt32:
+								{
+									uint32_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U32, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::UInt64:
+								{
+									uint64_t data = 0;
+									if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U64, &data))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Vector2:
+								{
+									glm::vec2 data = glm::vec2(0.0f);
+									if (ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Vector3:
+								{
+									glm::vec3 data = glm::vec3(0.0f);
+									if (ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+
+								case ScriptFieldType::Vector4:
+								{
+									glm::vec4 data = glm::vec4(0.0f);
+									if (ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+									{
+										ScriptFieldInstance& scriptField = entityFields[name];
+										scriptField.Field = field;
+										scriptField.SetValue(data);
+									}
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		});
 
 		DrawComponent<RigidBodyComponent>(entity, [](auto& component)
 		{

@@ -19,7 +19,7 @@ namespace Eppo
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{
-			EPPO_ERROR("Could not load mesh '{}'", filepath.string());
+			EPPO_ERROR("Could not load mesh '{}'", filepath);
 			EPPO_ERROR("Assimp: {}", importer.GetErrorString());
 			return;
 		}
@@ -29,7 +29,7 @@ namespace Eppo
 		// Materials
 		if (scene->HasMaterials())
 		{
-			EPPO_TRACE("Mesh '{}' has {} materials", filepath.string(), scene->mNumMaterials);
+			EPPO_TRACE("Mesh '{}' has {} materials", filepath, scene->mNumMaterials);
 
 			m_Materials.resize(scene->mNumMaterials);
 			for (uint32_t i = 0; i < scene->mNumMaterials; i++)
