@@ -7,6 +7,10 @@ project "EppoEditor"
     targetdir ("%{wks.location}/Bin/" .. OutputDir .. "/%{prj.name}")
     objdir ("%{wks.location}/Bin-Int/" .. OutputDir .. "/%{prj.name}")
 
+	dependson {
+		"EppoScripting"
+	}
+
     files {
         "Source/**.h",
         "Source/**.cpp"
@@ -49,15 +53,15 @@ project "EppoEditor"
         }
 
         links {
-            "%{Library.glad}",
-            "%{Library.glfw}",
-            "%{Library.shaderc}",
-            "%{Library.spirv_cross}",
-            "%{Library.spirv_cross_glsl}",
-            "%{Library.spirv_tools}",
-            "%{Library.imgui}",
-            "%{Library.yaml_cpp}",
-            "%{Library.assimp}"
+            "%{StaticLibrary.glad}",
+            "%{StaticLibrary.glfw}",
+            "%{StaticLibrary.shaderc}",
+            "%{StaticLibrary.spirv_cross}",
+            "%{StaticLibrary.spirv_cross_glsl}",
+            "%{StaticLibrary.spirv_tools}",
+            "%{StaticLibrary.imgui}",
+            "%{StaticLibrary.yaml_cpp}",
+            "%{StaticLibrary.assimp}"
         }
 
     filter "configurations:Debug"
@@ -71,7 +75,8 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Debug"}
 		postbuildcommands {
-			'{COPY} "%{Library.assimp_debug_dll}" "%{cfg.targetdir}"'
+			'{COPY} "%{DynamicLibrary.assimp_debug}" "%{cfg.targetdir}"',
+            '{COPY} "%{DynamicLibrary.mono_debug}" "%{cfg.targetdir}"'
 		}
 
     filter "configurations:Release"
@@ -85,7 +90,8 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Release"}
 		postbuildcommands {
-			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
+			'{COPY} "%{DynamicLibrary.assimp_release}" "%{cfg.targetdir}"',
+            '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
 		}
 
     filter "configurations:Dist"
@@ -95,5 +101,6 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Dist"}
 		postbuildcommands {
-			'{COPY} "%{Library.assimp_release_dll}" "%{cfg.targetdir}"'
+			'{COPY} "%{DynamicLibrary.assimp_release}" "%{cfg.targetdir}"',
+            '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
 		}

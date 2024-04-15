@@ -2,6 +2,8 @@
 
 #include "Asset/Asset.h"
 #include "Core/UUID.h"
+#include "Physics/RigidBody.h"
+#include "Renderer/Camera/SceneCamera.h"
 
 #include <glm/glm.hpp>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -79,10 +81,41 @@ namespace Eppo
 
 	struct DirectionalLightComponent
 	{
-		glm::vec4 Color = glm::vec4(1.0f);
-		float Intensity = 1.0f;
+		glm::vec3 Direction;
+		glm::vec4 AlbedoColor = glm::vec4(1.0f);
+		glm::vec4 AmbientColor = glm::vec4(1.0f);
+		glm::vec4 SpecularColor = glm::vec4(1.0f);
 
 		DirectionalLightComponent() = default;
 		DirectionalLightComponent(const DirectionalLightComponent&) = default;
+	};
+
+	struct ScriptComponent
+	{
+		std::string ClassName;
+
+		ScriptComponent() = default;
+		ScriptComponent(const ScriptComponent&) = default;
+	};
+	
+	struct RigidBodyComponent
+	{
+		enum class BodyType { Static, Dynamic, Kinematic };
+		BodyType Type = BodyType::Static;
+
+		float Mass = 1.0f;
+
+		RigidBody RuntimeBody;
+
+		RigidBodyComponent() = default;
+		RigidBodyComponent(const RigidBodyComponent&) = default;
+	};
+
+	struct CameraComponent
+	{
+		SceneCamera Camera;
+
+		CameraComponent() = default;
+		CameraComponent(const CameraComponent&) = default;
 	};
 }

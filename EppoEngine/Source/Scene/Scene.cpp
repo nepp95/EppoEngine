@@ -5,46 +5,195 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/SceneRenderer.h"
 #include "Scene/Entity.h"
+#include "Scripting/ScriptEngine.h"
+
+#include <bullet/btBulletDynamicsCommon.h>
 
 namespace Eppo
 {
-	void Scene::OnUpdate(float timestep)
+	static btDefaultCollisionConfiguration* s_collisionConfig = new btDefaultCollisionConfiguration();
+	static btCollisionDispatcher* s_collisionDispatcher = new btCollisionDispatcher(s_collisionConfig);
+	static btBroadphaseInterface* s_broadPhaseInterface = new btDbvtBroadphase();
+	static btSequentialImpulseConstraintSolver* s_Solver = new btSequentialImpulseConstraintSolver();
+
+	namespace Utils
 	{
-		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
-		EPPO_PROFILE_FN("CPU Update", "Update Scene");
+		static glm::vec3 BulletToGlm(const btVector3& v)
+		{
+			return glm::vec3(v.getX(), v.getY(), v.getZ());
+		}
+
+		static glm::quat BulletToGlm(const btQuaternion& q)
+		{
+			return glm::quat(q.getW(), q.getX(), q.getY(), q.getZ());
+		}
+
+		static btVector3 GlmToBullet(const glm::vec3& v)
+		{
+			return btVector3(v.x, v.y, v.z);
+		}
+
+		static btQuaternion GlmToBullet(const glm::quat& q)
+		{
+			return btQuaternion(q.x, q.y, q.z, q.w);
+		}
 	}
 
-	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
+	void Scene::SetViewportSize(uint32_t width, uint32_t height)
 	{
+		auto view = m_Registry.view<CameraComponent>();
+		for (auto e : view)
 		{
-			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
+			auto& component = m_Registry.get<CameraComponent>(e);
+			component.Camera.SetViewportSize(width, height);
+		}
+	}
 
-			for (const EntityHandle entity : view)
+	void Scene::OnUpdateRuntime(float timestep)
+	{
+		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
+
+		// Scripts
+		{
+			auto view = m_Registry.view<ScriptComponent>();
+			for (auto e : view)
 			{
-				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
-				//sceneRenderer->SetEnvironment(EnvironmentKeys::LightPosition, &tc.Translation);
-				//sceneRenderer->SetEnvironment(EnvironmentKeys::LightColor, &dlc.Color);
+				Entity entity(e, this);
+				ScriptEngine::OnUpdateEntity(entity, timestep);
+			}
+		}
+
+		// Physics
+		m_PhysicsWorld->stepSimulation(timestep, 10);
+
+		auto view = m_Registry.view<RigidBodyComponent>();
+		for (auto e : view)
+		{
+			Entity entity(e, this);
+			auto& transform = entity.GetComponent<TransformComponent>();
+			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
+
+			btRigidBody* body = rigidbody.RuntimeBody.GetBody();
+			btTransform trans;
+
+			if (body && body->getMotionState())
+				body->getMotionState()->getWorldTransform(trans);
+
+			const auto& position = trans.getOrigin();
+			transform.Translation = Utils::BulletToGlm(position);
+
+			trans.getRotation().getEulerZYX(transform.Rotation.z, transform.Rotation.y, transform.Rotation.x);
+		}
+	}
+
+	void Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
+	{
+		sceneRenderer->BeginScene(editorCamera);
+
+		RenderScene(sceneRenderer);
+
+		sceneRenderer->EndScene();
+	}
+
+	void Scene::OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer)
+	{
+		SceneCamera* sceneCamera = nullptr;
+		glm::mat4 cameraTransform;
+
+		{
+			auto view = m_Registry.view<TransformComponent, CameraComponent>();
+			for (auto e : view)
+			{
+				auto [transform, camera] = view.get<TransformComponent, CameraComponent>(e);
+				sceneCamera = &camera.Camera;
+				cameraTransform = transform.GetTransform();
+
 				break;
 			}
 		}
 
-		sceneRenderer->BeginScene(editorCamera);
-
+		if (sceneCamera)
 		{
-			auto view = m_Registry.view<MeshComponent, TransformComponent>();
+			sceneRenderer->BeginScene(*sceneCamera, cameraTransform);
 
-			for (const EntityHandle entity : view)
-			{
-				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
-				if (meshC.MeshHandle)
-				{
-					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
-					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
-				}
-			}
+			RenderScene(sceneRenderer);
+			
+			sceneRenderer->EndScene();
+		}
+	}
+
+	void Scene::OnRuntimeStart()
+	{
+		m_IsRunning = true;
+
+		OnPhysicsStart();
+		ScriptEngine::OnRuntimeStart(this);
+
+		auto view = m_Registry.view<ScriptComponent>();
+		for (auto e : view)
+		{
+			Entity entity(e, this);
+			ScriptEngine::OnCreateEntity(entity);
+		}
+	}
+
+	void Scene::OnRuntimeStop()
+	{
+		m_IsRunning = false;
+
+		OnPhysicsStop();
+		ScriptEngine::OnRuntimeStop();
+	}
+
+	Ref<Scene> Scene::Copy(Ref<Scene> scene)
+	{
+		// Create a new scene and get a reference to both entity registries
+		Ref<Scene> newScene = CreateRef<Scene>();
+
+		auto& srcRegistry = scene->m_Registry;
+		auto& dstRegistry = newScene->m_Registry;
+
+		// Every entity in the scene has an ID component
+		std::unordered_map<UUID, entt::entity> entityMap;
+		auto idView = srcRegistry.view<IDComponent>();
+
+		for (auto entity : idView)
+		{
+			UUID uuid = srcRegistry.get<IDComponent>(entity);
+			const auto& name = srcRegistry.get<TagComponent>(entity);
+			Entity newEntity = newScene->CreateEntityWithUUID(uuid, name);
+			entityMap[uuid] = newEntity;
 		}
 
-		sceneRenderer->EndScene();
+		CopyComponent<TransformComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<SpriteComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<MeshComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<DirectionalLightComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<RigidBodyComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
+
+		return newScene;
+	}
+
+	template<typename T>
+	void Scene::TryCopyComponent(Entity srcEntity, Entity dstEntity)
+	{
+		if (srcEntity.HasComponent<T>())
+			dstEntity.AddOrReplaceComponent<T>(srcEntity.GetComponent<T>());
+	}
+
+	template<typename T>
+	void Scene::CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry, const std::unordered_map<UUID, entt::entity>& entityMap)
+	{
+		auto view = srcRegistry.view<T>();
+
+		for (auto srcEntity : view)
+		{
+			entt::entity dstEntity = entityMap.at(srcRegistry.get<IDComponent>(srcEntity).ID);
+			auto& srcComponent = srcRegistry.get<T>(srcEntity);
+			dstRegistry.emplace_or_replace<T>(dstEntity, srcComponent);
+		}
 	}
 
 	Entity Scene::CreateEntity(const std::string& name)
@@ -66,13 +215,149 @@ namespace Eppo
 		auto& tag = entity.AddComponent<TagComponent>();
 		tag = name.empty() ? "Entity" : name;
 
+		m_EntityMap[uuid] = entity;
+
 		return entity;
+	}
+
+	Entity Scene::DuplicateEntity(Entity entity)
+	{
+		std::string name = entity.GetName();
+		Entity newEntity = CreateEntity(name);
+
+		TryCopyComponent<TransformComponent>(entity, newEntity);
+		TryCopyComponent<SpriteComponent>(entity, newEntity);
+		TryCopyComponent<MeshComponent>(entity, newEntity);
+		TryCopyComponent<DirectionalLightComponent>(entity, newEntity);
+		TryCopyComponent<ScriptComponent>(entity, newEntity);
+		TryCopyComponent<RigidBodyComponent>(entity, newEntity);
+		TryCopyComponent<CameraComponent>(entity, newEntity);
+
+		return newEntity;
 	}
 
 	void Scene::DestroyEntity(Entity entity)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
 
+		m_EntityMap.erase(entity.GetUUID());
 		m_Registry.destroy(entity);
+	}
+
+	Entity Scene::FindEntityByUUID(UUID uuid)
+	{
+		auto it = m_EntityMap.find(uuid);
+		if (it != m_EntityMap.end())
+			return Entity(it->second, this);
+
+		return {};
+	}
+
+	Entity Scene::FindEntityByName(const std::string& name)
+	{
+		auto view = m_Registry.view<TagComponent>();
+		for (auto e : view)
+		{
+			const auto& tc = view.get<TagComponent>(e);
+			if (tc.Tag == name)
+				return Entity(e, this);
+		}
+
+		return {};
+	}
+
+	void Scene::OnPhysicsStart()
+	{
+		m_PhysicsWorld = new btDiscreteDynamicsWorld(s_collisionDispatcher, s_broadPhaseInterface, s_Solver, s_collisionConfig);
+		m_PhysicsWorld->setGravity(btVector3(0.0f, -9.81f, 0.0f));
+
+		auto view = m_Registry.view<RigidBodyComponent>();
+		for (auto e : view)
+		{
+			Entity entity(e, this);
+			auto& transform = entity.GetComponent<TransformComponent>();
+			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
+
+			btCollisionShape* shape = new btBoxShape(btVector3(transform.Scale.x, transform.Scale.y, transform.Scale.z));
+
+			btTransform bTransform;
+			bTransform.setIdentity();
+			bTransform.setOrigin(btVector3(transform.Translation.x, transform.Translation.y, transform.Translation.z));
+			bTransform.setRotation(Utils::GlmToBullet(glm::quat(transform.Rotation)));
+
+			bool isDynamic = rigidbody.Type == RigidBodyComponent::BodyType::Dynamic;
+			btScalar mass(0.0f);
+			if (isDynamic)
+				mass = rigidbody.Mass;
+
+			btVector3 localInertia(btVector3(0.0f, 0.0f, 0.0f));
+			if (isDynamic)
+				shape->calculateLocalInertia(mass, localInertia);
+
+			btDefaultMotionState* motionState = new btDefaultMotionState(bTransform);
+			btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, localInertia);
+			btRigidBody* body = new btRigidBody(rbInfo);
+
+			m_PhysicsWorld->addRigidBody(body);
+			rigidbody.RuntimeBody = RigidBody(body);
+		}
+	}
+
+	void Scene::OnPhysicsStop()
+	{
+		for (int i = m_PhysicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+		{
+			btCollisionObject* obj = m_PhysicsWorld->getCollisionObjectArray()[i];
+			btRigidBody* body = btRigidBody::upcast(obj);
+
+			if (body && body->getMotionState())
+				delete body->getMotionState();
+
+			if (body && body->getCollisionShape())
+				delete body->getCollisionShape();
+
+			m_PhysicsWorld->removeCollisionObject(obj);
+			delete obj;
+		}
+
+		auto view = m_Registry.view<RigidBodyComponent>();
+		for (auto e : view)
+		{
+			Entity entity(e, this);
+			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
+
+			rigidbody.RuntimeBody.ClearBody();
+		}
+
+		delete m_PhysicsWorld;
+		m_PhysicsWorld = nullptr;
+	}
+
+	void Scene::RenderScene(Ref<SceneRenderer> sceneRenderer)
+	{
+		{
+			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
+				sceneRenderer->SubmitDirectionalLight(dlc);
+				break;
+			}
+		}
+
+		{
+			auto view = m_Registry.view<MeshComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
+				if (meshC.MeshHandle)
+				{
+					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
+					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
+				}
+			}
+		}
 	}
 }

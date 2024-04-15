@@ -6,6 +6,7 @@
 namespace Eppo
 {
 	Ref<spdlog::logger> Log::s_CoreLogger;
+	Ref<spdlog::logger> Log::s_ScriptLogger;
 
 	void Log::Init()
 	{
@@ -15,5 +16,8 @@ namespace Eppo
 
 		s_CoreLogger = spdlog::stdout_color_mt("Engine");
 		s_CoreLogger->set_level(spdlog::level::trace);
+
+		s_ScriptLogger = spdlog::stdout_color_mt("Script");
+		s_ScriptLogger->set_level(spdlog::level::trace);
 	}
 }

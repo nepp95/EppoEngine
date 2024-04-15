@@ -147,20 +147,18 @@ namespace Eppo
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_opengl, shaderc_env_version_opengl_4_5);
-		options.SetOptimizationLevel(shaderc_optimization_level_performance);
+		options.SetOptimizationLevel(shaderc_optimization_level_zero);
 
 		// Compile source
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
-			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath.string());
+			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath);
 			EPPO_ERROR(result.GetErrorMessage());
 			EPPO_ASSERT(false);
 		}
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
-
-
 
 		// Write cache
 		//std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
@@ -265,7 +263,7 @@ namespace Eppo
 
 			std::vector<char> infoLog(maxLength);
 			glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
-			EPPO_ERROR("Shader linking failed ({}):\n{}", m_Specification.Filepath.string(), infoLog.data());
+			EPPO_ERROR("Shader linking failed ({}):\n{}", m_Specification.Filepath, infoLog.data());
 
 			glDeleteProgram(program);
 

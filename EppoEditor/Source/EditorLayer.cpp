@@ -18,17 +18,21 @@ namespace Eppo
 
 	void EditorLayer::OnAttach()
 	{
+		// Load resources
+		m_IconPlay = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/PlayButton.png"));
+		m_IconStop = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/StopButton.png"));
+
 		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
-		m_PanelManager.SetSceneContext(m_ActiveScene);
+		m_PanelManager.SetSceneContext(m_EditorScene);
 
 		// Open scene
-		OpenScene("Resources/Scenes/Test.epposcene");
+		OpenScene("Resources/Scenes/Test.epscene");
 
-		m_ViewportRenderer = CreateRef<SceneRenderer>(m_ActiveScene, RenderSpecification());
+		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, RenderSpecification());
 	}
 	
 	void EditorLayer::OnDetach()
@@ -42,15 +46,43 @@ namespace Eppo
 		{
 			m_EditorCamera.SetViewportSize(glm::vec2(m_ViewportWidth, m_ViewportHeight));
 			m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
+			m_EditorScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
+			m_ActiveScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
 		}
 
-		m_EditorCamera.OnUpdate(timestep);
-		m_ActiveScene->OnUpdate(timestep);
+		switch (m_SceneState)
+		{
+			case SceneState::Edit:
+			{
+				if (m_ViewportFocused)
+					m_EditorCamera.OnUpdate(timestep);
+				break;
+			}
+
+			case SceneState::Play:
+			{
+				m_ActiveScene->OnUpdateRuntime(timestep);
+				break;
+			}
+		}
 	}
 	
 	void EditorLayer::Render()
 	{
-		m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
+		switch (m_SceneState)
+		{
+			case SceneState::Edit:
+			{
+				m_ActiveScene->OnRenderEditor(m_ViewportRenderer, m_EditorCamera);
+				break;
+			}
+
+			case SceneState::Play:
+			{
+				m_ActiveScene->OnRenderRuntime(m_ViewportRenderer);
+				break;
+			}
+		}
 	}
 
 	void EditorLayer::RenderGui()
@@ -132,7 +164,7 @@ namespace Eppo
 
 		m_ViewportFocused = ImGui::IsWindowFocused();
 		m_ViewportHovered = ImGui::IsWindowHovered();
-		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
+		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportWidth = viewportSize.x;
@@ -148,34 +180,38 @@ namespace Eppo
 
 		// Performance
 		m_ViewportRenderer->RenderGui();
-		/*ImGui::Begin("Performance");
 
-		const auto& profileData = Application::Get().GetProfiler()->GetProfileData();
-		for (const auto& [category, results] : profileData)
+		// Toolbar
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+		ImGui::Begin("Scene Control", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+		float buttonSize = ImGui::GetWindowHeight() - 4.0f;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+		ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (buttonSize * 0.5f));
+
+		if (m_SceneState == SceneState::Edit)
 		{
-			ImGui::Text("%s", category.c_str());
-
-			std::chrono::microseconds totalCategoryTime = std::chrono::microseconds::zero();
-
-			for (const auto& [tag, time] : results)
-			{
-				ImGui::Text("  %s: %.3fms", tag.c_str(), time.count() / 1000.0f);
-				totalCategoryTime += time;
-			}
-
-			ImGui::Text("Total time: %.3fms", totalCategoryTime.count() / 1000.0f);
-			ImGui::Separator();
+			if (ImGui::ImageButton("##Play", (ImTextureID)m_IconPlay->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+				OnScenePlay();
+		} else if (m_SceneState == SceneState::Play)
+		{
+			if (ImGui::ImageButton("##Stop", (ImTextureID)m_IconStop->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+				OnSceneStop();
 		}
-		*/
-		Application::Get().GetProfiler()->Clear();
 
-		//ImGui::End(); // Performance
-
+		ImGui::PopStyleVar(3);
+		ImGui::End(); // Scene Control
+	
 		ImGui::End(); // DockSpace
 	}
 
 	void EditorLayer::OnEvent(Event& e)
 	{
+		if (m_SceneState == SceneState::Edit)
+			m_EditorCamera.OnEvent(e);
+
 		EventDispatcher dispatcher(e);
 
 		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
@@ -210,31 +246,58 @@ namespace Eppo
 		return false;
 	}
 
-	void EditorLayer::NewScene()
+	void EditorLayer::OnScenePlay()
 	{
-		m_ActiveScene = CreateRef<Scene>();
-		m_ActiveScenePath = std::filesystem::path();
+		if (!m_EditorScene)
+			return;
+
+		m_SceneState = SceneState::Play;
+
+		m_ActiveScene = Scene::Copy(m_EditorScene);
+		m_ActiveScene->OnRuntimeStart();
 
 		m_PanelManager.SetSceneContext(m_ActiveScene);
+	}
+
+	void EditorLayer::OnSceneStop()
+	{
+		if (!m_ActiveScene)
+			return;
+
+		m_SceneState = SceneState::Edit;
+
+		m_ActiveScene->OnRuntimeStop();
+		m_ActiveScene = m_EditorScene;
+
+		m_PanelManager.SetSceneContext(m_ActiveScene);
+	}
+
+	void EditorLayer::NewScene()
+	{
+		m_EditorScene = CreateRef<Scene>();
+		m_ActiveScene = m_EditorScene;
+		m_ActiveScenePath = std::filesystem::path();
+
+		m_PanelManager.SetSceneContext(m_EditorScene);
 	}
 
 	void EditorLayer::SaveScene()
 	{
 		if (m_ActiveScenePath.empty())
-			m_ActiveScenePath = FileDialog::SaveFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+			m_ActiveScenePath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
 
 		SaveScene(m_ActiveScenePath);
 	}
 
 	void EditorLayer::SaveScene(const std::filesystem::path& filepath)
 	{
-		SceneSerializer serializer(m_ActiveScene);
+		SceneSerializer serializer(m_EditorScene);
 		serializer.Serialize(m_ActiveScenePath);
 	}
 
 	void EditorLayer::OpenScene()
 	{
-		std::filesystem::path filepath = FileDialog::OpenFile("EppoEngine Scene (*.epposcene)\0*.epposcene\0");
+		std::filesystem::path filepath = FileDialog::OpenFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
 
 		if (!filepath.empty())
 			OpenScene(filepath);
@@ -242,7 +305,7 @@ namespace Eppo
 
 	void EditorLayer::OpenScene(const std::filesystem::path& filepath)
 	{
-		if (filepath.extension().string() != ".epposcene")
+		if (filepath.extension().string() != ".epscene")
 		{
 			EPPO_ERROR("Could not load '{}' because it is not a scene file!", filepath.string());
 			return;
@@ -253,10 +316,11 @@ namespace Eppo
 
 		if (serializer.Deserialize(filepath))
 		{
-			m_ActiveScene = newScene;
+			m_EditorScene = newScene;
+			m_ActiveScene = m_EditorScene;
 			m_ActiveScenePath = filepath;
 			
-			m_PanelManager.SetSceneContext(m_ActiveScene);
+			m_PanelManager.SetSceneContext(m_EditorScene);
 		}
 	}
 }
