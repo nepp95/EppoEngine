@@ -260,7 +260,29 @@ namespace Eppo
 		return s_Data->EntityClass;
 	}
 
-	std::unordered_map<std::string, Ref<ScriptClass>>& ScriptEngine::GetScriptClasses()
+	Ref<ScriptClass> ScriptEngine::GetEntityClass(const std::string& name)
+	{
+		auto it = s_Data->EntityScriptClasses.find(name);
+		if (it == s_Data->EntityScriptClasses.end())
+			return nullptr;
+
+		return it->second;
+	}
+
+	Ref<ScriptInstance> ScriptEngine::GetEntityInstance(UUID uuid)
+	{
+		auto it = s_Data->EntityScriptInstances.find(uuid);
+		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
+
+		return it->second;
+	}
+
+	ScriptFieldMap& ScriptEngine::GetScriptFieldMap(UUID uuid)
+	{
+		return s_Data->EntityScriptFields[uuid];
+	}
+
+	std::unordered_map<std::string, Ref<ScriptClass>>& ScriptEngine::GetEntityClasses()
 	{
 		return s_Data->EntityScriptClasses;
 	}

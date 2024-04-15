@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "SceneSerializer.h"
 
+#include "Scripting/ScriptClass.h"
+#include "Scripting/ScriptEngine.h"
+
 #include <yaml-cpp/yaml.h>
 
 namespace YAML
@@ -73,10 +76,37 @@ namespace YAML
 			return true;
 		}
 	};
+
+	template<>
+	struct convert<Eppo::UUID>
+	{
+		static bool decode(const Node& node, Eppo::UUID& uuid)
+		{
+			if (node.IsSequence())
+				return false;
+
+			uuid = node[0].as<uint64_t>();
+
+			return true;
+		}
+	};
 }
 
 namespace Eppo
 {
+	#define WRITE_SCRIPT_FIELD(FieldType, Type)				\
+		case ScriptFieldType::FieldType:					\
+			out << scriptField.GetValue<Type>();			\
+			break
+
+	#define READ_SCRIPT_FIELD(FieldType, Type)				\
+		case ScriptFieldType::FieldType:					\
+		{													\
+			Type data = scriptField["Data"].as<Type>();		\
+			fieldInstance.SetValue(data);					\
+			break;											\
+		}
+
 	SceneSerializer::SceneSerializer(const Ref<Scene>& scene)
 		: m_SceneContext(scene)
 	{}
@@ -205,6 +235,52 @@ namespace Eppo
 				{
 					auto& sc = newEntity.AddComponent<ScriptComponent>();
 					sc.ClassName = c["ClassName"].as<std::string>();
+
+					auto scriptFields = c["Fields"];
+					if (scriptFields)
+					{
+						Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(sc.ClassName);
+						EPPO_ASSERT(entityClass);
+
+						const auto& fields = entityClass->GetFields();
+						auto& entityFields = ScriptEngine::GetScriptFieldMap(uuid);
+
+						for (auto scriptField : scriptFields)
+						{
+							std::string name = scriptField["Name"].as<std::string>();
+							std::string typeString = scriptField["Type"].as<std::string>();
+							ScriptFieldType type = Utils::ScriptFieldTypeFromString(typeString);
+
+							ScriptFieldInstance& fieldInstance = entityFields[name];
+
+							if (fields.find(name) == fields.end())
+							{
+								EPPO_ERROR("Mono field not found!");
+								continue;
+							}
+
+							fieldInstance.Field = fields.at(name);
+
+							switch (type)
+							{
+								READ_SCRIPT_FIELD(Float, float);
+								READ_SCRIPT_FIELD(Double, double);
+								READ_SCRIPT_FIELD(Bool, bool);
+								READ_SCRIPT_FIELD(Char, int8_t);
+								READ_SCRIPT_FIELD(Int16, int16_t);
+								READ_SCRIPT_FIELD(Int32, int32_t);
+								READ_SCRIPT_FIELD(Int64, int64_t);
+								READ_SCRIPT_FIELD(Byte, uint8_t);
+								READ_SCRIPT_FIELD(UInt16, uint16_t);
+								READ_SCRIPT_FIELD(UInt32, uint32_t);
+								READ_SCRIPT_FIELD(UInt64, uint64_t);
+								READ_SCRIPT_FIELD(Vector2, glm::vec2);
+								READ_SCRIPT_FIELD(Vector3, glm::vec3);
+								READ_SCRIPT_FIELD(Vector4, glm::vec4);
+								READ_SCRIPT_FIELD(Entity, UUID);
+							}
+						}
+					}
 				}
 			}
 			
@@ -299,6 +375,53 @@ namespace Eppo
 
 			auto& c = entity.GetComponent<ScriptComponent>();
 			out << YAML::Key << "ClassName" << YAML::Value << c.ClassName;
+
+			// Fields
+			Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(c.ClassName);
+			const auto& fields = entityClass->GetFields();
+
+			if (!fields.empty())
+			{
+				out << YAML::Key << "Fields" << YAML::Value;
+				out << YAML::BeginSeq;
+
+				auto& entityFields = ScriptEngine::GetScriptFieldMap(entity.GetUUID());
+				for (const auto& [name, field] : fields)
+				{
+					if (entityFields.find(name) == entityFields.end())
+						continue;
+
+					out << YAML::BeginMap;
+					out << YAML::Key << "Name" << YAML::Value << name;
+					out << YAML::Key << "Type" << YAML::Value << Utils::ScriptFieldTypeToString(field.Type);
+					out << YAML::Key << "Data" << YAML::Value;
+
+					ScriptFieldInstance& scriptField = entityFields.at(name);
+
+					switch (field.Type)
+					{
+						WRITE_SCRIPT_FIELD(Float, float);
+						WRITE_SCRIPT_FIELD(Double, double);
+						WRITE_SCRIPT_FIELD(Bool, bool);
+						WRITE_SCRIPT_FIELD(Char, int8_t);
+						WRITE_SCRIPT_FIELD(Int16, int16_t);
+						WRITE_SCRIPT_FIELD(Int32, int32_t);
+						WRITE_SCRIPT_FIELD(Int64, int64_t);
+						WRITE_SCRIPT_FIELD(Byte, uint8_t);
+						WRITE_SCRIPT_FIELD(UInt16, uint16_t);
+						WRITE_SCRIPT_FIELD(UInt32, uint32_t);
+						WRITE_SCRIPT_FIELD(UInt64, uint64_t);
+						WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
+						WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
+						WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
+						WRITE_SCRIPT_FIELD(Entity, UUID);
+					}
+
+					out << YAML::EndMap;
+				}
+
+				out << YAML::EndSeq;
+			}
 			
 			out << YAML::EndMap;
 		}

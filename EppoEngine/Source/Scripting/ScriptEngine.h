@@ -36,7 +36,10 @@ namespace Eppo
 		static MonoImage* GetAppAssemblyImage();
 
 		static Ref<ScriptClass> GetEntityClass();
-		static std::unordered_map<std::string, Ref<ScriptClass>>& GetScriptClasses();
+		static Ref<ScriptClass> GetEntityClass(const std::string& name);
+		static Ref<ScriptInstance> GetEntityInstance(UUID uuid);
+		static ScriptFieldMap& GetScriptFieldMap(UUID uuid);
+		static std::unordered_map<std::string, Ref<ScriptClass>>& GetEntityClasses();
 
 	private:
 		static void InitMono();
