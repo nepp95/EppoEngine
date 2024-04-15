@@ -708,6 +708,8 @@ namespace Eppo
 
 				ImGui::EndCombo();
 			}
+
+			ImGui::DragFloat("Mass", &component.Mass, 0.1f);
 		}, std::string("Rigid Body"));
 	}
 
