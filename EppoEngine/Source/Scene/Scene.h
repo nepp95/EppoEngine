@@ -18,8 +18,12 @@ namespace Eppo
 		Scene() = default;
 		~Scene() = default;
 
+		void SetViewportSize(uint32_t width, uint32_t height);
+
 		void OnUpdateRuntime(float timestep);
-		void RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera);
+
+		void OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera);
+		void OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer);
 
 		void OnRuntimeStart();
 		void OnRuntimeStop();
@@ -45,6 +49,8 @@ namespace Eppo
 	private:
 		void OnPhysicsStart();
 		void OnPhysicsStop();
+
+		void RenderScene(Ref<SceneRenderer> sceneRenderer);
 
 	private:
 		entt::registry m_Registry;

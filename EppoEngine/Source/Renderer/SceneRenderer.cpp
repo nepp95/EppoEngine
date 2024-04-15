@@ -88,6 +88,24 @@ namespace Eppo
 		m_DrawList.clear();
 	}
 
+	void SceneRenderer::BeginScene(const Camera& camera, const glm::mat4& transform)
+	{
+		m_CommandBuffer->RT_Begin();
+
+		// Reset statistics
+		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
+
+		// Camera UB
+		m_CameraBuffer.View = glm::inverse(transform);
+		m_CameraBuffer.Projection = camera.GetProjectionMatrix();
+		m_CameraBuffer.ViewProjection = camera.GetProjectionMatrix() * glm::inverse(transform);
+		m_CameraBuffer.Position = transform[3];
+		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+
+		// Cleanup from last draw
+		m_DrawList.clear();
+	}
+
 	void SceneRenderer::EndScene()
 	{
 		Flush();

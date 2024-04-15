@@ -39,6 +39,16 @@ namespace Eppo
 		}
 	}
 
+	void Scene::SetViewportSize(uint32_t width, uint32_t height)
+	{
+		auto view = m_Registry.view<CameraComponent>();
+		for (auto e : view)
+		{
+			auto& component = m_Registry.get<CameraComponent>(e);
+			component.Camera.SetViewportSize(width, height);
+		}
+	}
+
 	void Scene::OnUpdateRuntime(float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
@@ -76,36 +86,40 @@ namespace Eppo
 		}
 	}
 
-	void Scene::RenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
+	void Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
 	{
 		sceneRenderer->BeginScene(editorCamera);
 
-		{
-			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
+		RenderScene(sceneRenderer);
 
-			for (const EntityHandle entity : view)
+		sceneRenderer->EndScene();
+	}
+
+	void Scene::OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer)
+	{
+		SceneCamera* sceneCamera = nullptr;
+		glm::mat4 cameraTransform;
+
+		{
+			auto view = m_Registry.view<TransformComponent, CameraComponent>();
+			for (auto e : view)
 			{
-				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
-				sceneRenderer->SubmitDirectionalLight(dlc);
+				auto [transform, camera] = view.get<TransformComponent, CameraComponent>(e);
+				sceneCamera = &camera.Camera;
+				cameraTransform = transform.GetTransform();
+
 				break;
 			}
 		}
 
+		if (sceneCamera)
 		{
-			auto view = m_Registry.view<MeshComponent, TransformComponent>();
+			sceneRenderer->BeginScene(*sceneCamera, cameraTransform);
 
-			for (const EntityHandle entity : view)
-			{
-				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
-				if (meshC.MeshHandle)
-				{
-					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
-					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
-				}
-			}
+			RenderScene(sceneRenderer);
+			
+			sceneRenderer->EndScene();
 		}
-
-		sceneRenderer->EndScene();
 	}
 
 	void Scene::OnRuntimeStart()
@@ -157,6 +171,7 @@ namespace Eppo
 		CopyComponent<DirectionalLightComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<RigidBodyComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
 
 		return newScene;
 	}
@@ -216,6 +231,7 @@ namespace Eppo
 		TryCopyComponent<DirectionalLightComponent>(entity, newEntity);
 		TryCopyComponent<ScriptComponent>(entity, newEntity);
 		TryCopyComponent<RigidBodyComponent>(entity, newEntity);
+		TryCopyComponent<CameraComponent>(entity, newEntity);
 
 		return newEntity;
 	}
@@ -315,5 +331,33 @@ namespace Eppo
 
 		delete m_PhysicsWorld;
 		m_PhysicsWorld = nullptr;
+	}
+
+	void Scene::RenderScene(Ref<SceneRenderer> sceneRenderer)
+	{
+		{
+			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
+				sceneRenderer->SubmitDirectionalLight(dlc);
+				break;
+			}
+		}
+
+		{
+			auto view = m_Registry.view<MeshComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
+				if (meshC.MeshHandle)
+				{
+					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
+					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
+				}
+			}
+		}
 	}
 }

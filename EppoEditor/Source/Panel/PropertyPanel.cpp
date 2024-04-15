@@ -62,6 +62,7 @@ namespace Eppo
 			DrawAddComponentEntry<DirectionalLightComponent>("Directional Light");
 			DrawAddComponentEntry<ScriptComponent>("Script");
 			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
+			DrawAddComponentEntry<CameraComponent>("Camera");
 
 			ImGui::EndPopup();
 		}
@@ -711,6 +712,63 @@ namespace Eppo
 
 			ImGui::DragFloat("Mass", &component.Mass, 0.1f);
 		}, std::string("Rigid Body"));
+
+		DrawComponent<CameraComponent>(entity, [](auto& component)
+		{
+			auto& camera = component.Camera;
+
+			const char* projectionTypes[] = { "Orthographic", "Perspective" };
+			const char* currentProjectionType = projectionTypes[(int)camera.GetProjectionType()];
+
+			if (ImGui::BeginCombo("Projection Type", currentProjectionType))
+			{
+				for (uint32_t i = 0; i < 2; i++)
+				{
+					bool isSelected = currentProjectionType == projectionTypes[i];
+
+					if (ImGui::Selectable(projectionTypes[i], isSelected))
+					{
+						currentProjectionType = projectionTypes[i];
+						camera.SetProjectionType((ProjectionType)i);
+					}
+
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
+
+			if (camera.GetProjectionType() == ProjectionType::Perspective)
+			{
+				float fov = glm::degrees(camera.GetPerspectiveFov());
+				if (ImGui::DragFloat("Field of view", &fov))
+					camera.SetPerspectiveFov(fov);
+
+				float nearClip = camera.GetPerspectiveNearClip();
+				if (ImGui::DragFloat("Near clip", &nearClip))
+					camera.SetPerspectiveNearClip(nearClip);
+
+				float farClip = camera.GetPerspectiveFarClip();
+				if (ImGui::DragFloat("Far clip", &farClip))
+					camera.SetPerspectiveFarClip(farClip);
+			}
+
+			if (camera.GetProjectionType() == ProjectionType::Orthographic)
+			{
+				float size = camera.GetOrthographicSize();
+				if (ImGui::DragFloat("Size", &size))
+					camera.SetOrthographicSize(size);
+
+				float nearClip = camera.GetOrthographicNearClip();
+				if (ImGui::DragFloat("Near clip", &nearClip))
+					camera.SetOrthographicNearClip(nearClip);
+
+				float farClip = camera.GetOrthographicFarClip();
+				if (ImGui::DragFloat("Far clip", &farClip))
+					camera.SetOrthographicFarClip(farClip);
+			}
+		});
 	}
 
 	template<typename T>

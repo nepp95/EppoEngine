@@ -3,6 +3,7 @@
 #include "Asset/Asset.h"
 #include "Core/UUID.h"
 #include "Physics/RigidBody.h"
+#include "Renderer/Camera/SceneCamera.h"
 
 #include <glm/glm.hpp>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -108,5 +109,13 @@ namespace Eppo
 
 		RigidBodyComponent() = default;
 		RigidBodyComponent(const RigidBodyComponent&) = default;
+	};
+
+	struct CameraComponent
+	{
+		SceneCamera Camera;
+
+		CameraComponent() = default;
+		CameraComponent(const CameraComponent&) = default;
 	};
 }

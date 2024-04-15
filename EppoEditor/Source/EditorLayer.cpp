@@ -46,13 +46,16 @@ namespace Eppo
 		{
 			m_EditorCamera.SetViewportSize(glm::vec2(m_ViewportWidth, m_ViewportHeight));
 			m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
+			m_EditorScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
+			m_ActiveScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
 		}
 
 		switch (m_SceneState)
 		{
 			case SceneState::Edit:
 			{
-				m_EditorCamera.OnUpdate(timestep);
+				if (m_ViewportFocused)
+					m_EditorCamera.OnUpdate(timestep);
 				break;
 			}
 
@@ -70,13 +73,13 @@ namespace Eppo
 		{
 			case SceneState::Edit:
 			{
-				m_EditorScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
+				m_ActiveScene->OnRenderEditor(m_ViewportRenderer, m_EditorCamera);
 				break;
 			}
 
 			case SceneState::Play:
 			{
-				m_ActiveScene->RenderEditor(m_ViewportRenderer, m_EditorCamera);
+				m_ActiveScene->OnRenderRuntime(m_ViewportRenderer);
 				break;
 			}
 		}
@@ -161,7 +164,7 @@ namespace Eppo
 
 		m_ViewportFocused = ImGui::IsWindowFocused();
 		m_ViewportHovered = ImGui::IsWindowHovered();
-		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
+		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportWidth = viewportSize.x;
@@ -206,6 +209,9 @@ namespace Eppo
 
 	void EditorLayer::OnEvent(Event& e)
 	{
+		if (m_SceneState == SceneState::Edit)
+			m_EditorCamera.OnEvent(e);
+
 		EventDispatcher dispatcher(e);
 
 		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
@@ -269,6 +275,7 @@ namespace Eppo
 	void EditorLayer::NewScene()
 	{
 		m_EditorScene = CreateRef<Scene>();
+		m_ActiveScene = m_EditorScene;
 		m_ActiveScenePath = std::filesystem::path();
 
 		m_PanelManager.SetSceneContext(m_EditorScene);
@@ -310,6 +317,7 @@ namespace Eppo
 		if (serializer.Deserialize(filepath))
 		{
 			m_EditorScene = newScene;
+			m_ActiveScene = m_EditorScene;
 			m_ActiveScenePath = filepath;
 			
 			m_PanelManager.SetSceneContext(m_EditorScene);

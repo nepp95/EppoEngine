@@ -1,5 +1,20 @@
 Scene: Test
 Entities:
+  - Entity: 216671377127321184
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      ProjectionType: 1
+      PerspectiveFov: 0.785398185
+      PerspectiveNearClip: 0.00999999978
+      PerspectiveFarClip: 1000
+      OrthographicSize: 10
+      OrthographicNearClip: -1
+      OrthographicFarClip: 1
   - Entity: 10455494823149247745
     TagComponent:
       Tag: Sky Light
