@@ -16,6 +16,8 @@ namespace Eppo
 
 	static void Log(uint32_t logLevel, MonoString* message)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Log");
+
 		char* cStr = mono_string_to_utf8(message);
 		std::string messageStr(cStr);
 		mono_free(cStr);
@@ -31,11 +33,15 @@ namespace Eppo
 
 	static bool Input_IsKeyPressed(KeyCode keyCode)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Input_IsKeyPressed");
+
 		return Input::IsKeyPressed(keyCode);
 	}
 
 	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_HasComponent");
+
 		Scene* scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
@@ -49,6 +55,8 @@ namespace Eppo
 
 	static uint64_t Entity_FindEntityByName(MonoString* name)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_FindEntityByName");
+
 		Scene* scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 
@@ -65,6 +73,8 @@ namespace Eppo
 
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* outTranslation)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_GetTranslation");
+
 		Scene* scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
@@ -75,6 +85,8 @@ namespace Eppo
 
 	static void TransformComponent_SetTranslation(UUID uuid, glm::vec3* translation)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_SetTranslation");
+
 		Scene* scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
@@ -85,6 +97,8 @@ namespace Eppo
 
 	static void RigidBodyComponent_ApplyLinearImpulse(UUID uuid, glm::vec3* impulse, glm::vec3* worldPosition)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulse");
+
 		Scene* scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
@@ -96,6 +110,8 @@ namespace Eppo
 
 	static void RigidBodyComponent_ApplyLinearImpulseToCenter(UUID uuid, glm::vec3* impulse)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulseToCenter");
+
 		Scene* scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
@@ -107,11 +123,15 @@ namespace Eppo
 
 	static MonoObject* GetScriptInstance(UUID uuid)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::GetScriptInstance");
+
 		return ScriptEngine::GetManagedInstance(uuid);
 	}
 
 	void ScriptGlue::RegisterFunctions()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RegisterFunctions");
+
 		EPPO_ADD_INTERNAL_CALL(Log);
 		EPPO_ADD_INTERNAL_CALL(Input_IsKeyPressed);
 		EPPO_ADD_INTERNAL_CALL(Entity_HasComponent);
@@ -125,6 +145,8 @@ namespace Eppo
 
 	void ScriptGlue::RegisterComponents()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RegisterComponents");
+
 		s_EntityHasComponentFns.clear();
 
 		RegisterComponent<TransformComponent>();
@@ -138,6 +160,8 @@ namespace Eppo
 	template<typename T>
 	void ScriptGlue::RegisterComponent()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RegisterComponent");
+
 		std::string_view typeName = typeid(T).name();
 		size_t pos = typeName.find_last_of(':');
 		std::string_view structName = typeName.substr(pos + 1);

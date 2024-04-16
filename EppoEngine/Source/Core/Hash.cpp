@@ -23,6 +23,8 @@ namespace Eppo
 
 	uint64_t Hash::GenerateFnv(const std::string& contents)
 	{
+		EPPO_PROFILE_FUNCTION("Hash::GenerateFnv");
+
 		Buffer buffer(contents.size());
 		memcpy(buffer.Data, contents.c_str(), contents.size());
 
@@ -34,6 +36,8 @@ namespace Eppo
 
 	uint64_t Hash::GenerateFnv(Buffer buffer)
 	{
+		EPPO_PROFILE_FUNCTION("Hash::GenerateFnv");
+
 		constexpr uint64_t fnvOffsetBasis = 0xcbf29ce484222325;
 		constexpr uint64_t fnvPrime = 0x100000001b3;
 

@@ -13,6 +13,8 @@ namespace Eppo
 {
 	std::filesystem::path FileDialog::OpenFile(const char* filter)
 	{
+		EPPO_PROFILE_FUNCTION("FileDialog::OpenFile");
+
 		OPENFILENAMEA ofn;
 		CHAR szFile[260]{ 0 };
 		CHAR currentDir[256]{ 0 };
@@ -36,6 +38,8 @@ namespace Eppo
 
 	std::filesystem::path FileDialog::SaveFile(const char* filter)
 	{
+		EPPO_PROFILE_FUNCTION("FileDialog::SaveFile");
+
 		OPENFILENAMEA ofn;
 		CHAR szFile[260] = { 0 };
 		CHAR currentDir[256] = { 0 };

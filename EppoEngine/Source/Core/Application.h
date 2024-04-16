@@ -56,8 +56,6 @@ namespace Eppo
 		void PushLayer(Layer* layer, bool overlay = false);
 		void PopLayer(Layer* layer, bool overlay = false);
 
-		const Ref<Profiler>& GetProfiler() const { return m_Profiler; }
-
 		static Application& Get() { return *s_Instance; }
 		Window& GetWindow() { return *m_Window; }
 		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
@@ -75,7 +73,6 @@ namespace Eppo
 		LayerStack m_LayerStack;
 
 		ImGuiLayer* m_ImGuiLayer;
-		Ref<Profiler> m_Profiler;
 
 		bool m_IsRunning = true;
 		bool m_IsMinimized = false;

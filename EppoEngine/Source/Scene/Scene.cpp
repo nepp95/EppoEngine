@@ -41,6 +41,8 @@ namespace Eppo
 
 	void Scene::SetViewportSize(uint32_t width, uint32_t height)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::SetViewportSize");
+
 		auto view = m_Registry.view<CameraComponent>();
 		for (auto e : view)
 		{
@@ -51,7 +53,7 @@ namespace Eppo
 
 	void Scene::OnUpdateRuntime(float timestep)
 	{
-		EPPO_PROFILE_FUNCTION("Scene::OnUpdate");
+		EPPO_PROFILE_FUNCTION("Scene::OnUpdateRuntime");
 
 		// Scripts
 		{
@@ -88,6 +90,8 @@ namespace Eppo
 
 	void Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& editorCamera)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::OnRenderEditor");
+
 		sceneRenderer->BeginScene(editorCamera);
 
 		RenderScene(sceneRenderer);
@@ -97,6 +101,8 @@ namespace Eppo
 
 	void Scene::OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::OnRenderRuntime");
+
 		SceneCamera* sceneCamera = nullptr;
 		glm::mat4 cameraTransform;
 
@@ -124,6 +130,8 @@ namespace Eppo
 
 	void Scene::OnRuntimeStart()
 	{
+		EPPO_PROFILE_FUNCTION("Scene::OnRuntimeStart");
+
 		m_IsRunning = true;
 
 		OnPhysicsStart();
@@ -139,6 +147,8 @@ namespace Eppo
 
 	void Scene::OnRuntimeStop()
 	{
+		EPPO_PROFILE_FUNCTION("Scene::OnRuntimeStop");
+
 		m_IsRunning = false;
 
 		OnPhysicsStop();
@@ -147,6 +157,8 @@ namespace Eppo
 
 	Ref<Scene> Scene::Copy(Ref<Scene> scene)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::Copy");
+
 		// Create a new scene and get a reference to both entity registries
 		Ref<Scene> newScene = CreateRef<Scene>();
 
@@ -179,6 +191,8 @@ namespace Eppo
 	template<typename T>
 	void Scene::TryCopyComponent(Entity srcEntity, Entity dstEntity)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::TryCopyComponent");
+
 		if (srcEntity.HasComponent<T>())
 			dstEntity.AddOrReplaceComponent<T>(srcEntity.GetComponent<T>());
 	}
@@ -186,6 +200,8 @@ namespace Eppo
 	template<typename T>
 	void Scene::CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry, const std::unordered_map<UUID, entt::entity>& entityMap)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::CopyComponent");
+
 		auto view = srcRegistry.view<T>();
 
 		for (auto srcEntity : view)
@@ -222,6 +238,8 @@ namespace Eppo
 
 	Entity Scene::DuplicateEntity(Entity entity)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::DuplicateEntity");
+
 		std::string name = entity.GetName();
 		Entity newEntity = CreateEntity(name);
 
@@ -246,6 +264,8 @@ namespace Eppo
 
 	Entity Scene::FindEntityByUUID(UUID uuid)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::FindEntityByUUID");
+
 		auto it = m_EntityMap.find(uuid);
 		if (it != m_EntityMap.end())
 			return Entity(it->second, this);
@@ -255,6 +275,8 @@ namespace Eppo
 
 	Entity Scene::FindEntityByName(const std::string& name)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::FindEntityByName");
+
 		auto view = m_Registry.view<TagComponent>();
 		for (auto e : view)
 		{
@@ -268,6 +290,8 @@ namespace Eppo
 
 	void Scene::OnPhysicsStart()
 	{
+		EPPO_PROFILE_FUNCTION("Scene::OnPhysicsStart");
+
 		m_PhysicsWorld = new btDiscreteDynamicsWorld(s_collisionDispatcher, s_broadPhaseInterface, s_Solver, s_collisionConfig);
 		m_PhysicsWorld->setGravity(btVector3(0.0f, -9.81f, 0.0f));
 
@@ -305,6 +329,8 @@ namespace Eppo
 
 	void Scene::OnPhysicsStop()
 	{
+		EPPO_PROFILE_FUNCTION("Scene::OnPhysicsStop");
+
 		for (int i = m_PhysicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
 		{
 			btCollisionObject* obj = m_PhysicsWorld->getCollisionObjectArray()[i];
@@ -335,6 +361,8 @@ namespace Eppo
 
 	void Scene::RenderScene(Ref<SceneRenderer> sceneRenderer)
 	{
+		EPPO_PROFILE_FUNCTION("Scene::RenderScene");
+
 		{
 			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
 

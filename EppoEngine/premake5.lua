@@ -83,7 +83,8 @@ project "EppoEngine"
         symbols "On"
 
 		defines {
-			--"TRACY_ENABLE",
+			"TRACY_ENABLE",
+            "TRACY_ONLY_LOCALHOST"
 		}
 
     filter {"system:windows", "configurations:Debug"}
@@ -108,7 +109,8 @@ project "EppoEngine"
         optimize "On"
 
         defines {
-			--"TRACY_ENABLE",
+			"TRACY_ENABLE",
+            "TRACY_ONLY_LOCALHOST"
 		}
 
     filter {"system:windows", "configurations:Release"}

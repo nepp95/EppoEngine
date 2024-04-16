@@ -34,6 +34,7 @@ namespace Eppo
 
 	void RigidBody::ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& worldPosition)
 	{
+		EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
 		EPPO_ASSERT(m_Body);
 
 		m_Body->applyImpulse(Utils::GlmToBullet(impulse), Utils::GlmToBullet(worldPosition));
@@ -41,6 +42,7 @@ namespace Eppo
 
 	void RigidBody::ApplyLinearImpulse(const glm::vec3& impulse)
 	{
+		EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
 		EPPO_ASSERT(m_Body);
 
 		m_Body->applyCentralImpulse(Utils::GlmToBullet(impulse));

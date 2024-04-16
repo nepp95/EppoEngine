@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "RenderCommandQueue.h"
 
+#include <glad/glad.h>
+#include <tracy/TracyOpenGL.hpp>
+
 namespace Eppo
 {
 	void RenderCommandQueue::AddCommand(RenderCommand fn)

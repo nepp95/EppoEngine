@@ -55,6 +55,8 @@ namespace Eppo
 
 	void ImGuiLayer::OnEvent(Event& e)
 	{
+		EPPO_PROFILE_FUNCTION("ImGuiLayer::OnEvent");
+
 		if (m_BlockEvents)
 		{
 			ImGuiIO& io = ImGui::GetIO();
@@ -65,6 +67,8 @@ namespace Eppo
 
 	void ImGuiLayer::Begin()
 	{
+		EPPO_PROFILE_FUNCTION("ImGuiLayer::Begin");
+
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
@@ -72,6 +76,8 @@ namespace Eppo
 
 	void ImGuiLayer::End()
 	{
+		EPPO_PROFILE_FUNCTION("ImGuiLayer::End");
+
 		ImGuiIO& io = ImGui::GetIO();
 		Application& app = Application::Get();
 		io.DisplaySize = ImVec2((float)app.GetWindow().GetWidth(), (float)app.GetWindow().GetHeight());

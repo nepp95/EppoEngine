@@ -5,7 +5,9 @@
 #include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {
@@ -23,9 +25,6 @@ namespace Eppo
 		// Set working directory
 		if (!m_Specification.WorkingDirectory.empty())
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
-		
-		// Create profiler
-		m_Profiler = CreateRef<Profiler>();
 
 		// Create window
 		WindowSpecification windowSpec;
@@ -50,6 +49,7 @@ namespace Eppo
 	Application::~Application()
 	{
 		EPPO_PROFILE_FUNCTION("Application::~Application");
+
 		EPPO_INFO("Shutting down...");
 
 		ScriptEngine::Shutdown();
@@ -124,36 +124,26 @@ namespace Eppo
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 
-			{
-				EPPO_PROFILE_FUNCTION("CPU Update");
+			float time = (float)glfwGetTime();
+			float timestep = time - m_LastFrameTime;
+			m_LastFrameTime = time;
 
-				float time = (float)glfwGetTime();
-				float timestep = time - m_LastFrameTime;
-				m_LastFrameTime = time;
-
-				for (Layer* layer : m_LayerStack)
-					layer->Update(timestep);
-			}
+			for (Layer* layer : m_LayerStack)
+				layer->Update(timestep);
 
 			if (!m_IsMinimized)
 			{
-				{
-					EPPO_PROFILE_FUNCTION("CPU Prepare Render");
+				for (Layer* layer : m_LayerStack)
+					layer->Render();
 
-					// 2. Record commands
-					for (Layer* layer : m_LayerStack)
-						layer->Render();
+				Renderer::SubmitCommand([this]() { RenderGui();	});
 
-					Renderer::SubmitCommand([this]() { RenderGui();	});
-				}
-				{
-					EPPO_PROFILE_FUNCTION("CPU Render");
-					Renderer::ExecuteRenderCommands();
-					m_Window->ProcessEvents();
-					m_Window->SwapBuffers();
-				}
+				Renderer::ExecuteRenderCommands();
+				m_Window->ProcessEvents();
+				m_Window->SwapBuffers();
 			}
 
+			EPPO_PROFILE_GPU_END;
 			EPPO_PROFILE_FRAME_MARK;
 		}
 	}

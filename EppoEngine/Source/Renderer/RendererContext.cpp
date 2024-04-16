@@ -5,6 +5,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {
@@ -42,7 +43,6 @@ namespace Eppo
 		: m_WindowHandle(windowHandle)
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::RendererContext");
-
 		EPPO_ASSERT(windowHandle);
 	}
 
@@ -53,6 +53,8 @@ namespace Eppo
 		glfwMakeContextCurrent(m_WindowHandle);
 		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 		EPPO_ASSERT(status);
+
+		TracyGpuContext;
 
 		EPPO_INFO("GPU Info:");
 		EPPO_INFO("\tVendor: {}", glGetString(GL_VENDOR));

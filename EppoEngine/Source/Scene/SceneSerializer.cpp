@@ -113,8 +113,6 @@ namespace Eppo
 
 	bool SceneSerializer::Serialize(const std::filesystem::path& filepath)
 	{
-		EPPO_PROFILE_FUNCTION("SceneSerializer::Serialize");
-
 		std::string sceneName = filepath.stem().string();
 
 		EPPO_INFO("Serializing scene '{}'", sceneName);
@@ -143,8 +141,6 @@ namespace Eppo
 
 	bool SceneSerializer::Deserialize(const std::filesystem::path& filepath)
 	{
-		EPPO_PROFILE_FUNCTION("SceneSerializer::Deserialize");
-
 		YAML::Node data;
 
 		try
@@ -315,7 +311,6 @@ namespace Eppo
 
 	void SceneSerializer::SerializeEntity(YAML::Emitter& out, Entity entity)
 	{
-		EPPO_PROFILE_FUNCTION("SceneSerializer::SerializeEntity");
 		EPPO_ASSERT(entity.HasComponent<IDComponent>() && entity.HasComponent<TagComponent>());
 
 		EPPO_INFO("Serializing entity '{}' ({})", entity.GetName(), entity.GetUUID());

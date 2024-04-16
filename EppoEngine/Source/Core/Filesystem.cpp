@@ -40,8 +40,6 @@ namespace Eppo
 
 	bool Filesystem::Exists(const std::filesystem::path& path)
 	{
-		EPPO_PROFILE_FUNCTION("Filesystem::ReadBytes");
-
 		return std::filesystem::exists(path);
 	}
 

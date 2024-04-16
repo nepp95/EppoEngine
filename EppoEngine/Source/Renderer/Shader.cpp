@@ -111,6 +111,8 @@ namespace Eppo
 
 	std::unordered_map<ShaderStage, std::string> Shader::PreProcess(std::string_view source)
 	{
+		EPPO_PROFILE_FUNCTION("Shader::PreProcess");
+
 		std::unordered_map<ShaderStage, std::string> shaderSources;
 
 		// Find stage token
@@ -217,6 +219,8 @@ namespace Eppo
 
 	void Shader::CreateProgram()
 	{
+		EPPO_PROFILE_FUNCTION("Shader::CreateProgram");
+
 		uint32_t program = glCreateProgram();
 
 		std::array<uint32_t, 2> shaderIDs;

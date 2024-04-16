@@ -10,6 +10,8 @@ namespace Eppo
 	ScriptInstance::ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity)
 		: m_ScriptClass(scriptClass)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptInstance::ScriptInstance");
+
 		m_Instance = m_ScriptClass->Instantiate();
 
 		m_Constructor = ScriptEngine::GetEntityClass()->GetMethod(".ctor", 1);
@@ -23,12 +25,16 @@ namespace Eppo
 
 	void ScriptInstance::InvokeOnCreate()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptInstance::InvokeOnCreate");
+
 		if (m_OnCreate)
 			m_ScriptClass->InvokeMethod(m_Instance, m_OnCreate);
 	}
 
 	void ScriptInstance::InvokeOnUpdate(float timestep)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptInstance::InvokeOnUpdate");
+
 		if (m_OnUpdate)
 		{
 			void* params = &timestep;
@@ -38,6 +44,8 @@ namespace Eppo
 
 	bool ScriptInstance::GetFieldValueInternal(const std::string& name, void* buffer)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptInstance::GetFieldValueInternal");
+
 		const auto& fields = m_ScriptClass->GetFields();
 		auto it = fields.find(name);
 		if (it == fields.end())
@@ -51,6 +59,8 @@ namespace Eppo
 
 	bool ScriptInstance::SetFieldValueInternal(const std::string& name, const void* value)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptInstance::SetFieldValueInternal");
+
 		const auto& fields = m_ScriptClass->GetFields();
 		auto it = fields.find(name);
 		if (it == fields.end())

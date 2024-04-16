@@ -113,6 +113,8 @@ namespace Eppo
 
 	void ScriptEngine::Init()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::Init");
+
 		s_Data = new ScriptEngineData();
 
 		InitMono();
@@ -126,6 +128,8 @@ namespace Eppo
 
 	void ScriptEngine::Shutdown()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::Shutdown");
+
 		mono_domain_set(mono_get_root_domain(), false);
 
 		mono_domain_unload(s_Data->AppDomain);
@@ -139,6 +143,8 @@ namespace Eppo
 
 	bool ScriptEngine::LoadAppAssembly(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadAppAssembly");
+
 		// Load assembly
 		s_Data->AppAssemblyFilepath = filepath;
 		s_Data->AppAssembly = Utils::LoadMonoAssembly(filepath, s_Data->EnableDebugging);
@@ -162,17 +168,23 @@ namespace Eppo
 
 	void ScriptEngine::OnRuntimeStart(Scene* scene)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStart");
+
 		s_Data->SceneContext = scene;
 	}
 
 	void ScriptEngine::OnRuntimeStop()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStop");
+
 		s_Data->SceneContext = nullptr;
 		s_Data->EntityScriptInstances.clear();
 	}
 
 	void ScriptEngine::OnCreateEntity(Entity entity)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::OnCreateEntity");
+
 		const auto& sc = entity.GetComponent<ScriptComponent>();
 		if (EntityClassExists(sc.ClassName))
 		{
@@ -197,6 +209,8 @@ namespace Eppo
 
 	void ScriptEngine::OnUpdateEntity(Entity entity, float timestep)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::OnUpdateEntity");
+
 		UUID uuid = entity.GetUUID();
 		EPPO_ASSERT(s_Data->EntityScriptInstances.find(uuid) != s_Data->EntityScriptInstances.end());
 
@@ -206,6 +220,8 @@ namespace Eppo
 
 	MonoObject* ScriptEngine::InstantiateClass(MonoClass* monoClass)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::InstantiateClass");
+
 		MonoObject* instance = mono_object_new(s_Data->AppDomain, monoClass);
 		mono_runtime_object_init(instance);
 
@@ -214,6 +230,8 @@ namespace Eppo
 
 	bool ScriptEngine::EntityClassExists(const std::string& fullName)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::EntityClassExists");
+
 		return s_Data->EntityScriptClasses.find(fullName) != s_Data->EntityScriptClasses.end();
 	}
 
@@ -239,6 +257,8 @@ namespace Eppo
 
 	Ref<ScriptClass> ScriptEngine::GetEntityClass(const std::string& name)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::GetEntityClass");
+
 		auto it = s_Data->EntityScriptClasses.find(name);
 		if (it == s_Data->EntityScriptClasses.end())
 			return nullptr;
@@ -248,6 +268,8 @@ namespace Eppo
 
 	Ref<ScriptInstance> ScriptEngine::GetEntityInstance(UUID uuid)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::GetEntityInstance");
+
 		auto it = s_Data->EntityScriptInstances.find(uuid);
 		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
 
@@ -266,6 +288,8 @@ namespace Eppo
 
 	MonoObject* ScriptEngine::GetManagedInstance(UUID uuid)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::GetManagedInstance");
+
 		auto it = s_Data->EntityScriptInstances.find(uuid);
 		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
 
@@ -274,6 +298,8 @@ namespace Eppo
 
 	void ScriptEngine::InitMono()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::InitMono");
+
 		mono_set_assemblies_path("Mono/lib");
 
 		s_Data->RootDomain = mono_jit_init("EppoJITRuntime");
@@ -287,6 +313,8 @@ namespace Eppo
 
 	bool ScriptEngine::LoadCoreAssembly(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadCoreAssembly");
+
 		// Setup appdomain
 		s_Data->AppDomain = mono_domain_create_appdomain("EppoScriptRuntime", nullptr);
 		mono_domain_set(s_Data->AppDomain, true);
@@ -304,6 +332,8 @@ namespace Eppo
 
 	void ScriptEngine::LoadAssemblyClasses()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadAssemblyClasses");
+
 		const MonoTableInfo* typeDefinitionsTable = mono_image_get_table_info(s_Data->AppAssemblyImage, MONO_TABLE_TYPEDEF);
 		int32_t numTypes = mono_table_info_get_rows(typeDefinitionsTable);
 		MonoClass* entityClass = mono_class_from_name(s_Data->CoreAssemblyImage, "Eppo", "Entity");
