@@ -8,8 +8,7 @@ project "EppoTesting"
     objdir ("%{wks.location}/Bin-Int/" .. OutputDir .. "/%{prj.name}")
 
     defines {
-        "EPPO_TESTING",
-		"TRACY_NO_INVARIANT_CHECK=1"
+        "EPPO_TESTING"
     }
 
 	dependson {
