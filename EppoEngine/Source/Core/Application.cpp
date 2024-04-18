@@ -63,8 +63,6 @@ namespace Eppo
 
 	void Application::Close()
 	{
-		EPPO_PROFILE_FUNCTION("Application::Close");
-
 		m_IsRunning = false;
 	}
 
@@ -128,15 +126,23 @@ namespace Eppo
 			float timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
 
-			for (Layer* layer : m_LayerStack)
-				layer->Update(timestep);
+			{
+				EPPO_PROFILE_FUNCTION("CPU Update");
+
+				for (Layer* layer : m_LayerStack)
+					layer->Update(timestep);
+			}
 
 			if (!m_IsMinimized)
 			{
-				for (Layer* layer : m_LayerStack)
-					layer->Render();
+				{
+					EPPO_PROFILE_FUNCTION("CPU Render");
 
-				Renderer::SubmitCommand([this]() { RenderGui();	});
+					for (Layer* layer : m_LayerStack)
+						layer->Render();
+					
+					Renderer::SubmitCommand([this]() { RenderGui();	});
+				}
 
 				Renderer::ExecuteRenderCommands();
 				m_Window->ProcessEvents();
@@ -150,8 +156,6 @@ namespace Eppo
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
 	{
-		EPPO_PROFILE_FUNCTION("Application::OnWindowClose");
-
 		Close();
 
 		return true;

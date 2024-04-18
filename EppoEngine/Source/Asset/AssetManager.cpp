@@ -18,15 +18,11 @@ namespace Eppo
 
 	void AssetManager::Shutdown()
 	{
-		EPPO_PROFILE_FUNCTION("AssetManager::Shutdown");
-
 		m_Assets.clear();
 	}
 
 	AssetManager::AssetManager()
 	{
-		EPPO_PROFILE_FUNCTION("AssetManager::AssetManager");
-
 		LoadRegistry();
 		WriteRegistry();
 	}
