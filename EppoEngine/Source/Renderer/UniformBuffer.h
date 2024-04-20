@@ -19,5 +19,7 @@ namespace Eppo
 		uint32_t m_RendererID;
 		uint32_t m_Size;
 		uint32_t m_Binding;
+
+		Buffer m_LocalData;
 	};
 }

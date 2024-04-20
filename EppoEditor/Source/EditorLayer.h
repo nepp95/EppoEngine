@@ -41,7 +41,7 @@ namespace Eppo
 		
 		// Editor
 		PanelManager& m_PanelManager;
-		EditorCamera m_EditorCamera;
+		EditorCamera m_EditorCamera = EditorCamera(glm::vec3(0.0f, 5.0f, -25.0f));
 
 		// Viewport
 		uint32_t m_ViewportWidth = 0;

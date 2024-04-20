@@ -9,6 +9,7 @@ namespace Eppo
 	{
 	public:
 		EditorCamera();
+		EditorCamera(const glm::vec3& position);
 		~EditorCamera() = default;
 
 		void OnUpdate(float timestep);
@@ -16,7 +17,9 @@ namespace Eppo
 
 		void SetViewportSize(const glm::vec2& size);
 
+		void SetPosition(const glm::vec3& position);
 		glm::vec3 GetPosition() const { return m_Position; }
+
 		float GetPitch() const { return m_Pitch; }
 		float GetYaw() const { return m_Yaw; }
 
@@ -24,13 +27,12 @@ namespace Eppo
 		glm::mat4 GetViewProjectionMatrix() const { return m_ProjectionMatrix * m_ViewMatrix; }
 
 	private:
-		// Update matrixes
 		void UpdateCameraVectors();
 
 	private:
 		glm::mat4 m_ViewMatrix;
 
-		glm::vec3 m_Position = glm::vec3(0.0f, 0.0f, -50.0f);
+		glm::vec3 m_Position = glm::vec3(0.0f, 0.0f, 0.0f);
 		glm::vec3 m_FrontDirection = glm::vec3(0.0f, 0.0f, -1.0f);
 		glm::vec3 m_UpDirection;
 		glm::vec3 m_RightDirection;

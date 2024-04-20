@@ -742,8 +742,8 @@ namespace Eppo
 			if (camera.GetProjectionType() == ProjectionType::Perspective)
 			{
 				float fov = glm::degrees(camera.GetPerspectiveFov());
-				if (ImGui::DragFloat("Field of view", &fov))
-					camera.SetPerspectiveFov(fov);
+				if (ImGui::DragFloat("Field of view", &fov, 0.5f, 30.0f, 90.0f))
+					camera.SetPerspectiveFov(glm::radians(fov));
 
 				float nearClip = camera.GetPerspectiveNearClip();
 				if (ImGui::DragFloat("Near clip", &nearClip))
