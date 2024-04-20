@@ -66,19 +66,10 @@ namespace Eppo
 		glCullFace((GLenum)face);
 	}
 
-	void Renderer::DrawQuad(const glm::vec2& position, const glm::vec4& color)
-	{
-		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
 
-		DrawQuad({ position.x, position.y, 0.0f }, color);
-	}
-	
-	void Renderer::DrawQuad(const glm::vec3& position, const glm::vec4& color)
+	Ref<Shader> Renderer::GetShader(const std::string& name)
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::DrawQuad");
-
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
-		DrawQuad(transform, color);
+		return s_Data->ShaderLibrary->Get(name);
 	}
 
 	void Renderer::RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Submesh> mesh)
