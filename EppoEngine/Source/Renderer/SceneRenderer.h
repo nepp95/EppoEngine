@@ -83,8 +83,8 @@ namespace Eppo
 			glm::mat4 View;
 			glm::mat4 Projection;
 			glm::vec4 Direction;
-			glm::vec4 AlbedoColor;
 			glm::vec4 AmbientColor;
+			glm::vec4 DiffuseColor;
 			glm::vec4 SpecularColor;
 		} m_DirectionalLightBuffer;
 		Ref<UniformBuffer> m_DirectionalLightUB;
@@ -95,7 +95,9 @@ namespace Eppo
 		// Binding 4
 		struct MaterialData
 		{
-			glm::vec3 AlbedoColor;
+			glm::vec4 AmbientColor;
+			glm::vec4 DiffuseColor;
+			glm::vec4 SpecularColor;
 			float Roughness;
 		} m_MaterialBuffer;
 		Ref<UniformBuffer> m_MaterialUB;

@@ -131,12 +131,9 @@ namespace Eppo
 		glDeleteTextures(1, &m_RendererID);
 	}
 
-	void Texture::RT_Bind() const
+	void Texture::Bind() const
 	{
-		Renderer::SubmitCommand([this]()
-		{
-			glBindTexture(GL_TEXTURE_2D, m_RendererID);
-		});
+		glBindTexture(GL_TEXTURE_2D, m_RendererID);
 	}
 
 	void Texture::SetupParameters() const

@@ -27,7 +27,7 @@ layout(binding = 2) uniform DirectionalLight
 	mat4 View;
 	mat4 Projection;
 	vec4 Direction;
-	vec4 AlbedoColor;
+	vec4 DiffuseColor;
 	vec4 AmbientColor;
 	vec4 SpecularColor;
 } uDirectionalLight;
@@ -66,14 +66,16 @@ layout(binding = 2) uniform DirectionalLight
 	mat4 View;
 	mat4 Projection;
 	vec4 Direction;
-	vec4 AlbedoColor;
 	vec4 AmbientColor;
+	vec4 DiffuseColor;
 	vec4 SpecularColor;
 } uDirectionalLight;
 
 layout(binding = 4) uniform Material
 {
-	vec3 AlbedoColor;
+	vec4 AmbientColor;
+	vec4 DiffuseColor;
+	vec4 SpecularColor;
 	float Roughness;
 } uMaterial;
 
@@ -91,7 +93,7 @@ void main()
 	vec3 nLightDirection = normalize(-uDirectionalLight.Direction.xyz);
 
 	float diffuseIntensity = max(dot(nNormal, nLightDirection), 0.0);
-	vec3 diffuse = diffuseIntensity * uDirectionalLight.AlbedoColor.rgb;
+	vec3 diffuse = diffuseIntensity * uDirectionalLight.DiffuseColor.rgb;
 
 	// Specular
 	vec3 nViewDirection = normalize(uCamera.Position.xyz - inFragPosition);
@@ -104,7 +106,7 @@ void main()
 	float shadow = CalculateShadow(inFragPosLightSpace, nNormal, nLightDirection);
 
 	// Output
-	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
+	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.DiffuseColor.rgb;
 	outColor = vec4(result, 1.0);
 }
 

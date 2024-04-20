@@ -93,20 +93,14 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Shader::~Shader");
 	}
 
-	void Shader::RT_Bind() const
+	void Shader::Bind() const
 	{
-		Renderer::SubmitCommand([this]()
-		{
-			glUseProgram(m_RendererID);
-		});
+		glUseProgram(m_RendererID);
 	}
 
-	void Shader::RT_Unbind() const
+	void Shader::Unbind() const
 	{
-		Renderer::SubmitCommand([this]()
-		{
-			glUseProgram(0);
-		});
+		glUseProgram(0);
 	}
 
 	std::unordered_map<ShaderStage, std::string> Shader::PreProcess(std::string_view source)

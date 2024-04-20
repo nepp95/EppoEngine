@@ -65,7 +65,7 @@ namespace Eppo
 		Texture(const TextureSpecification& specification);
 		~Texture();
 
-		void RT_Bind() const;
+		void Bind() const;
 
 		uint32_t GetWidth() const { return m_Specification.Width; }
 		uint32_t GetHeight() const { return m_Specification.Height; }

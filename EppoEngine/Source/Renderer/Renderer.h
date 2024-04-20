@@ -34,13 +34,13 @@ namespace Eppo
 		// Render commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
-		static void RT_Clear(bool color = true, bool depth = true);
-		static void RT_SetFaceCulling(FaceCulling face);
+		static void Clear(bool color = true, bool depth = true);
+		static void SetFaceCulling(FaceCulling face);
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);
 
 		// Geometry
-		static void RT_RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<UniformBuffer> materialUB, Ref<Mesh> mesh);
+		static void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Submesh> mesh);
 	};
 }

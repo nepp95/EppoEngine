@@ -186,21 +186,15 @@ namespace Eppo
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void Framebuffer::RT_Bind() const
+	void Framebuffer::Bind() const
 	{
-		Renderer::SubmitCommand([this]()
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
-			glViewport(0, 0, m_Specification.Width, m_Specification.Height);
-		});
+		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
+		glViewport(0, 0, m_Specification.Width, m_Specification.Height);
 	}
 
-	void Framebuffer::RT_Unbind() const
+	void Framebuffer::Unbind() const
 	{
-		Renderer::SubmitCommand([this]()
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		});
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	void Framebuffer::Cleanup()

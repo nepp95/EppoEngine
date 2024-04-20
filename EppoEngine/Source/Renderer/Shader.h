@@ -46,8 +46,8 @@ namespace Eppo
 		Shader& operator=(const Shader&) = delete;
 		~Shader();
 
-		void RT_Bind() const;
-		void RT_Unbind() const;
+		void Bind() const;
+		void Unbind() const;
 
 		const std::unordered_map<uint32_t, std::vector<ShaderResource>>& GetShaderResources() const { return m_ShaderResources; }
 
