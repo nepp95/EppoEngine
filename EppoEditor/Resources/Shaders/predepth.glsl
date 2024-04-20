@@ -15,8 +15,8 @@ layout(binding = 2) uniform DirectionalLight
 	mat4 View;
 	mat4 Projection;
 	vec4 Direction;
-	vec4 AlbedoColor;
 	vec4 AmbientColor;
+	vec4 DiffuseColor;
 	vec4 SpecularColor;
 } uDirectionalLight;
 

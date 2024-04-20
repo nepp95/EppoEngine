@@ -27,8 +27,8 @@ layout(binding = 2) uniform DirectionalLight
 	mat4 View;
 	mat4 Projection;
 	vec4 Direction;
-	vec4 DiffuseColor;
 	vec4 AmbientColor;
+	vec4 DiffuseColor;
 	vec4 SpecularColor;
 } uDirectionalLight;
 
@@ -99,7 +99,7 @@ void main()
 	vec3 nViewDirection = normalize(uCamera.Position.xyz - inFragPosition);
 	vec3 reflectDirection = reflect(-nLightDirection, nNormal);
 
-	float spec = pow(max(dot(nViewDirection, reflectDirection), 0.0), 64.0);
+	float spec = pow(max(dot(nViewDirection, reflectDirection), 0.0), uMaterial.Roughness);
 	vec3 specular = spec * uDirectionalLight.SpecularColor.rgb;
 
 	// Shadow
