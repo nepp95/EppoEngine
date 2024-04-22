@@ -39,7 +39,7 @@ void main()
 	outFragPosition = vec3(uTransform.Transform * vec4(inPosition, 1.0));
 	outFragPosLightSpace = uDirectionalLight.Projection * uDirectionalLight.View * vec4(outFragPosition, 1.0);
 
-	gl_Position = uCamera.ViewProjection * vec4(outFragPosition, 1.0);
+	gl_Position = uCamera.ViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
 }
 
 #stage frag
@@ -52,6 +52,8 @@ layout(location = 3) in vec4 inFragPosLightSpace;
 layout(location = 0) out vec4 outColor;
 
 layout(binding = 0) uniform sampler2D uShadowMap;
+layout(binding = 1) uniform sampler2D uDiffuseTex;
+layout(binding = 2) uniform sampler2D uNormalTex;
 
 layout(binding = 0) uniform Camera
 {
@@ -84,6 +86,7 @@ float CalculateShadow(vec4 fragPos, vec3 normal, vec3 lightDir);
 void main()
 {
 	// using the Phong Reflection Model: https://en.wikipedia.org/wiki/Phong_reflection_model
+	vec3 diff = texture(uDiffuseTex, inTexCoord).rgb;
 
 	// Ambient
 	vec3 ambient = uDirectionalLight.AmbientColor.rgb;
@@ -106,7 +109,7 @@ void main()
 	float shadow = CalculateShadow(inFragPosLightSpace, nNormal, nLightDirection);
 
 	// Output
-	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.DiffuseColor.rgb;
+	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * diff * uMaterial.DiffuseColor.rgb;
 	outColor = vec4(result, 1.0);
 }
 

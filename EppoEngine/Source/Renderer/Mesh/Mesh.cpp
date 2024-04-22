@@ -15,7 +15,9 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Mesh::Mesh");
 
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(filepath.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_FlipWindingOrder);
+		const aiScene* scene = importer.ReadFile(filepath.string(),
+			aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_FlipWindingOrder | aiProcess_CalcTangentSpace | aiProcess_ValidateDataStructure
+		);
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{
@@ -38,24 +40,51 @@ namespace Eppo
 				aiString name = aiMaterial->GetName();
 
 				Ref<Material> material = CreateRef<Material>();
-				material->m_Name = name.C_Str();
+				material->Name = name.C_Str();
 
+				// Colors
 				aiColor3D ambientColor;
-				aiMaterial->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor);
-				material->m_AmbientColor = glm::vec3(ambientColor.r, ambientColor.g, ambientColor.b);
+				if (aiMaterial->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor) == AI_SUCCESS)
+					material->AmbientColor = glm::vec3(ambientColor.r, ambientColor.g, ambientColor.b);
 
 				aiColor3D diffuseColor;
-				aiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
-				material->m_DiffuseColor = glm::vec3(diffuseColor.r, diffuseColor.g, diffuseColor.b);
-
+				if (aiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor) == AI_SUCCESS)
+					material->DiffuseColor = glm::vec3(diffuseColor.r, diffuseColor.g, diffuseColor.b);
+					
 				aiColor3D specularColor;
-				aiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
-				material->m_SpecularColor = glm::vec3(specularColor.r, specularColor.g, specularColor.b);
+				if (aiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, specularColor) == AI_SUCCESS)
+					material->SpecularColor = glm::vec3(specularColor.r, specularColor.g, specularColor.b);
 
+				// Textures
+				if (scene->HasTextures())
+				{
+					for (uint32_t i = 0; i < aiMaterial->GetTextureCount(aiTextureType_DIFFUSE); i++)
+					{
+						aiString filename;
+						aiMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &filename);
+
+						auto texture = scene->GetEmbeddedTexture(filename.C_Str());
+						if (texture)
+							material->DiffuseTexture = CreateRef<Texture>(texture->pcData, texture->mWidth);
+					}
+
+					for (uint32_t i = 0; i < aiMaterial->GetTextureCount(aiTextureType_NORMALS); i++)
+					{
+						aiString filename;
+						aiMaterial->GetTexture(aiTextureType_NORMALS, i, &filename);
+
+						auto texture = scene->GetEmbeddedTexture(filename.C_Str());
+						if (texture)
+							material->NormalTexture = CreateRef<Texture>(texture->pcData, texture->mWidth);
+					}
+				}
+				
+				// Roughness
 				float shininess;
 				if (aiMaterial->Get(AI_MATKEY_SHININESS, shininess) != aiReturn_SUCCESS)
 					shininess = 80.0f; // Default
-				material->Roughness = 1.0f - glm::sqrt(shininess / 100.0f);
+				//material->Roughness = 1.0f - glm::sqrt(shininess / 100.0f);
+				material->Roughness = shininess;
 
 				m_Materials[i] = material;
 			}

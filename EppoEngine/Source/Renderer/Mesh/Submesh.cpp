@@ -13,12 +13,13 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Submesh::Submesh");
 
 		// Vertex Buffer
-		std::vector<MeshVertex> vertices;
+		std::vector<Vertex> vertices;
 		vertices.resize(mesh->mNumVertices);
 
 		for (uint32_t i = 0; i < mesh->mNumVertices; i++)
 		{
-			MeshVertex vertex;
+			// TODO: Or, you know, just copy the entire buffer???
+			Vertex vertex;
 			vertex.Position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
 			vertex.Normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
 			
@@ -42,7 +43,7 @@ namespace Eppo
 
 		m_MaterialIndex = mesh->mMaterialIndex;
 
-		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(MeshVertex));
+		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
 		m_IndexBuffer = CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
 		m_VertexArray = CreateRef<VertexArray>(m_VertexBuffer, m_IndexBuffer);
 

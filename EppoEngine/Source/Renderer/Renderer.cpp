@@ -14,6 +14,9 @@ namespace Eppo
 	{
 		RenderCommandQueue CommandQueue;
 		Scope<ShaderLibrary> ShaderLibrary;
+
+		Ref<Texture> WhiteTexture;
+		Ref<Texture> DefaultNormalMap;
 	};
 
 	static RendererData* s_Data;
@@ -28,6 +31,23 @@ namespace Eppo
 		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
 		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
 		s_Data->ShaderLibrary->Load("Resources/Shaders/predepth.glsl");
+
+		// Create white texture
+		uint32_t texData = 0xffffffff;
+
+		TextureSpecification texSpec;
+		texSpec.Width = 1;
+		texSpec.Height = 1;
+		texSpec.Format = TextureFormat::RGBA;
+
+		s_Data->WhiteTexture = CreateRef<Texture>(texSpec);
+		s_Data->WhiteTexture->SetData(&texData, sizeof(uint32_t));
+
+		// Create default normal map
+		texData = 0xff7f7fff;
+
+		s_Data->DefaultNormalMap = CreateRef<Texture>(texSpec);
+		s_Data->DefaultNormalMap->SetData(&texData, sizeof(uint32_t));
 	}
 
 	void Renderer::Shutdown()
@@ -66,7 +86,6 @@ namespace Eppo
 		glCullFace((GLenum)face);
 	}
 
-
 	Ref<Shader> Renderer::GetShader(const std::string& name)
 	{
 		return s_Data->ShaderLibrary->Get(name);
@@ -80,5 +99,10 @@ namespace Eppo
 
 		// Draw
 		glDrawElements(GL_TRIANGLES, vao->GetIndexCount(), GL_UNSIGNED_INT, nullptr);
+	}
+
+	Ref<Texture> Renderer::GetWhiteTexture()
+	{
+		return s_Data->WhiteTexture;
 	}
 }

@@ -80,8 +80,6 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
 
-		m_CommandBuffer->RT_Begin();
-
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
@@ -98,8 +96,6 @@ namespace Eppo
 	void SceneRenderer::BeginScene(const Camera& camera, const glm::mat4& transform)
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
-
-		m_CommandBuffer->RT_Begin();
 
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
@@ -126,7 +122,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("SceneRenderer::SubmitDirectionalLight");
 
 		m_DirectionalLightBuffer.View = glm::lookAt(glm::vec3(0.0f, 10.0f, 20.0f), dlc.Direction, glm::vec3(0.0f, 1.0f, 0.0f));
-		m_DirectionalLightBuffer.Projection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 100.0f);
+		m_DirectionalLightBuffer.Projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
 		m_DirectionalLightBuffer.Direction = glm::vec4(dlc.Direction, 0.0f);
 		m_DirectionalLightBuffer.AmbientColor = dlc.AmbientColor;
 		m_DirectionalLightBuffer.DiffuseColor = dlc.AlbedoColor;
@@ -146,6 +142,8 @@ namespace Eppo
 	void SceneRenderer::Flush()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::Flush");
+
+		m_CommandBuffer->RT_Begin();
 
 		PrepareRender();
 		
@@ -190,17 +188,9 @@ namespace Eppo
 			for (auto& dc : m_DrawList)
 			{
 				m_TransformUB->SetData(&dc.Transform, sizeof(glm::mat4));
-				m_ShadowMap->Bind();
 
 				for (auto& submesh : dc.Mesh->GetSubmeshes())
 				{
-					Ref<Material> material = dc.Mesh->GetMaterial(submesh->GetMaterialIndex());
-					m_MaterialBuffer.AmbientColor = glm::vec4(material->m_AmbientColor, 0.0f);
-					m_MaterialBuffer.DiffuseColor = glm::vec4(material->m_DiffuseColor, 0.0f);
-					m_MaterialBuffer.SpecularColor = glm::vec4(material->m_SpecularColor, 0.0f);
-
-					m_MaterialUB->SetData(&m_MaterialBuffer);
-
 					Renderer::RenderGeometry(m_CommandBuffer, submesh);
 					m_RenderStatistics.DrawCalls++;
 				}
@@ -229,11 +219,21 @@ namespace Eppo
 				for (auto& submesh : dc.Mesh->GetSubmeshes())
 				{
 					Ref<Material> material = dc.Mesh->GetMaterial(submesh->GetMaterialIndex());
-					m_MaterialBuffer.AmbientColor = glm::vec4(material->m_AmbientColor, 0.0f);
-					m_MaterialBuffer.DiffuseColor = glm::vec4(material->m_DiffuseColor, 0.0f);
-					m_MaterialBuffer.SpecularColor = glm::vec4(material->m_SpecularColor, 0.0f);
-
+					m_MaterialBuffer.AmbientColor = glm::vec4(material->AmbientColor, 0.0f);
+					m_MaterialBuffer.DiffuseColor = glm::vec4(material->DiffuseColor, 0.0f);
+					m_MaterialBuffer.SpecularColor = glm::vec4(material->SpecularColor, 0.0f);
+					m_MaterialBuffer.Roughness = material->Roughness;
 					m_MaterialUB->SetData(&m_MaterialBuffer);
+
+					if (material->DiffuseTexture)
+						material->DiffuseTexture->Bind(1);
+					else
+						Renderer::GetWhiteTexture()->Bind(1);
+
+					if (material->NormalTexture)
+						material->NormalTexture->Bind(2);
+					else
+						Renderer::GetWhiteTexture()->Bind(2);
 
 					Renderer::RenderGeometry(m_CommandBuffer, submesh);
 					m_RenderStatistics.DrawCalls++;

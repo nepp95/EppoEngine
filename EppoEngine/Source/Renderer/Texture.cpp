@@ -18,7 +18,7 @@ namespace Eppo
 			{
 				case TextureFormat::RGB:	return GL_RGB8;
 				case TextureFormat::RGBA:	return GL_RGBA8;
-				case TextureFormat::Depth:	return GL_DEPTH_COMPONENT;
+				case TextureFormat::Depth:	return GL_DEPTH_COMPONENT24;
 			}
 
 			EPPO_ASSERT(false);
@@ -118,9 +118,39 @@ namespace Eppo
 		} else
 		{
 			glBindTexture(GL_TEXTURE_2D, m_RendererID);
-			glTexStorage2D(GL_TEXTURE_2D, 1, Utils::TextureFormatToGLDataFormat(m_Specification.Format), m_Specification.Width, m_Specification.Height);
-			//glTextureStorage2D(m_RendererID, 1, Utils::TextureFormatToGLInternalFormat(m_Specification.Format), m_Specification.Width, m_Specification.Height);
+			//glTexStorage2D(GL_TEXTURE_2D, 1, Utils::TextureFormatToGLDataFormat(m_Specification.Format), m_Specification.Width, m_Specification.Height);
+			glTextureStorage2D(m_RendererID, 1, Utils::TextureFormatToGLInternalFormat(m_Specification.Format), m_Specification.Width, m_Specification.Height);
 			SetupParameters();
+		}
+	}
+
+	Texture::Texture(void* data, uint32_t size)
+	{
+		EPPO_PROFILE_FUNCTION("Texture::Texture");
+
+		if (!data)
+			return;
+
+		glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
+
+		int width, height, channels;
+		stbi_uc* imageData = stbi_load_from_memory((const stbi_uc*)data, size, &width, &height, &channels, 0);
+
+		if (imageData)
+		{
+			m_Specification.Width = width;
+			m_Specification.Height = height;
+
+			if (channels == 4)
+				m_Specification.Format = TextureFormat::RGBA;
+			else if (channels == 3)
+				m_Specification.Format = TextureFormat::RGB;
+
+			glTextureStorage2D(m_RendererID, 1, Utils::TextureFormatToGLInternalFormat(m_Specification.Format), width, height);
+			SetupParameters();
+			glTextureSubImage2D(m_RendererID, 0, 0, 0, width, height, Utils::TextureFormatToGLDataFormat(m_Specification.Format), GL_UNSIGNED_BYTE, imageData);
+
+			stbi_image_free(imageData);
 		}
 	}
 
@@ -131,9 +161,18 @@ namespace Eppo
 		glDeleteTextures(1, &m_RendererID);
 	}
 
-	void Texture::Bind() const
+
+	void Texture::SetData(void* data, uint32_t size)
 	{
-		glBindTexture(GL_TEXTURE_2D, m_RendererID);
+		uint32_t bpp = m_Specification.Format == TextureFormat::RGBA ? 4 : 3;
+		EPPO_ASSERT(size == m_Specification.Width * m_Specification.Height * bpp);
+
+		glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Specification.Width, m_Specification.Height, Utils::TextureFormatToGLDataFormat(m_Specification.Format), GL_UNSIGNED_BYTE, data);
+	}
+
+	void Texture::Bind(uint32_t slot) const
+	{
+		glBindTextureUnit(slot, m_RendererID);
 	}
 
 	void Texture::SetupParameters() const

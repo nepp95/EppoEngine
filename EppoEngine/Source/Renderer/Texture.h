@@ -50,8 +50,8 @@ namespace Eppo
 		TextureWrap Wrap = TextureWrap::REPEAT;
 		glm::vec4 BorderColor = glm::vec4(0.0f);
 
-		uint32_t Width;
-		uint32_t Height;
+		uint32_t Width = 0;
+		uint32_t Height = 0;
 
 		TextureSpecification() = default;
 		TextureSpecification(const std::filesystem::path& filepath)
@@ -63,9 +63,11 @@ namespace Eppo
 	{
 	public:
 		Texture(const TextureSpecification& specification);
+		Texture(void* data, uint32_t size);
 		~Texture();
 
-		void Bind() const;
+		void SetData(void* data, uint32_t size);
+		void Bind(uint32_t slot = 0) const;
 
 		uint32_t GetWidth() const { return m_Specification.Width; }
 		uint32_t GetHeight() const { return m_Specification.Height; }
