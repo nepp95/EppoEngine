@@ -71,6 +71,7 @@ namespace Eppo
 		{
 			if (ImGui::BeginTable("##", 4))
 			{
+				ImGui::PushID("Translation");
 				ImGui::TableNextColumn();
 				ImGui::Text("Translation");
 
@@ -93,7 +94,9 @@ namespace Eppo
 				ImGui::DragFloat("##TranslationZ", &component.Translation.z, 0.1f);
 
 				ImGui::TableNextRow();
+				ImGui::PopID();
 
+				ImGui::PushID("Rotation");
 				ImGui::TableNextColumn();
 				ImGui::Text("Rotation");
 
@@ -116,7 +119,9 @@ namespace Eppo
 				ImGui::DragFloat("##RotationZ", &component.Rotation.z, 0.1f);
 
 				ImGui::TableNextRow();
+				ImGui::PopID();
 
+				ImGui::PushID("Scale");
 				ImGui::TableNextColumn();
 				ImGui::Text("Scale");
 
@@ -138,6 +143,7 @@ namespace Eppo
 				ImGui::SameLine();
 				ImGui::DragFloat("##ScaleZ", &component.Scale.z, 0.1f);
 
+				ImGui::PopID();
 				ImGui::EndTable();
 			}
 		});
