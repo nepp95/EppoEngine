@@ -1,15 +1,18 @@
 - AssetHandle: 10038959528754306053
   Type: Texture
   Filepath: Resources/Textures/Icons/Directory.png
+- AssetHandle: 14325223096639094998
+  Type: Mesh
+  Filepath: Resources\Meshes\untitled2.fbx
 - AssetHandle: 4680662875752212828
   Type: Texture
   Filepath: Resources\Textures\Icons\File.png
-- AssetHandle: 11229244397201243529
-  Type: Texture
-  Filepath: Resources\Textures\Icons\StopButton.png
 - AssetHandle: 5875948094193427894
   Type: Mesh
   Filepath: Resources\Meshes\cottage_fbx.fbx
+- AssetHandle: 11229244397201243529
+  Type: Texture
+  Filepath: Resources\Textures\Icons\StopButton.png
 - AssetHandle: 5345703082771143640
   Type: Mesh
   Filepath: Resources\Meshes\untitled.fbx

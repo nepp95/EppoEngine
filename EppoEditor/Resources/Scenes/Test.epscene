@@ -1,41 +1,38 @@
 Scene: Test
 Entities:
-  - Entity: 13172776672664650757
+  - Entity: 715094872587998580
     TagComponent:
-      Tag: Cottage
+      Tag: TestCube
     TransformComponent:
-      Translation: [0, 3, -13.3999996]
+      Translation: [-3.20000005, 4.19999981, -17.6000004]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     MeshComponent:
-      MeshHandle: 5875948094193427894
-  - Entity: 14037038404468071748
+      MeshHandle: 14325223096639094998
+  - Entity: 5455157477212647123
     TagComponent:
-      Tag: Camera
+      Tag: Plateau
     TransformComponent:
-      Translation: [0, 7.19999981, 15]
+      Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    CameraComponent:
-      ProjectionType: 1
-      PerspectiveFov: 1.04719758
-      PerspectiveNearClip: 0.00999999978
-      PerspectiveFarClip: 1000
-      OrthographicSize: 10
-      OrthographicNearClip: -1
-      OrthographicFarClip: 1
-  - Entity: 10455494823149247745
+      Scale: [30, 1, 30]
+    MeshComponent:
+      MeshHandle: 5345703082771143640
+    RigidBodyComponent:
+      BodyType: 0
+      Mass: 1
+  - Entity: 5455157477212647122
     TagComponent:
-      Tag: Sky Light
+      Tag: Small Cube 2
     TransformComponent:
-      Translation: [0, 10, 0]
-      Rotation: [0, 0, 0]
+      Translation: [0, 4, 0]
+      Rotation: [-0.400000006, -0.600000024, -0.300000012]
       Scale: [1, 1, 1]
-    DirectionalLightComponent:
-      Direction: [-0.200000003, -1, -0.300000012]
-      Albedo: [0.5, 0.5, 0.5, 1]
-      Ambient: [0.200000003, 0.200000003, 0.200000003, 1]
-      Specular: [1, 1, 1, 1]
+    MeshComponent:
+      MeshHandle: 5345703082771143640
+    RigidBodyComponent:
+      BodyType: 1
+      Mass: 1
   - Entity: 15859226382881889157
     TagComponent:
       Tag: Small Cube 1
@@ -54,27 +51,39 @@ Entities:
     RigidBodyComponent:
       BodyType: 1
       Mass: 1
-  - Entity: 5455157477212647122
+  - Entity: 10455494823149247745
     TagComponent:
-      Tag: Small Cube 2
+      Tag: Sky Light
     TransformComponent:
-      Translation: [0, 4, 0]
-      Rotation: [-0.400000006, -0.600000024, -0.300000012]
+      Translation: [0, 10, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    DirectionalLightComponent:
+      Direction: [-0.200000003, -1, -0.300000012]
+      Albedo: [0.5, 0.5, 0.5, 1]
+      Ambient: [0.200000003, 0.200000003, 0.200000003, 1]
+      Specular: [1, 1, 1, 1]
+  - Entity: 14037038404468071748
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 7.19999981, 15]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      ProjectionType: 1
+      PerspectiveFov: 1.04719758
+      PerspectiveNearClip: 0.00999999978
+      PerspectiveFarClip: 1000
+      OrthographicSize: 10
+      OrthographicNearClip: -1
+      OrthographicFarClip: 1
+  - Entity: 13172776672664650757
+    TagComponent:
+      Tag: Cottage
+    TransformComponent:
+      Translation: [0, 3, -13.3999996]
+      Rotation: [-1.60000002, 0, 0]
       Scale: [1, 1, 1]
     MeshComponent:
-      MeshHandle: 5345703082771143640
-    RigidBodyComponent:
-      BodyType: 1
-      Mass: 1
-  - Entity: 5455157477212647123
-    TagComponent:
-      Tag: Plateau
-    TransformComponent:
-      Translation: [0, 0, 0]
-      Rotation: [0, 0, 0]
-      Scale: [30, 1, 30]
-    MeshComponent:
-      MeshHandle: 5345703082771143640
-    RigidBodyComponent:
-      BodyType: 0
-      Mass: 1
+      MeshHandle: 5875948094193427894
