@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneSerializer.h"
 
+#include "Asset/AssetManager.h"
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptEngine.h"
 
@@ -209,7 +210,12 @@ namespace Eppo
 				if (c)
 				{
 					auto& nc = newEntity.AddComponent<MeshComponent>();
-					nc.MeshHandle = c["MeshHandle"].as<uint64_t>();
+					uint64_t handle = c["MeshHandle"].as<uint64_t>();
+
+					if (AssetManager::Get().IsAssetLoaded(handle))
+					{
+						nc.MeshHandle = handle;
+					}
 				}
 			}
 

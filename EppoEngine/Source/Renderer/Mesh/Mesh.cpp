@@ -16,7 +16,8 @@ namespace Eppo
 
 		Assimp::Importer importer;
 		const aiScene* scene = importer.ReadFile(filepath.string(),
-			aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_FlipWindingOrder | aiProcess_CalcTangentSpace | aiProcess_ValidateDataStructure
+			aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_FlipWindingOrder | aiProcess_GenSmoothNormals | 
+			aiProcess_JoinIdenticalVertices | aiProcess_ValidateDataStructure | aiProcess_OptimizeGraph | aiProcess_OptimizeMeshes
 		);
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
@@ -56,27 +57,26 @@ namespace Eppo
 					material->SpecularColor = glm::vec3(specularColor.r, specularColor.g, specularColor.b);
 
 				// Textures
-				if (scene->HasTextures())
+				for (uint32_t i = 0; i < aiMaterial->GetTextureCount(aiTextureType_DIFFUSE); i++)
 				{
-					for (uint32_t i = 0; i < aiMaterial->GetTextureCount(aiTextureType_DIFFUSE); i++)
-					{
-						aiString filename;
-						aiMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &filename);
+					aiString filename;
+					aiMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &filename);
 
-						auto texture = scene->GetEmbeddedTexture(filename.C_Str());
-						if (texture)
-							material->DiffuseTexture = CreateRef<Texture>(texture->pcData, texture->mWidth);
-					}
+					auto texture = scene->GetEmbeddedTexture(filename.C_Str());
+					if (texture)
+						material->DiffuseTexture = CreateRef<Texture>(texture->pcData, texture->mWidth);
+					else
+						material->DiffuseTexture = CreateRef<Texture>(TextureSpecification(filename.C_Str()));
+				}
 
-					for (uint32_t i = 0; i < aiMaterial->GetTextureCount(aiTextureType_NORMALS); i++)
-					{
-						aiString filename;
-						aiMaterial->GetTexture(aiTextureType_NORMALS, i, &filename);
+				for (uint32_t i = 0; i < aiMaterial->GetTextureCount(aiTextureType_NORMALS); i++)
+				{
+					aiString filename;
+					aiMaterial->GetTexture(aiTextureType_NORMALS, i, &filename);
 
-						auto texture = scene->GetEmbeddedTexture(filename.C_Str());
-						if (texture)
-							material->NormalTexture = CreateRef<Texture>(texture->pcData, texture->mWidth);
-					}
+					auto texture = scene->GetEmbeddedTexture(filename.C_Str());
+					if (texture)
+						material->NormalTexture = CreateRef<Texture>(texture->pcData, texture->mWidth);
 				}
 				
 				// Roughness

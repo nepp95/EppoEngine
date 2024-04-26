@@ -43,5 +43,6 @@ namespace Eppo
 		// Geometry
 		static void RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Submesh> mesh);
 		static Ref<Texture> GetWhiteTexture();
+		static Ref<Texture> GetDefaultNormalMap();
 	};
 }

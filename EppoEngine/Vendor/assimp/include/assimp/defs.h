@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2022, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -292,7 +292,7 @@ typedef unsigned int ai_uint;
 #ifdef __cplusplus
 constexpr ai_real ai_epsilon = (ai_real) 1e-6;
 #else
-const ai_real ai_epsilon = (ai_real) 1e-6;
+#define ai_epsilon ((ai_real)1e-6)
 #endif
 
 /* Support for big-endian builds */

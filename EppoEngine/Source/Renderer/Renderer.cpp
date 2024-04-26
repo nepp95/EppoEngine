@@ -105,4 +105,9 @@ namespace Eppo
 	{
 		return s_Data->WhiteTexture;
 	}
+
+	Ref<Texture> Renderer::GetDefaultNormalMap()
+	{
+		return s_Data->DefaultNormalMap;
+	}
 }
