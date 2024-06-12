@@ -80,8 +80,6 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
 
-		m_CommandBuffer->RT_Begin();
-
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
@@ -90,7 +88,6 @@ namespace Eppo
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
 		m_CameraBuffer.Position = glm::vec4(editorCamera.GetPosition(), 0.0f);
-		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Cleanup from last draw
 		m_DrawList.clear();
@@ -100,8 +97,6 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
 
-		m_CommandBuffer->RT_Begin();
-
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
@@ -110,7 +105,6 @@ namespace Eppo
 		m_CameraBuffer.Projection = camera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = camera.GetProjectionMatrix() * glm::inverse(transform);
 		m_CameraBuffer.Position = transform[3];
-		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
 		// Cleanup from last draw
 		m_DrawList.clear();
@@ -127,11 +121,11 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::SubmitDirectionalLight");
 
-		m_DirectionalLightBuffer.View = glm::lookAt(-dlc.Direction, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_DirectionalLightBuffer.Projection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 100.0f);
+		m_DirectionalLightBuffer.View = glm::lookAt(glm::vec3(0.0f, 10.0f, 20.0f), dlc.Direction, glm::vec3(0.0f, 1.0f, 0.0f));
+		m_DirectionalLightBuffer.Projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
 		m_DirectionalLightBuffer.Direction = glm::vec4(dlc.Direction, 0.0f);
-		m_DirectionalLightBuffer.AlbedoColor = dlc.AlbedoColor;
 		m_DirectionalLightBuffer.AmbientColor = dlc.AmbientColor;
+		m_DirectionalLightBuffer.DiffuseColor = dlc.AlbedoColor;
 		m_DirectionalLightBuffer.SpecularColor = dlc.SpecularColor;
 	}
 
@@ -149,6 +143,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::Flush");
 
+		m_CommandBuffer->RT_Begin();
+
 		PrepareRender();
 		
 		PreDepthPass();
@@ -160,61 +156,92 @@ namespace Eppo
 
 	void SceneRenderer::PrepareRender()
 	{
-		EPPO_PROFILE_FUNCTION("SceneRenderer::PrepareRender");
+		Renderer::SubmitCommand([this]()
+		{
+			EPPO_PROFILE_FUNCTION("SceneRenderer::PrepareRender");
 
-		m_DirectionalLightUB->RT_SetData(&m_DirectionalLightBuffer, sizeof(DirectionalLightData));
+			m_CameraUB->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+			m_DirectionalLightUB->SetData(&m_DirectionalLightBuffer, sizeof(DirectionalLightData));
+			
+			// Clear framebuffers
+			m_GeometryFramebuffer->Bind();
+			Renderer::Clear();
+			m_GeometryFramebuffer->Unbind();
 
-		// Clear framebuffers
-		m_GeometryFramebuffer->RT_Bind();
-		Renderer::RT_Clear();
-		m_GeometryFramebuffer->RT_Unbind();
-
-		m_PreDepthFramebuffer->RT_Bind();
-		Renderer::RT_Clear(false, true);
-		m_PreDepthFramebuffer->RT_Unbind();
+			m_PreDepthFramebuffer->Bind();
+			Renderer::Clear(false, true);
+			m_PreDepthFramebuffer->Unbind();
+		});
 	}
 
 	void SceneRenderer::PreDepthPass()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::PreDepthPass");
 
-		Renderer::GetShader("predepth")->RT_Bind();
-
-		m_PreDepthFramebuffer->RT_Bind();
-		Renderer::RT_SetFaceCulling(FaceCulling::FRONT);
-
-		for (auto& dc : m_DrawList)
+		Renderer::SubmitCommand([this]()
 		{
-			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
+			Renderer::GetShader("predepth")->Bind();
 
-			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+			m_PreDepthFramebuffer->Bind();
+			Renderer::SetFaceCulling(FaceCulling::FRONT);
+			
+			for (auto& dc : m_DrawList)
+			{
+				m_TransformUB->SetData(&dc.Transform, sizeof(glm::mat4));
 
-			m_RenderStatistics.DrawCalls++;
-		}
+				for (auto& submesh : dc.Mesh->GetSubmeshes())
+				{
+					Renderer::RenderGeometry(m_CommandBuffer, submesh);
+					m_RenderStatistics.DrawCalls++;
+				}
+			}
 
-		Renderer::RT_SetFaceCulling(FaceCulling::BACK);
-		m_PreDepthFramebuffer->RT_Unbind();
+			Renderer::SetFaceCulling(FaceCulling::BACK);
+			m_PreDepthFramebuffer->Unbind();
+		});
 	}
 
 	void SceneRenderer::GeometryPass()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::GeometryPass");
 
-		Renderer::GetShader("geometry")->RT_Bind();
-
-		m_GeometryFramebuffer->RT_Bind();
-
-		for (auto& dc : m_DrawList)
+		Renderer::SubmitCommand([this]()
 		{
-			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
-			m_ShadowMap->RT_Bind();
+			Renderer::GetShader("geometry")->Bind();
 
-			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+			m_GeometryFramebuffer->Bind();
 
-			m_RenderStatistics.DrawCalls++;
-			m_RenderStatistics.Meshes++;
-		}
+			for (auto& dc : m_DrawList)
+			{
+				m_TransformUB->SetData(&dc.Transform, sizeof(glm::mat4));
+				m_ShadowMap->Bind();
 
-		m_GeometryFramebuffer->RT_Unbind();
+				for (auto& submesh : dc.Mesh->GetSubmeshes())
+				{
+					Ref<Material> material = dc.Mesh->GetMaterial(submesh->GetMaterialIndex());
+					m_MaterialBuffer.AmbientColor = glm::vec4(material->AmbientColor, 0.0f);
+					m_MaterialBuffer.DiffuseColor = glm::vec4(material->DiffuseColor, 0.0f);
+					m_MaterialBuffer.SpecularColor = glm::vec4(material->SpecularColor, 0.0f);
+					m_MaterialBuffer.Roughness = material->Roughness;
+					m_MaterialUB->SetData(&m_MaterialBuffer);
+
+					if (material->DiffuseTexture)
+						material->DiffuseTexture->Bind(1);
+					else
+						Renderer::GetWhiteTexture()->Bind(1);
+
+					if (material->NormalTexture)
+						material->NormalTexture->Bind(2);
+					else
+						Renderer::GetWhiteTexture()->Bind(2);
+
+					Renderer::RenderGeometry(m_CommandBuffer, submesh);
+					m_RenderStatistics.DrawCalls++;
+					m_RenderStatistics.Meshes++;
+				}
+			}
+
+			m_GeometryFramebuffer->Unbind();
+		});
 	}
 }

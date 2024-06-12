@@ -13,36 +13,44 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Submesh::Submesh");
 
 		// Vertex Buffer
-		std::vector<MeshVertex> vertices;
+		std::vector<Vertex> vertices;
 		vertices.resize(mesh->mNumVertices);
 
 		for (uint32_t i = 0; i < mesh->mNumVertices; i++)
 		{
-			MeshVertex vertex;
-			vertex.Position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
-			vertex.Normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+			Vertex vertex;
+
+			const aiVector3D& verts = mesh->mVertices[i];
+			vertex.Position = glm::vec3(verts.x, verts.y, verts.z);
+
+			if (mesh->mNormals)
+			{
+				const aiVector3D& norms = mesh->mNormals[i];
+				vertex.Normal = glm::vec3(norms.x, norms.y, norms.z);
+			}
 			
 			if (mesh->mTextureCoords[0])
-				vertex.TexCoord = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y };
+				vertex.TexCoord = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
 
 			vertices[i] = vertex;
 		}
 
 		// Index Buffer
 		std::vector<uint32_t> indices;
+		indices.resize(mesh->mNumFaces * 3);
+
 		for (uint32_t i = 0; i < mesh->mNumFaces; i++)
 		{
-			aiFace face = mesh->mFaces[i];
+			const aiFace& face = mesh->mFaces[i];
 
-			uint32_t offset = indices.size();
-			indices.resize(offset + face.mNumIndices);
-			for (uint32_t j = 0; j < face.mNumIndices; j++)
-				indices[offset + j] = face.mIndices[j];
+			indices[i * 3 + 0] = face.mIndices[0];
+			indices[i * 3 + 1] = face.mIndices[1];
+			indices[i * 3 + 2] = face.mIndices[2];
 		}
 
 		m_MaterialIndex = mesh->mMaterialIndex;
 
-		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(MeshVertex));
+		m_VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
 		m_IndexBuffer = CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
 		m_VertexArray = CreateRef<VertexArray>(m_VertexBuffer, m_IndexBuffer);
 

@@ -4,6 +4,8 @@ namespace Eppo
 {
 	static const char* GetImGuiPayloadTypeFromExtension(const std::filesystem::path& filepath)
 	{
+		if (filepath == ".obj") return "MESH_ASSET";
+		if (filepath == ".glb") return "MESH_ASSET";
 		if (filepath == ".fbx") return "MESH_ASSET";
 		if (filepath == ".png") return "TEXTURE_ASSET";
 

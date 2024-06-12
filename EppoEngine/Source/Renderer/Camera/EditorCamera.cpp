@@ -15,6 +15,14 @@ namespace Eppo
 		UpdateCameraVectors();
 	}
 
+	EditorCamera::EditorCamera(const glm::vec3& position)
+		: m_Position(position)
+	{
+		EPPO_PROFILE_FUNCTION("EditorCamera::EditorCamera");
+
+		UpdateCameraVectors();
+	}
+
 	void EditorCamera::OnUpdate(float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("EditorCamera::OnUpdate");
@@ -57,6 +65,12 @@ namespace Eppo
 			return;
 
 		m_ViewportSize = size;
+	}
+
+	void EditorCamera::SetPosition(const glm::vec3& position)
+	{
+		m_Position = position;
+		UpdateCameraVectors();
 	}
 
 	void EditorCamera::UpdateCameraVectors()

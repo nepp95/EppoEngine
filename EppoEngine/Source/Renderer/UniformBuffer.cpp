@@ -12,6 +12,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::UniformBuffer");
 
+		m_LocalData.Allocate(size);
+
 		glCreateBuffers(1, &m_RendererID);
 		glNamedBufferData(m_RendererID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 		glBindBufferBase(GL_UNIFORM_BUFFER, m_Binding, m_RendererID);
@@ -21,24 +23,24 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::~UniformBuffer");
 
+		m_LocalData.Release();
+
 		glDeleteBuffers(1, &m_RendererID);
 	}
 
-	void UniformBuffer::RT_SetData(void* data)
+	void UniformBuffer::SetData(void* data)
 	{
-		Renderer::SubmitCommand([this, data]()
-		{
-			glNamedBufferSubData(m_RendererID, 0, m_Size, data);
-		});
+		m_LocalData.Data = (uint8_t*)data;
+
+		glNamedBufferSubData(m_RendererID, 0, m_Size, data);
 	}
 
-	void UniformBuffer::RT_SetData(void* data, uint32_t size)
+	void UniformBuffer::SetData(void* data, uint32_t size)
 	{
-		Renderer::SubmitCommand([this, size, data]()
-		{
-			EPPO_ASSERT(size == m_Size);
+		EPPO_ASSERT(size == m_Size);
 
-			glNamedBufferSubData(m_RendererID, 0, size, data);
-		});
+		m_LocalData.Data = (uint8_t*)data;
+
+		glNamedBufferSubData(m_RendererID, 0, size, data);
 	}
 }
