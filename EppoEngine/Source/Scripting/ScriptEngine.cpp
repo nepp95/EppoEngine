@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "ScriptEngine.h"
 
+#include "Core/Application.h"
 #include "Core/Buffer.h"
 #include "Core/Filesystem.h"
 #include "Scripting/ScriptGlue.h"
 #include "Scripting/ScriptInstance.h"
 
+#include <filewatch.h>
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/mono-debug.h>
@@ -93,6 +95,8 @@ namespace Eppo
 		MonoAssembly* AppAssembly = nullptr;
 		MonoImage* AppAssemblyImage = nullptr;
 		std::filesystem::path AppAssemblyFilepath;
+		Scope<filewatch::FileWatch<std::filesystem::path>> AppAssemblyFileWatcher;
+		bool AppAssemblyReloadPending = false;
 
 		Ref<ScriptClass> EntityClass;
 
@@ -141,6 +145,37 @@ namespace Eppo
 		delete s_Data;
 	}
 
+	void ScriptEngine::ReloadAssembly()
+	{
+		EPPO_PROFILE_FUNCTION("ScriptEngine::ReloadAssembly");
+
+		EPPO_INFO("Reloading app assembly");
+
+		bool isRunning = false;
+
+		if (s_Data->SceneContext && s_Data->SceneContext->IsRunning())
+			isRunning = s_Data->SceneContext->IsRunning();
+
+		if (isRunning)
+			s_Data->SceneContext->OnRuntimeStop();
+
+		// We get the active domain away from the one we are trying to reload
+		// App --> Root
+		mono_domain_set(mono_get_root_domain(), false);
+
+		// Unload the app domain which is now free to unload
+		mono_domain_unload(s_Data->AppDomain);
+
+		// Reload the assembly
+		LoadCoreAssembly(s_Data->CoreAssemblyFilepath);
+		LoadAppAssembly(s_Data->AppAssemblyFilepath);
+
+		EPPO_INFO("Reloaded app assembly");
+
+		if (isRunning)
+			s_Data->SceneContext->OnRuntimeStart();
+	}
+
 	bool ScriptEngine::LoadAppAssembly(const std::filesystem::path& filepath)
 	{
 		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadAppAssembly");
@@ -152,6 +187,8 @@ namespace Eppo
 			return false;
 
 		s_Data->AppAssemblyImage = mono_assembly_get_image(s_Data->AppAssembly);
+		s_Data->AppAssemblyFileWatcher = CreateScope<filewatch::FileWatch<std::filesystem::path>>(filepath, OnAppAssemblyFileSystemEvent);
+		s_Data->AppAssemblyReloadPending = false;
 
 		// Register internal calls
 		ScriptGlue::RegisterFunctions();
@@ -400,6 +437,19 @@ namespace Eppo
 			}
 
 			EPPO_TRACE("{} has {} fields of which {} are public: ", fullName, numFields, publicFields);
+		}
+	}
+
+	void ScriptEngine::OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, const filewatch::Event changeType)
+	{
+		if (!s_Data->AppAssemblyReloadPending && changeType == filewatch::Event::added)
+		{
+			s_Data->AppAssemblyReloadPending = true;
+
+			Application::Get().SubmitToMainThread([]()
+			{
+				ReloadAssembly();
+			});
 		}
 	}
 }

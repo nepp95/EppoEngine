@@ -84,6 +84,13 @@ namespace Eppo
 		}
 	}
 
+	void Application::SubmitToMainThread(const std::function<void()>& fn)
+	{
+		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+
+		m_MainThreadQueue.push(fn);
+	}
+
 	void Application::RenderGui()
 	{
 		EPPO_PROFILE_FUNCTION("Application::RenderGui");
@@ -126,6 +133,8 @@ namespace Eppo
 			float timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
 
+			ExecuteMainThreadQueue();
+
 			{
 				EPPO_PROFILE_FUNCTION("CPU Update");
 
@@ -151,6 +160,17 @@ namespace Eppo
 
 			EPPO_PROFILE_GPU_END;
 			EPPO_PROFILE_FRAME_MARK;
+		}
+	}
+
+	void Application::ExecuteMainThreadQueue()
+	{
+		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+
+		for (size_t i = 0; i < m_MainThreadQueue.size(); i++)
+		{
+			m_MainThreadQueue.front()();
+			m_MainThreadQueue.pop();
 		}
 	}
 

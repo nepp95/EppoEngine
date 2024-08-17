@@ -5,6 +5,7 @@ IncludeDir = {}
 IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
 IncludeDir["bullet"] = "%{wks.location}/EppoEngine/Vendor/bullet/include"
 IncludeDir["entt"] = "%{wks.location}/EppoEngine/Vendor/entt/single_include"
+IncludeDir["filewatch"] = "%{wks.location}/EppoEngine/Vendor/filewatch"
 IncludeDir["glad"] = "%{wks.location}/EppoEngine/Vendor/glad/include"
 IncludeDir["glfw"] = "%{wks.location}/EppoEngine/Vendor/glfw/include"
 IncludeDir["glm"] = "%{wks.location}/EppoEngine/Vendor/glm"
