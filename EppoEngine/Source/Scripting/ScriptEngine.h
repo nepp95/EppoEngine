@@ -41,6 +41,7 @@ namespace Eppo
 		static MonoObject* InstantiateClass(MonoClass* monoClass);
 		static bool EntityClassExists(const std::string& fullName);
 
+		static MonoDomain* GetAppDomain();
 		static MonoImage* GetCoreAssemblyImage();
 		static MonoImage* GetAppAssemblyImage();
 		static Scene* GetSceneContext();

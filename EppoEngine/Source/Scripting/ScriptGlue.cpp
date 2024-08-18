@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ScriptGlue.h"
 
+#include "Asset/AssetManager.h"
 #include "Core/Input.h"
 #include "Scene/Entity.h"
 #include "Scripting/ScriptEngine.h"
@@ -38,19 +39,48 @@ namespace Eppo
 		return Input::IsKeyPressed(keyCode);
 	}
 
-	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
+	static void Entity_AddComponent(UUID uuid, MonoString* componentType)
 	{
-		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_HasComponent");
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_AddComponent");
 
 		Scene* scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
 
-		MonoType* managedType = mono_reflection_type_get_type(componentType);
-		auto it = s_EntityHasComponentFns.find(managedType);
-		EPPO_ASSERT(it != s_EntityHasComponentFns.end());
-		return it->second(entity);
+		char* cStr = mono_string_to_utf8(componentType);
+		std::string componentTypeStr(cStr);
+		mono_free(cStr);
+
+		if (componentTypeStr == "TransformComponent")
+			entity.AddComponent<TransformComponent>();
+		if (componentTypeStr == "SpriteComponent")
+			entity.AddComponent<SpriteComponent>();
+		if (componentTypeStr == "MeshComponent")
+			entity.AddComponent<MeshComponent>();
+		if (componentTypeStr == "DirectionalLightComponent")
+			entity.AddComponent<DirectionalLightComponent>();
+		if (componentTypeStr == "ScriptComponent")
+			entity.AddComponent<ScriptComponent>();
+		if (componentTypeStr == "RigidBodyComponent")
+			entity.AddComponent<RigidBodyComponent>();
+	}
+
+	static uint64_t Entity_CreateNewEntity(MonoString* name)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_CreateNewEntity");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+
+		char* cStr = mono_string_to_utf8(name);
+		std::string nameStr(cStr);
+		mono_free(cStr);
+
+		Entity entity = scene->CreateEntity(nameStr);
+		EPPO_ASSERT(entity);
+
+		return entity.GetUUID();
 	}
 
 	static uint64_t Entity_FindEntityByName(MonoString* name)
@@ -69,6 +99,72 @@ namespace Eppo
 			return 0;
 
 		return entity.GetUUID();
+	}
+	
+	static MonoString* Entity_GetName(UUID uuid)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_GetName");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+		Entity entity = scene->FindEntityByUUID(uuid);
+		EPPO_ASSERT(entity);
+
+		MonoString* monoStr = mono_string_new(ScriptEngine::GetAppDomain(), entity.GetName().c_str());
+
+		return monoStr;
+	}
+
+	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_HasComponent");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+		Entity entity = scene->FindEntityByUUID(uuid);
+		EPPO_ASSERT(entity);
+
+		MonoType* managedType = mono_reflection_type_get_type(componentType);
+		auto it = s_EntityHasComponentFns.find(managedType);
+		EPPO_ASSERT(it != s_EntityHasComponentFns.end());
+		return it->second(entity);
+	}
+
+	static MonoString* MeshComponent_GetMeshFilepath(UUID uuid)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::MeshComponent_GetMeshFilepath");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+		Entity entity = scene->FindEntityByUUID(uuid);
+		EPPO_ASSERT(entity);
+
+		AssetHandle assetHandle = entity.GetComponent<MeshComponent>().MeshHandle;
+		AssetMetadata& metadata = AssetManager::Get().GetMetadata(assetHandle);
+
+		MonoString* monoStr = mono_string_new(ScriptEngine::GetAppDomain(), metadata.Filepath.string().c_str());
+
+		return monoStr;
+	}
+
+	static void MeshComponent_SetMesh(UUID uuid, MonoString* filepath)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::MeshComponent_SetMesh");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+		Entity entity = scene->FindEntityByUUID(uuid);
+		EPPO_ASSERT(entity);
+
+		char* cStr = mono_string_to_utf8(filepath);
+		std::string filepathStr(cStr);
+		mono_free(cStr);
+
+		EPPO_ASSERT(AssetManager::Get().IsAssetLoaded(filepathStr));
+		AssetMetadata& metadata = AssetManager::Get().GetMetadata(filepathStr);
+		
+		auto& mc = entity.GetComponent<MeshComponent>();
+		mc.MeshHandle = metadata.Handle;
 	}
 
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* outTranslation)
@@ -134,8 +230,13 @@ namespace Eppo
 
 		EPPO_ADD_INTERNAL_CALL(Log);
 		EPPO_ADD_INTERNAL_CALL(Input_IsKeyPressed);
-		EPPO_ADD_INTERNAL_CALL(Entity_HasComponent);
+		EPPO_ADD_INTERNAL_CALL(Entity_AddComponent);
+		EPPO_ADD_INTERNAL_CALL(Entity_CreateNewEntity);
 		EPPO_ADD_INTERNAL_CALL(Entity_FindEntityByName);
+		EPPO_ADD_INTERNAL_CALL(Entity_GetName);
+		EPPO_ADD_INTERNAL_CALL(Entity_HasComponent);
+		EPPO_ADD_INTERNAL_CALL(MeshComponent_GetMeshFilepath);
+		EPPO_ADD_INTERNAL_CALL(MeshComponent_SetMesh);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 		EPPO_ADD_INTERNAL_CALL(RigidBodyComponent_ApplyLinearImpulse);

@@ -389,51 +389,52 @@ namespace Eppo
 
 			// Fields
 			Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(c.ClassName);
-			const auto& fields = entityClass->GetFields();
 
-			if (!fields.empty())
+			if (entityClass)
 			{
-				out << YAML::Key << "Fields" << YAML::Value;
-				out << YAML::BeginSeq;
+				const auto& fields = entityClass->GetFields();
 
-				auto& entityFields = ScriptEngine::GetScriptFieldMap(entity.GetUUID());
-				for (const auto& [name, field] : fields)
+				if (!fields.empty())
 				{
-					if (entityFields.find(name) == entityFields.end())
-						continue;
+					out << YAML::Key << "Fields" << YAML::Value;
+					out << YAML::BeginSeq;
 
-					out << YAML::BeginMap;
-					out << YAML::Key << "Name" << YAML::Value << name;
-					out << YAML::Key << "Type" << YAML::Value << Utils::ScriptFieldTypeToString(field.Type);
-					out << YAML::Key << "Data" << YAML::Value;
-
-					ScriptFieldInstance& scriptField = entityFields.at(name);
-
-					switch (field.Type)
+					auto& entityFields = ScriptEngine::GetScriptFieldMap(entity.GetUUID());
+					for (const auto& [name, field] : fields)
 					{
-						WRITE_SCRIPT_FIELD(Float, float);
-						WRITE_SCRIPT_FIELD(Double, double);
-						WRITE_SCRIPT_FIELD(Bool, bool);
-						WRITE_SCRIPT_FIELD(Char, int8_t);
-						WRITE_SCRIPT_FIELD(Int16, int16_t);
-						WRITE_SCRIPT_FIELD(Int32, int32_t);
-						WRITE_SCRIPT_FIELD(Int64, int64_t);
-						WRITE_SCRIPT_FIELD(Byte, uint8_t);
-						WRITE_SCRIPT_FIELD(UInt16, uint16_t);
-						WRITE_SCRIPT_FIELD(UInt32, uint32_t);
-						WRITE_SCRIPT_FIELD(UInt64, uint64_t);
-						WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
-						WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
-						WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
-						WRITE_SCRIPT_FIELD(Entity, UUID);
+						if (entityFields.find(name) == entityFields.end())
+							continue;
+
+						out << YAML::BeginMap;
+						out << YAML::Key << "Name" << YAML::Value << name;
+						out << YAML::Key << "Type" << YAML::Value << Utils::ScriptFieldTypeToString(field.Type);
+						out << YAML::Key << "Data" << YAML::Value;
+
+						ScriptFieldInstance& scriptField = entityFields.at(name);
+
+						switch (field.Type)
+						{
+							WRITE_SCRIPT_FIELD(Float, float);
+							WRITE_SCRIPT_FIELD(Double, double);
+							WRITE_SCRIPT_FIELD(Bool, bool);
+							WRITE_SCRIPT_FIELD(Char, int8_t);
+							WRITE_SCRIPT_FIELD(Int16, int16_t);
+							WRITE_SCRIPT_FIELD(Int32, int32_t);
+							WRITE_SCRIPT_FIELD(Int64, int64_t);
+							WRITE_SCRIPT_FIELD(Byte, uint8_t);
+							WRITE_SCRIPT_FIELD(UInt16, uint16_t);
+							WRITE_SCRIPT_FIELD(UInt32, uint32_t);
+							WRITE_SCRIPT_FIELD(UInt64, uint64_t);
+							WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
+							WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
+							WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
+							WRITE_SCRIPT_FIELD(Entity, UUID);
+						}
+						out << YAML::EndMap;
 					}
-
-					out << YAML::EndMap;
+					out << YAML::EndSeq;
 				}
-
-				out << YAML::EndSeq;
 			}
-			
 			out << YAML::EndMap;
 		}
 		

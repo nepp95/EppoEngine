@@ -1,0 +1,44 @@
+Scene: Hexagon
+Entities:
+  - Entity: 13940051299897050374
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      ProjectionType: 0
+      PerspectiveFov: 0.785398185
+      PerspectiveNearClip: 0.00999999978
+      PerspectiveFarClip: 1000
+      OrthographicSize: 10
+      OrthographicNearClip: -1
+      OrthographicFarClip: 1
+  - Entity: 13064695202305284787
+    TagComponent:
+      Tag: Floor
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshHandle: 15787268176510223469
+  - Entity: 6365462737741836055
+    TagComponent:
+      Tag: GameController
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    ScriptComponent:
+      ClassName: Sandbox.GameController
+  - Entity: 648671937554805943
+    TagComponent:
+      Tag: MapController
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    ScriptComponent:
+      ClassName: Sandbox.MapController

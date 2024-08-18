@@ -3,6 +3,14 @@ namespace Eppo
 	public abstract class Component
 	{
 		public Entity Entity { get; internal set; }
+
+		public string ComponentTypeName => GetType().Name;
+	}
+
+	public class MeshComponent : Component
+	{
+		public string MeshFilepath => InternalCalls.MeshComponent_GetMeshFilepath(Entity.ID);
+		public void SetMesh(string filepath) => InternalCalls.MeshComponent_SetMesh(Entity.ID, filepath);
 	}
 
 	public class TransformComponent : Component
@@ -20,14 +28,7 @@ namespace Eppo
 
 	public class RigidBodyComponent : Component
 	{
-		public void ApplyLinearImpulse(Vector3 impulse, Vector3 worldPosition)
-		{
-			InternalCalls.RigidBodyComponent_ApplyLinearImpulse(Entity.ID, ref impulse, ref worldPosition);
-		}
-
-		public void ApplyLinearImpulse(Vector3 impulse)
-		{
-			InternalCalls.RigidBodyComponent_ApplyLinearImpulseToCenter(Entity.ID, ref impulse);
-		}
+		public void ApplyLinearImpulse(Vector3 impulse, Vector3 worldPosition) => InternalCalls.RigidBodyComponent_ApplyLinearImpulse(Entity.ID, ref impulse, ref worldPosition);
+		public void ApplyLinearImpulse(Vector3 impulse) => InternalCalls.RigidBodyComponent_ApplyLinearImpulseToCenter(Entity.ID, ref impulse);
 	}
 }

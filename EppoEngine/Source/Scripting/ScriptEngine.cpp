@@ -272,6 +272,11 @@ namespace Eppo
 		return s_Data->EntityScriptClasses.find(fullName) != s_Data->EntityScriptClasses.end();
 	}
 
+	MonoDomain* ScriptEngine::GetAppDomain()
+	{
+		return s_Data->AppDomain;
+	}
+
 	MonoImage* ScriptEngine::GetCoreAssemblyImage()
 	{
 		return s_Data->CoreAssemblyImage;
