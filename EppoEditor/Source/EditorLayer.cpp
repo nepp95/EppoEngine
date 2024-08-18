@@ -30,7 +30,7 @@ namespace Eppo
 		m_PanelManager.SetSceneContext(m_EditorScene);
 
 		// Open scene
-		OpenScene("Resources/Scenes/Test.epscene");
+		OpenScene();
 
 		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, RenderSpecification());
 	}
@@ -143,6 +143,9 @@ namespace Eppo
 		{
 			if (ImGui::BeginMenu("File"))
 			{
+				if (ImGui::MenuItem("New Scene", "CTRL+N"))
+					NewScene();
+
 				if (ImGui::MenuItem("Save Scene", "CTRL+S"))
 					SaveScene();
 
@@ -228,6 +231,13 @@ namespace Eppo
 
 		switch (e.GetKeyCode())
 		{
+			case Key::N:
+			{
+				if (control)
+					NewScene();
+				break;
+			}
+
 			case Key::O:
 			{
 				if (control)
@@ -274,6 +284,7 @@ namespace Eppo
 
 	void EditorLayer::NewScene()
 	{
+		// TODO: Check for changes. Maybe using a list of changes considering a undo feature
 		m_EditorScene = CreateRef<Scene>();
 		m_ActiveScene = m_EditorScene;
 		m_ActiveScenePath = std::filesystem::path();
@@ -301,6 +312,8 @@ namespace Eppo
 
 		if (!filepath.empty())
 			OpenScene(filepath);
+		else
+			NewScene();
 	}
 
 	void EditorLayer::OpenScene(const std::filesystem::path& filepath)
