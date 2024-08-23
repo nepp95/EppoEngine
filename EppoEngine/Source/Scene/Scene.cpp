@@ -135,7 +135,7 @@ namespace Eppo
 		m_IsRunning = true;
 
 		OnPhysicsStart();
-		ScriptEngine::OnRuntimeStart(this);
+		ScriptEngine::OnRuntimeStart();
 
 		auto view = m_Registry.view<ScriptComponent>();
 		for (auto e : view)

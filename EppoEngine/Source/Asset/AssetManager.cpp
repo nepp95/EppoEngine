@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "AssetManager.h"
 
+#include "Project/Project.h"
 #include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Texture.h"
 
@@ -16,6 +17,12 @@ namespace Eppo
 		return a;
 	}
 
+	void AssetManager::Init()
+	{
+		LoadRegistry();
+		WriteRegistry();
+	}
+
 	void AssetManager::Shutdown()
 	{
 		m_Assets.clear();
@@ -23,8 +30,6 @@ namespace Eppo
 
 	AssetManager::AssetManager()
 	{
-		LoadRegistry();
-		WriteRegistry();
 	}
 
 	bool AssetManager::IsAssetLoaded(AssetHandle handle)
@@ -126,7 +131,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("AssetManager::LoadRegistry");
 
-		std::filesystem::path assetRegistryFile = Filesystem::GetAssetsDirectory() / "AssetRegistry.epporeg";
+		std::filesystem::path assetRegistryFile = Project::GetAssetsDirectory() / "AssetRegistry.epporeg";
 
 		if (!Filesystem::Exists(assetRegistryFile))
 			return;
@@ -193,7 +198,7 @@ namespace Eppo
 
 		out << YAML::EndSeq;
 
-		std::ofstream fout(Filesystem::GetAssetsDirectory() / "AssetRegistry.epporeg", std::ios::trunc);
+		std::ofstream fout(Project::GetAssetsDirectory() / "AssetRegistry.epporeg", std::ios::trunc);
 		fout << out.c_str();
 	}
 }

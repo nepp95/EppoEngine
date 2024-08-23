@@ -1,4 +1,4 @@
-EPPO_DIR = "../../../../"
+EPPO_DIR = "../../../../../"
 
 workspace "Sandbox"
 	architecture "x86_64"

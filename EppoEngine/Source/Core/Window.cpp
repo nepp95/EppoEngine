@@ -165,4 +165,9 @@ namespace Eppo
 
 		glfwSwapBuffers(m_Window);
 	}
+
+	void Window::SetWindowTitle(const std::string& name)
+	{
+		glfwSetWindowTitle(m_Window, name.c_str());
+	}
 }

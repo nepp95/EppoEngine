@@ -101,7 +101,7 @@ namespace Eppo
 	{
 		ImGuiStyle& style = ImGui::GetStyle();
 		
-		EPPO_TRACE("{}: {}", "Alpha", style.Alpha);
+		/*EPPO_TRACE("{}: {}", "Alpha", style.Alpha);
 		EPPO_TRACE("{}: {}", "CellPadding", (glm::vec2)style.CellPadding);
 		EPPO_TRACE("{}: {}", "ChildRounding", style.ChildRounding);
 		EPPO_TRACE("{}: {}", "ColumnsMinSpacing", style.ColumnsMinSpacing);
@@ -124,7 +124,7 @@ namespace Eppo
 		EPPO_TRACE("{}: {}", "WindowBorderSize", style.WindowBorderSize);
 		EPPO_TRACE("{}: {}", "WindowMinSize", (glm::vec2)style.WindowMinSize);
 		EPPO_TRACE("{}: {}", "WindowPadding", (glm::vec2)style.WindowPadding);
-		EPPO_TRACE("{}: {}", "WindowRounding", style.WindowRounding);
+		EPPO_TRACE("{}: {}", "WindowRounding", style.WindowRounding);*/
 
 		// Colors
 		auto colors = style.Colors;

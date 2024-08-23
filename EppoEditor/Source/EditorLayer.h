@@ -27,16 +27,26 @@ namespace Eppo
 		void OnScenePlay();
 		void OnSceneStop();
 
+		void CloseProject();
+		void NewProject(const std::string& name);
+		bool OpenProject();
+		void OpenProject(const std::filesystem::path& filepath);
+		void SaveProject();
+
 		void NewScene();
-		void SaveScene();
-		void SaveScene(const std::filesystem::path& filepath);
 		void OpenScene();
 		void OpenScene(const std::filesystem::path& filepath);
+		void SaveScene();
+		void SaveScene(const std::filesystem::path& filepath);
+
+		void UI_Toolbar();
+		void UI_Project_NewProject();
 
 	private:
 		// Scene
 		Ref<SceneRenderer> m_ViewportRenderer;
-		Ref<Scene> m_ActiveScene, m_EditorScene;
+		Ref<Scene> m_ActiveScene = CreateRef<Scene>();
+		Ref<Scene> m_EditorScene = CreateRef<Scene>();
 		std::filesystem::path m_ActiveScenePath;
 		
 		// Editor

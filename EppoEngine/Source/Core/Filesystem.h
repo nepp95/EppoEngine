@@ -15,6 +15,11 @@ namespace Eppo
 		static const std::filesystem::path& GetAppRootDirectory();
 		static const std::filesystem::path& GetAssetsDirectory();
 
+		static bool CreateDirectory(const std::filesystem::path& path);
+		static bool Copy(const std::filesystem::path& from, const std::filesystem::path& to);
+		static bool Move(const std::filesystem::path& from, const std::filesystem::path& to);
+		static bool Rename(const std::filesystem::path& basePath, const std::string& from, const std::string& to);
+
 		static bool Exists(const std::filesystem::path& path);
 
 		static Buffer ReadBytes(const std::filesystem::path& filepath);

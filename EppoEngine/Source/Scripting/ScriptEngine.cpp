@@ -104,7 +104,7 @@ namespace Eppo
 		std::unordered_map<UUID, Ref<ScriptInstance>> EntityScriptInstances;
 		std::unordered_map<UUID, ScriptFieldMap> EntityScriptFields;
 
-		Scene* SceneContext;
+		Ref<Scene> SceneContext;
 
 		#if defined(EPPO_DEBUG)
 			bool EnableDebugging = true;
@@ -203,11 +203,11 @@ namespace Eppo
 		return true;
 	}
 
-	void ScriptEngine::OnRuntimeStart(Scene* scene)
+	void ScriptEngine::OnRuntimeStart()
 	{
 		EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStart");
 
-		s_Data->SceneContext = scene;
+		EPPO_ASSERT(s_Data->SceneContext);
 	}
 
 	void ScriptEngine::OnRuntimeStop()
@@ -287,7 +287,12 @@ namespace Eppo
 		return s_Data->AppAssemblyImage;
 	}
 
-	Scene* ScriptEngine::GetSceneContext()
+	void ScriptEngine::SetSceneContext(Ref<Scene> scene)
+	{
+		s_Data->SceneContext = scene;
+	}
+
+	Ref<Scene> ScriptEngine::GetSceneContext()
 	{
 		return s_Data->SceneContext;
 	}

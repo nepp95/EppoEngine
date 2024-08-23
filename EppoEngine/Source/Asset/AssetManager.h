@@ -11,6 +11,7 @@ namespace Eppo
 	public:
 		static AssetManager& Get();
 
+		void Init();
 		void Shutdown();
 
 		template<typename T>

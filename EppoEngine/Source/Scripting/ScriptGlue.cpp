@@ -43,7 +43,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_AddComponent");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -70,7 +70,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_CreateNewEntity");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 
 		char* cStr = mono_string_to_utf8(name);
@@ -87,7 +87,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_FindEntityByName");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 
 		char* cStr = mono_string_to_utf8(name);
@@ -105,7 +105,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_GetName");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -119,7 +119,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_HasComponent");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -134,7 +134,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::MeshComponent_GetMeshFilepath");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -151,7 +151,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::MeshComponent_SetMesh");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -171,7 +171,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_GetTranslation");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -183,7 +183,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_SetTranslation");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -195,7 +195,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulse");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -208,7 +208,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulseToCenter");
 
-		Scene* scene = ScriptEngine::GetSceneContext();
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);

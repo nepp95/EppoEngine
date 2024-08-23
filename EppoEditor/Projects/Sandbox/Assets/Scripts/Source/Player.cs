@@ -2,7 +2,7 @@ using Eppo;
 
 namespace Sandbox
 {
-	public class Tile : Entity
+	public class Player : Entity
 	{
 		void OnCreate()
 		{
