@@ -9,8 +9,7 @@ namespace Eppo
 
 	public class MeshComponent : Component
 	{
-		public string MeshFilepath => InternalCalls.MeshComponent_GetMeshFilepath(Entity.ID);
-		public void SetMesh(string filepath) => InternalCalls.MeshComponent_SetMesh(Entity.ID, filepath);
+		
 	}
 
 	public class TransformComponent : Component

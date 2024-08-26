@@ -25,7 +25,8 @@ project "EppoEditor"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
-        "%{IncludeDir.tracy}"
+        "%{IncludeDir.tracy}",
+		"%{IncludeDir.yaml_cpp}"
     }
 
     links {

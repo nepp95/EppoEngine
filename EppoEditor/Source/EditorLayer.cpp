@@ -1,5 +1,6 @@
 #include "EditorLayer.h"
 
+#include "Asset/AssetManagerEditor.h"
 #include "Panel/ContentBrowserPanel.h"
 #include "Panel/PropertyPanel.h"
 #include "Panel/SceneHierarchyPanel.h"
@@ -40,9 +41,7 @@ namespace Eppo
 	}
 	
 	void EditorLayer::OnDetach()
-	{
-		AssetManager::Get().Shutdown();
-	}
+	{}
 	
 	void EditorLayer::Update(float timestep)
 	{
@@ -262,11 +261,12 @@ namespace Eppo
 			return;
 
 		m_SceneState = SceneState::Play;
-
 		m_ActiveScene = Scene::Copy(m_EditorScene);
-		m_ActiveScene->OnRuntimeStart();
 
+		ScriptEngine::SetSceneContext(m_ActiveScene);
 		m_PanelManager.SetSceneContext(m_ActiveScene);
+		
+		m_ActiveScene->OnRuntimeStart();
 	}
 
 	void EditorLayer::OnSceneStop()
@@ -279,6 +279,7 @@ namespace Eppo
 		m_ActiveScene->OnRuntimeStop();
 		m_ActiveScene = m_EditorScene;
 
+		ScriptEngine::SetSceneContext(m_EditorScene);
 		m_PanelManager.SetSceneContext(m_ActiveScene);
 	}
 
@@ -286,7 +287,6 @@ namespace Eppo
 	{
 		SaveProject();
 
-		AssetManager::Get().Shutdown();
 		m_PanelManager.SetSceneContext(nullptr);
 		ScriptEngine::SetSceneContext(nullptr);
 
@@ -386,6 +386,7 @@ namespace Eppo
 	bool EditorLayer::OpenProject()
 	{
 		std::filesystem::path filePath = FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0");
+
 		if (filePath.empty())
 		{
 			if (Project::GetActive())
@@ -404,14 +405,18 @@ namespace Eppo
 
 	void EditorLayer::OpenProject(const std::filesystem::path& filepath)
 	{
+		if (filepath.extension().string() != ".epproj")
+		{
+			EPPO_ERROR("Could not load '{}' because it is not a project file!", filepath.string());
+			return;
+		}
+
 		if (Project::GetActive())
 			CloseProject();
 
 		if (Project::Open(filepath))
 		{
 			const auto& projSpec = Project::GetActive()->GetSpecification();
-
-			AssetManager::Get().Init();
 
 			std::filesystem::path scriptPath = Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
 			ScriptEngine::LoadAppAssembly(scriptPath);

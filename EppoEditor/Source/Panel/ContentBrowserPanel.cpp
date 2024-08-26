@@ -80,15 +80,6 @@ namespace Eppo
 				}
 
 				ImGui::TableNextColumn();
-
-				// is asset loaded?
-				auto relativePath = std::filesystem::relative(entry, Filesystem::GetAppRootDirectory());
-				if (AssetManager::Get().IsAssetLoaded(relativePath))
-					ImGui::TextUnformatted("Yes");
-				else
-					ImGui::TextUnformatted("No");
-
-				ImGui::TableNextColumn();
 				ImGui::Text("%.2f KB", std::filesystem::file_size(entry.path()) / 1024.0f);
 				ImGui::TableNextColumn();
 				ImGui::TextUnformatted("File");

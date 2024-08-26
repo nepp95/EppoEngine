@@ -9,7 +9,7 @@ namespace Eppo
 	public:
 		ProjectSerializer(Ref<Project> project);
 
-		bool Serialize(const std::filesystem::path& filepath);
+		bool Serialize();
 		bool Deserialize(const std::filesystem::path& filepath);
 
 	private:

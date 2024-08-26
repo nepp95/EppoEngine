@@ -5,6 +5,8 @@
 // Asset
 #include "Asset/Asset.h"
 #include "Asset/AssetManager.h"
+#include "Asset/AssetManagerBase.h"
+#include "Asset/AssetManagerEditor.h"
 #include "Asset/AssetMetadata.h"
 
 // Core

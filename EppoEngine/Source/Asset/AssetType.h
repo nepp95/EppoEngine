@@ -8,6 +8,7 @@ namespace Eppo
 	{
 		None = 0,
 		Mesh,
+		Scene,
 		Texture
 	};
 
@@ -17,6 +18,7 @@ namespace Eppo
 		{
 			if (assetType == "None")		return AssetType::None;
 			if (assetType == "Mesh")		return AssetType::Mesh;
+			if (assetType == "Scene")		return AssetType::Scene;
 			if (assetType == "Texture")		return AssetType::Texture;
 
 			EPPO_ASSERT(false);
@@ -29,6 +31,7 @@ namespace Eppo
 			{
 				case AssetType::None:		return "None";
 				case AssetType::Mesh:		return "Mesh";
+				case AssetType::Scene:		return "Scene";
 				case AssetType::Texture:	return "Texture";
 			}
 
@@ -42,6 +45,7 @@ namespace Eppo
 			{
 				case AssetType::None:		return "None";
 				case AssetType::Mesh:		return "MESH_ASSET";
+				case AssetType::Scene:		return "SCENE_ASSET";
 				case AssetType::Texture:	return "TEXTURE_ASSET";
 			}
 

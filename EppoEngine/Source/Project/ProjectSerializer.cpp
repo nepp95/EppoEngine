@@ -11,7 +11,7 @@ namespace Eppo
 
 	}
 
-	bool ProjectSerializer::Serialize(const std::filesystem::path& filepath)
+	bool ProjectSerializer::Serialize()
 	{
 		const auto& spec = m_Project->GetSpecification();
 
@@ -28,7 +28,7 @@ namespace Eppo
 
 		out << YAML::EndMap;
 
-		std::ofstream fout(filepath);
+		std::ofstream fout(spec.ProjectDirectory / std::filesystem::path(spec.Name + ".epproj"));
 		fout << out.c_str();
 
 		return true;

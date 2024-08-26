@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "ScriptGlue.h"
 
-#include "Asset/AssetManager.h"
 #include "Core/Input.h"
+#include "Project/Project.h"
 #include "Scene/Entity.h"
 #include "Scripting/ScriptEngine.h"
 
@@ -130,43 +130,6 @@ namespace Eppo
 		return it->second(entity);
 	}
 
-	static MonoString* MeshComponent_GetMeshFilepath(UUID uuid)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptGlue::MeshComponent_GetMeshFilepath");
-
-		Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene);
-		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity);
-
-		AssetHandle assetHandle = entity.GetComponent<MeshComponent>().MeshHandle;
-		AssetMetadata& metadata = AssetManager::Get().GetMetadata(assetHandle);
-
-		MonoString* monoStr = mono_string_new(ScriptEngine::GetAppDomain(), metadata.Filepath.string().c_str());
-
-		return monoStr;
-	}
-
-	static void MeshComponent_SetMesh(UUID uuid, MonoString* filepath)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptGlue::MeshComponent_SetMesh");
-
-		Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene);
-		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity);
-
-		char* cStr = mono_string_to_utf8(filepath);
-		std::string filepathStr(cStr);
-		mono_free(cStr);
-
-		EPPO_ASSERT(AssetManager::Get().IsAssetLoaded(filepathStr));
-		AssetMetadata& metadata = AssetManager::Get().GetMetadata(filepathStr);
-		
-		auto& mc = entity.GetComponent<MeshComponent>();
-		mc.MeshHandle = metadata.Handle;
-	}
-
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* outTranslation)
 	{
 		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_GetTranslation");
@@ -235,8 +198,6 @@ namespace Eppo
 		EPPO_ADD_INTERNAL_CALL(Entity_FindEntityByName);
 		EPPO_ADD_INTERNAL_CALL(Entity_GetName);
 		EPPO_ADD_INTERNAL_CALL(Entity_HasComponent);
-		EPPO_ADD_INTERNAL_CALL(MeshComponent_GetMeshFilepath);
-		EPPO_ADD_INTERNAL_CALL(MeshComponent_SetMesh);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 		EPPO_ADD_INTERNAL_CALL(RigidBodyComponent_ApplyLinearImpulse);

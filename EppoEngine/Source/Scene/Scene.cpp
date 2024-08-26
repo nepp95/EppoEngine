@@ -382,7 +382,7 @@ namespace Eppo
 				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
 				if (meshC.MeshHandle)
 				{
-					Ref<Mesh> mesh = AssetManager::Get().GetAsset<Mesh>(meshC.MeshHandle);
+					Ref<Mesh> mesh = AssetManager::GetAsset<Mesh>(meshC.MeshHandle);
 					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
 				}
 			}

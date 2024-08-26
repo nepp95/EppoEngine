@@ -27,11 +27,6 @@ namespace Eppo
 		internal extern static bool Entity_HasComponent(ulong uuid, Type componentType);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal extern static string MeshComponent_GetMeshFilepath(ulong uuid);
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal extern static void MeshComponent_SetMesh(ulong uuid, string filepath);
-
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal extern static void TransformComponent_GetTranslation(ulong uuid, out Vector3 translation);
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal extern static void TransformComponent_SetTranslation(ulong uuid, ref Vector3 translation);

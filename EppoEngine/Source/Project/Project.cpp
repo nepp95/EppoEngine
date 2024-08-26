@@ -29,6 +29,12 @@ namespace Eppo
 		return GetAssetsDirectory() / filepath;
 	}
 
+	std::filesystem::path Project::GetAssetRelativeFilepath(const std::filesystem::path& filepath)
+	{
+		EPPO_ASSERT(s_ActiveProject);
+		return std::filesystem::relative(filepath, GetAssetsDirectory());
+	}
+
 	Ref<Project> Project::New()
 	{
 		s_ActiveProject = CreateRef<Project>();
@@ -51,15 +57,20 @@ namespace Eppo
 		{
 			project->GetSpecification().ProjectDirectory = filepath.parent_path();
 			s_ActiveProject = project;
+
+			Ref<AssetManagerEditor> assetManager = CreateRef<AssetManagerEditor>();
+			s_ActiveProject->m_AssetManager = assetManager;
+			assetManager->DeserializeAssetRegistry();
+
 			return s_ActiveProject;
 		}
 
 		return nullptr;
 	}
 
-	bool Project::SaveActive(const std::filesystem::path& filepath)
+	bool Project::SaveActive()
 	{
 		ProjectSerializer serializer(s_ActiveProject);
-		return serializer.Serialize(filepath);
+		return serializer.Serialize();
 	}
 }
