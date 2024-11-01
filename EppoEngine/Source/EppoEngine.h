@@ -4,6 +4,7 @@
 
 // Asset
 #include "Asset/Asset.h"
+#include "Asset/AssetImporter.h"
 #include "Asset/AssetManager.h"
 #include "Asset/AssetManagerBase.h"
 #include "Asset/AssetManagerEditor.h"

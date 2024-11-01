@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Panel/Panel.h"
+#include "ThumbnailCache.h"
 
 namespace Eppo
 {
@@ -17,6 +18,8 @@ namespace Eppo
 		void TraverseDirectory(const std::filesystem::path& path, uint32_t depth = 0);
 
 	private:
+		ThumbnailCache m_ThumbnailCache;
+
 		struct FileTreeNode
 		{
 			std::string Name;

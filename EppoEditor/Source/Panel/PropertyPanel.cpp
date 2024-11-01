@@ -191,11 +191,8 @@ namespace Eppo
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MESH_ASSET"))
 					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path meshPath = path;
-
-						Ref<Asset> mesh = Project::GetActive()->GetAssetManagerEditor()->ImportAsset(meshPath);
-						component.MeshHandle = mesh->Handle;
+						auto handle = payload->Data;
+						component.MeshHandle = *(AssetHandle*)handle;
 					}
 					ImGui::EndDragDropTarget();
 				}

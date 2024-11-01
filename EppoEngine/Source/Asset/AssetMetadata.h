@@ -16,5 +16,10 @@ namespace Eppo
 		{
 			return Handle && Filesystem::Exists(Filepath);
 		}
+
+		std::string GetName() const
+		{
+			return Filepath.filename().string();
+		}
 	};
 }

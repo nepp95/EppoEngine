@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "Project.h"
 
+#include "Asset/AssetManager.h"
 #include "Project/ProjectSerializer.h"
+#include "Scene/SceneSerializer.h"
 
 namespace Eppo
 {
@@ -9,6 +11,11 @@ namespace Eppo
 	{
 		EPPO_ASSERT(s_ActiveProject);
 		return s_ActiveProject->m_Specification.ProjectDirectory;
+	}
+
+	std::filesystem::path Project::GetProjectsDirectory()
+	{
+		return Filesystem::GetAppRootDirectory() / "Projects";
 	}
 
 	std::filesystem::path Project::GetProjectFile()
@@ -70,6 +77,22 @@ namespace Eppo
 
 	bool Project::SaveActive()
 	{
+		// Serialize every scene
+		const auto& registry = s_ActiveProject->GetAssetManagerEditor()->GetAssetRegistry();
+
+		for (const auto& [handle, metadata] : registry)
+		{
+			if (metadata.Type != AssetType::Scene)
+				continue;
+
+			Ref<Scene> scene = AssetManager::GetAsset<Scene>(handle);
+
+			SceneSerializer serializer(scene);
+			serializer.Serialize(metadata.Filepath);
+		}
+
+		s_ActiveProject->GetAssetManagerEditor()->SerializeAssetRegistry();
+
 		ProjectSerializer serializer(s_ActiveProject);
 		return serializer.Serialize();
 	}

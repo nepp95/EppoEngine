@@ -20,6 +20,7 @@ namespace Eppo
 		Ref<AssetManagerEditor> GetAssetManagerEditor() { return std::static_pointer_cast<AssetManagerEditor>(m_AssetManager); }
 
 		static const std::filesystem::path& GetProjectDirectory();
+		static std::filesystem::path GetProjectsDirectory();
 		static std::filesystem::path GetProjectFile();
 		static std::filesystem::path GetAssetsDirectory();
 		static std::filesystem::path GetAssetFilepath(const std::filesystem::path& filepath);

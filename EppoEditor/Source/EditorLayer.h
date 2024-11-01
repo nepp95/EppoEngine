@@ -34,13 +34,16 @@ namespace Eppo
 		void SaveProject();
 
 		void NewScene();
-		void OpenScene();
+		void OpenScene(AssetHandle handle);
 		void OpenScene(const std::filesystem::path& filepath);
 		void SaveScene();
-		void SaveScene(const std::filesystem::path& filepath);
+		void SaveSceneAs();
 
+		void ImportAsset();
+
+		void UI_File_NewProject();
+		void UI_File_Preferences();
 		void UI_Toolbar();
-		void UI_Project_NewProject();
 
 	private:
 		// Scene

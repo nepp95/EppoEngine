@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "AssetImporter.h"
 
+#include "Scene/SceneSerializer.h"
+#include "Project/Project.h"
+
 #include <map>
 
 namespace Eppo
@@ -26,16 +29,16 @@ namespace Eppo
 
 	Ref<Mesh> AssetImporter::ImportMesh(AssetHandle handle, const AssetMetadata& metadata)
 	{
-		EPPO_ASSERT(false);
-		Ref<Mesh> mesh;
+		Ref<Mesh> mesh = CreateRef<Mesh>(Project::GetAssetFilepath(metadata.Filepath));
 
 		return mesh;
 	}
 
 	Ref<Scene> AssetImporter::ImportScene(AssetHandle handle, const AssetMetadata& metadata)
 	{
-		EPPO_ASSERT(false);
-		Ref<Scene> scene;
+		Ref<Scene> scene = CreateRef<Scene>();
+		SceneSerializer serializer(scene);
+		serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath));
 
 		return scene;
 	}
@@ -48,5 +51,11 @@ namespace Eppo
 		Ref<Texture> texture = CreateRef<Texture>(spec);
 
 		return texture;
+	}
+
+	bool AssetImporter::ExportScene(Ref<Scene> scene, const std::filesystem::path& filepath)
+	{
+		SceneSerializer serializer(scene);
+		return serializer.Serialize(filepath);
 	}
 }

@@ -9,6 +9,7 @@ namespace Eppo
 		None = 0,
 		Mesh,
 		Scene,
+		Script,
 		Texture
 	};
 
@@ -19,7 +20,14 @@ namespace Eppo
 			if (assetType == "None")		return AssetType::None;
 			if (assetType == "Mesh")		return AssetType::Mesh;
 			if (assetType == "Scene")		return AssetType::Scene;
+			if (assetType == "Script")		return AssetType::Script;
 			if (assetType == "Texture")		return AssetType::Texture;
+
+			// TODO: Used in editor content browser, move there?
+			if (assetType == "Meshes")		return AssetType::Mesh;
+			if (assetType == "Scenes")		return AssetType::Scene;
+			if (assetType == "Scripts")		return AssetType::Script;
+			if (assetType == "Textures")	return AssetType::Texture;
 
 			EPPO_ASSERT(false);
 			return AssetType::None;

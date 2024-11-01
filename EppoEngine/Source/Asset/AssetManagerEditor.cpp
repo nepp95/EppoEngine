@@ -10,11 +10,11 @@ namespace Eppo
 {
 	static std::map<std::filesystem::path, AssetType> s_AssetExtensionMap =
 	{
-		{ ".fbx", AssetType::Mesh },
 		{ ".epscene", AssetType::Scene },
-		{ ".png", AssetType::Texture },
-		{ ".jpg", AssetType::Texture },
+		{ ".fbx", AssetType::Mesh },
 		{ ".jpeg", AssetType::Texture },
+		{ ".jpg", AssetType::Texture },
+		{ ".png", AssetType::Texture },
 	};
 
 	namespace Utils
@@ -23,11 +23,49 @@ namespace Eppo
 		{
 			if (s_AssetExtensionMap.find(extension) == s_AssetExtensionMap.end())
 			{
-				EPPO_WARN("Could not find AssetType f or '{}'", extension);
+				EPPO_WARN("Could not find AssetType for '{}'", extension);
 				return AssetType::None;
 			}
 
 			return s_AssetExtensionMap.at(extension);
+		}
+
+		static std::filesystem::path CopyAssetToAssetsDirectory(const std::filesystem::path& filepath)
+		{
+			AssetType type = GetAssetTypeFromFileExtension(filepath.extension());
+			std::filesystem::path destPath;
+
+			switch (type)
+			{
+				case AssetType::Mesh:
+				{
+					destPath = Project::GetAssetsDirectory() / "Meshes";
+					break;
+				}
+
+				case AssetType::Scene:
+				{
+					destPath = Project::GetAssetsDirectory() / "Scenes";
+					
+					break;
+				}
+
+				case AssetType::Script:
+				{
+					destPath = Project::GetAssetsDirectory() / "Scripts";
+					break;
+				}
+
+				case AssetType::Texture:
+				{
+					destPath = Project::GetAssetsDirectory() / "Textures";
+					break;
+				}
+			}
+
+			Filesystem::Copy(filepath, destPath);
+
+			return destPath / filepath.filename();
 		}
 	}
 
@@ -62,12 +100,6 @@ namespace Eppo
 		return handle != 0 && m_AssetData.find(handle) != m_AssetData.end();
 	}
 
-	/*bool AssetManagerEditor::IsAssetLoaded(const std::filesystem::path& filepath)
-	{
-		AssetMetadata& metadata = GetMetadata(filepath);
-		return AssetManager::IsAssetLoaded(metadata.Handle);
-	}*/
-
 	bool AssetManagerEditor::IsAssetLoaded(AssetHandle handle) const
 	{
 		return m_Assets.find(handle) != m_Assets.end();
@@ -83,12 +115,22 @@ namespace Eppo
 
 	Ref<Asset> AssetManagerEditor::ImportAsset(const std::filesystem::path& filepath)
 	{
+		// If the path is not inside the assets directory, we want to copy the file to the assets directory
+		std::filesystem::path baseCanonical = std::filesystem::canonical(Project::GetAssetsDirectory());
+		std::filesystem::path targetCanonical = std::filesystem::canonical(Project::GetAssetFilepath(filepath));
+
+		AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
+		EPPO_ASSERT(type != AssetType::None);
+
+		std::filesystem::path newPath;
+		if (!(std::mismatch(baseCanonical.begin(), baseCanonical.end(), targetCanonical.begin()).first == baseCanonical.end()))
+			newPath = Utils::CopyAssetToAssetsDirectory(targetCanonical);
+
 		AssetHandle handle;
 
 		AssetMetadata metadata;
-		metadata.Filepath = filepath;
-		metadata.Type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
-		EPPO_ASSERT(metadata.Type != AssetType::None);
+		metadata.Filepath = Project::GetAssetRelativeFilepath(newPath.empty() ? filepath : newPath);
+		metadata.Type = type;
 
 		Ref<Asset> asset = AssetImporter::ImportAsset(metadata.Handle, metadata);
 		if (asset)
@@ -169,7 +211,7 @@ namespace Eppo
 		for (const auto& asset : data)
 		{
 			std::filesystem::path filepath = asset["Filepath"].as<std::string>();
-			if (!Filesystem::Exists(filepath))
+			if (!Filesystem::Exists(Project::GetAssetFilepath(filepath)))
 			{
 				EPPO_WARN("Asset with filepath '{}' has been removed from the asset registry because it does not exist!", filepath);
 				continue;
@@ -183,90 +225,11 @@ namespace Eppo
 			metadata.Filepath = filepath;
 
 			m_AssetData[handle] = metadata;
+
+			EPPO_TRACE("Asset '{}' ({}) deserialized", filepath.string(), handle);
 		}
 
 		// Since the information can have changed if a asset did not exist, we serialize it again
 		SerializeAssetRegistry();
 	}
-
-	//AssetMetadata& AssetManagerEditor::GetMetadata(const std::filesystem::path& filepath)
-	//{
-	//	for (auto& [handle, metadata] : m_AssetData)
-	//	{
-	//		if (metadata.Filepath == filepath)
-	//			return metadata;
-	//	}
-
-	//	return s_NullMetadata;
-	//}
-
-	//void AssetManagerEditor::DetectAssets()
-	//{
-	//	EPPO_INFO("Detecting new assets");
-
-	//	for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(Project::GetAssetsDirectory()))
-	//	{
-	//		EPPO_TRACE(entry.path());	
-	//	}
-	//}
-
-	//void AssetManagerEditor::LoadAssetsFromRegistry()
-	//{
-	//	for (const auto& [handle, metadata] : m_AssetData)
-	//		LoadAsset(metadata);
-	//}
-
-	//void AssetManagerEditor::LoadAsset(const AssetMetadata& metadata)
-	//{
-	//	EPPO_INFO("Loading asset '{}' ()", metadata.Filepath.filename(), metadata.Handle);
-
-	//	if (!Filesystem::Exists(metadata.Filepath))
-	//	{
-	//		EPPO_ERROR("Trying to load asset which does not exists: {}", metadata.Filepath);
-	//		return;
-	//	}
-
-	//	if (AssetManager::IsAssetLoaded(metadata.Handle))
-	//		return;
-
-	//	Ref<Asset> asset = nullptr;
-
-	//	if (!LoadData(metadata.Filepath, asset))
-	//	{
-	//		EPPO_ERROR("Failed to load asset: {}", metadata.Filepath);
-	//		return;
-	//	}
-
-	//	m_Assets[metadata.Handle] = asset;
-
-	//	EPPO_INFO("Asset with handle '{}' has been loaded", metadata.Handle);
-	//}
-
-	//bool AssetManagerEditor::LoadData(const std::filesystem::path& filepath, Ref<Asset>& asset)
-	//{
-	//	const AssetMetadata& metadata = GetMetadata(filepath);
-
-	//	switch (metadata.Type)
-	//	{
-	//		case AssetType::Mesh:
-	//		{
-	//			asset = CreateRef<Mesh>(filepath);
-	//			asset->Handle = metadata.Handle;
-	//			return true;
-	//		}
-
-	//		case AssetType::Texture:
-	//		{
-	//			TextureSpecification textureSpec;
-	//			textureSpec.Filepath = filepath;
-
-	//			asset = CreateRef<Texture>(textureSpec);
-	//			asset->Handle = metadata.Handle;
-	//			return true;
-	//		}
-	//	}
-
-	//	EPPO_ASSERT(false);
-	//	return false;
-	//}
 }

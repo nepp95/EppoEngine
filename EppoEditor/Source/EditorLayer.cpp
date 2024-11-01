@@ -15,7 +15,8 @@ namespace Eppo
 	static const std::string PROPERTY_PANEL = "PropertyPanel";
 	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
-	static bool s_openPopup = false;
+	static bool s_NewProjectPopup = false;
+	static bool s_PreferencesPopup = false;
 
 	EditorLayer::EditorLayer()
 		: Layer("EditorLayer"), m_PanelManager(PanelManager::Get())
@@ -30,7 +31,6 @@ namespace Eppo
 		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
 		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
-		//m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 
 		m_PanelManager.SetSceneContext(m_EditorScene);
 
@@ -150,19 +150,24 @@ namespace Eppo
 			if (ImGui::BeginMenu("File"))
 			{
 				if (ImGui::MenuItem("New Project"))
-					s_openPopup = true;
+					s_NewProjectPopup = true;
 
-				if (ImGui::MenuItem("Open Project"))
+				if (ImGui::MenuItem("Save Project", "CTRL+S"))
+					SaveProject();
+
+				if (ImGui::MenuItem("Open Project", "CTRL+O"))
 					OpenProject();
 
-				if (ImGui::MenuItem("New Scene", "CTRL+N"))
+				if (ImGui::MenuItem("New Scene"))
 					NewScene();
 
-				if (ImGui::MenuItem("Save Scene", "CTRL+S"))
-					SaveScene();
+				ImGui::Separator();
 
-				if (ImGui::MenuItem("Open Scene", "CTRL+O"))
-					OpenScene();
+				if (ImGui::MenuItem("Import asset"))
+					ImportAsset();
+
+				if (ImGui::MenuItem("Project settings"))
+					s_PreferencesPopup = true;
 
 				if (ImGui::MenuItem("Exit"))
 					Application::Get().Close();
@@ -170,14 +175,30 @@ namespace Eppo
 				ImGui::EndMenu();
 			}
 
+			if (ImGui::BeginMenu("Testing"))
+			{
+				if (ImGui::MenuItem("Serialize asset registry"))
+					Project::GetActive()->GetAssetManagerEditor()->SerializeAssetRegistry();
+
+				ImGui::EndMenu();
+			}
+
 			ImGui::EndMenuBar();
 		}
 
-		if (s_openPopup)
+		// Popups
+		if (s_NewProjectPopup)
 		{
 			ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
 			ImGui::OpenPopup("New Project", flags);
-			s_openPopup = false;
+			s_NewProjectPopup = false;
+		}
+
+		if (s_PreferencesPopup)
+		{
+			ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+			ImGui::OpenPopup("Project settings", flags);
+			s_PreferencesPopup = false;
 		}
 
 		// Viewport
@@ -203,8 +224,9 @@ namespace Eppo
 		// Performance
 		m_ViewportRenderer->RenderGui();
 
+		UI_File_NewProject();
+		UI_File_Preferences();
 		UI_Toolbar();
-		UI_Project_NewProject();
 	
 		ImGui::End(); // DockSpace
 	}
@@ -230,24 +252,17 @@ namespace Eppo
 
 		switch (e.GetKeyCode())
 		{
-			case Key::N:
-			{
-				if (control)
-					NewScene();
-				break;
-			}
-
 			case Key::O:
 			{
 				if (control)
-					OpenScene();
+					OpenProject();
 				break;
 			}
 
 			case Key::S:
 			{
 				if (control)
-					SaveScene();
+					SaveProject();
 				break;
 			}
 		}
@@ -385,7 +400,7 @@ namespace Eppo
 
 	bool EditorLayer::OpenProject()
 	{
-		std::filesystem::path filePath = FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0");
+		std::filesystem::path filePath = FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0", Project::GetProjectsDirectory());
 
 		if (filePath.empty())
 		{
@@ -393,7 +408,7 @@ namespace Eppo
 				return false;
 			else
 			{
-				s_openPopup = true;
+				s_NewProjectPopup = true;
 				return true;
 			}
 		}
@@ -434,6 +449,7 @@ namespace Eppo
 	void EditorLayer::SaveProject()
 	{
 		EPPO_ASSERT(Project::GetActive());
+		Project::SaveActive();
 	}
 
 	void EditorLayer::NewScene()
@@ -443,17 +459,7 @@ namespace Eppo
 		m_ActiveScene = m_EditorScene;
 		m_ActiveScenePath = std::filesystem::path();
 
-		m_PanelManager.SetSceneContext(m_EditorScene);
-	}
-
-	void EditorLayer::OpenScene()
-	{
-		std::filesystem::path filepath = FileDialog::OpenFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
-
-		if (!filepath.empty())
-			OpenScene(filepath);
-		else
-			NewScene();
+		m_PanelManager.SetSceneContext(m_ActiveScene);
 	}
 
 	void EditorLayer::OpenScene(const std::filesystem::path& filepath)
@@ -477,18 +483,155 @@ namespace Eppo
 		}
 	}
 
+	void EditorLayer::OpenScene(AssetHandle handle)
+	{
+		EPPO_ASSERT(handle);
+
+		if (m_SceneState != SceneState::Edit)
+			OnSceneStop();
+
+		Ref<Scene> sceneAsset = AssetManager::GetAsset<Scene>(handle);
+		Ref<Scene> newScene = Scene::Copy(sceneAsset);
+
+		m_EditorScene = newScene;
+		m_ActiveScene = m_EditorScene;
+		m_ActiveScenePath = Project::GetActive()->GetAssetManagerEditor()->GetFilepath(handle);
+		
+		m_PanelManager.SetSceneContext(m_ActiveScene);
+	}
+
 	void EditorLayer::SaveScene()
 	{
 		if (m_ActiveScenePath.empty())
-			m_ActiveScenePath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
-
-		SaveScene(m_ActiveScenePath);
+			SaveSceneAs();
+		else
+			AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
 	}
 
-	void EditorLayer::SaveScene(const std::filesystem::path& filepath)
+	void EditorLayer::SaveSceneAs()
 	{
-		SceneSerializer serializer(m_EditorScene);
-		serializer.Serialize(m_ActiveScenePath);
+		std::filesystem::path filepath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
+		if (!filepath.empty())
+		{
+			m_ActiveScenePath = filepath;
+			AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
+		}
+	}
+
+	void EditorLayer::ImportAsset()
+	{
+		std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .fbx, .jpeg, .jpg, .png)\0*.epscene;*.fbx;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
+
+		if (!filepath.empty())
+		{
+			Project::GetActive()->GetAssetManagerEditor()->ImportAsset(filepath);
+		}
+	}
+
+	void EditorLayer::UI_File_NewProject()
+	{
+		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+
+		if (ImGui::BeginPopupModal("New Project", (bool*)0, flags))
+		{
+			static char nameBuffer[200]{ 0 };
+			static bool projectExists = false;
+
+			ImGui::Text("Project Name");
+			ImGui::InputText("##ProjectName", nameBuffer, 200);
+
+			std::string projectPath = std::string(nameBuffer);
+			std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
+
+			projectExists = Filesystem::Exists(fullProjectPath);
+
+			if (Filesystem::Exists(fullProjectPath) && !projectPath.empty())
+			{
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+				ImGui::Text("Project name already exists");
+				ImGui::PopStyleColor();
+			}
+			else
+			{
+				ImGui::Text("Project path: \n%s", fullProjectPath.string().c_str());
+			}
+
+			ImGui::Dummy(ImVec2(50, 20));
+
+			if (ImGui::Button("Cancel", ImVec2(100, 30)))
+				ImGui::CloseCurrentPopup();
+
+			ImGui::SameLine();
+
+			if (projectExists)
+				ImGui::BeginDisabled();
+
+			if (ImGui::Button("Create", ImVec2(100, 30)))
+			{
+				NewProject(projectPath);
+				ImGui::CloseCurrentPopup();
+			}
+
+			if (projectExists)
+				ImGui::EndDisabled();
+
+			ImGui::EndPopup();
+		}
+	}
+
+	void EditorLayer::UI_File_Preferences()
+	{
+		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+
+		if (ImGui::BeginPopupModal("Project settings", (bool*)0, flags))
+		{
+			auto& spec = Project::GetActive()->GetSpecification();
+			
+			static std::string nameBuffer = std::string(200, ' ').replace(0, 200, spec.Name);
+
+			ImGui::Text("Project Name");
+			ImGui::InputText("##ProjectName", &nameBuffer[0], 200);
+
+			ImGui::Text("Project Directory");
+			ImGui::InputText("##ProjectDirectory", &spec.ProjectDirectory.string()[0], spec.ProjectDirectory.string().length(), ImGuiInputTextFlags_ReadOnly);
+
+			ImGui::Text("Start Scene");
+			if (ImGui::BeginCombo("##StartScene", spec.StartScene.filename().string().c_str()))
+			{
+				Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
+				const auto& assetRegistry = assetManager->GetAssetRegistry();
+
+				std::string startScene = spec.StartScene.filename().string();
+
+				for (const auto& [handle, metadata] : assetRegistry)
+				{
+					if (metadata.Type != AssetType::Scene)
+						continue;
+
+					bool isSelected = startScene == metadata.GetName();
+
+					if (ImGui::Selectable(metadata.GetName().c_str(), isSelected))
+						startScene == metadata.GetName();
+
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+
+			if (ImGui::Button("Cancel", ImVec2(100, 30)))
+				ImGui::CloseCurrentPopup();
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Apply", ImVec2(100, 30)))
+			{
+				// TODO: Save settings
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
 	}
 
 	void EditorLayer::UI_Toolbar()
@@ -515,55 +658,5 @@ namespace Eppo
 
 		ImGui::PopStyleVar(3);
 		ImGui::End();
-	}
-
-	void EditorLayer::UI_Project_NewProject()
-	{
-		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
-
-		if (ImGui::BeginPopupModal("New Project", (bool*)0, flags))
-		{
-			static char nameBuffer[200]{ 0 };
-			static bool projectExists = false;
-
-			ImGui::Text("Project Name");
-			ImGui::InputText("##ProjectName", nameBuffer, 200);
-
-			std::string projectPath = std::string(nameBuffer);
-			std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
-			
-			projectExists = Filesystem::Exists(fullProjectPath);
-			
-			if (Filesystem::Exists(fullProjectPath) && !projectPath.empty())
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
-				ImGui::Text("Project name already exists");
-				ImGui::PopStyleColor();
-			} else
-			{
-				ImGui::Text("Project path: \n%s", fullProjectPath.string().c_str());
-			}
-
-			ImGui::Dummy(ImVec2(50, 20));
-
-			if (ImGui::Button("Cancel", ImVec2(100, 30)))
-				ImGui::CloseCurrentPopup();
-
-			ImGui::SameLine();
-
-			if (projectExists)
-				ImGui::BeginDisabled();
-
-			if (ImGui::Button("Create", ImVec2(100, 30)))
-			{
-				NewProject(projectPath);
-				ImGui::CloseCurrentPopup();
-			}
-
-			if (projectExists)
-				ImGui::EndDisabled();
-
-			ImGui::EndPopup();
-		}
 	}
 }
