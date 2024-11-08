@@ -9,7 +9,7 @@ on:
 
 jobs:
   debug:
-    runs-on: [ self-hosted, windows ]
+    runs-on: [ windows-latest ]
     name: "Build and Test (Debug)"
 
     steps:
