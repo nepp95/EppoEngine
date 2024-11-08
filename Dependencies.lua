@@ -82,7 +82,7 @@ DynamicLibrary["mono_debug"] = "%{DynamicLibraryDir.mono}/Debug/mono-2.0-sgen.dl
 DynamicLibrary["mono_release"] = "%{DynamicLibraryDir.mono}/Release/mono-2.0-sgen.dll"
 
 -- For CI we use the vulkan release libraries since our CI does not have the debug versions
-if os.getenv("GITHUB_ACTIONS") == true then
+if os.getenv("CI") == true then
     StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_shared.lib"
     StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
     StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
