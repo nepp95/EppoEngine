@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   debug:
-    runs-on: [ self-hosted, windows ]
+    runs-on: [ windows-latest ]
     name: "Create test report"
 
     steps:
