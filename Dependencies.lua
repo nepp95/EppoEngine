@@ -80,3 +80,11 @@ DynamicLibrary["assimp_debug"] = "%{DynamicLibraryDir.assimp}/Debug/assimp-vc143
 DynamicLibrary["assimp_release"] = "%{DynamicLibraryDir.assimp}/Release/assimp-vc143-mt.dll"
 DynamicLibrary["mono_debug"] = "%{DynamicLibraryDir.mono}/Debug/mono-2.0-sgen.dll"
 DynamicLibrary["mono_release"] = "%{DynamicLibraryDir.mono}/Release/mono-2.0-sgen.dll"
+
+-- For CI we use the vulkan release libraries since our CI does not have the debug versions
+if os.getenv("GITHUB_ACTIONS") == true then
+    StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_shared.lib"
+    StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
+    StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
+    StaticLibrary["spirv_tools_debug"] = "%{StaticLibraryDir.vulkan}/SPIRV-Tools.lib"
+end
