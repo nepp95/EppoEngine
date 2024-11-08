@@ -71,7 +71,7 @@ namespace Eppo
 		SceneState m_SceneState = SceneState::Edit;
 
 		// Resources
-		Ref<Texture> m_IconPlay;
-		Ref<Texture> m_IconStop;
+		Ref<Image> m_IconPlay;
+		Ref<Image> m_IconStop;
 	};
 }

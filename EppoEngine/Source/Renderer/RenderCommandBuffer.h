@@ -1,21 +1,27 @@
 #pragma once
 
+#include "Renderer/Vulkan.h"
+
 namespace Eppo
 {
 	class RenderCommandBuffer
 	{
 	public:
-		RenderCommandBuffer(uint32_t count = 0);
-		~RenderCommandBuffer() = default;
+		RenderCommandBuffer(bool manualSubmission = true, uint32_t count = 0);
+		~RenderCommandBuffer();
 
 		void RT_Begin();
 		void RT_End();
 		void RT_Submit();
 
-		uint64_t GetTimestamp() const { return m_Timestamp; }
+		void ResetCommandBuffer(uint32_t frameIndex);
+		VkCommandBuffer GetCurrentCommandBuffer();
 
 	private:
-		uint32_t m_QueryRendererID;
-		uint64_t m_Timestamp;
+		VkCommandPool m_CommandPool;
+		std::vector<VkCommandBuffer> m_CommandBuffers;
+		std::vector<VkFence> m_Fences;
+
+		bool m_ManualSubmission;
 	};
 }

@@ -1,19 +1,25 @@
 #pragma once
 
+#include "Core/Buffer.h"
+#include "Renderer/Allocator.h"
+
 namespace Eppo
 {
 	class VertexBuffer
 	{
 	public:
 		VertexBuffer(void* data, uint32_t size);
-		VertexBuffer(uint32_t size);
-		~VertexBuffer();
+		~VertexBuffer() = default;
 
-		void Bind() const;
-		void Unbind() const;
+		VkBuffer GetBuffer() const { return m_Buffer; }
 
 	private:
-		uint32_t m_RendererID;
-		uint32_t m_Size;
+		void CreateBuffer(VmaMemoryUsage usage);
+
+	private:
+		Buffer m_LocalStorage;
+
+		VkBuffer m_Buffer;
+		VmaAllocation m_Allocation;
 	};
 }

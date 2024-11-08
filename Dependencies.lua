@@ -2,7 +2,6 @@ VulkanSdk = os.getenv("VULKAN_SDK")
 
 -- Include directories
 IncludeDir = {}
-IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
 IncludeDir["bullet"] = "%{wks.location}/EppoEngine/Vendor/bullet/include"
 IncludeDir["entt"] = "%{wks.location}/EppoEngine/Vendor/entt/single_include"
 IncludeDir["filewatch"] = "%{wks.location}/EppoEngine/Vendor/filewatch"
@@ -14,20 +13,20 @@ IncludeDir["imgui"] = "%{wks.location}/EppoEngine/Vendor/imgui"
 IncludeDir["mono"] = "%{wks.location}/EppoEngine/Vendor/mono/include"
 IncludeDir["spdlog"] = "%{wks.location}/EppoEngine/Vendor/spdlog/include"
 IncludeDir["stb"] = "%{wks.location}/EppoEngine/Vendor/stb"
+IncludeDir["tinygltf"] = "%{wks.location}/EppoEngine/Vendor/tinygltf"
 IncludeDir["tracy"] = "%{wks.location}/EppoEngine/Vendor/tracy/public"
+IncludeDir["vma"] = "%{wks.location}/EppoEngine/Vendor/vulkan-memory-allocator"
 IncludeDir["vulkan"] = "%{VulkanSdk}/Include"
 IncludeDir["yaml_cpp"] = "%{wks.location}/EppoEngine/Vendor/yaml-cpp/include"
 
 -- Static Library directories
 StaticLibraryDir = {}
-StaticLibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/lib"
 StaticLibraryDir["bullet"] = "%{wks.location}/EppoEngine/Vendor/bullet/lib"
 StaticLibraryDir["mono"] = "%{wks.location}/EppoEngine/Vendor/mono/lib"
 StaticLibraryDir["vulkan"] = "%{VulkanSdk}/Lib"
 
 -- Static Libraries
 StaticLibrary = {}
-StaticLibrary["glad"] = "glad"
 StaticLibrary["imgui"] = "imgui"
 StaticLibrary["yaml_cpp"] = "yaml-cpp"
 
@@ -57,6 +56,7 @@ if (os.target() == "windows") then
     StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsld.lib"
     StaticLibrary["spirv_cross_glsl_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
     StaticLibrary["spirv_tools_debug"] = "%{StaticLibraryDir.vulkan}/SPIRV-Toolsd.lib"
+    StaticLibrary["vulkan"] = "%{StaticLibraryDir.vulkan}/vulkan-1.lib"
     StaticLibrary["winmm"] = "Winmm.lib"
 	StaticLibrary["winsock"] = "Ws2_32.lib"
 	StaticLibrary["winversion"] = "Version.lib"

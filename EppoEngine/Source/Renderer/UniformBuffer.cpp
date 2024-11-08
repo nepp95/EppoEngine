@@ -2,8 +2,7 @@
 #include "UniformBuffer.h"
 
 #include "Renderer/Renderer.h"
-
-#include <glad/glad.h>
+#include "Renderer/RendererContext.h"
 
 namespace Eppo
 {
@@ -12,33 +11,47 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::UniformBuffer");
 
-		glCreateBuffers(1, &m_RendererID);
-		glNamedBufferData(m_RendererID, m_Size, nullptr, GL_DYNAMIC_DRAW);
-		glBindBufferBase(GL_UNIFORM_BUFFER, m_Binding, m_RendererID);
+		m_Buffers.resize(VulkanConfig::MaxFramesInFlight);
+		m_Allocations.resize(VulkanConfig::MaxFramesInFlight);
+		m_MappedMemory.resize(VulkanConfig::MaxFramesInFlight);
+		m_DescriptorBufferInfos.resize(VulkanConfig::MaxFramesInFlight);
+
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = m_Size;
+		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+		{
+			m_Allocations[i] = Allocator::AllocateBuffer(m_Buffers[i], bufferInfo, VMA_MEMORY_USAGE_CPU_ONLY);
+			m_MappedMemory[i] = Allocator::MapMemory(m_Allocations[i]);
+
+			m_DescriptorBufferInfos[i].buffer = m_Buffers[i];
+			m_DescriptorBufferInfos[i].offset = 0;
+			m_DescriptorBufferInfos[i].range = m_Size;
+		}
+
+		RendererContext::Get()->SubmitResourceFree([&]()
+		{
+			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			{
+				Allocator::UnmapMemory(m_Allocations[i]);
+				Allocator::DestroyBuffer(m_Buffers[i], m_Allocations[i]);
+			}
+		});
 	}
 
 	UniformBuffer::~UniformBuffer()
 	{
 		EPPO_PROFILE_FUNCTION("UniformBuffer::~UniformBuffer");
-
-		glDeleteBuffers(1, &m_RendererID);
 	}
 
-	void UniformBuffer::RT_SetData(void* data)
+	void UniformBuffer::SetData(void* data, uint32_t size)
 	{
-		Renderer::SubmitCommand([this, data]()
-		{
-			glNamedBufferSubData(m_RendererID, 0, m_Size, data);
-		});
-	}
+		EPPO_ASSERT(size == m_Size);
 
-	void UniformBuffer::RT_SetData(void* data, uint32_t size)
-	{
-		Renderer::SubmitCommand([this, size, data]()
-		{
-			EPPO_ASSERT(size == m_Size);
-
-			glNamedBufferSubData(m_RendererID, 0, size, data);
-		});
+		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+		memcpy(m_MappedMemory[imageIndex], data, size);
 	}
 }

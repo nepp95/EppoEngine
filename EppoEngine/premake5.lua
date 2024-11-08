@@ -21,11 +21,11 @@ project "EppoEngine"
 
 		"%{IncludeDir.stb}/*.h",
 		"%{IncludeDir.stb}/*.cpp",
+		"%{IncludeDir.tinygltf}/tinygltf.cpp"
     }
 
     includedirs {
         "Source",
-		"%{IncludeDir.assimp}",
         "%{IncludeDir.bullet}",
 		"%{IncludeDir.entt}",
         "%{IncludeDir.filewatch}",
@@ -36,7 +36,9 @@ project "EppoEngine"
         "%{IncludeDir.mono}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
+		"%{IncludeDir.tinygltf}",
 		"%{IncludeDir.tracy}",
+        "%{IncludeDir.vma}",
         "%{IncludeDir.vulkan}",
 		"%{IncludeDir.yaml_cpp}"
     }
@@ -49,10 +51,10 @@ project "EppoEngine"
         }
 
         links {
-			"%{StaticLibrary.glad}",
             "%{StaticLibrary.glfw}",
             "%{StaticLibrary.imgui}",
             "%{StaticLibrary.yaml_cpp}",
+            "%{StaticLibrary.vulkan}",
 			"%{StaticLibrary.winsock}",
 			"%{StaticLibrary.winmm}",
 			"%{StaticLibrary.winversion}",
@@ -91,7 +93,6 @@ project "EppoEngine"
     filter {"system:windows", "configurations:Debug"}
 
         links {
-			"%{StaticLibrary.assimp_debug}",
             "%{StaticLibrary.bullet_common_debug}",
             "%{StaticLibrary.bullet_collision_debug}",
             "%{StaticLibrary.bullet_dynamics_debug}",
@@ -116,7 +117,6 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Release"}
         links {
-			"%{StaticLibrary.assimp_release}",
             "%{StaticLibrary.bullet_common_release}",
             "%{StaticLibrary.bullet_collision_release}",
             "%{StaticLibrary.bullet_dynamics_release}",
@@ -136,7 +136,6 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Dist"}
         links {
-			"%{StaticLibrary.assimp_release}",
             "%{StaticLibrary.bullet_common_release}",
             "%{StaticLibrary.bullet_collision_release}",
             "%{StaticLibrary.bullet_dynamics_release}",

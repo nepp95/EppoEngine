@@ -2,55 +2,102 @@
 #include "SceneRenderer.h"
 
 #include "Asset/AssetManager.h"
+#include "Core/Application.h"
+#include "Renderer/DescriptorWriter.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/RendererContext.h"
+#include "Renderer/Vertex.h"
 #include "Scene/Scene.h"
 
 #include <GLFW/glfw3.h>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_vulkan.h>
 
 namespace Eppo
 {
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
-		: m_RenderSpecification(renderSpecification)
+		: m_RenderSpecification(renderSpecification), m_Scene(scene)
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::SceneRenderer");
 
-		m_CommandBuffer = CreateRef<RenderCommandBuffer>();
+		Ref<RendererContext> context = RendererContext::Get();
+		Ref<Swapchain> swapchain = context->GetSwapchain();
 
-		// Geometry
-		{
-			FramebufferSpecification framebufferSpec;
-			framebufferSpec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
-			framebufferSpec.Width = 1920; // todo: make configurable
-			framebufferSpec.Height = 1080; // todo: make configurable
-
-			m_GeometryFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
-		}
+		m_CommandBuffer = swapchain->GetCommandBuffer();
 
 		// PreDepth
 		{
-			TextureSpecification textureSpec;
-			textureSpec.Format = TextureFormat::Depth;
-			textureSpec.Wrap = TextureWrap::CLAMP_TO_BORDER;
-			textureSpec.BorderColor = glm::vec4(1.0f);
-			textureSpec.Width = 2048;
-			textureSpec.Height = 2048;
+			ImageSpecification imageSpec;
+			imageSpec.Format = ImageFormat::Depth;
+			imageSpec.Width = 1024;
+			imageSpec.Height = 1024;
+			imageSpec.CubeMap = true;
 
-			m_ShadowMap = CreateRef<Texture>(textureSpec);
+			Ref<Image> depthImage = CreateRef<Image>(imageSpec);
 
-			FramebufferSpecification framebufferSpec;
-			framebufferSpec.ExistingDepthTexture = m_ShadowMap;
-			framebufferSpec.Width = 2048;
-			framebufferSpec.Height = 2048;
+			VkCommandBuffer cmd = context->GetLogicalDevice()->GetCommandBuffer(true);
+			Image::TransitionImage(cmd, depthImage->GetImageInfo().Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+			context->GetLogicalDevice()->FlushCommandBuffer(cmd);
 
-			m_PreDepthFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
+			PipelineSpecification pipelineSpec;
+			pipelineSpec.DepthTesting = true;
+			pipelineSpec.DepthImage = depthImage;
+			pipelineSpec.Width = 1024;
+			pipelineSpec.Height = 1024;
+			pipelineSpec.Shader = Renderer::GetShader("predepth");
+			pipelineSpec.PushConstantRanges = pipelineSpec.Shader->GetPushConstantRanges();
+			pipelineSpec.Layout = {
+				{ ShaderDataType::Float3, "inPosition" },
+				{ ShaderDataType::Float3, "inNormal" },
+				{ ShaderDataType::Float2, "inTexCoord" },
+				{ ShaderDataType::Float4, "inColor" }
+			};
+
+			m_PreDepthPipeline = CreateRef<Pipeline>(pipelineSpec);
+		}
+
+		// Geometry
+		{
+			PipelineSpecification pipelineSpec;
+			pipelineSpec.ColorAttachments = { 
+				{ ImageFormat::RGBA8, true, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) }
+			};
+			pipelineSpec.DepthTesting = true;
+			pipelineSpec.Width = m_RenderSpecification.Width;
+			pipelineSpec.Height = m_RenderSpecification.Height;
+			pipelineSpec.Shader = Renderer::GetShader("geometry");
+			pipelineSpec.PushConstantRanges = pipelineSpec.Shader->GetPushConstantRanges();
+			pipelineSpec.Layout = {
+				{ ShaderDataType::Float3, "inPosition" },
+				{ ShaderDataType::Float3, "inNormal" },
+				{ ShaderDataType::Float2, "inTexCoord" },
+				{ ShaderDataType::Float4, "inColor" }
+			};
+
+			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
+		}
+
+		// Composite
+		{
+			PipelineSpecification pipelineSpec;
+			pipelineSpec.ColorAttachments = {
+				{ ImageFormat::RGBA8, true, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) }
+			};
+			pipelineSpec.SwapchainTarget = true;
+			pipelineSpec.Width = swapchain->GetWidth();
+			pipelineSpec.Height = swapchain->GetHeight();
+			pipelineSpec.Shader = Renderer::GetShader("composite");
+			pipelineSpec.PushConstantRanges = pipelineSpec.Shader->GetPushConstantRanges();
+
+			m_CompositePipeline = CreateRef<Pipeline>(pipelineSpec);
 		}
 
 		// Uniform buffers
 		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), 0);
-		m_TransformUB = CreateRef<UniformBuffer>(sizeof(glm::mat4), 1);
-		m_DirectionalLightUB = CreateRef<UniformBuffer>(sizeof(DirectionalLightData), 2);
-		m_MaterialUB = CreateRef<UniformBuffer>(sizeof(MaterialData), 4);
+		m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightsData), 1);
 	}
 
 	void SceneRenderer::RenderGui()
@@ -59,7 +106,7 @@ namespace Eppo
 
 		ImGui::Begin("Performance");
 
-		ImGui::Text("GPU Time: %.3fms", (float)m_CommandBuffer->GetTimestamp() * 0.000001f);
+		//ImGui::Text("GPU Time: %.3fms", (float)m_CommandBuffer->GetTimestamp() * 0.000001f);
 
 		ImGui::Separator();
 
@@ -73,14 +120,12 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::Resize");
 
-		m_GeometryFramebuffer->Resize(width, height);
+		//m_GeometryFramebuffer->Resize(width, height);
 	}
 
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
-
-		m_CommandBuffer->RT_Begin();
 
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
@@ -90,7 +135,34 @@ namespace Eppo
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = editorCamera.GetViewProjectionMatrix();
 		m_CameraBuffer.Position = glm::vec4(editorCamera.GetPosition(), 0.0f);
-		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+		m_CameraUB->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+
+		// Lights UB
+		m_LightsBuffer.Projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
+		//m_LightsBuffer.Projection[1][1] *= -1.0f;
+		m_LightsBuffer.NumLights = 2;
+
+		for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
+		{
+			auto& light = m_LightsBuffer.Lights[i];
+			glm::vec3 position;
+			if (i == 0)
+				position = { 0.40f, 0.12f, 0.11f };
+			else
+				position = { 0.40f, 0.12f, -0.18f };
+
+			light.Position = glm::vec4(position, 1.0f);
+			light.Color = glm::vec4(0.8f, 0.4f, 0.4f, 1.0f);
+
+			light.View[0] = glm::lookAt(position, position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[1] = glm::lookAt(position, position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[2] = glm::lookAt(position, position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+			light.View[3] = glm::lookAt(position, position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+			light.View[4] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[5] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+		}
+
+		m_LightsUB->SetData(&m_LightsBuffer, sizeof(LightsData));
 
 		// Cleanup from last draw
 		m_DrawList.clear();
@@ -100,8 +172,6 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
 
-		m_CommandBuffer->RT_Begin();
-
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
@@ -110,7 +180,34 @@ namespace Eppo
 		m_CameraBuffer.Projection = camera.GetProjectionMatrix();
 		m_CameraBuffer.ViewProjection = camera.GetProjectionMatrix() * glm::inverse(transform);
 		m_CameraBuffer.Position = transform[3];
-		m_CameraUB->RT_SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+		m_CameraUB->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
+
+		// Lights UB
+		m_LightsBuffer.Projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
+		//m_LightsBuffer.Projection[1][1] *= -1.0f;
+		m_LightsBuffer.NumLights = 2;
+
+		for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
+		{
+			auto& light = m_LightsBuffer.Lights[i];
+			glm::vec3 position;
+			if (i == 0)
+				position = { 0.40f, 0.12f, 0.11f };
+			else
+				position = { 0.40f, 0.12f, -0.18f };
+
+			light.Position = glm::vec4(position, 1.0f);
+			light.Color = glm::vec4(0.8f, 0.4f, 0.4f, 1.0f);
+
+			light.View[0] = glm::lookAt(position, position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[1] = glm::lookAt(position, position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[2] = glm::lookAt(position, position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+			light.View[3] = glm::lookAt(position, position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+			light.View[4] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[5] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+		}
+
+		m_LightsUB->SetData(&m_LightsBuffer, sizeof(LightsData));
 
 		// Cleanup from last draw
 		m_DrawList.clear();
@@ -123,18 +220,6 @@ namespace Eppo
 		Flush();
 	}
 
-	void SceneRenderer::SubmitDirectionalLight(const DirectionalLightComponent& dlc)
-	{
-		EPPO_PROFILE_FUNCTION("SceneRenderer::SubmitDirectionalLight");
-
-		m_DirectionalLightBuffer.View = glm::lookAt(-dlc.Direction, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_DirectionalLightBuffer.Projection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 100.0f);
-		m_DirectionalLightBuffer.Direction = glm::vec4(dlc.Direction, 0.0f);
-		m_DirectionalLightBuffer.AlbedoColor = dlc.AlbedoColor;
-		m_DirectionalLightBuffer.AmbientColor = dlc.AmbientColor;
-		m_DirectionalLightBuffer.SpecularColor = dlc.SpecularColor;
-	}
-
 	void SceneRenderer::SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId)
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::SubmitMesh");
@@ -145,76 +230,207 @@ namespace Eppo
 		drawCommand.Transform = transform;
 	}
 
+	Ref<Image> SceneRenderer::GetFinalImage() const
+	{
+		return m_GeometryPipeline->GetFinalImage();
+	}
+
 	void SceneRenderer::Flush()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::Flush");
+
+		m_CommandBuffer->RT_Begin();
 
 		PrepareRender();
 		
 		PreDepthPass();
 		GeometryPass();
+		CompositePass();
 
 		m_CommandBuffer->RT_End();
-		m_CommandBuffer->RT_Submit();
 	}
 
 	void SceneRenderer::PrepareRender()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::PrepareRender");
 
-		m_DirectionalLightUB->RT_SetData(&m_DirectionalLightBuffer, sizeof(DirectionalLightData));
+		Renderer::SubmitCommand([]()
+		{
+			ImGui_ImplVulkan_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
 
-		// Clear framebuffers
-		m_GeometryFramebuffer->RT_Bind();
-		Renderer::RT_Clear();
-		m_GeometryFramebuffer->RT_Unbind();
+			Application::Get().RenderGui();
 
-		m_PreDepthFramebuffer->RT_Bind();
-		Renderer::RT_Clear(false, true);
-		m_PreDepthFramebuffer->RT_Unbind();
+			ImGui::Render();
+		});
 	}
 
 	void SceneRenderer::PreDepthPass()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::PreDepthPass");
 
-		Renderer::GetShader("predepth")->RT_Bind();
+		// Transition depth image for writing
+		Renderer::SubmitCommand([this]()
+		{
+			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();;
+			Image::TransitionImage(commandBuffer, m_PreDepthPipeline->GetSpecification().DepthImage->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		});
 
-		m_PreDepthFramebuffer->RT_Bind();
-		Renderer::RT_SetFaceCulling(FaceCulling::FRONT);
+		// Begin rendering
+		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_PreDepthPipeline);
 
+		// Update descriptors
+		Renderer::SubmitCommand([this]()
+		{
+			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+			const auto& descriptorSets = m_PreDepthPipeline->GetDescriptorSets(frameIndex);
+
+			DescriptorWriter writer;
+
+			// Set 0 - Environment
+			{
+				const auto& buffers = m_LightsUB->GetBuffers();
+				VkBuffer buffer = buffers[frameIndex];
+				writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+
+			writer.UpdateSet(descriptorSets[0]);
+			writer.Clear();
+		});
+
+		// Render geometry
 		for (auto& dc : m_DrawList)
 		{
-			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
-
-			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+			Renderer::RT_RenderGeometry(m_CommandBuffer, m_PreDepthPipeline, dc.Mesh, dc.Transform);
 
 			m_RenderStatistics.DrawCalls++;
 		}
 
-		Renderer::RT_SetFaceCulling(FaceCulling::BACK);
-		m_PreDepthFramebuffer->RT_Unbind();
+		// End rendering
+		Renderer::RT_EndRenderPass(m_CommandBuffer);
+
+		// Transition image for reading
+		Renderer::SubmitCommand([this]()
+		{
+			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
+			Image::TransitionImage(commandBuffer, m_PreDepthPipeline->GetSpecification().DepthImage->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+		});
 	}
 
 	void SceneRenderer::GeometryPass()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::GeometryPass");
 
-		Renderer::GetShader("geometry")->RT_Bind();
+		// Begin rendering
+		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
 
-		m_GeometryFramebuffer->RT_Bind();
+		// Update descriptors
+		Renderer::SubmitCommand([this]()
+		{
+			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+			const auto& descriptorSets = m_GeometryPipeline->GetDescriptorSets(frameIndex);
 
+			DescriptorWriter writer;
+
+			// Set 0 - Environment
+			{
+				const auto& buffers = m_CameraUB->GetBuffers();
+				VkBuffer buffer = buffers[frameIndex];
+				writer.WriteBuffer(m_CameraUB->GetBinding(), buffer, sizeof(CameraData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+
+			{
+				const auto& buffers = m_LightsUB->GetBuffers();
+				VkBuffer buffer = buffers[frameIndex];
+				writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+
+			{
+				Ref<Image> depthImage = m_PreDepthPipeline->GetSpecification().DepthImage;
+				const auto& imageInfo = depthImage->GetImageInfo();
+				writer.WriteImage(2, imageInfo.ImageView, imageInfo.Sampler, imageInfo.ImageLayout, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+			}
+
+			writer.UpdateSet(descriptorSets[0]);
+			writer.Clear();
+
+			// Set 1 - Materials
+			std::vector<VkDescriptorImageInfo> imageInfos;
+
+			for (const auto& dc : m_DrawList)
+			{
+				for (const auto& image : dc.Mesh->GetImages())
+				{
+					const ImageInfo& imageInfo = image->GetImageInfo();
+
+					VkDescriptorImageInfo& info = imageInfos.emplace_back();
+					info.imageLayout = imageInfo.ImageLayout;
+					info.imageView = imageInfo.ImageView;
+					info.sampler = imageInfo.Sampler;
+				}
+			}
+
+			// TODO:  For multiple meshes we can just up the texture index with the mesh material count?
+			writer.WriteImages(0, imageInfos, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+			writer.UpdateSet(descriptorSets[1]);
+		});
+
+		// Render geometry
 		for (auto& dc : m_DrawList)
 		{
-			m_TransformUB->RT_SetData(&dc.Transform, sizeof(glm::mat4));
-			m_ShadowMap->RT_Bind();
-
-			Renderer::RT_RenderGeometry(m_CommandBuffer, m_MaterialUB, dc.Mesh);
+			Renderer::RT_RenderGeometry(m_CommandBuffer, m_GeometryPipeline, dc.Mesh, dc.Transform);
 
 			m_RenderStatistics.DrawCalls++;
 			m_RenderStatistics.Meshes++;
 		}
 
-		m_GeometryFramebuffer->RT_Unbind();
+		// End rendering
+		Renderer::RT_EndRenderPass(m_CommandBuffer);
+	}
+
+	void SceneRenderer::CompositePass()
+	{
+		Renderer::SubmitCommand([this]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
+
+			Image::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		});
+
+		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_CompositePipeline);
+
+		Renderer::SubmitCommand([this]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
+
+			ImDrawData* data = ImGui::GetDrawData();
+			ImGui_ImplVulkan_RenderDrawData(data, commandBuffer);
+
+			ImGuiIO& io = ImGui::GetIO();
+
+			if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+			{
+				GLFWwindow* backupContext = glfwGetCurrentContext();
+				ImGui::UpdatePlatformWindows();
+				ImGui::RenderPlatformWindowsDefault();
+				glfwMakeContextCurrent(backupContext);
+			}
+		});
+
+		Renderer::RT_EndRenderPass(m_CommandBuffer);
+
+		Renderer::SubmitCommand([this]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			Ref<Swapchain> swapchain = context->GetSwapchain();
+			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
+
+			Image::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		});
 	}
 }

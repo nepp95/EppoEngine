@@ -25,8 +25,8 @@ namespace Eppo
 	void EditorLayer::OnAttach()
 	{
 		// Load resources
-		m_IconPlay = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/PlayButton.png"));
-		m_IconStop = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/StopButton.png"));
+		m_IconPlay = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/PlayButton.png"));
+		m_IconStop = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/StopButton.png"));
 
 		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
@@ -37,7 +37,11 @@ namespace Eppo
 		// Open scene
 		OpenProject();
 
-		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, RenderSpecification());
+		RenderSpecification renderSpec;
+		renderSpec.Width = 1600;
+		renderSpec.Height = 900;
+
+		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, renderSpec);
 	}
 	
 	void EditorLayer::OnDetach()
@@ -213,7 +217,9 @@ namespace Eppo
 		m_ViewportWidth = viewportSize.x;
 		m_ViewportHeight = viewportSize.y;
 
-		ImGui::Image((ImTextureID)(m_ViewportRenderer->GetFinalImageID()), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
+		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
+
+		//ImGui::Image((ImTextureID)(m_ViewportRenderer->GetFinalImageID()), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -520,7 +526,7 @@ namespace Eppo
 
 	void EditorLayer::ImportAsset()
 	{
-		std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .fbx, .jpeg, .jpg, .png)\0*.epscene;*.fbx;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
+		std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
 
 		if (!filepath.empty())
 		{
@@ -647,12 +653,12 @@ namespace Eppo
 
 		if (m_SceneState == SceneState::Edit)
 		{
-			if (ImGui::ImageButton("##Play", (ImTextureID)m_IconPlay->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+			if (UI::ImageButton("##Play", m_IconPlay, ImVec2(buttonSize, buttonSize)))
 				OnScenePlay();
 		}
 		else if (m_SceneState == SceneState::Play)
 		{
-			if (ImGui::ImageButton("##Stop", (ImTextureID)m_IconStop->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+			if (UI::ImageButton("##Stop", m_IconStop, ImVec2(buttonSize, buttonSize)))
 				OnSceneStop();
 		}
 
