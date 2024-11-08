@@ -50,13 +50,15 @@ if (os.target() == "windows") then
     StaticLibrary["mono_release"] = "%{StaticLibraryDir.mono}/Release/libmono-static-sgen.lib"
     StaticLibrary["assimp_debug"] = "%{StaticLibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
     StaticLibrary["assimp_release"] = "%{StaticLibraryDir.assimp}/Release/assimp-vc143-mt.lib"
-    StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_sharedd.lib"
+    --StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_sharedd.lib"
+    StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_shared.lib"
     StaticLibrary["shaderc_release"] = "%{StaticLibraryDir.vulkan}/shaderc_shared.lib"
-    StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-cored.lib"
+    --StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-cored.lib"
+    StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
     StaticLibrary["spirv_cross_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
-    StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsld.lib"
+    --StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsld.lib"
+    StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
     StaticLibrary["spirv_cross_glsl_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
-    StaticLibrary["spirv_tools_debug"] = "%{StaticLibraryDir.vulkan}/SPIRV-Toolsd.lib"
     StaticLibrary["winmm"] = "Winmm.lib"
 	StaticLibrary["winsock"] = "Ws2_32.lib"
 	StaticLibrary["winversion"] = "Version.lib"
@@ -80,11 +82,3 @@ DynamicLibrary["assimp_debug"] = "%{DynamicLibraryDir.assimp}/Debug/assimp-vc143
 DynamicLibrary["assimp_release"] = "%{DynamicLibraryDir.assimp}/Release/assimp-vc143-mt.dll"
 DynamicLibrary["mono_debug"] = "%{DynamicLibraryDir.mono}/Debug/mono-2.0-sgen.dll"
 DynamicLibrary["mono_release"] = "%{DynamicLibraryDir.mono}/Release/mono-2.0-sgen.dll"
-
--- For CI we use the vulkan release libraries since our CI does not have the debug versions
-if os.getenv("CI") == true then
-    StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_shared.lib"
-    StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
-    StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
-    StaticLibrary["spirv_tools_debug"] = "%{StaticLibraryDir.vulkan}/SPIRV-Tools.lib"
-end
