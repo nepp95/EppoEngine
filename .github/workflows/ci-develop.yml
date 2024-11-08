@@ -35,6 +35,12 @@ jobs:
       - name: Run Premake
         run: .\Vendor\Premake\Bin\Premake5.exe vs2022
 
+      - name: "Save workflow output"
+        uses: actions/upload-artifact@v3
+        with: 
+          name: Workflow output
+          path: "EppoEngine/EppoEngine.vcxproj"
+
       - name: "Build"
         run: msbuild /m /p:Configuration=Debug EppoEngine.sln
 
@@ -68,12 +74,6 @@ jobs:
       
       - name: Run Premake
         run: .\Vendor\Premake\Bin\Premake5.exe vs2022
-
-      - name: "Save workflow output"
-        uses: actions/upload-artifact@v3
-        with: 
-          name: Workflow output
-          path: "EppoEngine/EppoEngine.vcxproj"
 
       - name: "Build"
         run: msbuild /m /p:Configuration=Release EppoEngine.sln
