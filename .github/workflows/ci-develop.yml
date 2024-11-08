@@ -48,7 +48,7 @@ jobs:
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
         
   release:
-    runs-on: [ self-hosted, windows ]
+    runs-on: [ windows-latest ]
     name: "Build and Test (Release)"
 
     steps:
@@ -82,7 +82,7 @@ jobs:
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
 
   dist:
-    runs-on: [ self-hosted, windows ]
+    runs-on: [ windows-latest ]
     name: "Build and Test (Dist)"
 
     steps:
