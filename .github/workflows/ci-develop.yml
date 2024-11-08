@@ -69,6 +69,9 @@ jobs:
       - name: Run Premake
         run: .\Vendor\Premake\Bin\Premake5.exe vs2022
 
+      - name: Echo
+        run: cat "EppoEngine/EppoEngine.vcxproj"
+
       - name: "Build"
         run: msbuild /m /p:Configuration=Release EppoEngine.sln
 
