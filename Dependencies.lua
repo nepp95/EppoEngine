@@ -1,5 +1,8 @@
 VulkanSdk = os.getenv("VULKAN_SDK")
 
+if os.getenv("VULKAN_SDK") == false
+    VulkanSdk = "VulkanSdk"
+
 -- Include directories
 IncludeDir = {}
 IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
