@@ -40,7 +40,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with: 
           name: Workflow output
-          path: "VULKAN_SDK"
+          path: $VULKAN_SDK
 
       - name: "Build"
         run: msbuild /m /p:Configuration=Debug EppoEngine.sln
