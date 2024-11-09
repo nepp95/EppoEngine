@@ -34,7 +34,7 @@ StaticLibrary["imgui"] = "imgui"
 StaticLibrary["yaml_cpp"] = "yaml-cpp"
 
 if (os.target() == "windows") then
-	StaticLibrary["bcrypt"] = "Bcrypt.lib"
+	  StaticLibrary["bcrypt"] = "Bcrypt.lib"
     StaticLibrary["glfw"] = "glfw"
     StaticLibrary["bullet_common_debug"] = "%{StaticLibraryDir.bullet}/Debug/Bullet3Common_Debug.lib"
     StaticLibrary["bullet_collision_debug"] = "%{StaticLibraryDir.bullet}/Debug/BulletCollision_Debug.lib"
@@ -58,8 +58,8 @@ if (os.target() == "windows") then
     StaticLibrary["spirv_cross_glsl_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
     StaticLibrary["vulkan"] = "%{StaticLibraryDir.vulkan}/vulkan-1.lib"
     StaticLibrary["winmm"] = "Winmm.lib"
-	StaticLibrary["winsock"] = "Ws2_32.lib"
-	StaticLibrary["winversion"] = "Version.lib"
+	  StaticLibrary["winsock"] = "Ws2_32.lib"
+	  StaticLibrary["winversion"] = "Version.lib"
 else
     StaticLibrary["glfw"] = "glfw3"
     StaticLibrary["shaderc"] = "shaderc_shared"
