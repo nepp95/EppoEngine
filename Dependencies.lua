@@ -1,5 +1,9 @@
 VulkanSdk = os.getenv("VULKAN_SDK")
 
+if os.getenv("CI") then
+    VulkanSdk = "C:/VulkanSDK/1.3.275.0"
+end
+
 -- Include directories
 IncludeDir = {}
 IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
@@ -56,7 +60,6 @@ if (os.target() == "windows") then
     StaticLibrary["spirv_cross_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
     StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsld.lib"
     StaticLibrary["spirv_cross_glsl_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
-    StaticLibrary["spirv_tools_debug"] = "%{StaticLibraryDir.vulkan}/SPIRV-Toolsd.lib"
     StaticLibrary["winmm"] = "Winmm.lib"
 	StaticLibrary["winsock"] = "Ws2_32.lib"
 	StaticLibrary["winversion"] = "Version.lib"
