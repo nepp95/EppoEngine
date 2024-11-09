@@ -59,7 +59,6 @@ if (os.target() == "windows") then
     StaticLibrary["spirv_cross_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-core.lib"
     StaticLibrary["spirv_cross_glsl_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsld.lib"
     StaticLibrary["spirv_cross_glsl_release"] = "%{StaticLibraryDir.vulkan}/spirv-cross-glsl.lib"
-    StaticLibrary["spirv_tools_debug"] = "%{StaticLibraryDir.vulkan}/SPIRV-Toolsd.lib"
     StaticLibrary["vulkan"] = "%{StaticLibraryDir.vulkan}/vulkan-1.lib"
     StaticLibrary["winmm"] = "Winmm.lib"
 	StaticLibrary["winsock"] = "Ws2_32.lib"
