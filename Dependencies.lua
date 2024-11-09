@@ -1,5 +1,9 @@
 VulkanSdk = os.getenv("VULKAN_SDK")
 
+print(os.getenv("VULKAN_SDK"))
+print(os.getenv("CI"))
+print(os.getenv("GITHUB_ACTIONS"))
+
 -- Include directories
 IncludeDir = {}
 IncludeDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/include"
