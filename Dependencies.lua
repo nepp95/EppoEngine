@@ -1,8 +1,8 @@
 VulkanSdk = os.getenv("VULKAN_SDK")
 
-print(os.getenv("VULKAN_SDK"))
-print(os.getenv("CI"))
-print(os.getenv("GITHUB_ACTIONS"))
+if os.getenv("CI") then
+    VulkanSdk = "C:/VulkanSDK/1.3.275.0"
+end
 
 -- Include directories
 IncludeDir = {}
