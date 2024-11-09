@@ -20,7 +20,7 @@ namespace Eppo
 		void RenderGui();
 
 		Ref<Scene> GetSceneContext() { return m_SceneContext; }
-		Entity GetSelectedEntity() { return m_SelectedEntity; }
+		Entity GetSelectedEntity() const { return m_SelectedEntity; }
 
 		void SetSceneContext(const Ref<Scene>& scene) { m_SceneContext = scene; }
 		void SetSelectedEntity(Entity entity) { m_SelectedEntity = entity; }

@@ -34,6 +34,8 @@ namespace Eppo
 		void SwapBuffers();
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
+		void SetWindowTitle(const std::string& name);
+
 		uint32_t GetWidth() const { return m_Specification.Width; }
 		uint32_t GetHeight() const { return m_Specification.Height; }
 

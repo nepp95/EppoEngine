@@ -6,18 +6,17 @@
 *.csproj*
 *.sln
 
+Makefile
+
 # Binaries
 /Bin
 /Bin-Int
 /Vendor/Premake
 /EppoEditor/Resources/Scripts
 /EppoEditor/Scripts/Intermediates
-/EppoEditor/Projects/Assets/Scripts/Binaries
-/EppoEditor/Projects/Assets/Scripts/Intermediates
+/EppoEditor/Projects/*/Assets/Scripts/Binaries
 
 # Cache
 /EppoEditor/Resources/Shaders/Cache
 __pycache__
 
-# Build system
-Makefile

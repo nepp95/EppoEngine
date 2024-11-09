@@ -4,6 +4,7 @@ include "Helpers.lua"
 workspace "EppoEngine"
     architecture "x86_64"
     startproject "EppoEditor"
+    editandcontinue "Off"
 
     configurations {
         "Debug",

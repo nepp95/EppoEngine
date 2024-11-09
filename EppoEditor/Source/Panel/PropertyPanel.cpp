@@ -71,6 +71,7 @@ namespace Eppo
 		{
 			if (ImGui::BeginTable("##", 4))
 			{
+				ImGui::PushID("Translation");
 				ImGui::TableNextColumn();
 				ImGui::Text("Translation");
 
@@ -93,7 +94,9 @@ namespace Eppo
 				ImGui::DragFloat("##TranslationZ", &component.Translation.z, 0.1f);
 
 				ImGui::TableNextRow();
+				ImGui::PopID();
 
+				ImGui::PushID("Rotation");
 				ImGui::TableNextColumn();
 				ImGui::Text("Rotation");
 
@@ -116,7 +119,9 @@ namespace Eppo
 				ImGui::DragFloat("##RotationZ", &component.Rotation.z, 0.1f);
 
 				ImGui::TableNextRow();
+				ImGui::PopID();
 
+				ImGui::PushID("Scale");
 				ImGui::TableNextColumn();
 				ImGui::Text("Scale");
 
@@ -138,17 +143,16 @@ namespace Eppo
 				ImGui::SameLine();
 				ImGui::DragFloat("##ScaleZ", &component.Scale.z, 0.1f);
 
+				ImGui::PopID();
 				ImGui::EndTable();
 			}
 		});
 
 		DrawComponent<SpriteComponent>(entity, [](auto& component)
 		{
-			AssetManager& assetManager = AssetManager::Get();
-
 			if (component.TextureHandle)
 			{
-				ImGui::TextDisabled(assetManager.GetMetadata(component.TextureHandle).Filepath.string().c_str());
+				ImGui::TextDisabled(Project::GetActive()->GetAssetManagerEditor()->GetMetadata(component.TextureHandle).Filepath.string().c_str());
 				ImGui::SameLine();
 				if (ImGui::Button("X"))
 					component.TextureHandle = 0;
@@ -162,8 +166,8 @@ namespace Eppo
 						const wchar_t* path = (const wchar_t*)payload->Data;
 						std::filesystem::path texturePath = path;
 
-						Ref<Texture> texture = assetManager.LoadAsset<Texture>(texturePath);
-						component.TextureHandle = texture->Handle;
+						//Ref<Texture> texture = AssetManager::GetAsset<Texture>(texturePath);
+						//component.TextureHandle = texture->Handle;
 					}
 					ImGui::EndDragDropTarget();
 				}
@@ -174,11 +178,9 @@ namespace Eppo
 
 		DrawComponent<MeshComponent>(entity, [](auto& component)
 		{
-			AssetManager& assetManager = AssetManager::Get();
-
 			if (component.MeshHandle)
 			{
-				ImGui::TextDisabled(assetManager.GetMetadata(component.MeshHandle).Filepath.string().c_str());
+				ImGui::TextDisabled(Project::GetActive()->GetAssetManagerEditor()->GetMetadata(component.MeshHandle).Filepath.string().c_str());
 				ImGui::SameLine();
 				if (ImGui::Button("X"))
 					component.MeshHandle = 0;
@@ -189,11 +191,8 @@ namespace Eppo
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MESH_ASSET"))
 					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path meshPath = path;
-
-						Ref<Mesh> mesh = assetManager.LoadAsset<Mesh>(meshPath);
-						component.MeshHandle = mesh->Handle;
+						auto handle = payload->Data;
+						component.MeshHandle = *(AssetHandle*)handle;
 					}
 					ImGui::EndDragDropTarget();
 				}

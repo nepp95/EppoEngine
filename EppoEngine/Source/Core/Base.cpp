@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Base.h"
 
-#if defined(TRACY_ENABLE)
+#if defined(EPPO_TRACK_MEMORY)
 	[[nodiscard]] void* operator new(size_t size)
 	{
 		void* block = malloc(size);

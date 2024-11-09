@@ -6,7 +6,7 @@ namespace Eppo
 	{
 	public:
 		RenderCommandBuffer(uint32_t count = 0);
-		~RenderCommandBuffer();
+		~RenderCommandBuffer() = default;
 
 		void RT_Begin();
 		void RT_End();

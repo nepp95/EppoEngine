@@ -2,25 +2,74 @@
 
 namespace Eppo
 {
-	static const char* GetImGuiPayloadTypeFromExtension(const std::filesystem::path& filepath)
+	namespace Utils
 	{
-		if (filepath == ".fbx") return "MESH_ASSET";
-		if (filepath == ".png") return "TEXTURE_ASSET";
+		static const char* GetImGuiPayloadTypeFromExtension(const std::filesystem::path& filepath)
+		{
+			if (filepath == ".fbx") return "MESH_ASSET";
+			if (filepath == ".png") return "TEXTURE_ASSET";
+			if (filepath == ".cs")  return "SCRIPT_ASSET";
 
-		return "CONTENT_BROWSER_ITEM";
+			return "CONTENT_BROWSER_ITEM";
+		}
 	}
 
 	ContentBrowserPanel::ContentBrowserPanel(PanelManager& panelManager)
 		: Panel(panelManager)
-	{}
+	{
+		
+	}
 
 	void ContentBrowserPanel::RenderGui()
 	{
 		ScopedBegin scopedBegin("Content Browser Panel");
 
-		const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		ImGui::BeginGroup();
 
-		UpdateFileList();
+		constexpr char* items[] = { "Meshes", "Scenes", "Scripts", "Textures" };
+		static int currentItem = 0;
+		if (ImGui::BeginListBox("##Assets", ImVec2(100.0f, -FLT_MIN)))
+		{
+			for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+			{
+				const bool isSelected = (currentItem == n);
+				if (ImGui::Selectable(items[n], isSelected))
+					currentItem = n;
+
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndListBox();
+		}
+
+		ImGui::EndGroup();
+		ImGui::SameLine();
+
+		Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
+		const auto& assetRegistry = assetManager->GetAssetRegistry();
+
+		const AssetType currentAssetType = Utils::AssetTypeFromString(items[currentItem]);
+
+		for (const auto& [handle, metadata] : assetRegistry)
+		{
+			if (currentAssetType != metadata.Type)
+				continue;
+
+			Ref<Texture> thumbnail = m_ThumbnailCache.GetOrCreateThumbnail(currentAssetType);
+
+			ImGui::BeginGroup();
+
+			ImGui::ImageButton((ImTextureID)thumbnail->GetRendererID(), ImVec2(128.0f, 128.0f), ImVec2(0, 1), ImVec2(1, 0));
+			if (ImGui::BeginDragDropSource())
+			{
+				ImGui::SetDragDropPayload(Utils::AssetTypeToImGuiPayloadType(currentAssetType), &handle, sizeof(AssetHandle));
+				ImGui::EndDragDropSource();
+			}
+
+			ImGui::TextDisabled(metadata.GetName().c_str());
+
+			ImGui::EndGroup();
+		}
 	}
 
 	void ContentBrowserPanel::UpdateFileList()
@@ -32,7 +81,6 @@ namespace Eppo
 		if (ImGui::BeginTable("Files", 4, flags))
 		{
 			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
-			ImGui::TableSetupColumn("Loaded", ImGuiTableColumnFlags_WidthFixed, 30.0f);
 			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 60.0f);
 			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 60.0f);
 			ImGui::TableHeadersRow();
@@ -75,18 +123,9 @@ namespace Eppo
 					auto relativePath = std::filesystem::relative(entry, Filesystem::GetAppRootDirectory());
 					const wchar_t* itemPath = relativePath.c_str();
 
-					ImGui::SetDragDropPayload(GetImGuiPayloadTypeFromExtension(relativePath.extension()), itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
+					ImGui::SetDragDropPayload(Utils::GetImGuiPayloadTypeFromExtension(relativePath.extension()), itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
 					ImGui::EndDragDropSource();
 				}
-
-				ImGui::TableNextColumn();
-
-				// is asset loaded?
-				auto relativePath = std::filesystem::relative(entry, Filesystem::GetAppRootDirectory());
-				if (AssetManager::Get().IsAssetLoaded(relativePath))
-					ImGui::TextUnformatted("Yes");
-				else
-					ImGui::TextUnformatted("No");
 
 				ImGui::TableNextColumn();
 				ImGui::Text("%.2f KB", std::filesystem::file_size(entry.path()) / 1024.0f);

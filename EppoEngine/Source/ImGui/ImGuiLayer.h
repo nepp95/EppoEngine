@@ -16,10 +16,13 @@ namespace Eppo
 
 		void OnEvent(Event& e) override;
 
-		void Begin();
-		void End();
+		void Begin() const;
+		void End() const;
 
 		void BlockEvents(bool block) { m_BlockEvents = block; }
+
+	private:
+		void SetupStyle() const;
 
 	private:
 		bool m_BlockEvents = true;

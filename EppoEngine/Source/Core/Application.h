@@ -6,6 +6,7 @@
 #include "Event/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
 
+#include <queue>
 #include <string>
 
 int main(int argc, char** argv);
@@ -51,12 +52,12 @@ namespace Eppo
 		void Close();
 		void OnEvent(Event& e);
 
+		void SubmitToMainThread(const std::function<void()>& fn);
+
 		void RenderGui();
 
 		void PushLayer(Layer* layer, bool overlay = false);
 		void PopLayer(Layer* layer, bool overlay = false);
-
-		const Ref<Profiler>& GetProfiler() const { return m_Profiler; }
 
 		static Application& Get() { return *s_Instance; }
 		Window& GetWindow() { return *m_Window; }
@@ -64,6 +65,7 @@ namespace Eppo
 
 	private:
 		void Run();
+		void ExecuteMainThreadQueue();
 
 		bool OnWindowClose(WindowCloseEvent& e);
 		bool OnWindowResize(WindowResizeEvent& e);
@@ -75,7 +77,9 @@ namespace Eppo
 		LayerStack m_LayerStack;
 
 		ImGuiLayer* m_ImGuiLayer;
-		Ref<Profiler> m_Profiler;
+
+		std::queue<std::function<void()>> m_MainThreadQueue;
+		std::mutex m_MainThreadMutex;
 
 		bool m_IsRunning = true;
 		bool m_IsMinimized = false;

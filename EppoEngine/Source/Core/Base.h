@@ -5,15 +5,15 @@
 #if defined(EPPO_DEBUG)
 	#define EPPO_ENABLE_ASSERTS
 	#define EPPO_ENABLE_VERIFY
+	//#define EPPO_TRACK_MEMORY
 #elif defined(EPPO_RELEASE)
 	#define EPPO_ENABLE_VERIFY
 #endif
 
-
 #define BIT(x) (1 << x)
 #define BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
-#if defined(TRACY_ENABLE)
+#if defined(EPPO_TRACK_MEMORY)
 	[[nodiscard]] void* operator new(size_t size);
 	[[nodiscard]] void* operator new[](size_t size);
 	void operator delete(void* block);

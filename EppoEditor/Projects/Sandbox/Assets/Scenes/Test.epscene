@@ -1,6 +1,6 @@
 Scene: Test
 Entities:
-  - Entity: 216671377127321184
+  - Entity: 14037038404468071748
     TagComponent:
       Tag: Camera
     TransformComponent:
@@ -36,8 +36,15 @@ Entities:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshHandle: 5345703082771143640
+    ScriptComponent:
+      ClassName: Sandbox.Player
+      Fields:
+        - Name: Speed
+          Type: Float
+          Data: 12
     RigidBodyComponent:
       BodyType: 1
+      Mass: 1
   - Entity: 5455157477212647122
     TagComponent:
       Tag: Small Cube 2
@@ -49,6 +56,7 @@ Entities:
       MeshHandle: 5345703082771143640
     RigidBodyComponent:
       BodyType: 1
+      Mass: 1
   - Entity: 5455157477212647123
     TagComponent:
       Tag: Plateau
@@ -60,3 +68,4 @@ Entities:
       MeshHandle: 5345703082771143640
     RigidBodyComponent:
       BodyType: 0
+      Mass: 1

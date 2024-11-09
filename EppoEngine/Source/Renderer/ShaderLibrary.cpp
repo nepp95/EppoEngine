@@ -5,6 +5,8 @@ namespace Eppo
 {
 	void ShaderLibrary::Load(std::string_view path)
 	{
+		EPPO_PROFILE_FUNCTION("ShaderLibrary::Load");
+
 		ShaderSpecification spec;
 		spec.Filepath = path;
 		spec.Optimize = false;
@@ -17,6 +19,8 @@ namespace Eppo
 
 	const Ref<Shader>& ShaderLibrary::Get(const std::string& name)
 	{
+		EPPO_PROFILE_FUNCTION("ShaderLibrary::Get");
+
 		EPPO_ASSERT(m_Shaders.find(name) != m_Shaders.end());
 		return m_Shaders.at(name);
 	}

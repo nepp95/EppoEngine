@@ -1,5 +1,0 @@
-Project:
-  Name: Sandbox
-  StartScene: Scenes/Test.epscene
-  AssetDirectory: Assets
-  ScriptPath: Scripts/Binaries/Sandbox.dll

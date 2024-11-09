@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Asset.h"
 #include "Core/UUID.h"
 #include "Renderer/Camera/EditorCamera.h"
 
@@ -12,7 +13,7 @@ namespace Eppo
 	class Entity;
 	class SceneRenderer;
 
-	class Scene
+	class Scene : public Asset
 	{
 	public:
 		Scene() = default;

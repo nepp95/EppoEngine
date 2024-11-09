@@ -91,6 +91,8 @@ namespace Eppo
 	Framebuffer::Framebuffer(const FramebufferSpecification& specification)
 		: m_Specification(specification)
 	{
+		EPPO_PROFILE_FUNCTION("Framebuffer::Framebuffer");
+
 		for (auto& specification : m_Specification.Attachments)
 		{
 			if (!Utils::IsDepthFormat(specification.TextureFormat))
@@ -104,11 +106,15 @@ namespace Eppo
 
 	Framebuffer::~Framebuffer()
 	{
+		EPPO_PROFILE_FUNCTION("Framebuffer::~Framebuffer");
+
 		Cleanup();
 	}
 
 	void Framebuffer::Invalidate()
 	{
+		EPPO_PROFILE_FUNCTION("Framebuffer::Invalidate");
+
 		if (m_RendererID)
 		{
 			Cleanup();
@@ -199,6 +205,8 @@ namespace Eppo
 
 	void Framebuffer::Cleanup()
 	{
+		EPPO_PROFILE_FUNCTION("Framebuffer::Cleanup");
+
 		glDeleteFramebuffers(1, &m_RendererID);
 		glDeleteTextures(m_ColorAttachments.size(), m_ColorAttachments.data());
 		glDeleteTextures(1, &m_DepthAttachment);
@@ -206,6 +214,8 @@ namespace Eppo
 
 	void Framebuffer::Resize(uint32_t width, uint32_t height)
 	{
+		EPPO_PROFILE_FUNCTION("Framebuffer::Resize");
+
 		if (width == 0 || height == 0)
 		{
 			EPPO_WARN("Attempted to resize framebuffer to {}, {}. Operation canceled.", width, height);

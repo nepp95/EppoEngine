@@ -25,7 +25,8 @@ project "EppoEditor"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
-        "%{IncludeDir.tracy}"
+        "%{IncludeDir.tracy}",
+		"%{IncludeDir.yaml_cpp}"
     }
 
     links {
@@ -70,7 +71,8 @@ project "EppoEditor"
         symbols "On"
 
 		defines {
-			--"TRACY_ENABLE"
+			"TRACY_ENABLE",
+            "TRACY_ONLY_LOCALHOST"
 		}
 
     filter {"system:windows", "configurations:Debug"}
@@ -85,7 +87,8 @@ project "EppoEditor"
         optimize "On"
 
 		defines {
-			--"TRACY_ENABLE"
+			"TRACY_ENABLE",
+            "TRACY_ONLY_LOCALHOST"
 		}
 
     filter {"system:windows", "configurations:Release"}

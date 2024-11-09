@@ -2,6 +2,7 @@
 #include "ScriptGlue.h"
 
 #include "Core/Input.h"
+#include "Project/Project.h"
 #include "Scene/Entity.h"
 #include "Scripting/ScriptEngine.h"
 
@@ -16,6 +17,8 @@ namespace Eppo
 
 	static void Log(uint32_t logLevel, MonoString* message)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Log");
+
 		char* cStr = mono_string_to_utf8(message);
 		std::string messageStr(cStr);
 		mono_free(cStr);
@@ -31,25 +34,60 @@ namespace Eppo
 
 	static bool Input_IsKeyPressed(KeyCode keyCode)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Input_IsKeyPressed");
+
 		return Input::IsKeyPressed(keyCode);
 	}
 
-	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
+	static void Entity_AddComponent(UUID uuid, MonoString* componentType)
 	{
-		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_AddComponent");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
 
-		MonoType* managedType = mono_reflection_type_get_type(componentType);
-		auto it = s_EntityHasComponentFns.find(managedType);
-		EPPO_ASSERT(it != s_EntityHasComponentFns.end());
-		return it->second(entity);
+		char* cStr = mono_string_to_utf8(componentType);
+		std::string componentTypeStr(cStr);
+		mono_free(cStr);
+
+		if (componentTypeStr == "TransformComponent")
+			entity.AddComponent<TransformComponent>();
+		if (componentTypeStr == "SpriteComponent")
+			entity.AddComponent<SpriteComponent>();
+		if (componentTypeStr == "MeshComponent")
+			entity.AddComponent<MeshComponent>();
+		if (componentTypeStr == "DirectionalLightComponent")
+			entity.AddComponent<DirectionalLightComponent>();
+		if (componentTypeStr == "ScriptComponent")
+			entity.AddComponent<ScriptComponent>();
+		if (componentTypeStr == "RigidBodyComponent")
+			entity.AddComponent<RigidBodyComponent>();
+	}
+
+	static uint64_t Entity_CreateNewEntity(MonoString* name)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_CreateNewEntity");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+
+		char* cStr = mono_string_to_utf8(name);
+		std::string nameStr(cStr);
+		mono_free(cStr);
+
+		Entity entity = scene->CreateEntity(nameStr);
+		EPPO_ASSERT(entity);
+
+		return entity.GetUUID();
 	}
 
 	static uint64_t Entity_FindEntityByName(MonoString* name)
 	{
-		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_FindEntityByName");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 
 		char* cStr = mono_string_to_utf8(name);
@@ -62,10 +100,41 @@ namespace Eppo
 
 		return entity.GetUUID();
 	}
+	
+	static MonoString* Entity_GetName(UUID uuid)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_GetName");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+		Entity entity = scene->FindEntityByUUID(uuid);
+		EPPO_ASSERT(entity);
+
+		MonoString* monoStr = mono_string_new(ScriptEngine::GetAppDomain(), entity.GetName().c_str());
+
+		return monoStr;
+	}
+
+	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
+	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_HasComponent");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
+		EPPO_ASSERT(scene);
+		Entity entity = scene->FindEntityByUUID(uuid);
+		EPPO_ASSERT(entity);
+
+		MonoType* managedType = mono_reflection_type_get_type(componentType);
+		auto it = s_EntityHasComponentFns.find(managedType);
+		EPPO_ASSERT(it != s_EntityHasComponentFns.end());
+		return it->second(entity);
+	}
 
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* outTranslation)
 	{
-		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_GetTranslation");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -75,7 +144,9 @@ namespace Eppo
 
 	static void TransformComponent_SetTranslation(UUID uuid, glm::vec3* translation)
 	{
-		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_SetTranslation");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -85,7 +156,9 @@ namespace Eppo
 
 	static void RigidBodyComponent_ApplyLinearImpulse(UUID uuid, glm::vec3* impulse, glm::vec3* worldPosition)
 	{
-		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulse");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -96,7 +169,9 @@ namespace Eppo
 
 	static void RigidBodyComponent_ApplyLinearImpulseToCenter(UUID uuid, glm::vec3* impulse)
 	{
-		Scene* scene = ScriptEngine::GetSceneContext();
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulseToCenter");
+
+		Ref<Scene> scene = ScriptEngine::GetSceneContext();
 		EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
 		EPPO_ASSERT(entity);
@@ -107,15 +182,22 @@ namespace Eppo
 
 	static MonoObject* GetScriptInstance(UUID uuid)
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::GetScriptInstance");
+
 		return ScriptEngine::GetManagedInstance(uuid);
 	}
 
 	void ScriptGlue::RegisterFunctions()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RegisterFunctions");
+
 		EPPO_ADD_INTERNAL_CALL(Log);
 		EPPO_ADD_INTERNAL_CALL(Input_IsKeyPressed);
-		EPPO_ADD_INTERNAL_CALL(Entity_HasComponent);
+		EPPO_ADD_INTERNAL_CALL(Entity_AddComponent);
+		EPPO_ADD_INTERNAL_CALL(Entity_CreateNewEntity);
 		EPPO_ADD_INTERNAL_CALL(Entity_FindEntityByName);
+		EPPO_ADD_INTERNAL_CALL(Entity_GetName);
+		EPPO_ADD_INTERNAL_CALL(Entity_HasComponent);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		EPPO_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 		EPPO_ADD_INTERNAL_CALL(RigidBodyComponent_ApplyLinearImpulse);
@@ -125,6 +207,8 @@ namespace Eppo
 
 	void ScriptGlue::RegisterComponents()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RegisterComponents");
+
 		s_EntityHasComponentFns.clear();
 
 		RegisterComponent<TransformComponent>();
@@ -138,6 +222,8 @@ namespace Eppo
 	template<typename T>
 	void ScriptGlue::RegisterComponent()
 	{
+		EPPO_PROFILE_FUNCTION("ScriptGlue::RegisterComponent");
+
 		std::string_view typeName = typeid(T).name();
 		size_t pos = typeName.find_last_of(':');
 		std::string_view structName = typeName.substr(pos + 1);

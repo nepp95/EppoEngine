@@ -155,13 +155,19 @@ namespace Eppo
 	void Window::ProcessEvents()
 	{
 		EPPO_PROFILE_FUNCTION("Window::ProcessEvents");
-		EPPO_PROFILE_FN("CPU Update", "Process Events");
 
 		glfwPollEvents();
 	}
 
 	void Window::SwapBuffers()
 	{
+		EPPO_PROFILE_FUNCTION("Window::SwapBuffers");
+
 		glfwSwapBuffers(m_Window);
+	}
+
+	void Window::SetWindowTitle(const std::string& name)
+	{
+		glfwSetWindowTitle(m_Window, name.c_str());
 	}
 }

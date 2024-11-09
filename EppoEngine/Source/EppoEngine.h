@@ -4,7 +4,11 @@
 
 // Asset
 #include "Asset/Asset.h"
+#include "Asset/AssetImporter.h"
 #include "Asset/AssetManager.h"
+#include "Asset/AssetManagerBase.h"
+#include "Asset/AssetManagerEditor.h"
+#include "Asset/AssetMetadata.h"
 
 // Core
 #include "Core/Application.h"
@@ -25,6 +29,9 @@
 
 // ImGui
 #include "ImGui/ScopedBegin.h"
+
+// Project
+#include "Project/Project.h"
 
 // Renderer
 #include "Renderer/Camera/EditorCamera.h"

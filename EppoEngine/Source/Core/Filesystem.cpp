@@ -38,10 +38,51 @@ namespace Eppo
 		return s_Data->AssetPath;
 	}
 
+	bool Filesystem::CreateDirectory(const std::filesystem::path& path)
+	{
+		return std::filesystem::create_directories(path);
+	}
+
+	bool Filesystem::Copy(const std::filesystem::path& from, const std::filesystem::path& to)
+	{
+		// Nothing to copy
+		if (!Exists(from))
+		{
+			EPPO_ERROR("Cannot copy from '{}' because the path does not exist!", from);
+			return false;
+		}
+
+		// Copy
+		std::filesystem::copy(from, to);
+
+		return true;
+	}
+
+	bool Filesystem::Move(const std::filesystem::path& from, const std::filesystem::path& to)
+	{
+		std::filesystem::rename(from, to);
+
+		return true;
+	}
+
+	bool Filesystem::Rename(const std::filesystem::path& basePath, const std::string& from, const std::string& to)
+	{
+		std::filesystem::path fromPath = basePath / from;
+
+		if (!Exists(fromPath))
+		{
+			EPPO_ERROR("Cannot rename '{}' because the path does not exist!", fromPath);
+			return false;
+		}
+
+		std::filesystem::path toPath = basePath / to;
+		std::filesystem::rename(fromPath, toPath);
+
+		return true;
+	}
+
 	bool Filesystem::Exists(const std::filesystem::path& path)
 	{
-		EPPO_PROFILE_FUNCTION("Filesystem::ReadBytes");
-
 		return std::filesystem::exists(path);
 	}
 

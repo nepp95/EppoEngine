@@ -52,6 +52,8 @@ namespace Eppo
 
 	void VertexArray::SetLayout(const VertexBufferLayout& layout)
 	{
+		EPPO_PROFILE_FUNCTION("VertexArray::SetLayout");
+
 		Bind();
 		m_IndexBuffer->Bind();
 		m_VertexBuffer->Bind();

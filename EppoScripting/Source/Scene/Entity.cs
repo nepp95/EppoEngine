@@ -5,6 +5,7 @@ namespace Eppo
 	public class Entity
 	{
 		public readonly ulong ID;
+		public string Name => InternalCalls.Entity_GetName(ID);
 
 		protected Entity()
 		{
@@ -56,6 +57,21 @@ namespace Eppo
 			set => InternalCalls.TransformComponent_SetTranslation(ID, ref value);
 		}
 
+		public T AddComponent<T>() where T : Component, new()
+		{
+			if (HasComponent<T>())
+				return null;
+
+			T component = new T()
+			{
+				Entity = this
+			};
+
+			InternalCalls.Entity_AddComponent(ID, component.ComponentTypeName);
+
+			return component;
+		}
+
 		public bool HasComponent<T>() where T : Component, new()
 		{
 			Type componentType = typeof(T);
@@ -84,6 +100,15 @@ namespace Eppo
 		public static Entity FindEntityByName(string name)
 		{
 			ulong uuid = InternalCalls.Entity_FindEntityByName(name);
+			if (uuid == 0)
+				return null;
+
+			return new Entity(uuid);
+		}
+
+		public static Entity CreateNewEntity(string name = "")
+		{
+			ulong uuid = InternalCalls.Entity_CreateNewEntity(name);
 			if (uuid == 0)
 				return null;
 

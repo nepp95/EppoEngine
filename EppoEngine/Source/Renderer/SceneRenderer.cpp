@@ -13,6 +13,8 @@ namespace Eppo
 	SceneRenderer::SceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpecification)
 		: m_RenderSpecification(renderSpecification)
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::SceneRenderer");
+
 		m_CommandBuffer = CreateRef<RenderCommandBuffer>();
 
 		// Geometry
@@ -53,6 +55,8 @@ namespace Eppo
 
 	void SceneRenderer::RenderGui()
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::RenderGui");
+
 		ImGui::Begin("Performance");
 
 		ImGui::Text("GPU Time: %.3fms", (float)m_CommandBuffer->GetTimestamp() * 0.000001f);
@@ -67,11 +71,15 @@ namespace Eppo
 
 	void SceneRenderer::Resize(uint32_t width, uint32_t height)
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::Resize");
+
 		m_GeometryFramebuffer->Resize(width, height);
 	}
 
 	void SceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
+
 		m_CommandBuffer->RT_Begin();
 
 		// Reset statistics
@@ -90,6 +98,8 @@ namespace Eppo
 
 	void SceneRenderer::BeginScene(const Camera& camera, const glm::mat4& transform)
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
+
 		m_CommandBuffer->RT_Begin();
 
 		// Reset statistics
@@ -108,11 +118,15 @@ namespace Eppo
 
 	void SceneRenderer::EndScene()
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::EndScene");
+
 		Flush();
 	}
 
 	void SceneRenderer::SubmitDirectionalLight(const DirectionalLightComponent& dlc)
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::SubmitDirectionalLight");
+
 		m_DirectionalLightBuffer.View = glm::lookAt(-dlc.Direction, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		m_DirectionalLightBuffer.Projection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 100.0f);
 		m_DirectionalLightBuffer.Direction = glm::vec4(dlc.Direction, 0.0f);
@@ -123,6 +137,8 @@ namespace Eppo
 
 	void SceneRenderer::SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId)
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::SubmitMesh");
+
 		auto& drawCommand = m_DrawList.emplace_back();
 		drawCommand.Handle = entityId;
 		drawCommand.Mesh = mesh;
@@ -131,6 +147,8 @@ namespace Eppo
 
 	void SceneRenderer::Flush()
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::Flush");
+
 		PrepareRender();
 		
 		PreDepthPass();
@@ -142,6 +160,8 @@ namespace Eppo
 
 	void SceneRenderer::PrepareRender()
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::PrepareRender");
+
 		m_DirectionalLightUB->RT_SetData(&m_DirectionalLightBuffer, sizeof(DirectionalLightData));
 
 		// Clear framebuffers
@@ -156,6 +176,8 @@ namespace Eppo
 
 	void SceneRenderer::PreDepthPass()
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::PreDepthPass");
+
 		Renderer::GetShader("predepth")->RT_Bind();
 
 		m_PreDepthFramebuffer->RT_Bind();
@@ -176,6 +198,8 @@ namespace Eppo
 
 	void SceneRenderer::GeometryPass()
 	{
+		EPPO_PROFILE_FUNCTION("SceneRenderer::GeometryPass");
+
 		Renderer::GetShader("geometry")->RT_Bind();
 
 		m_GeometryFramebuffer->RT_Bind();

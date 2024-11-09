@@ -14,9 +14,17 @@ namespace Eppo
 
 		// Scene
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal extern static bool Entity_HasComponent(ulong uuid, Type componentType);
+		internal extern static void Entity_AddComponent(ulong uuid, string componentType);
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		internal extern static ulong Entity_CreateNewEntity();
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		internal extern static ulong Entity_CreateNewEntity(string name);
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		internal extern static string Entity_GetName(ulong uuid);
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal extern static ulong Entity_FindEntityByName(string name);
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		internal extern static bool Entity_HasComponent(ulong uuid, Type componentType);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal extern static void TransformComponent_GetTranslation(ulong uuid, out Vector3 translation);

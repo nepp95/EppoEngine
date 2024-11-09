@@ -11,20 +11,29 @@
 
 namespace Eppo
 {
-	std::filesystem::path FileDialog::OpenFile(const char* filter)
+	std::filesystem::path FileDialog::OpenFile(const char* filter, const std::filesystem::path& initialDir)
 	{
+		EPPO_PROFILE_FUNCTION("FileDialog::OpenFile");
+
 		OPENFILENAMEA ofn;
 		CHAR szFile[260]{ 0 };
-		CHAR currentDir[256]{ 0 };
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
 		ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)RendererContext::Get()->GetWindowHandle());
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 
-		if (GetCurrentDirectoryA(256, currentDir))
-			ofn.lpstrInitialDir = currentDir;
+		if (initialDir.empty())
+		{
+			CHAR currentDir[256]{ 0 };
+			if (GetCurrentDirectoryA(256, currentDir))
+				ofn.lpstrInitialDir = currentDir;
+		} else
+		{
+			ofn.lpstrInitialDir = initialDir.string().c_str();		
+		}
 
+		ofn.lpstrFilter = filter;
 		ofn.nFilterIndex = 1;
 		ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
 
@@ -36,6 +45,8 @@ namespace Eppo
 
 	std::filesystem::path FileDialog::SaveFile(const char* filter)
 	{
+		EPPO_PROFILE_FUNCTION("FileDialog::SaveFile");
+
 		OPENFILENAMEA ofn;
 		CHAR szFile[260] = { 0 };
 		CHAR currentDir[256] = { 0 };

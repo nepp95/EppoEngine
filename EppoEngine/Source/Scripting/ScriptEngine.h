@@ -12,6 +12,14 @@ typedef struct _MonoImage MonoImage;
 typedef struct _MonoMethod MonoMethod;
 typedef struct _MonoObject MonoObject;
 
+namespace filewatch
+{
+	template<class T>
+	class FileWatch;
+
+	enum class Event;
+}
+
 namespace Eppo
 {
 	using ScriptFieldMap = std::unordered_map<std::string, ScriptFieldInstance>;
@@ -22,9 +30,10 @@ namespace Eppo
 		static void Init();
 		static void Shutdown();
 
+		static void ReloadAssembly();
 		static bool LoadAppAssembly(const std::filesystem::path& filepath);
 
-		static void OnRuntimeStart(Scene* scene);
+		static void OnRuntimeStart();
 		static void OnRuntimeStop();
 		static void OnCreateEntity(Entity entity);
 		static void OnUpdateEntity(Entity entity, float timestep);
@@ -32,9 +41,11 @@ namespace Eppo
 		static MonoObject* InstantiateClass(MonoClass* monoClass);
 		static bool EntityClassExists(const std::string& fullName);
 
+		static MonoDomain* GetAppDomain();
 		static MonoImage* GetCoreAssemblyImage();
 		static MonoImage* GetAppAssemblyImage();
-		static Scene* GetSceneContext();
+		static void SetSceneContext(Ref<Scene> scene);
+		static Ref<Scene> GetSceneContext();
 
 		static Ref<ScriptClass> GetEntityClass();
 		static Ref<ScriptClass> GetEntityClass(const std::string& name);
@@ -48,6 +59,8 @@ namespace Eppo
 		static void InitMono();
 		static bool LoadCoreAssembly(const std::filesystem::path& filepath);
 		static void LoadAssemblyClasses();
+
+		static void OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, const filewatch::Event changeType);
 	};
 
 	namespace Utils

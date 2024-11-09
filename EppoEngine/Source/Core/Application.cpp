@@ -5,7 +5,9 @@
 #include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {
@@ -23,9 +25,6 @@ namespace Eppo
 		// Set working directory
 		if (!m_Specification.WorkingDirectory.empty())
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
-		
-		// Create profiler
-		m_Profiler = CreateRef<Profiler>();
 
 		// Create window
 		WindowSpecification windowSpec;
@@ -50,6 +49,7 @@ namespace Eppo
 	Application::~Application()
 	{
 		EPPO_PROFILE_FUNCTION("Application::~Application");
+
 		EPPO_INFO("Shutting down...");
 
 		ScriptEngine::Shutdown();
@@ -63,8 +63,6 @@ namespace Eppo
 
 	void Application::Close()
 	{
-		EPPO_PROFILE_FUNCTION("Application::Close");
-
 		m_IsRunning = false;
 	}
 
@@ -84,6 +82,13 @@ namespace Eppo
 
 			layer->OnEvent(e);
 		}
+	}
+
+	void Application::SubmitToMainThread(const std::function<void()>& fn)
+	{
+		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+
+		m_MainThreadQueue.push(fn);
 	}
 
 	void Application::RenderGui()
@@ -124,12 +129,14 @@ namespace Eppo
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 
+			float time = (float)glfwGetTime();
+			float timestep = time - m_LastFrameTime;
+			m_LastFrameTime = time;
+
+			ExecuteMainThreadQueue();
+
 			{
 				EPPO_PROFILE_FUNCTION("CPU Update");
-
-				float time = (float)glfwGetTime();
-				float timestep = time - m_LastFrameTime;
-				m_LastFrameTime = time;
 
 				for (Layer* layer : m_LayerStack)
 					layer->Update(timestep);
@@ -138,30 +145,37 @@ namespace Eppo
 			if (!m_IsMinimized)
 			{
 				{
-					EPPO_PROFILE_FUNCTION("CPU Prepare Render");
+					EPPO_PROFILE_FUNCTION("CPU Render");
 
-					// 2. Record commands
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
-
+					
 					Renderer::SubmitCommand([this]() { RenderGui();	});
 				}
-				{
-					EPPO_PROFILE_FUNCTION("CPU Render");
-					Renderer::ExecuteRenderCommands();
-					m_Window->ProcessEvents();
-					m_Window->SwapBuffers();
-				}
+
+				Renderer::ExecuteRenderCommands();
+				m_Window->ProcessEvents();
+				m_Window->SwapBuffers();
 			}
 
+			EPPO_PROFILE_GPU_END;
 			EPPO_PROFILE_FRAME_MARK;
+		}
+	}
+
+	void Application::ExecuteMainThreadQueue()
+	{
+		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+
+		for (size_t i = 0; i < m_MainThreadQueue.size(); i++)
+		{
+			m_MainThreadQueue.front()();
+			m_MainThreadQueue.pop();
 		}
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
 	{
-		EPPO_PROFILE_FUNCTION("Application::OnWindowClose");
-
 		Close();
 
 		return true;

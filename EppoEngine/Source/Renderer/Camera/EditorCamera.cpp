@@ -10,11 +10,15 @@ namespace Eppo
 {
 	EditorCamera::EditorCamera()
 	{
+		EPPO_PROFILE_FUNCTION("EditorCamera::EditorCamera");
+
 		UpdateCameraVectors();
 	}
 
 	void EditorCamera::OnUpdate(float timestep)
 	{
+		EPPO_PROFILE_FUNCTION("EditorCamera::OnUpdate");
+
 		float velocity = m_MovementSpeed * timestep;
 
 		if (Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift))
@@ -39,12 +43,16 @@ namespace Eppo
 
 	void EditorCamera::OnEvent(Event& e)
 	{
+		EPPO_PROFILE_FUNCTION("EditorCamera::OnEvent");
+
 		EventDispatcher dispatcher(e);
 		//dispatcher.Dispatch<MouseScrolledEvent>(BIND_EVENT_FN(EditorCamera::OnMouseScroll));
 	}
 
 	void EditorCamera::SetViewportSize(const glm::vec2& size)
 	{
+		EPPO_PROFILE_FUNCTION("EditorCamera::SetViewportSize");
+
 		if (m_ViewportSize == size)
 			return;
 
@@ -53,6 +61,8 @@ namespace Eppo
 
 	void EditorCamera::UpdateCameraVectors()
 	{
+		EPPO_PROFILE_FUNCTION("EditorCamera::UpdateCameraVectors");
+
 		glm::vec3 front = glm::vec3(
 			cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch)),
 			sin(glm::radians(m_Pitch)),
