@@ -14,14 +14,11 @@ namespace Eppo
 			int width, height, channels;
 			stbi_set_flip_vertically_on_load(1);
 
-			m_ImageData = stbi_load(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 0);
+			m_ImageData = stbi_load(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 4);
 
 			m_Specification.Width = width;
 			m_Specification.Height = height;
-
-			if (channels == 4)
-				m_Specification.Format = ImageFormat::RGBA8;
-
+			m_Specification.Format = ImageFormat::RGBA8;
 			m_Specification.Usage = ImageUsage::Texture;
 		}
 

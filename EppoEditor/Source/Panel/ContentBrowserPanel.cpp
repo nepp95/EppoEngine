@@ -6,7 +6,8 @@ namespace Eppo
 	{
 		static const char* GetImGuiPayloadTypeFromExtension(const std::filesystem::path& filepath)
 		{
-			if (filepath == ".fbx") return "MESH_ASSET";
+			if (filepath == ".glb") return "MESH_ASSET";
+			if (filepath == ".gltf") return "MESH_ASSET";
 			if (filepath == ".png") return "TEXTURE_ASSET";
 			if (filepath == ".cs")  return "SCRIPT_ASSET";
 
@@ -55,11 +56,11 @@ namespace Eppo
 			if (currentAssetType != metadata.Type)
 				continue;
 
-			Ref<Texture> thumbnail = m_ThumbnailCache.GetOrCreateThumbnail(currentAssetType);
+			Ref<Image> thumbnail = m_ThumbnailCache.GetOrCreateThumbnail(currentAssetType);
 
 			ImGui::BeginGroup();
 
-			ImGui::ImageButton((ImTextureID)thumbnail->GetRendererID(), ImVec2(128.0f, 128.0f), ImVec2(0, 1), ImVec2(1, 0));
+			UI::ImageButton(thumbnail, ImVec2(128.0f, 128.0f), ImVec2(0, 1), ImVec2(1, 0));
 			if (ImGui::BeginDragDropSource())
 			{
 				ImGui::SetDragDropPayload(Utils::AssetTypeToImGuiPayloadType(currentAssetType), &handle, sizeof(AssetHandle));
