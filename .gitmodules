@@ -22,6 +22,3 @@
 [submodule "EppoEngine/Vendor/googletest"]
 	path = EppoEngine/Vendor/googletest
 	url = https://github.com/nepp95/googletest.git
-[submodule "EppoEngine/Vendor/tinygltf"]
-	path = EppoEngine/Vendor/tinygltf
-	url = https://github.com/syoyo/tinygltf.git
