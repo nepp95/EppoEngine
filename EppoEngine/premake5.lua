@@ -29,7 +29,6 @@ project "EppoEngine"
         "%{IncludeDir.bullet}",
 		"%{IncludeDir.entt}",
         "%{IncludeDir.filewatch}",
-        "%{IncludeDir.glad}",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",

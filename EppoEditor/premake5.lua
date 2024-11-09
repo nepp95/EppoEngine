@@ -60,7 +60,6 @@ project "EppoEditor"
             "%{StaticLibrary.shaderc}",
             "%{StaticLibrary.spirv_cross}",
             "%{StaticLibrary.spirv_cross_glsl}",
-            "%{StaticLibrary.spirv_tools}",
             "%{StaticLibrary.imgui}",
             "%{StaticLibrary.yaml_cpp}"
         }

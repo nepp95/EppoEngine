@@ -9,7 +9,6 @@ IncludeDir = {}
 IncludeDir["bullet"] = "%{wks.location}/EppoEngine/Vendor/bullet/include"
 IncludeDir["entt"] = "%{wks.location}/EppoEngine/Vendor/entt/single_include"
 IncludeDir["filewatch"] = "%{wks.location}/EppoEngine/Vendor/filewatch"
-IncludeDir["glad"] = "%{wks.location}/EppoEngine/Vendor/glad/include"
 IncludeDir["glfw"] = "%{wks.location}/EppoEngine/Vendor/glfw/include"
 IncludeDir["glm"] = "%{wks.location}/EppoEngine/Vendor/glm"
 IncludeDir["googletest"] = "%{wks.location}/EppoEngine/Vendor/googletest/googletest/include"
@@ -51,8 +50,6 @@ if (os.target() == "windows") then
     StaticLibrary["bullet_linearmath_release"] = "%{StaticLibraryDir.bullet}/Release/LinearMath.lib"
     StaticLibrary["mono_debug"] = "%{StaticLibraryDir.mono}/Debug/libmono-static-sgen.lib"
     StaticLibrary["mono_release"] = "%{StaticLibraryDir.mono}/Release/libmono-static-sgen.lib"
-    StaticLibrary["assimp_debug"] = "%{StaticLibraryDir.assimp}/Debug/assimp-vc143-mtd.lib"
-    StaticLibrary["assimp_release"] = "%{StaticLibraryDir.assimp}/Release/assimp-vc143-mt.lib"
     StaticLibrary["shaderc_debug"] = "%{StaticLibraryDir.vulkan}/shaderc_sharedd.lib"
     StaticLibrary["shaderc_release"] = "%{StaticLibraryDir.vulkan}/shaderc_shared.lib"
     StaticLibrary["spirv_cross_debug"] = "%{StaticLibraryDir.vulkan}/spirv-cross-cored.lib"
@@ -65,21 +62,16 @@ if (os.target() == "windows") then
 	StaticLibrary["winversion"] = "Version.lib"
 else
     StaticLibrary["glfw"] = "glfw3"
-    StaticLibrary["assimp"] = "assimp"
     StaticLibrary["shaderc"] = "shaderc_shared"
     StaticLibrary["spirv_cross"] = "spirv-cross-core"
     StaticLibrary["spirv_cross_glsl"] = "spirv-cross-glsl"
-    StaticLibrary["spirv_tools"] = "SPIRV-Tools"
 end
 
 -- Dynamic Library directories
 DynamicLibraryDir = {}
-DynamicLibraryDir["assimp"] = "%{wks.location}/EppoEngine/Vendor/assimp/bin"
 DynamicLibraryDir["mono"] = "%{wks.location}/EppoEngine/Vendor/mono/bin"
 
 -- Dynamic Libraries
 DynamicLibrary = {}
-DynamicLibrary["assimp_debug"] = "%{DynamicLibraryDir.assimp}/Debug/assimp-vc143-mtd.dll"
-DynamicLibrary["assimp_release"] = "%{DynamicLibraryDir.assimp}/Release/assimp-vc143-mt.dll"
 DynamicLibrary["mono_debug"] = "%{DynamicLibraryDir.mono}/Debug/mono-2.0-sgen.dll"
 DynamicLibrary["mono_release"] = "%{DynamicLibraryDir.mono}/Release/mono-2.0-sgen.dll"
