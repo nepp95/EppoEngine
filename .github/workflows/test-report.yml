@@ -12,31 +12,17 @@ permissions:
   checks: write
 
 jobs:
-  debug:
+  config-matrix:
     runs-on: [ windows-latest ]
     name: "Create test report"
-
+    strategy:
+      matrix:
+        config: [ Debug, Release, Dist ]
     steps:
-      - name: "Create test report (Debug)"
+      - name: "Create test report"
         uses: dorny/test-reporter@v1
         with:
-          artifact: TestOutput-Debug
-          name: Test Report Debug
-          path: '*.xml'
-          reporter: jest-junit
-
-      - name: "Create test report (Release)"
-        uses: dorny/test-reporter@v1
-        with:
-          artifact: TestOutput-Release
-          name: Test Report Release
-          path: '*.xml'
-          reporter: jest-junit
-
-      - name: "Create test report (Dist)"
-        uses: dorny/test-reporter@v1
-        with:
-          artifact: TestOutput-Dist
-          name: Test Report Dist
+          artifact: TestOutput-${{ matrix.config }}
+          name: Test Report ${{ matrix.config }}
           path: '*.xml'
           reporter: jest-junit
