@@ -1,5 +1,9 @@
 VulkanSdk = os.getenv("VULKAN_SDK")
 
+if os.getenv("CI") then
+    VulkanSdk = "C:/VulkanSDK/1.3.275.0"
+end
+
 -- Include directories
 IncludeDir = {}
 IncludeDir["bullet"] = "%{wks.location}/EppoEngine/Vendor/bullet/include"
