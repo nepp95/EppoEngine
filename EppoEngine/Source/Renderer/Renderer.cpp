@@ -6,7 +6,6 @@
 #include "Renderer/RendererContext.h"
 #include "Renderer/ShaderLibrary.h"
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_vulkan.h>
 

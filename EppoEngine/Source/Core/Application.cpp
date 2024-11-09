@@ -5,9 +5,7 @@
 #include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {
