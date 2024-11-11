@@ -1,145 +1,117 @@
 #stage vert
-#version 450 core
+#version 450
+
+#include "base.glsl"
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
+layout(location = 3) in vec4 inColor;
+
 layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec2 outTexCoord;
-layout(location = 2) out vec3 outFragPosition;
-layout(location = 3) out vec4 outFragPosLightSpace;
+layout(location = 2) out vec4 outColor;
+layout(location = 3) out vec3 outFragPos;
 
-layout(binding = 0) uniform Camera
+layout(push_constant) uniform Transform
 {
-	mat4 View;
-	mat4 Projection;
-	mat4 ViewProjection;
-	vec4 Position;
-} uCamera;
-
-layout(binding = 1) uniform Transform
-{
-	mat4 Transform;
+	layout(offset = 0) mat4 Transform;
+	layout(offset = 64) int DiffuseMapIndex;
+    layout(offset = 68) int NormalMapIndex;
+    layout(offset = 72) int RoughnessMetallicMapIndex;
 } uTransform;
-
-layout(binding = 2) uniform DirectionalLight
-{
-	mat4 View;
-	mat4 Projection;
-	vec4 Direction;
-	vec4 AlbedoColor;
-	vec4 AmbientColor;
-	vec4 SpecularColor;
-} uDirectionalLight;
 
 void main()
 {
-	outNormal = mat3(transpose(inverse(uTransform.Transform))) * inNormal;
-	outTexCoord = inTexCoord;
-	outFragPosition = vec3(uTransform.Transform * vec4(inPosition, 1.0));
-	outFragPosLightSpace = uDirectionalLight.Projection * uDirectionalLight.View * vec4(outFragPosition, 1.0);
+	outNormal = inNormal;
+    outTexCoord = inTexCoord;
+    outColor = inColor;
+    outFragPos = vec3(uTransform.Transform * vec4(inPosition, 1.0));
 
-	gl_Position = uCamera.ViewProjection * vec4(outFragPosition, 1.0);
+	gl_Position = uCamera.ViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
 }
 
 #stage frag
 #version 450
 
+#include "base.glsl"
+#include "lighting.glsl"
+
+#extension GL_EXT_nonuniform_qualifier : enable
+
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
-layout(location = 2) in vec3 inFragPosition;
-layout(location = 3) in vec4 inFragPosLightSpace;
-layout(location = 0) out vec4 outColor;
+layout(location = 2) in vec4 inColor;
+layout(location = 3) in vec3 inFragPos;
 
-layout(binding = 0) uniform sampler2D uShadowMap;
+layout(location = 0) out vec4 outFragColor;
 
-layout(binding = 0) uniform Camera
+layout(push_constant) uniform Material
 {
-	mat4 View;
-	mat4 Projection;
-	mat4 ViewProjection;
-	vec4 Position;
-} uCamera;
-
-layout(binding = 2) uniform DirectionalLight
-{
-	mat4 View;
-	mat4 Projection;
-	vec4 Direction;
-	vec4 AlbedoColor;
-	vec4 AmbientColor;
-	vec4 SpecularColor;
-} uDirectionalLight;
-
-layout(binding = 4) uniform Material
-{
-	vec3 AlbedoColor;
-	float Roughness;
+    layout(offset = 0) mat4 Transform;
+	layout(offset = 64) int DiffuseMapIndex;
+    layout(offset = 68) int NormalMapIndex;
+    layout(offset = 72) int RoughnessMetallicMapIndex;
 } uMaterial;
-
-float CalculateShadow(vec4 fragPos, vec3 normal, vec3 lightDir);
 
 void main()
 {
-	// using the Phong Reflection Model: https://en.wikipedia.org/wiki/Phong_reflection_model
+	vec3 diffuse = texture(uMaterialTex[uMaterial.DiffuseMapIndex], inTexCoord).rgb;
+    vec3 metallicTexColor = texture(uMaterialTex[uMaterial.RoughnessMetallicMapIndex], inTexCoord).rgb;
 
-	// Ambient
-	vec3 ambient = uDirectionalLight.AmbientColor.rgb;
+    float metallic = metallicTexColor.b;
+    float roughness = metallicTexColor.g;
+    float ao = 1.0;
 
-	// Diffuse
-	vec3 nNormal = normalize(inNormal);
-	vec3 nLightDirection = normalize(-uDirectionalLight.Direction.xyz);
+    // Theory by: https://learnopengl.com/PBR/Lighting
+    vec3 N = normalize(inNormal);
+    vec3 V = normalize(uCamera.Position.xyz - inFragPos);
 
-	float diffuseIntensity = max(dot(nNormal, nLightDirection), 0.0);
-	vec3 diffuse = diffuseIntensity * uDirectionalLight.AlbedoColor.rgb;
+    // Calculate reflectance at normal incidence
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, diffuse, metallic);
 
-	// Specular
-	vec3 nViewDirection = normalize(uCamera.Position.xyz - inFragPosition);
-	vec3 reflectDirection = reflect(-nLightDirection, nNormal);
+    // Reflectance equation
+    vec3 Lo = vec3(0.0);
+    for (int i = 0; i < uLights.NumLights; ++i)
+    {
+        // Calculate per light radiance
+        vec3 L = normalize(uLights.Lights[i].Position.xyz - inFragPos);
+        vec3 H = normalize(V + L);
 
-	float spec = pow(max(dot(nViewDirection, reflectDirection), 0.0), 64.0);
-	vec3 specular = spec * uDirectionalLight.SpecularColor.rgb;
+        float distance = length(uLights.Lights[i].Position.xyz - inFragPos);
+        float attenuation = 1.0 / (distance * distance);
+        vec3 radiance = uLights.Lights[i].Color.rgb * attenuation;
 
-	// Shadow
-	float shadow = CalculateShadow(inFragPosLightSpace, nNormal, nLightDirection);
+        // Cook-Torrance BRDF
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
+        vec3 F = FresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
 
-	// Output
-	vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * uMaterial.AlbedoColor;
-	outColor = vec4(result, 1.0);
-}
+        vec3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+        vec3 specular = numerator / denominator;
 
-float CalculateShadow(vec4 fragPos, vec3 normal, vec3 lightDir)
-{
-	// Transform fragPos from clip space to ndc -1 to 1
-	vec3 ndcCoords = fragPos.xyz / fragPos.w;
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - metallic;
 
-	// Normalize to 0 to 1
-	ndcCoords = ndcCoords * 0.5 + 0.5;
+        float NdotL = max(dot(N, L), 0.0);
 
-	// Get closest depth value 
-	float closestDepth = texture(uShadowMap, ndcCoords.xy).r;
+        Lo += (kD * diffuse / PI + specular) * radiance * NdotL;
+    }
 
-	// Get depth of current fragment from light's perspective
-	float currentDepth = ndcCoords.z;
+    // Shadow
+    float shadow = CalculateShadow(inFragPos, uLights.Lights[0], 1000.0f);
 
-	// Check if fragment is in shadow
-	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-	float shadow = 0.0;
-	vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
+    vec3 ambient = vec3(0.03) * diffuse * ao;
+    vec3 color = ambient + (1.0 - shadow) * Lo;
 
-	for (int x = -1; x <= 1; ++x)
-	{
-		for (int y = -1; y <= 1; ++y)
-		{
-			float pcfDepth = texture(uShadowMap, ndcCoords.xy + vec2(x, y) * texelSize).r;
-			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
-		}
-	}
+    // HDR tonemapping
+    color = color / (color + vec3(1.0));
 
-	shadow /= 9.0;
+    // Gamma correction
+    //color = pow(color, vec3(1.0 / 2.2));
 
-	if (ndcCoords.z > 1.0)
-		shadow = 0.0;
-
-	return shadow;
+    outFragColor = vec4(color, 1.0);
 }

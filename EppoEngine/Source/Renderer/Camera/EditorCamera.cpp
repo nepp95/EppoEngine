@@ -15,6 +15,14 @@ namespace Eppo
 		UpdateCameraVectors();
 	}
 
+	EditorCamera::EditorCamera(const glm::vec3& position, float pitch, float yaw)
+		: m_Position(position), m_Pitch(pitch), m_Yaw(yaw)
+	{
+		EPPO_PROFILE_FUNCTION("EditorCamera::EditorCamera");
+
+		UpdateCameraVectors();
+	}
+
 	void EditorCamera::OnUpdate(float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("EditorCamera::OnUpdate");
@@ -37,6 +45,11 @@ namespace Eppo
 			m_Yaw -= velocity * 2.0f;
 		if (Input::IsKeyPressed(Key::E))
 			m_Yaw += velocity * 2.0f;
+
+		if (Input::IsKeyPressed(Key::R))
+			m_Pitch += velocity * 2.0f;
+		if (Input::IsKeyPressed(Key::F))
+			m_Pitch -= velocity * 2.0f;
 
 		UpdateCameraVectors();
 	}

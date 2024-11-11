@@ -3,18 +3,18 @@
 
 #include "Core/Filesystem.h"
 #include "Core/Hash.h"
-#include "Renderer/Renderer.h"
+#include "Renderer/DescriptorLayoutBuilder.h"
+#include "Renderer/RendererContext.h"
+#include "Renderer/ShaderIncluder.h"
 
-#include <glad/glad.h>
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
-#include <spirv_cross/spirv_glsl.hpp>
 
 namespace Eppo
 {
 	namespace Utils
 	{
-		static std::filesystem::path GetCacheDirectory()
+		inline std::filesystem::path GetCacheDirectory()
 		{
 			if (!Filesystem::Exists("Resources/Shaders/Cache"))
 				std::filesystem::create_directories("Resources/Shaders/Cache");
@@ -22,7 +22,7 @@ namespace Eppo
 			return "Resources/Shaders/Cache";
 		}
 
-		static shaderc_shader_kind ShaderStageToShaderCKind(ShaderStage stage)
+		inline shaderc_shader_kind ShaderStageToShaderCKind(ShaderStage stage)
 		{
 			switch (stage)
 			{
@@ -34,19 +34,7 @@ namespace Eppo
 			return (shaderc_shader_kind)-1;
 		}
 
-		static GLenum ShaderStageToGLStage(ShaderStage stage)
-		{
-			switch (stage)
-			{
-				case ShaderStage::Vertex:	return GL_VERTEX_SHADER;
-				case ShaderStage::Fragment:	return GL_FRAGMENT_SHADER;
-			}
-
-			EPPO_ASSERT(false);
-			return 0;
-		}
-
-		static std::string ShaderStageToString(ShaderStage stage)
+		inline std::string ShaderStageToString(ShaderStage stage)
 		{
 			switch (stage)
 			{
@@ -58,13 +46,29 @@ namespace Eppo
 			return "Invalid";
 		}
 
-		static ShaderStage StringToShaderStage(std::string_view stage)
+		inline ShaderStage StringToShaderStage(std::string_view stage)
 		{
 			if (stage == "vert")			return ShaderStage::Vertex;
 			if (stage == "frag")			return ShaderStage::Fragment;
 
 			EPPO_ASSERT(false);
 			return ShaderStage::None;
+		}
+
+		inline VkShaderStageFlagBits ShaderStageToVkShaderStage(ShaderStage stage)
+		{
+			if (stage == ShaderStage::Vertex)       return VK_SHADER_STAGE_VERTEX_BIT;
+			if (stage == ShaderStage::Fragment)     return VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+		}
+
+		inline VkDescriptorType ShaderResourceTypeToVkDescriptorType(ShaderResourceType type)
+		{
+			if (type == ShaderResourceType::UniformBuffer)      return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			if (type == ShaderResourceType::Sampler)            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+			return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 		}
 	}
 
@@ -81,32 +85,23 @@ namespace Eppo
 		
 		// Compile or get cache
 		CompileOrGetCache(sources);
-		CreateProgram();
-		
+
+		m_ShaderResources[0] = {};
+		m_ShaderResources[1] = {};
+		m_ShaderResources[2] = {};
+		m_ShaderResources[3] = {};
+
 		// Reflection
 		for (auto&& [type, data] : m_ShaderBytes)
 			Reflect(type, data);
+
+		CreatePipelineShaderInfos();
+		CreateDescriptorSetLayouts();
 	}
 
 	Shader::~Shader()
 	{
 		EPPO_PROFILE_FUNCTION("Shader::~Shader");
-	}
-
-	void Shader::RT_Bind() const
-	{
-		Renderer::SubmitCommand([this]()
-		{
-			glUseProgram(m_RendererID);
-		});
-	}
-
-	void Shader::RT_Unbind() const
-	{
-		Renderer::SubmitCommand([this]()
-		{
-			glUseProgram(0);
-		});
 	}
 
 	std::unordered_map<ShaderStage, std::string> Shader::PreProcess(std::string_view source)
@@ -148,8 +143,9 @@ namespace Eppo
 
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
-		options.SetTargetEnvironment(shaderc_target_env_opengl, shaderc_env_version_opengl_4_5);
-		options.SetOptimizationLevel(shaderc_optimization_level_zero);
+		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+		options.SetIncluder(CreateScope<ShaderIncluder>());
+		options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
 		// Compile source
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
@@ -162,6 +158,7 @@ namespace Eppo
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
 
+		// TODO:
 		// Write cache
 		//std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
 		//Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
@@ -217,70 +214,6 @@ namespace Eppo
 		}
 	}
 
-	void Shader::CreateProgram()
-	{
-		EPPO_PROFILE_FUNCTION("Shader::CreateProgram");
-
-		uint32_t program = glCreateProgram();
-
-		std::array<uint32_t, 2> shaderIDs;
-		int index = 0;
-		for (auto&& [stage, spirv] : m_ShaderBytes)
-		{
-			spirv_cross::CompilerGLSL glslCompiler(spirv);
-			auto& source = glslCompiler.compile();
-
-			uint32_t shader = glCreateShader(Utils::ShaderStageToGLStage(stage));
-
-			const GLchar* sourceCStr = source.c_str();
-			glShaderSource(shader, 1, &sourceCStr, 0);
-			glCompileShader(shader);
-
-			int isCompiled = 0;
-			glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
-			if (isCompiled == GL_FALSE)
-			{
-				int maxLength = 0;
-				glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
-
-				std::vector<char> infoLog(maxLength);
-				glGetShaderInfoLog(shader, maxLength, &maxLength, &infoLog[0]);
-
-				glDeleteShader(shader);
-
-				EPPO_ERROR("{}", infoLog.data());
-				EPPO_ASSERT(false);
-			}
-
-			glAttachShader(program, shader);
-			shaderIDs[index++] = shader;
-		}
-
-		glLinkProgram(program);
-
-		int isLinked = 0;
-		glGetProgramiv(program, GL_LINK_STATUS, (int*)&isLinked);
-		if (isLinked == GL_FALSE)
-		{
-			GLint maxLength;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
-
-			std::vector<char> infoLog(maxLength);
-			glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
-			EPPO_ERROR("Shader linking failed ({}):\n{}", m_Specification.Filepath, infoLog.data());
-
-			glDeleteProgram(program);
-
-			for (auto id : shaderIDs)
-				glDeleteShader(id);
-		}
-
-		for (auto id : shaderIDs)
-			glDetachShader(program, id);
-
-		m_RendererID = program;
-	}
-
 	void Shader::Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes)
 	{
 		EPPO_PROFILE_FUNCTION("Shader::Reflect");
@@ -289,8 +222,45 @@ namespace Eppo
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
+		EPPO_TRACE("    {} Push constants", resources.push_constant_buffers.size());
 		EPPO_TRACE("    {} Uniform buffers", resources.uniform_buffers.size());
 		EPPO_TRACE("    {} Sampled images", resources.sampled_images.size());
+
+		if (!resources.push_constant_buffers.empty())
+		{
+			EPPO_TRACE("    Push constants:");
+			EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
+
+			const auto& resource = resources.push_constant_buffers[0];
+			const auto& bufferType = compiler.get_type(resource.base_type_id);
+			size_t bufferSize = compiler.get_declared_struct_size(bufferType);
+			size_t memberCount = bufferType.member_types.size();
+
+			/*uint32_t offset = 0;
+			if (!m_PushConstantRanges.empty())
+			{
+				for (const auto& pcr : m_PushConstantRanges)
+					offset += pcr.size;
+			}*/
+
+			if (m_PushConstantRanges.empty())
+			{
+				VkPushConstantRange& pcr = m_PushConstantRanges.emplace_back();
+				pcr.size = bufferSize;
+				pcr.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+				pcr.offset = 0;
+			}
+
+			if (!resource.name.empty())
+				EPPO_TRACE("        {}", resource.name);
+			EPPO_TRACE("        Size = {}", bufferSize);
+			EPPO_TRACE("        Members = {}", memberCount);
+
+			for (size_t i = 0; i < memberCount; i++)
+				EPPO_TRACE("            Member: {} ({})",
+					compiler.get_member_name(resource.base_type_id, static_cast<uint32_t>(i)),
+					static_cast<uint32_t>(compiler.get_type(resource.base_type_id).member_types[i]));
+		}
 
 		if (!resources.uniform_buffers.empty())
 		{
@@ -300,19 +270,30 @@ namespace Eppo
 			{
 				const auto& bufferType = compiler.get_type(resource.base_type_id);
 				uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
-
 				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 				size_t memberCount = bufferType.member_types.size();
 
-				ShaderResource shaderResource;
-				shaderResource.Type = stage;
-				shaderResource.ResourceType = ShaderResourceType::UniformBuffer;
-				shaderResource.Binding = binding;
-				shaderResource.Size = bufferSize;
-				shaderResource.Name = resource.name;
+				bool bindingExists = false;
+				for (auto& sr : m_ShaderResources[set])
+				{
+					if (sr.Binding == binding)
+					{
+						sr.Type = ShaderStage::All;
+						bindingExists = true;
+						break;
+					}
+				}
 
-				m_ShaderResources[set].push_back(shaderResource);
+				if (!bindingExists)
+				{
+					ShaderResource& shaderResource = m_ShaderResources[set].emplace_back();
+					shaderResource.Type = stage;
+					shaderResource.ResourceType = ShaderResourceType::UniformBuffer;
+					shaderResource.Binding = binding;
+					shaderResource.Size = bufferSize;
+					shaderResource.Name = resource.name;
+				}
 
 				EPPO_TRACE("        {}", resource.name);
 				EPPO_TRACE("            Size = {}", bufferSize);
@@ -336,19 +317,122 @@ namespace Eppo
 				auto& spirVtype = compiler.get_type(resource.type_id);
 				uint32_t arraySize = spirVtype.array[0];
 
-				ShaderResource shaderResource;
-				shaderResource.Type = stage;
-				shaderResource.ResourceType = ShaderResourceType::Sampler;
-				shaderResource.Binding = binding;
-				shaderResource.ArraySize = arraySize;
-				shaderResource.Name = resource.name;
+				bool bindingExists = false;
+				for (auto& sr : m_ShaderResources[set])
+				{
+					if (sr.Binding == binding)
+					{
+						sr.Type = ShaderStage::All;
+						bindingExists = true;
+						break;
+					}
+				}
 
-				m_ShaderResources[set].push_back(shaderResource);
+				if (!bindingExists)
+				{
+					ShaderResource& shaderResource = m_ShaderResources[set].emplace_back();
+					shaderResource.Type = stage;
+					shaderResource.ResourceType = ShaderResourceType::Sampler;
+					shaderResource.Binding = binding;
+					shaderResource.ArraySize = arraySize;
+					shaderResource.Name = resource.name;
+				}
 
 				EPPO_TRACE("        Set = {}", set);
 				EPPO_TRACE("        Binding = {}", binding);
 			}
 		}
 		EPPO_TRACE("");
+	}
+
+	void Shader::CreatePipelineShaderInfos()
+	{
+		Ref<RendererContext> context = RendererContext::Get();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+
+		for (const auto& [type, shaderBytes] : m_ShaderBytes)
+		{
+			VkShaderModuleCreateInfo shaderModuleCreateInfo{};
+			shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			shaderModuleCreateInfo.codeSize = shaderBytes.size() * sizeof(uint32_t);
+			shaderModuleCreateInfo.pCode = shaderBytes.data();
+
+			VkShaderModule shaderModule;
+			VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule), "Failed to create shader module!");
+
+			VkPipelineShaderStageCreateInfo& shaderStageCreateInfo = m_ShaderInfos.emplace_back();
+			shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			shaderStageCreateInfo.stage = Utils::ShaderStageToVkShaderStage(type);
+			shaderStageCreateInfo.module = shaderModule;
+			shaderStageCreateInfo.pName = "main";
+
+			context->SubmitResourceFree([=]()
+			{
+				EPPO_WARN("Releasing shader module {}", (void*)shaderModule);
+				vkDestroyShaderModule(device, shaderModule, nullptr);
+			}, false);
+		}
+	}
+
+	void Shader::CreateDescriptorSetLayouts()
+	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		m_DescriptorSetLayouts.resize(4);
+		for (const auto& [set, setResources] : m_ShaderResources)
+		{
+			if (setResources.empty())
+				continue;
+
+			DescriptorLayoutBuilder builder;
+
+			for (const auto& resource : setResources)
+			{
+				// TODO: This is as dirty as code can get
+				if (resource.Binding == 0 && set == 1)
+				{
+					builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType), 512);
+					continue;
+				}
+
+				builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType));
+			}
+
+			m_DescriptorSetLayouts[set] = builder.Build(VK_SHADER_STAGE_ALL);
+		}
+
+		VkDescriptorSetLayoutCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		createInfo.bindingCount = 0;
+		createInfo.pBindings = nullptr;
+
+		VkDescriptorSetLayout layout;
+		VK_CHECK(vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &layout), "Failed to create descriptor set layout!");
+
+		for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
+		{
+			if (!descriptorSetLayout)
+				descriptorSetLayout = layout;
+		}
+
+		Ref<RendererContext> context = RendererContext::Get();
+		context->SubmitResourceFree([this]()
+		{
+			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+			// Since we ALWAYS have 4 descriptor set layouts per shader AND some of them can be the same if not all descriptor sets are in use
+			// We keep track of which we have freed so we don't free the same layout twice.
+			std::unordered_set<void*> layoutsFreed;
+
+			for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
+			{
+				if (layoutsFreed.find((void*)descriptorSetLayout) == layoutsFreed.end())
+				{
+					layoutsFreed.insert((void*)descriptorSetLayout);
+					EPPO_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
+					vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+				}
+			}
+		});
 	}
 }

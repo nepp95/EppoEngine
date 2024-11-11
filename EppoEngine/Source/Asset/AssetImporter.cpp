@@ -13,7 +13,6 @@ namespace Eppo
 	{
 		{ AssetType::Mesh, AssetImporter::ImportMesh },
 		{ AssetType::Scene, AssetImporter::ImportScene },
-		{ AssetType::Texture, AssetImporter::ImportTexture }
 	};
 
 	Ref<Asset> AssetImporter::ImportAsset(AssetHandle handle, const AssetMetadata& metadata)
@@ -41,16 +40,6 @@ namespace Eppo
 		serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath));
 
 		return scene;
-	}
-
-	Ref<Texture> AssetImporter::ImportTexture(AssetHandle handle, const AssetMetadata& metadata)
-	{
-		TextureSpecification spec;
-		spec.Filepath = metadata.Filepath;
-
-		Ref<Texture> texture = CreateRef<Texture>(spec);
-
-		return texture;
 	}
 
 	bool AssetImporter::ExportScene(Ref<Scene> scene, const std::filesystem::path& filepath)

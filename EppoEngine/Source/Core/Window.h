@@ -31,7 +31,6 @@ namespace Eppo
 		void Shutdown();
 
 		void ProcessEvents();
-		void SwapBuffers();
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
 		void SetWindowTitle(const std::string& name);

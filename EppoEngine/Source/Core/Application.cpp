@@ -5,9 +5,7 @@
 #include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {
@@ -52,12 +50,11 @@ namespace Eppo
 
 		EPPO_INFO("Shutting down...");
 
-		ScriptEngine::Shutdown();
-		Renderer::Shutdown();
-
 		for (Layer* layer : m_LayerStack)
 			layer->OnDetach();
 
+		ScriptEngine::Shutdown();
+		Renderer::Shutdown();
 		m_Window->Shutdown();
 	}
 
@@ -95,12 +92,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Application::RenderGui");
 
-		m_ImGuiLayer->Begin();
-
 		for (Layer* layer : m_LayerStack)
 			layer->RenderGui();
-
-		m_ImGuiLayer->End();
 	}
 
 	void Application::PushLayer(Layer* layer, bool overlay)
@@ -144,23 +137,27 @@ namespace Eppo
 
 			if (!m_IsMinimized)
 			{
+				Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
+
 				{
 					EPPO_PROFILE_FUNCTION("CPU Render");
 
 					for (Layer* layer : m_LayerStack)
 						layer->Render();
-					
-					Renderer::SubmitCommand([this]() { RenderGui();	});
 				}
 
+				swapchain->BeginFrame();
 				Renderer::ExecuteRenderCommands();
-				m_Window->ProcessEvents();
-				m_Window->SwapBuffers();
+				swapchain->Present();
 			}
+
+			m_Window->ProcessEvents();
 
 			EPPO_PROFILE_GPU_END;
 			EPPO_PROFILE_FRAME_MARK;
 		}
+
+		RendererContext::Get()->WaitIdle();
 	}
 
 	void Application::ExecuteMainThreadQueue()

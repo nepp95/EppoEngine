@@ -2,7 +2,9 @@
 
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Mesh/Mesh.h"
-#include "Renderer/Framebuffer.h"
+#include "Renderer/DescriptorWriter.h"
+#include "Renderer/Image.h"
+#include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/UniformBuffer.h"
 #include "Scene/Components.h"
@@ -18,7 +20,8 @@ namespace Eppo
 	// TODO: Move to renderer
 	struct RenderSpecification
 	{
-		// Put things like quality level here
+		uint32_t Width = 0;
+		uint32_t Height = 0;
 	};
 
 	struct RenderStatistics
@@ -40,10 +43,9 @@ namespace Eppo
 		void BeginScene(const Camera& camera, const glm::mat4& transform);
 		void EndScene();
 
-		void SubmitDirectionalLight(const DirectionalLightComponent& dlc);
 		void SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId);
 
-		uint32_t GetFinalImageID() const { return m_GeometryFramebuffer->GetColorAttachmentID(); }
+		Ref<Image> GetFinalImage() const;
 
 	private:
 		void Flush();
@@ -52,16 +54,20 @@ namespace Eppo
 
 		void PreDepthPass();
 		void GeometryPass();
+		void CompositePass();
 
 	private:
 		RenderSpecification m_RenderSpecification;
+		Ref<Scene> m_Scene;
 
-		// Command buffer
 		Ref<RenderCommandBuffer> m_CommandBuffer;
 
-		// Framebuffers
-		Ref<Framebuffer> m_GeometryFramebuffer;
-		Ref<Framebuffer> m_PreDepthFramebuffer;
+		Ref<Pipeline> m_PreDepthPipeline;
+		Ref<Pipeline> m_GeometryPipeline;
+		Ref<Pipeline> m_CompositePipeline;
+
+		uint32_t Width = 0;
+		uint32_t Height = 0;
 
 		// Binding 0
 		struct CameraData
@@ -74,31 +80,20 @@ namespace Eppo
 		Ref<UniformBuffer> m_CameraUB;
 
 		// Binding 1
-		glm::mat4 m_Transform;
-		Ref<UniformBuffer> m_TransformUB;
-
-		// Binding 2
-		struct DirectionalLightData
+		struct Light
 		{
-			glm::mat4 View;
+			glm::mat4 View[6];
+			glm::vec4 Position = glm::vec4(0.0f);
+			glm::vec4 Color = glm::vec4(0.0f);
+		};
+
+		struct LightsData
+		{
 			glm::mat4 Projection;
-			glm::vec4 Direction;
-			glm::vec4 AlbedoColor;
-			glm::vec4 AmbientColor;
-			glm::vec4 SpecularColor;
-		} m_DirectionalLightBuffer;
-		Ref<UniformBuffer> m_DirectionalLightUB;
-
-		// Binding 3
-		Ref<Texture> m_ShadowMap;
-
-		// Binding 4
-		struct MaterialData
-		{
-			glm::vec3 AlbedoColor;
-			float Roughness;
-		} m_MaterialBuffer;
-		Ref<UniformBuffer> m_MaterialUB;
+			Light Lights[8];
+			uint32_t NumLights;
+		} m_LightsBuffer;
+		Ref<UniformBuffer> m_LightsUB;
 
 		// Draw commands
 		struct DrawCommand
@@ -112,5 +107,12 @@ namespace Eppo
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;
+
+		struct TimestampQueries
+		{
+			uint32_t PreDepthQuery = UINT32_MAX;
+			uint32_t GeometryQuery = UINT32_MAX;
+			uint32_t CompositeQuery = UINT32_MAX;
+		} m_TimestampQueries;
 	};
 }

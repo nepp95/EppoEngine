@@ -1,17 +1,29 @@
 #include "pch.h"
 #include "ImGuiLayer.h"
 
-#include "Core/Application.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/RendererContext.h"
 
 #include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_opengl3.h>
+#include <backends/imgui_impl_vulkan.h>
 #include <GLFW/glfw3.h>
 
 #include <imgui.h>
 
 namespace Eppo
 {
+	static std::vector<VkCommandBuffer> s_ImGuiCommandBuffers;
+	static VkDescriptorPool s_DescriptorPool = nullptr;
+
+	static void CheckVkResult(VkResult err)
+	{
+		if (err == 0)
+			return;
+		fprintf(stderr, "[Vulkan][ImGui] Error: VkResult = %d\n", err);
+		if (err < 0)
+			abort();
+	}
+
 	ImGuiLayer::ImGuiLayer()
 		: Layer("ImGuiLayer")
 	{}
@@ -26,6 +38,7 @@ namespace Eppo
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable keyboard controls
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable docking
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable multi-viewport
+		io.ConfigFlags |= ImGuiConfigFlags_IsSRGB;
 
 		float fontSize = 14.0f;
 		io.FontDefault = io.Fonts->AddFontFromFileTTF("Resources/Fonts/DroidSans.ttf", fontSize);
@@ -42,16 +55,81 @@ namespace Eppo
 			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 		}
 
-		Application& app = Application::Get();
-		GLFWwindow* window = static_cast<GLFWwindow*>(app.GetWindow().GetNativeWindow());
+		// Init
+		Ref<RendererContext> context = RendererContext::Get();
+		ImGui_ImplGlfw_InitForVulkan(context->GetWindowHandle(), true);
 
-		ImGui_ImplGlfw_InitForOpenGL(window, true);
-		ImGui_ImplOpenGL3_Init(nullptr);
+		Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+
+		// Create descriptor pool
+		VkDescriptorPoolSize poolSizes[] = {
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
+			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 100 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100 },
+		};
+
+		VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+		descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		descriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		descriptorPoolCreateInfo.poolSizeCount = IM_ARRAYSIZE(poolSizes);
+		descriptorPoolCreateInfo.pPoolSizes = poolSizes;
+		descriptorPoolCreateInfo.maxSets = 100 * IM_ARRAYSIZE(poolSizes);
+
+		VK_CHECK(vkCreateDescriptorPool(logicalDevice->GetNativeDevice(), &descriptorPoolCreateInfo, nullptr, &s_DescriptorPool), "Failed to create descriptor pool!");
+
+		// Init
+		ImGui_ImplVulkan_InitInfo initInfo{};
+		initInfo.Instance = RendererContext::GetVulkanInstance();
+		initInfo.PhysicalDevice = physicalDevice->GetNativeDevice();
+		initInfo.Device = logicalDevice->GetNativeDevice();
+		initInfo.QueueFamily = physicalDevice->GetQueueFamilyIndices().Graphics;
+		initInfo.Queue = logicalDevice->GetGraphicsQueue();
+		initInfo.PipelineCache = nullptr;
+		initInfo.DescriptorPool = s_DescriptorPool;
+		initInfo.Subpass = 0;
+		initInfo.MinImageCount = VulkanConfig::MaxFramesInFlight;
+		initInfo.ImageCount = VulkanConfig::MaxFramesInFlight;
+		initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+		initInfo.Allocator = nullptr;
+		initInfo.CheckVkResultFn = CheckVkResult;
+		initInfo.UseDynamicRendering = true;
+
+		VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+
+		VkPipelineRenderingCreateInfo renderInfo{};
+		renderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		renderInfo.colorAttachmentCount = 1;
+		renderInfo.pColorAttachmentFormats = &format;
+
+		initInfo.PipelineRenderingCreateInfo = renderInfo;
+
+		ImGui_ImplVulkan_Init(&initInfo);
+
+		// Fonts
+		ImGui_ImplVulkan_CreateFontsTexture();
+
+		// Command buffers
+		s_ImGuiCommandBuffers.resize(VulkanConfig::MaxFramesInFlight);
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			s_ImGuiCommandBuffers[i] = logicalDevice->GetSecondaryCommandBuffer();
+
 	}
 
 	void ImGuiLayer::OnDetach()
 	{
-		ImGui_ImplOpenGL3_Shutdown();
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		vkDestroyDescriptorPool(device, s_DescriptorPool, nullptr);
+
+		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}
@@ -65,35 +143,6 @@ namespace Eppo
 			ImGuiIO& io = ImGui::GetIO();
 			e.Handled |= e.IsInCategory(EventCategoryMouse) & io.WantCaptureMouse;
 			e.Handled |= e.IsInCategory(EventCategoryKeyboard) & io.WantCaptureKeyboard;
-		}
-	}
-
-	void ImGuiLayer::Begin() const
-	{
-		EPPO_PROFILE_FUNCTION("ImGuiLayer::Begin");
-
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-	}
-
-	void ImGuiLayer::End() const
-	{
-		EPPO_PROFILE_FUNCTION("ImGuiLayer::End");
-
-		ImGuiIO& io = ImGui::GetIO();
-		Application& app = Application::Get();
-		io.DisplaySize = ImVec2((float)app.GetWindow().GetWidth(), (float)app.GetWindow().GetHeight());
-
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			GLFWwindow* backupContext = glfwGetCurrentContext();
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
-			glfwMakeContextCurrent(backupContext);
 		}
 	}
 

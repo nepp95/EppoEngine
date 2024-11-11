@@ -2,43 +2,12 @@
 #include "RendererContext.h"
 
 #include "Core/Application.h"
+#include "Renderer/Allocator.h"
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {
-	static void DebugCallback(unsigned int source, unsigned int type, unsigned int id, unsigned int severity, int length, const char* message, const void* userParam)
-	{
-		switch (severity)
-		{
-			case GL_DEBUG_SEVERITY_HIGH:
-			{
-				EPPO_ERROR(message);
-				return;
-			}
-
-			case GL_DEBUG_SEVERITY_MEDIUM:
-			{
-				EPPO_WARN(message);
-				return;
-			}
-
-			case GL_DEBUG_SEVERITY_LOW:
-			{
-				EPPO_INFO(message);
-				return;
-			}
-
-			case GL_DEBUG_SEVERITY_NOTIFICATION:
-			{
-				EPPO_TRACE(message);
-				return;
-			}
-		}
-	}
-
 	RendererContext::RendererContext(GLFWwindow* windowHandle)
 		: m_WindowHandle(windowHandle)
 	{
@@ -50,37 +19,83 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::Init");
 
-		glfwMakeContextCurrent(m_WindowHandle);
-		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-		EPPO_ASSERT(status);
+		VkApplicationInfo appInfo{};
+		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		appInfo.pApplicationName = "EppoEngine";
+		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+		appInfo.pEngineName = "EppoEngine";
+		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+		appInfo.apiVersion = VK_API_VERSION_1_3;
 
-		TracyGpuContext;
+		auto extensions = GetRequiredExtensions();
 
-		EPPO_INFO("GPU Info:");
-		EPPO_INFO("\tVendor: {}", glGetString(GL_VENDOR));
-		EPPO_INFO("\tModel: {}", glGetString(GL_RENDERER));
-		EPPO_INFO("\tVersion: {}", glGetString(GL_VERSION));
+		VkInstanceCreateInfo instanceInfo{};
+		instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		instanceInfo.pApplicationInfo = &appInfo;
+		instanceInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+		instanceInfo.ppEnabledExtensionNames = extensions.data();
 
-		EPPO_ASSERT(GLVersion.major > 4 || (GLVersion.major == 4 && GLVersion.minor >= 5));
+		VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
+		if (VulkanConfig::EnableValidation)
+		{
+			instanceInfo.enabledLayerCount = static_cast<uint32_t>(VulkanConfig::ValidationLayers.size());
+			instanceInfo.ppEnabledLayerNames = VulkanConfig::ValidationLayers.data();
 
-		#ifdef EPPO_DEBUG
-			glEnable(GL_DEBUG_OUTPUT);
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-			glDebugMessageCallback(DebugCallback, nullptr);
-			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
-		#endif
+			debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			debugInfo.pfnUserCallback = DebugCallback;
+			debugInfo.pUserData = nullptr;
 
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_CULL_FACE);
-		glFrontFace(GL_CW);
-		glCullFace(GL_BACK);
+			instanceInfo.pNext = &debugInfo;
+		} else
+		{
+			instanceInfo.enabledLayerCount = 0;
+			instanceInfo.pNext = nullptr;
+		}
+
+		VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &s_Instance), "Failed to create instance!");
+
+		// Debug messenger
+		if (VulkanConfig::EnableValidation)
+			VK_CHECK(CreateDebugUtilsMessengerEXT(s_Instance, &debugInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!");
+
+		// Devices
+		m_PhysicalDevice = CreateRef<PhysicalDevice>();
+		m_LogicalDevice = CreateRef<LogicalDevice>(m_PhysicalDevice);
+
+		// Allocator
+		Allocator::Init();
+
+		// Swapchain
+		m_Swapchain = CreateRef<Swapchain>(m_LogicalDevice);
 	}
 
 	void RendererContext::Shutdown()
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::Shutdown");
+
+		m_GarbageCollector.Shutdown();
+
+		if (VulkanConfig::EnableValidation)
+			DestroyDebugUtilsMessengerEXT(s_Instance, m_DebugMessenger, nullptr);
+
+		vkDestroyInstance(s_Instance, nullptr);
+	}
+
+	void RendererContext::WaitIdle()
+	{
+		vkDeviceWaitIdle(m_LogicalDevice->GetNativeDevice());
+	}
+
+	void RendererContext::SubmitResourceFree(std::function<void()> fn, bool freeOnShutdown)
+	{
+		m_GarbageCollector.SubmitFreeFn(fn, freeOnShutdown);
+	}
+
+	void RendererContext::RunGC(uint32_t frameNumber)
+	{
+		m_GarbageCollector.Update(frameNumber);
 	}
 
 	Ref<RendererContext> RendererContext::Get()
@@ -88,5 +103,18 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("RendererContext::Get");
 
 		return Application::Get().GetWindow().GetRendererContext();
+	}
+
+	std::vector<const char*> RendererContext::GetRequiredExtensions()
+	{
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+		if (VulkanConfig::EnableValidation)
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+		return extensions;
 	}
 }
