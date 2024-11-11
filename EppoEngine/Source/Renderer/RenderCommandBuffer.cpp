@@ -63,13 +63,34 @@ namespace Eppo
 		for (auto& timestamp : m_TimestampDeltas)
 			timestamp.resize(m_QueryCount / 2);
 
+		m_PipelineQueryPools.resize(VulkanConfig::MaxFramesInFlight);
+		queryPoolInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+		queryPoolInfo.queryCount = m_PipelineQueryCount;
+		queryPoolInfo.pipelineStatistics =
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
+
+		for (size_t i = 0; i < m_PipelineQueryPools.size(); i++)
+			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &m_PipelineQueryPools[i]), "Failed to create query pool!");
+
+		m_PipelineStatistics.resize(VulkanConfig::MaxFramesInFlight);
+
+		// Cleanup
 		context->SubmitResourceFree([this]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
 			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+			{
+				vkDestroyQueryPool(device, m_QueryPools[i], nullptr);
+				vkDestroyQueryPool(device, m_PipelineQueryPools[i], nullptr);
 				vkDestroyFence(device, m_Fences[i], nullptr);
+			}
 
 			vkDestroyCommandPool(device, m_CommandPool, nullptr);
 		});
@@ -93,6 +114,9 @@ namespace Eppo
 		
 			vkCmdResetQueryPool(m_CommandBuffers[frameIndex], m_QueryPools[frameIndex], 0, m_QueryCount);
 			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[frameIndex], 0);
+
+			vkCmdResetQueryPool(m_CommandBuffers[frameIndex], m_PipelineQueryPools[frameIndex], 0, m_PipelineQueryCount);
+			vkCmdBeginQuery(m_CommandBuffers[frameIndex], m_PipelineQueryPools[frameIndex], 0, 0);
 		});
 	}
 
@@ -104,6 +128,7 @@ namespace Eppo
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
 			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[frameIndex], 1);
+			vkCmdEndQuery(m_CommandBuffers[frameIndex], m_PipelineQueryPools[frameIndex], 0);
 
 			VK_CHECK(vkEndCommandBuffer(m_CommandBuffers[frameIndex]), "Failed to end command buffer!");
 
@@ -123,6 +148,8 @@ namespace Eppo
 
 				m_TimestampDeltas[frameIndex][i / 2] = delta;
 			}
+
+			vkGetQueryPoolResults(device, m_PipelineQueryPools[frameIndex], 0, 1, sizeof(PipelineStatistics), &m_PipelineStatistics[frameIndex], sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
 		});
 	}
 

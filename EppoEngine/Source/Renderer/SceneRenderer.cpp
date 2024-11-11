@@ -115,6 +115,18 @@ namespace Eppo
 
 		ImGui::Separator();
 
+		const auto& pipelineStats = m_CommandBuffer->GetPipelineStatistics(frameIndex);
+
+		ImGui::Text("Pipeline statistics:");
+		ImGui::Text("Input Assembly Vertices: %llu", pipelineStats.InputAssemblyVertices);
+		ImGui::Text("Input Assembly Primitives: %llu", pipelineStats.InputAssemblyPrimitives);
+		ImGui::Text("Vertex Shader Invocations: %llu", pipelineStats.VertexShaderInvocations);
+		ImGui::Text("Clipping Invocations: %llu", pipelineStats.ClippingInvocations);
+		ImGui::Text("Clipping Primitives: %llu", pipelineStats.ClippingPrimitives);
+		ImGui::Text("Fragment Shader Invocations: %llu", pipelineStats.FragmentShaderInvocations);
+
+		ImGui::Separator();
+
 		ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCalls);
 		ImGui::Text("Meshes: %u", m_RenderStatistics.Meshes);
 		ImGui::Text("Camera position: %.2f, %.2f, %.2f", m_CameraBuffer.Position.x, m_CameraBuffer.Position.y, m_CameraBuffer.Position.z);

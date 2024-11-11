@@ -4,6 +4,16 @@
 
 namespace Eppo
 {
+	struct PipelineStatistics
+	{
+		uint64_t InputAssemblyVertices = 0;
+		uint64_t InputAssemblyPrimitives = 0;
+		uint64_t VertexShaderInvocations = 0;
+		uint64_t ClippingInvocations = 0;
+		uint64_t ClippingPrimitives = 0;
+		uint64_t FragmentShaderInvocations = 0;
+	};
+
 	class RenderCommandBuffer
 	{
 	public:
@@ -17,6 +27,7 @@ namespace Eppo
 		uint32_t BeginTimestampQuery();
 		void EndTimestampQuery(uint32_t queryIndex);
 		float GetTimestamp(uint32_t frameIndex, uint32_t queryIndex = 0) const;
+		const PipelineStatistics& GetPipelineStatistics(uint32_t frameIndex) const { return m_PipelineStatistics[frameIndex]; }
 
 		void ResetCommandBuffer(uint32_t frameIndex);
 		VkCommandBuffer GetCurrentCommandBuffer();
@@ -31,6 +42,10 @@ namespace Eppo
 		std::vector<std::vector<float>> m_TimestampDeltas;
 		uint32_t m_QueryIndex = 2;
 		uint32_t m_QueryCount = 8;
+
+		std::vector<VkQueryPool> m_PipelineQueryPools;
+		std::vector<PipelineStatistics> m_PipelineStatistics;
+		uint32_t m_PipelineQueryCount = 6;
 
 		bool m_ManualSubmission;
 	};
