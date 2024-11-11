@@ -21,6 +21,9 @@ namespace Eppo
 
 		void Create(bool recreate = false);
 
+		void Cleanup();
+		void Destroy();
+
 		void BeginFrame();
 		void Present();
 
@@ -53,6 +56,7 @@ namespace Eppo
 
 		uint32_t m_CurrentFrameIndex = 0;
 		uint32_t m_CurrentImageIndex = 0;
+		uint32_t m_FrameCounter = 0;
 
 		std::vector<VkImage> m_Images;
 		std::vector<VkImageView> m_ImageViews;

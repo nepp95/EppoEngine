@@ -43,17 +43,17 @@ namespace Eppo
 
 		for (size_t i = 0; i < m_Fences.size(); i++)
 			VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fences!");
-	}
 
-	RenderCommandBuffer::~RenderCommandBuffer()
-	{
-		Ref<RendererContext> context = RendererContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		context->SubmitResourceFree([this]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
-		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-			vkDestroyFence(device, m_Fences[i], nullptr);
+			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+				vkDestroyFence(device, m_Fences[i], nullptr);
 
-		vkDestroyCommandPool(device, m_CommandPool, nullptr);
+			vkDestroyCommandPool(device, m_CommandPool, nullptr);
+		});
 	}
 
 	void RenderCommandBuffer::RT_Begin()

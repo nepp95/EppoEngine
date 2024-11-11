@@ -36,17 +36,21 @@ namespace Eppo
 
 		context->SubmitResourceFree([]()
 		{
+			EPPO_WARN("Allocator::Shutdown");
 			Allocator::Shutdown();
 		});
 	}
 
 	void Allocator::Shutdown()
 	{
+		if (s_Data->MemoryUsed() > 0)
+			EPPO_WARN("Still {} memory in use by VMA", s_Data->MemoryUsed());
+
 		vmaDestroyAllocator(s_Data->Allocator);
 		delete s_Data;
 	}
 
-	VmaAllocation Allocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage /*= VMA_MEMORY_USAGE_AUTO*/)
+	VmaAllocation Allocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
 		VmaAllocationCreateInfo allocationCreateInfo{};
 		allocationCreateInfo.usage = usage;

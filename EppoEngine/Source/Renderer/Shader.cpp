@@ -348,7 +348,8 @@ namespace Eppo
 
 	void Shader::CreatePipelineShaderInfos()
 	{
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<RendererContext> context = RendererContext::Get();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (const auto& [type, shaderBytes] : m_ShaderBytes)
 		{
@@ -365,6 +366,12 @@ namespace Eppo
 			shaderStageCreateInfo.stage = Utils::ShaderStageToVkShaderStage(type);
 			shaderStageCreateInfo.module = shaderModule;
 			shaderStageCreateInfo.pName = "main";
+
+			context->SubmitResourceFree([=]()
+			{
+				EPPO_WARN("Releasing shader module {}", (void*)shaderModule);
+				vkDestroyShaderModule(device, shaderModule, nullptr);
+			}, false);
 		}
 	}
 
@@ -408,5 +415,25 @@ namespace Eppo
 			if (!descriptorSetLayout)
 				descriptorSetLayout = layout;
 		}
+
+		Ref<RendererContext> context = RendererContext::Get();
+		context->SubmitResourceFree([this]()
+		{
+			VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+			// Since we ALWAYS have 4 descriptor set layouts per shader AND some of them can be the same if not all descriptor sets are in use
+			// We keep track of which we have freed so we don't free the same layout twice.
+			std::unordered_set<void*> layoutsFreed;
+
+			for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
+			{
+				if (layoutsFreed.find((void*)descriptorSetLayout) == layoutsFreed.end())
+				{
+					layoutsFreed.insert((void*)descriptorSetLayout);
+					EPPO_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
+					vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+				}
+			}
+		});
 	}
 }

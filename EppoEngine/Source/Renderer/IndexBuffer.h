@@ -8,7 +8,7 @@ namespace Eppo
 	{
 	public:
 		IndexBuffer(void* data, uint32_t size);
-		~IndexBuffer() = default;
+		~IndexBuffer();
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
 

@@ -51,12 +51,6 @@ namespace Eppo
 			allocator.Init(1000, ratios);
 		}
 
-		context->SubmitResourceFree([]()
-		{
-			for (auto& allocator : s_Data->DescriptorAllocators)
-				allocator.DestroyPools();
-		});
-
 		// Load shaders
 		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
 		// TODO: We aren't using this because of imgui?
@@ -68,6 +62,12 @@ namespace Eppo
 	void Renderer::Shutdown()
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Shutdown");
+
+		for (auto& allocator : s_Data->DescriptorAllocators)
+		{
+			EPPO_WARN("Releasing descriptor pool {}", (void*)&allocator);
+			allocator.DestroyPools();
+		}
 
 		delete s_Data;
 	}
@@ -155,8 +155,8 @@ namespace Eppo
 
 					renderingInfo.pDepthAttachment = &attachmentInfo;
 
-					//if (spec.DepthImage->GetSpecification().CubeMap)
-					//	renderingInfo.viewMask = 0b111111;
+					if (spec.DepthImage->GetSpecification().CubeMap)
+						renderingInfo.viewMask = 0b111111;
 				}
 
 				VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();

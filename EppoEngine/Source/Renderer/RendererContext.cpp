@@ -75,11 +75,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("RendererContext::Shutdown");
 
-		for (uint32_t i = 0; i < m_ResourceFreeCommandCount; i++)
-		{
-			m_ResourceFreeCommands.back()();
-			m_ResourceFreeCommands.pop_back();
-		}
+		m_GarbageCollector.Shutdown();
 
 		if (VulkanConfig::EnableValidation)
 			DestroyDebugUtilsMessengerEXT(s_Instance, m_DebugMessenger, nullptr);
@@ -92,10 +88,14 @@ namespace Eppo
 		vkDeviceWaitIdle(m_LogicalDevice->GetNativeDevice());
 	}
 
-	void RendererContext::SubmitResourceFree(std::function<void()> fn)
+	void RendererContext::SubmitResourceFree(std::function<void()> fn, bool freeOnShutdown)
 	{
-		m_ResourceFreeCommands.emplace_back(fn);
-		m_ResourceFreeCommandCount++;
+		m_GarbageCollector.SubmitFreeFn(fn, freeOnShutdown);
+	}
+
+	void RendererContext::RunGC(uint32_t frameNumber)
+	{
+		m_GarbageCollector.Update(frameNumber);
 	}
 
 	Ref<RendererContext> RendererContext::Get()

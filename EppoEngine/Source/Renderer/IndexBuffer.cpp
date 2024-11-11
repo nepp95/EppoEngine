@@ -48,10 +48,11 @@ namespace Eppo
 
 		// Clean up
 		Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+	}
 
-		RendererContext::Get()->SubmitResourceFree([=]()
-		{
-			Allocator::DestroyBuffer(m_Buffer, m_Allocation);
-		});
+	IndexBuffer::~IndexBuffer()
+	{
+		EPPO_WARN("Releasing index buffer {}", (void*)this);
+		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 }

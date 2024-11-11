@@ -112,6 +112,7 @@ namespace Eppo
 
 		ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCalls);
 		ImGui::Text("Meshes: %u", m_RenderStatistics.Meshes);
+		ImGui::Text("Camera position: %.2f, %.2f, %.2f", m_CameraBuffer.Position.x, m_CameraBuffer.Position.y, m_CameraBuffer.Position.z);
 
 		ImGui::End();
 	}
@@ -147,9 +148,9 @@ namespace Eppo
 			auto& light = m_LightsBuffer.Lights[i];
 			glm::vec3 position;
 			if (i == 0)
-				position = { 0.40f, 0.12f, 0.11f };
+				position = { 5.0f, 1.0f, 0.0f };
 			else
-				position = { 0.40f, 0.12f, -0.18f };
+				position = { -10.0f, 1.0f, 0.0f };
 
 			light.Position = glm::vec4(position, 1.0f);
 			light.Color = glm::vec4(0.8f, 0.4f, 0.4f, 1.0f);
@@ -192,9 +193,9 @@ namespace Eppo
 			auto& light = m_LightsBuffer.Lights[i];
 			glm::vec3 position;
 			if (i == 0)
-				position = { 0.40f, 0.12f, 0.11f };
+				position = { 5.0f, 1.0f, 0.0f };
 			else
-				position = { 0.40f, 0.12f, -0.18f };
+				position = { -10.0f, 1.0f, 0.0f };
 
 			light.Position = glm::vec4(position, 1.0f);
 			light.Color = glm::vec4(0.8f, 0.4f, 0.4f, 1.0f);

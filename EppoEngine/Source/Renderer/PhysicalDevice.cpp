@@ -105,6 +105,7 @@ namespace Eppo
 
 		RendererContext::Get()->SubmitResourceFree([this]()
 		{
+			EPPO_WARN("Releasing surface {}", (void*)this);
 			vkDestroySurfaceKHR(RendererContext::GetVulkanInstance(), m_Surface, nullptr);
 		});
 

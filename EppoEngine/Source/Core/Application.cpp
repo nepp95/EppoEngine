@@ -50,12 +50,11 @@ namespace Eppo
 
 		EPPO_INFO("Shutting down...");
 
-		ScriptEngine::Shutdown();
-		Renderer::Shutdown();
-
 		for (Layer* layer : m_LayerStack)
 			layer->OnDetach();
 
+		ScriptEngine::Shutdown();
+		Renderer::Shutdown();
 		m_Window->Shutdown();
 	}
 
@@ -157,6 +156,8 @@ namespace Eppo
 			EPPO_PROFILE_GPU_END;
 			EPPO_PROFILE_FRAME_MARK;
 		}
+
+		RendererContext::Get()->WaitIdle();
 	}
 
 	void Application::ExecuteMainThreadQueue()

@@ -41,6 +41,7 @@ namespace Eppo
 	{
 	public:
 		Pipeline(const PipelineSpecification& specification);
+		~Pipeline();
 
 		const PipelineSpecification& GetSpecification() const { return m_Specification; }
 

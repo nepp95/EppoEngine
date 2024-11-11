@@ -42,18 +42,18 @@ namespace Eppo
 
 	struct ImageInfo
 	{
-		VkImage Image;
-		VkImageView ImageView;
+		VkImage Image = nullptr;
+		VkImageView ImageView = nullptr;
 		VkImageLayout ImageLayout;
-		VkSampler Sampler;
-		VmaAllocation Allocation;
+		VkSampler Sampler = nullptr;
+		VmaAllocation Allocation = nullptr;
 	};
 
 	class Image
 	{
 	public:
-		Image() = default;
 		Image(const ImageSpecification& specification);
+		Image() = default;
 		~Image();
 
 		void Release();
@@ -73,7 +73,7 @@ namespace Eppo
 
 	private:
 		ImageSpecification m_Specification;
-		ImageInfo m_ImageInfo;
+		ImageInfo m_ImageInfo{};
 
 		void* m_ImageData = nullptr;
 	};

@@ -86,8 +86,9 @@ namespace Eppo
 
 		// Clean up
 		Ref<RendererContext> context = RendererContext::Get();
-		context->SubmitResourceFree([=]()
+		context->SubmitResourceFree([this]()
 		{
+			EPPO_WARN("Releasing logical device and command pool {}", (void*)this);
 			vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 
 			vkDeviceWaitIdle(m_Device);

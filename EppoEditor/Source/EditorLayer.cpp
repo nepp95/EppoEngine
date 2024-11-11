@@ -45,7 +45,16 @@ namespace Eppo
 	}
 	
 	void EditorLayer::OnDetach()
-	{}
+	{
+		CloseProject();
+
+		m_PanelManager.Shutdown();
+
+		m_IconPlay = nullptr;
+		m_IconStop = nullptr;
+
+		m_ViewportRenderer = nullptr;
+	}
 	
 	void EditorLayer::Update(float timestep)
 	{

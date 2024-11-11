@@ -13,6 +13,13 @@ namespace Eppo
 		CreateBuffer(VMA_MEMORY_USAGE_GPU_ONLY);
 	}
 
+	VertexBuffer::~VertexBuffer()
+	{
+		EPPO_WARN("Releasing vertex buffer {}", (void*)this);
+		m_LocalStorage.Release();
+		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
+	}
+
 	void VertexBuffer::CreateBuffer(VmaMemoryUsage usage)
 	{
 		// Create staging buffer
@@ -52,11 +59,5 @@ namespace Eppo
 
 		// Clean up
 		Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
-
-		RendererContext::Get()->SubmitResourceFree([=]()
-		{
-			m_LocalStorage.Release();
-			Allocator::DestroyBuffer(m_Buffer, m_Allocation);
-		});
 	}
 }

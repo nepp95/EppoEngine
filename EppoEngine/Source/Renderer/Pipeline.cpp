@@ -134,6 +134,9 @@ namespace Eppo
 		renderingInfo.colorAttachmentCount = static_cast<uint32_t>(formats.size());
 		renderingInfo.pColorAttachmentFormats = formats.data();
 		renderingInfo.depthAttachmentFormat = m_Specification.DepthTesting ? Utils::ImageFormatToVkFormat(ImageFormat::Depth) : VK_FORMAT_UNDEFINED;
+		
+		if (m_Specification.DepthImage && m_Specification.DepthImage->GetSpecification().CubeMap)
+			renderingInfo.viewMask = 0b111111;
 
 		VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
 		graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -183,6 +186,17 @@ namespace Eppo
 
 			m_Specification.DepthImage = CreateRef<Image>(imageSpec);
 		}
+	}
+
+	Pipeline::~Pipeline()
+	{
+		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		EPPO_WARN("Releasing pipeline {}", (void*)m_Pipeline);
+		vkDestroyPipeline(device, m_Pipeline, nullptr);
+
+		EPPO_WARN("Releasing pipeline layout {}", (void*)m_PipelineLayout);
+		vkDestroyPipelineLayout(device, m_PipelineLayout, nullptr);
 	}
 
 	std::vector<VkFormat> Pipeline::GetVkColorAttachmentFormats() const

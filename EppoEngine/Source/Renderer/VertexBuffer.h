@@ -9,7 +9,7 @@ namespace Eppo
 	{
 	public:
 		VertexBuffer(void* data, uint32_t size);
-		~VertexBuffer() = default;
+		~VertexBuffer();
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
 

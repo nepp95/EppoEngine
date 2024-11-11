@@ -37,7 +37,7 @@ namespace Eppo
 			imageCount = details.Capabilities.maxImageCount;
 
 		// TODO: Remove this and use a dynamic amount of images
-		imageCount = 2;
+		imageCount = VulkanConfig::MaxFramesInFlight;
 
 		// Create swapchain
 		VkSwapchainKHR oldSwapchain;
@@ -140,6 +140,34 @@ namespace Eppo
 
 			// TODO: misschien toch die features ook al extension toevoegen? Supported extensions enzo... EXT > KHR > ...?
 		}
+
+		context->SubmitResourceFree([this]()
+		{
+			EPPO_WARN("Releasing swapchain {}", (void*)this);
+			Destroy();
+		});
+	}
+
+	void Swapchain::Destroy()
+	{
+		VkDevice device = m_LogicalDevice->GetNativeDevice();
+
+		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
+		{
+			EPPO_WARN("[Swapchain] Releasing semaphore {}", (void*)m_PresentSemaphores[i]);
+			vkDestroySemaphore(device, m_PresentSemaphores[i], nullptr);
+
+			EPPO_WARN("[Swapchain] Releasing semaphore {}", (void*)m_RenderSemaphores[i]);
+			vkDestroySemaphore(device, m_RenderSemaphores[i], nullptr);
+
+			EPPO_WARN("[Swapchain] Releasing fence {}", (void*)m_Fences[i]);
+			vkDestroyFence(device, m_Fences[i], nullptr);
+
+			EPPO_WARN("[Swapchain] Releasing image view {}", (void*)m_ImageViews[i]);
+			vkDestroyImageView(device, m_ImageViews[i], nullptr);
+		}
+
+		vkDestroySwapchainKHR(device, m_Swapchain, nullptr);
 	}
 
 	void Swapchain::BeginFrame()
@@ -185,6 +213,10 @@ namespace Eppo
 			OnResize();
 
 		m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % VulkanConfig::MaxFramesInFlight;
+		
+		// TODO: Maybe do this elsewhere?
+		m_FrameCounter++;
+		RendererContext::Get()->RunGC(m_FrameCounter);
 
 		vkWaitForFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
 	}
