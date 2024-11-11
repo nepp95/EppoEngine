@@ -44,6 +44,25 @@ namespace Eppo
 		for (size_t i = 0; i < m_Fences.size(); i++)
 			VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fences!");
 
+		// Queries
+		m_QueryPools.resize(VulkanConfig::MaxFramesInFlight);
+
+		VkQueryPoolCreateInfo queryPoolInfo{};
+		queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+		queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+		queryPoolInfo.queryCount = m_QueryCount;
+
+		for (size_t i = 0; i < m_QueryPools.size(); i++)
+			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &m_QueryPools[i]), "Failed to create query pool!");
+
+		m_Timestamps.resize(VulkanConfig::MaxFramesInFlight);
+		for (auto& timestamp : m_Timestamps)
+			timestamp.resize(m_QueryCount);
+
+		m_TimestampDeltas.resize(VulkanConfig::MaxFramesInFlight);
+		for (auto& timestamp : m_TimestampDeltas)
+			timestamp.resize(m_QueryCount / 2);
+
 		context->SubmitResourceFree([this]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
@@ -58,6 +77,8 @@ namespace Eppo
 
 	void RenderCommandBuffer::RT_Begin()
 	{
+		m_QueryIndex = 2;
+
 		Renderer::SubmitCommand([this]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
@@ -69,6 +90,9 @@ namespace Eppo
 			commandBufferBeginInfo.pNext = nullptr;
 
 			VK_CHECK(vkBeginCommandBuffer(m_CommandBuffers[frameIndex], &commandBufferBeginInfo), "Failed to begin command buffer!");
+		
+			vkCmdResetQueryPool(m_CommandBuffers[frameIndex], m_QueryPools[frameIndex], 0, m_QueryCount);
+			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[frameIndex], 0);
 		});
 	}
 
@@ -79,7 +103,26 @@ namespace Eppo
 			Ref<RendererContext> context = RendererContext::Get();
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
+			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[frameIndex], 1);
+
 			VK_CHECK(vkEndCommandBuffer(m_CommandBuffers[frameIndex]), "Failed to end command buffer!");
+
+			// Statistics
+			Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+			vkGetQueryPoolResults(device, m_QueryPools[frameIndex], 0, m_QueryCount, sizeof(uint64_t) * m_QueryCount, m_Timestamps[frameIndex].data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+
+			for (uint32_t i = 0; i < m_QueryIndex; i += 2)
+			{
+				uint64_t begin = m_Timestamps[frameIndex][i];
+				uint64_t end = m_Timestamps[frameIndex][i + 1];
+
+				float delta = 0.0f;
+				if (end > begin)
+					delta = (end - begin) * physicalDevice->GetDeviceProperties().limits.timestampPeriod * 0.000001f;
+
+				m_TimestampDeltas[frameIndex][i / 2] = delta;
+			}
 		});
 	}
 
@@ -107,6 +150,40 @@ namespace Eppo
 			VK_CHECK(vkQueueSubmit(logicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[frameIndex]), "Failed to submit work to queue!");
 			VK_CHECK(vkWaitForFences(device, 1, &m_Fences[frameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence!");
 		});
+	}
+
+	uint32_t RenderCommandBuffer::BeginTimestampQuery()
+	{
+		uint32_t queryIndex = m_QueryIndex;
+		m_QueryIndex += 2;
+
+		Renderer::SubmitCommand([this, queryIndex]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+
+			vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex);
+		});
+
+		return queryIndex;
+	}
+
+	void RenderCommandBuffer::EndTimestampQuery(uint32_t queryIndex)
+	{
+		Renderer::SubmitCommand([this, queryIndex]()
+		{
+			Ref<RendererContext> context = RendererContext::Get();
+			uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+
+			vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex + 1);
+		});
+	}
+
+	float RenderCommandBuffer::GetTimestamp(uint32_t frameIndex, uint32_t queryIndex) const
+	{
+		const auto& timing = m_TimestampDeltas[frameIndex];
+
+		return timing[queryIndex / 2];
 	}
 
 	void RenderCommandBuffer::ResetCommandBuffer(uint32_t frameIndex)

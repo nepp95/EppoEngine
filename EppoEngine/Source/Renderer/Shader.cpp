@@ -145,11 +145,7 @@ namespace Eppo
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 		options.SetIncluder(CreateScope<ShaderIncluder>());
-
-		if (m_Specification.Optimize)
-			options.SetOptimizationLevel(shaderc_optimization_level_performance);
-		else
-			options.SetOptimizationLevel(shaderc_optimization_level_zero);
+		options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
 		// Compile source
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
@@ -240,17 +236,20 @@ namespace Eppo
 			size_t bufferSize = compiler.get_declared_struct_size(bufferType);
 			size_t memberCount = bufferType.member_types.size();
 
-			uint32_t offset = 0;
+			/*uint32_t offset = 0;
 			if (!m_PushConstantRanges.empty())
 			{
 				for (const auto& pcr : m_PushConstantRanges)
 					offset += pcr.size;
-			}
+			}*/
 
-			VkPushConstantRange& pcr = m_PushConstantRanges.emplace_back();
-			pcr.size = bufferSize;
-			pcr.stageFlags = Utils::ShaderStageToVkShaderStage(stage);
-			pcr.offset = offset;
+			if (m_PushConstantRanges.empty())
+			{
+				VkPushConstantRange& pcr = m_PushConstantRanges.emplace_back();
+				pcr.size = bufferSize;
+				pcr.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+				pcr.offset = 0;
+			}
 
 			if (!resource.name.empty())
 				EPPO_TRACE("        {}", resource.name);
@@ -390,7 +389,7 @@ namespace Eppo
 			for (const auto& resource : setResources)
 			{
 				// TODO: This is as dirty as code can get
-				if (resource.Name == "uMaterialTex")
+				if (resource.Binding == 0 && set == 1)
 				{
 					builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType), 512);
 					continue;

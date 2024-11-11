@@ -18,8 +18,9 @@ namespace Eppo
 		Scope<ShaderLibrary> ShaderLibrary;
 	};
 
-	struct TextureData
+	struct PushConstantData
 	{
+		glm::mat4 Transform;
 		int32_t DiffuseMapIndex = -1;
 		int32_t NormalMapIndex = -1;
 		int32_t RoughnessMetallicMapIndex = -1;
@@ -239,16 +240,17 @@ namespace Eppo
 					// TODO: We magically know transform is the push constant?...
 					for (const auto& p : submesh.GetPrimitives())
 					{
-						TextureData texData;
-						if (p.Material->HasFeature(MaterialFeatures::DiffuseMap))
-							texData.DiffuseMapIndex = p.Material->DiffuseMapIndex;
-						if (p.Material->HasFeature(MaterialFeatures::NormalMap))
-							texData.NormalMapIndex = p.Material->NormalMapIndex;
-						if (p.Material->HasFeature(MaterialFeatures::RoughnessMetallicMap))
-							texData.RoughnessMetallicMapIndex = p.Material->RoughnessMetallicMapIndex;
+						PushConstantData pcd;
+						pcd.Transform = finalTransform;
 
-						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 64, &finalTransform);
-						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, 64, 16, &texData);
+						if (p.Material->HasFeature(MaterialFeatures::DiffuseMap))
+							pcd.DiffuseMapIndex = p.Material->DiffuseMapIndex;
+						if (p.Material->HasFeature(MaterialFeatures::NormalMap))
+							pcd.NormalMapIndex = p.Material->NormalMapIndex;
+						if (p.Material->HasFeature(MaterialFeatures::RoughnessMetallicMap))
+							pcd.RoughnessMetallicMapIndex = p.Material->RoughnessMetallicMapIndex;
+
+						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, 76, &pcd);
 
 						// Draw call
 						vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);

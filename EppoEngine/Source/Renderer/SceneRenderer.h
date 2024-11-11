@@ -107,5 +107,12 @@ namespace Eppo
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;
+
+		struct TimestampQueries
+		{
+			uint32_t PreDepthQuery = UINT32_MAX;
+			uint32_t GeometryQuery = UINT32_MAX;
+			uint32_t CompositeQuery = UINT32_MAX;
+		} m_TimestampQueries;
 	};
 }

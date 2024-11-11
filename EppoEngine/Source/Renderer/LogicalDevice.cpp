@@ -39,6 +39,7 @@ namespace Eppo
 		VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
 		descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
 		descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
 		descriptorIndexingFeatures.pNext = &syncFeatures;
 
 		VkPhysicalDeviceMultiviewFeatures multiviewFeatures{};

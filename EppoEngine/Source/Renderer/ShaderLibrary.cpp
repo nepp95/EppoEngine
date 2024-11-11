@@ -9,7 +9,6 @@ namespace Eppo
 
 		ShaderSpecification spec;
 		spec.Filepath = path;
-		spec.Optimize = false;
 
 		Ref<Shader> shader = CreateRef<Shader>(spec);
 		const std::string& name = shader->GetName();

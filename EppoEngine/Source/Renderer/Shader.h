@@ -38,7 +38,6 @@ namespace Eppo
 	struct ShaderSpecification
 	{
 		std::filesystem::path Filepath;
-		bool Optimize = false;
 	};
 
 	class Shader

@@ -16,6 +16,9 @@ layout(location = 3) out vec3 outFragPos;
 layout(push_constant) uniform Transform
 {
 	layout(offset = 0) mat4 Transform;
+	layout(offset = 64) int DiffuseMapIndex;
+    layout(offset = 68) int NormalMapIndex;
+    layout(offset = 72) int RoughnessMetallicMapIndex;
 } uTransform;
 
 void main()
@@ -45,7 +48,8 @@ layout(location = 0) out vec4 outFragColor;
 
 layout(push_constant) uniform Material
 {
-    layout(offset = 64) int DiffuseMapIndex;
+    layout(offset = 0) mat4 Transform;
+	layout(offset = 64) int DiffuseMapIndex;
     layout(offset = 68) int NormalMapIndex;
     layout(offset = 72) int RoughnessMetallicMapIndex;
 } uMaterial;

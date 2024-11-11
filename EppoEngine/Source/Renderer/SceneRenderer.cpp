@@ -106,7 +106,12 @@ namespace Eppo
 
 		ImGui::Begin("Performance");
 
-		//ImGui::Text("GPU Time: %.3fms", (float)m_CommandBuffer->GetTimestamp() * 0.000001f);
+		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+
+		ImGui::Text("GPU Time: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex));
+		ImGui::Text("PreDepth Pass: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex, m_TimestampQueries.PreDepthQuery));
+		ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex, m_TimestampQueries.GeometryQuery));
+		ImGui::Text("Composite Pass: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex, m_TimestampQueries.CompositeQuery));
 
 		ImGui::Separator();
 
@@ -271,6 +276,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::PreDepthPass");
 
+		m_TimestampQueries.PreDepthQuery = m_CommandBuffer->BeginTimestampQuery();
+
 		// Transition depth image for writing
 		Renderer::SubmitCommand([this]()
 		{
@@ -317,11 +324,15 @@ namespace Eppo
 			VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
 			Image::TransitionImage(commandBuffer, m_PreDepthPipeline->GetSpecification().DepthImage->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 		});
+
+		 m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.PreDepthQuery);
 	}
 
 	void SceneRenderer::GeometryPass()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::GeometryPass");
+
+		m_TimestampQueries.GeometryQuery = m_CommandBuffer->BeginTimestampQuery();
 
 		// Begin rendering
 		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
@@ -388,10 +399,14 @@ namespace Eppo
 
 		// End rendering
 		Renderer::RT_EndRenderPass(m_CommandBuffer);
+
+		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.GeometryQuery);
 	}
 
 	void SceneRenderer::CompositePass()
 	{
+		m_TimestampQueries.CompositeQuery = m_CommandBuffer->BeginTimestampQuery();
+
 		Renderer::SubmitCommand([this]()
 		{
 			Ref<RendererContext> context = RendererContext::Get();
@@ -433,5 +448,7 @@ namespace Eppo
 
 			Image::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		});
+
+		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.CompositeQuery);
 	}
 }
