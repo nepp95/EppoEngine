@@ -14,7 +14,13 @@ namespace Eppo
 
 		inline static constexpr uint32_t MaxFramesInFlight = 2;
 		inline static constexpr std::array<const char*, 1> ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-		inline static constexpr std::array<const char*, 1> DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+		inline static constexpr std::array<const char*, 5> DeviceExtensions = { 
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+			VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+			VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+			VK_KHR_MULTIVIEW_EXTENSION_NAME,
+			VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+		};
 	};
 
 	#define VK_CHECK(func, msg) { if (func != VK_SUCCESS) EPPO_ERROR(msg); }

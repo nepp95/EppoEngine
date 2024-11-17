@@ -228,8 +228,6 @@ namespace Eppo
 
 		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
 
-		//ImGui::Image((ImTextureID)(m_ViewportRenderer->GetFinalImageID()), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
-
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
 
