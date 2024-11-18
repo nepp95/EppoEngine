@@ -67,7 +67,9 @@ namespace Eppo
 		{
 			PipelineSpecification pipelineSpec;
 			pipelineSpec.ColorAttachments = { 
-				{ ImageFormat::RGBA8, true, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) }
+				{ ImageFormat::RGBA8, true, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
+				{ ImageFormat::RGBA8, false, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
+				{ ImageFormat::RGBA8, false, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) }
 			};
 			pipelineSpec.DepthTesting = true;
 			pipelineSpec.Width = m_RenderSpecification.Width;
@@ -137,6 +139,13 @@ namespace Eppo
 		ImGui::Text("Submeshes: %u", m_RenderStatistics.Submeshes);
 		ImGui::Text("Instances: %u", m_RenderStatistics.MeshInstances);
 		ImGui::Text("Camera position: %.2f, %.2f, %.2f", m_CameraBuffer.Position.x, m_CameraBuffer.Position.y, m_CameraBuffer.Position.z);
+
+		ImGui::End();
+
+		ImGui::Begin("Shadow Maps");
+
+		UI::Image(m_GeometryPipeline->GetImage(1), ImVec2(256.0f, 256.0f), ImVec2(0, 1), ImVec2(1, 0));
+		UI::Image(m_GeometryPipeline->GetImage(2), ImVec2(256.0f, 256.0f), ImVec2(0, 1), ImVec2(1, 0));
 
 		ImGui::End();
 	}

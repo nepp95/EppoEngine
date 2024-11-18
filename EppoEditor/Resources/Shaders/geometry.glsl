@@ -75,6 +75,7 @@ void main()
 
     // Reflectance equation
     vec3 Lo = vec3(0.0);
+	float accumulatedDepth = 0.0;
 	for (int i = 0; i < uLights.NumLights; ++i)
     {
         // Calculate per light radiance
@@ -100,6 +101,7 @@ void main()
 
         float NdotL = max(dot(N, L), 0.0);
 
+		accumulatedDepth += CalculateShadowDepth(inFragPos, 50.0, i);
 		float shadow = CalculateShadow(inFragPos, 50.0, i);
         Lo += shadow * ((kD * diffuse / PI + specular) * radiance * NdotL);
     }
@@ -113,5 +115,7 @@ void main()
     // Gamma correction
     //color = pow(color, vec3(1.0 / 2.2));
 
-    outFragColor = vec4(color, 1.0);
+	outFragColor = vec4(color, 1.0);
+	outDepthColor = vec4(vec3(accumulatedDepth), 1.0);
+	outNormalColor = vec4(N, 1.0);
 }
