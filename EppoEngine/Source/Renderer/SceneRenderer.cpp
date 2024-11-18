@@ -144,8 +144,19 @@ namespace Eppo
 
 		ImGui::Begin("Shadow Maps");
 
-		UI::Image(m_GeometryPipeline->GetImage(1), ImVec2(256.0f, 256.0f), ImVec2(0, 1), ImVec2(1, 0));
-		UI::Image(m_GeometryPipeline->GetImage(2), ImVec2(256.0f, 256.0f), ImVec2(0, 1), ImVec2(1, 0));
+		{
+			Ref<Image> image = m_GeometryPipeline->GetImage(1);
+			float aspectRatio = static_cast<float>(image->GetWidth()) / static_cast<float>(image->GetHeight());
+			float height = (static_cast<float>(image->GetHeight()) / static_cast<float>(image->GetWidth())) * 300;
+			UI::Image(m_GeometryPipeline->GetImage(1), ImVec2(300.0f, height), ImVec2(0, 1), ImVec2(1, 0));
+		}
+
+		{
+			Ref<Image> image = m_GeometryPipeline->GetImage(2);
+			float aspectRatio = static_cast<float>(image->GetWidth()) / static_cast<float>(image->GetHeight());
+			float height = (static_cast<float>(image->GetHeight()) / static_cast<float>(image->GetWidth())) * 300;
+			UI::Image(m_GeometryPipeline->GetImage(2), ImVec2(300.0f, height), ImVec2(0, 1), ImVec2(1, 0));
+		}
 
 		ImGui::End();
 	}
