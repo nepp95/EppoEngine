@@ -45,6 +45,8 @@ layout(location = 2) in vec4 inColor;
 layout(location = 3) in vec3 inFragPos;
 
 layout(location = 0) out vec4 outFragColor;
+layout(location = 1) out vec4 outDepthColor;
+layout(location = 2) out vec4 outNormalColor;
 
 layout(push_constant) uniform Material
 {
@@ -73,7 +75,7 @@ void main()
 
     // Reflectance equation
     vec3 Lo = vec3(0.0);
-    for (int i = 0; i < uLights.NumLights; ++i)
+	for (int i = 0; i < uLights.NumLights; ++i)
     {
         // Calculate per light radiance
         vec3 L = normalize(uLights.Lights[i].Position.xyz - inFragPos);
@@ -81,7 +83,7 @@ void main()
 
         float distance = length(uLights.Lights[i].Position.xyz - inFragPos);
         float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = uLights.Lights[i].Color.rgb * attenuation;
+        vec3 radiance = uLights.Lights[i].Color.rgb * attenuation * 10.0;
 
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);
@@ -98,14 +100,12 @@ void main()
 
         float NdotL = max(dot(N, L), 0.0);
 
-        Lo += (kD * diffuse / PI + specular) * radiance * NdotL;
+		float shadow = CalculateShadow(inFragPos, 50.0, i);
+        Lo += shadow * ((kD * diffuse / PI + specular) * radiance * NdotL);
     }
 
-    // Shadow
-    float shadow = CalculateShadow(inFragPos, uLights.Lights[0], 1000.0f);
-
     vec3 ambient = vec3(0.03) * diffuse * ao;
-    vec3 color = ambient + (1.0 - shadow) * Lo;
+    vec3 color = ambient + Lo;
 
     // HDR tonemapping
     color = color / (color + vec3(1.0));

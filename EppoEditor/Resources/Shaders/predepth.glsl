@@ -10,31 +10,26 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 layout(location = 3) in vec4 inColor;
 
-layout(push_constant) uniform Transform
+layout(push_constant) uniform PreDepth
 {
-    layout(offset = 0) mat4 Transform;
-	layout(offset = 64) int DiffuseMapIndex;
-    layout(offset = 68) int NormalMapIndex;
-    layout(offset = 72) int RoughnessMetallicMapIndex;
-} uTransform;
+	layout(offset = 0)  mat4 Transform;
+    layout(offset = 64) int LightIndex;
+} uPreDepth;
 
 void main()
 {
-    gl_Position = uLights.Projection * uLights.Lights[0].View[gl_ViewIndex] * uTransform.Transform * vec4(inPosition, 1.0);
+    gl_Position = uLights.Projection * uLights.Lights[uPreDepth.LightIndex].View[gl_ViewIndex] * uPreDepth.Transform * vec4(inPosition, 1.0);
 }
 
 #stage frag
 #version 450
 
-layout(push_constant) uniform Material
-{
-    layout(offset = 0) mat4 Transform;
-	layout(offset = 64) int DiffuseMapIndex;
-    layout(offset = 68) int NormalMapIndex;
-    layout(offset = 72) int RoughnessMetallicMapIndex;
-} uMaterial;
-
 void main()
 {
+	float near = 0.1;
+	float far = 50.0;
 
+	float linearDepth = (2.0 * near) / (far + near - gl_FragCoord.z * (far - near));
+
+	gl_FragDepth = linearDepth;
 }

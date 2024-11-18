@@ -145,7 +145,7 @@ namespace Eppo
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 		options.SetIncluder(CreateScope<ShaderIncluder>());
-		options.SetOptimizationLevel(shaderc_optimization_level_performance);
+		options.SetOptimizationLevel(shaderc_optimization_level_zero);
 
 		// Compile source
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
@@ -315,7 +315,9 @@ namespace Eppo
 				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 				size_t memberCount = bufferType.member_types.size();
 				auto& spirVtype = compiler.get_type(resource.type_id);
-				uint32_t arraySize = spirVtype.array[0];
+				uint32_t arraySize = 0;
+				if (!spirVtype.array.empty())
+					arraySize = spirVtype.array[0];
 
 				bool bindingExists = false;
 				for (auto& sr : m_ShaderResources[set])
@@ -395,7 +397,7 @@ namespace Eppo
 					continue;
 				}
 
-				builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType));
+				builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType), resource.ArraySize);
 			}
 
 			m_DescriptorSetLayouts[set] = builder.Build(VK_SHADER_STAGE_ALL);

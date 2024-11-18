@@ -9,6 +9,7 @@ namespace Eppo
 		: m_Specification(specification)
 	{
 		Ref<RendererContext> context = RendererContext::Get();
+		Ref<Swapchain> swapchain = context->GetSwapchain();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkVertexInputBindingDescription bindingDescription{};
@@ -36,7 +37,7 @@ namespace Eppo
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
 		inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssemblyStateCreateInfo.topology = m_Specification.Topology;
 		inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 
 		VkPipelineViewportStateCreateInfo viewportStateCreateInfo{};
@@ -48,10 +49,10 @@ namespace Eppo
 		rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
 		rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-		rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+		rasterizationStateCreateInfo.polygonMode = m_Specification.PolygonMode;
 		rasterizationStateCreateInfo.lineWidth = 1.0f;
-		rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterizationStateCreateInfo.cullMode = m_Specification.CullMode;
+		rasterizationStateCreateInfo.frontFace = m_Specification.CullFrontFace;
 		rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
 		rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
 		rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
@@ -68,9 +69,9 @@ namespace Eppo
 
 		VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
 		depthStencilStateCreateInfo.stencilTestEnable = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencilStateCreateInfo.depthTestEnable = m_Specification.DepthTesting ? VK_TRUE : VK_FALSE;
-		depthStencilStateCreateInfo.depthWriteEnable = m_Specification.DepthTesting ? VK_TRUE : VK_FALSE;
-		depthStencilStateCreateInfo.depthCompareOp = m_Specification.DepthTesting ? VK_COMPARE_OP_LESS : VK_COMPARE_OP_ALWAYS;
+		depthStencilStateCreateInfo.depthTestEnable = m_Specification.DepthTesting;
+		depthStencilStateCreateInfo.depthWriteEnable = m_Specification.DepthTesting;
+		depthStencilStateCreateInfo.depthCompareOp = m_Specification.DepthCompareOp;
 		depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
 		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
 		depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
@@ -135,7 +136,7 @@ namespace Eppo
 		renderingInfo.pColorAttachmentFormats = formats.data();
 		renderingInfo.depthAttachmentFormat = m_Specification.DepthTesting ? Utils::ImageFormatToVkFormat(ImageFormat::Depth) : VK_FORMAT_UNDEFINED;
 		
-		if (m_Specification.DepthImage && m_Specification.DepthImage->GetSpecification().CubeMap)
+		if (m_Specification.DepthCubeMapImage)
 			renderingInfo.viewMask = 0b111111;
 
 		VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
@@ -175,7 +176,7 @@ namespace Eppo
 			}
 		}
 
-		if (!m_Specification.DepthImage && m_Specification.DepthTesting)
+		if (m_Specification.DepthTesting);
 		{
 			// We simply want a depth attachment to go with our color attachments
 			ImageSpecification imageSpec;
@@ -183,8 +184,13 @@ namespace Eppo
 			imageSpec.Width = m_Specification.Width;
 			imageSpec.Height = m_Specification.Height;
 			imageSpec.Usage = ImageUsage::Attachment;
+			imageSpec.CubeMap = m_Specification.DepthCubeMapImage;
 
 			m_Specification.DepthImage = CreateRef<Image>(imageSpec);
+
+			VkCommandBuffer cmd = context->GetLogicalDevice()->GetCommandBuffer(true);
+			Image::TransitionImage(cmd, m_Specification.DepthImage->GetImageInfo().Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+			context->GetLogicalDevice()->FlushCommandBuffer(cmd);
 		}
 	}
 
@@ -197,6 +203,97 @@ namespace Eppo
 
 		EPPO_WARN("Releasing pipeline layout {}", (void*)m_PipelineLayout);
 		vkDestroyPipelineLayout(device, m_PipelineLayout, nullptr);
+	}
+
+	void Pipeline::RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const
+	{
+		auto instance = this;
+
+		Renderer::SubmitCommand([instance, renderCommandBuffer]()
+		{
+			VkCommandBuffer cb = renderCommandBuffer->GetCurrentCommandBuffer();
+			vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->m_Pipeline);
+		});
+	}
+
+	void Pipeline::RT_BindDescriptorSets(Ref<RenderCommandBuffer> renderCommandBuffer, uint32_t start, uint32_t count)
+	{
+		auto instance = this;
+
+		Renderer::SubmitCommand([instance, renderCommandBuffer, start, count]()
+		{
+			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+			VkCommandBuffer cb = renderCommandBuffer->GetCurrentCommandBuffer();
+
+			const auto& descriptorSets = instance->GetDescriptorSets(frameIndex);
+			vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->m_PipelineLayout, start, count, descriptorSets.data(), 0, nullptr);
+		});
+	}
+
+	void Pipeline::RT_Draw(Ref<RenderCommandBuffer> renderCommandBuffer, const Primitive& primitive) const
+	{
+		auto instance = this;
+
+		Renderer::SubmitCommand([instance, renderCommandBuffer, primitive]()
+		{
+			VkCommandBuffer cb = renderCommandBuffer->GetCurrentCommandBuffer();
+
+			vkCmdDrawIndexed(cb, primitive.IndexCount, 1, primitive.FirstIndex, primitive.FirstVertex, 0);
+		});
+	}
+
+	void Pipeline::RT_SetViewport(Ref<RenderCommandBuffer> renderCommandBuffer) const
+	{
+		auto instance = this;
+
+		Renderer::SubmitCommand([instance, renderCommandBuffer]()
+		{
+			VkCommandBuffer cb = renderCommandBuffer->GetCurrentCommandBuffer();
+
+			const auto& spec = instance->GetSpecification();
+
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = static_cast<float>(spec.Width);
+			viewport.height = static_cast<float>(spec.Height);
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+
+			vkCmdSetViewport(cb, 0, 1, &viewport);
+		});
+	}
+
+	void Pipeline::RT_SetScissor(Ref<RenderCommandBuffer> renderCommandBuffer) const
+	{
+		auto instance = this;
+
+		Renderer::SubmitCommand([instance, renderCommandBuffer]()
+		{
+			VkCommandBuffer cb = renderCommandBuffer->GetCurrentCommandBuffer();
+
+			const auto& spec = instance->GetSpecification();
+
+			VkRect2D scissor{};
+			scissor.offset = { 0, 0 };
+			scissor.extent = { spec.Width, spec.Height };
+
+			vkCmdSetScissor(cb, 0, 1, &scissor);
+		});
+	}
+
+	void Pipeline::RT_SetPushConstants(Ref<RenderCommandBuffer> renderCommandBuffer, Buffer data) const
+	{
+		auto instance = this;
+
+		Renderer::SubmitCommand([instance, renderCommandBuffer, data]() mutable
+		{
+			VkCommandBuffer cb = renderCommandBuffer->GetCurrentCommandBuffer();
+
+			vkCmdPushConstants(cb, instance->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, data.Size, data.Data);
+
+			data.Release();
+		});
 	}
 
 	std::vector<VkFormat> Pipeline::GetVkColorAttachmentFormats() const

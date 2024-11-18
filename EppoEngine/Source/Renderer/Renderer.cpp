@@ -8,6 +8,7 @@
 
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_vulkan.h>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Eppo
 {
@@ -16,14 +17,14 @@ namespace Eppo
 		RenderCommandQueue CommandQueue;
 		std::vector<DescriptorAllocator> DescriptorAllocators;
 		Scope<ShaderLibrary> ShaderLibrary;
-	};
 
-	struct PushConstantData
-	{
-		glm::mat4 Transform;
-		int32_t DiffuseMapIndex = -1;
-		int32_t NormalMapIndex = -1;
-		int32_t RoughnessMetallicMapIndex = -1;
+		// Stats
+		struct RenderStatistics
+		{
+			uint32_t DrawCalls = 0;
+			uint32_t Meshes = 0;
+			uint32_t Submeshes = 0;
+		} RenderStatistics;
 	};
 
 	static RendererData* s_Data;
@@ -184,84 +185,5 @@ namespace Eppo
 	{
 		uint32_t frameIndex = GetCurrentFrameIndex();
 		return s_Data->DescriptorAllocators[frameIndex].Allocate(layout);
-	}
-
-	void Renderer::RT_RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, const glm::mat4& transform)
-	{
-		SubmitCommand([renderCommandBuffer, pipeline, mesh, transform]()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
-
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
-
-			const auto& pipelineSpec = pipeline->GetSpecification();
-
-			// Viewport & Scissor
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(pipelineSpec.Width);
-			viewport.height = static_cast<float>(pipelineSpec.Height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = { pipelineSpec.Width, pipelineSpec.Height };
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			// Descriptor sets
-			const auto& descriptorSets = pipeline->GetDescriptorSets(GetCurrentFrameIndex());
-
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 2, descriptorSets.data(), 0, nullptr);
-
-			//s_Data->Stats.MeshCount++;
-
-			for (const auto& submesh : mesh->GetSubmeshes())
-			{
-				// Vertex buffer
-				VkBuffer vb = { submesh.GetVertexBuffer()->GetBuffer() };
-				VkDeviceSize offsets[] = { 0 };
-				vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-				// Index buffer
-				vkCmdBindIndexBuffer(commandBuffer, submesh.GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-				// Push constants
-				if (!pipeline->GetSpecification().PushConstantRanges.empty())
-				{
-					const auto& spec = pipeline->GetSpecification();
-
-					glm::mat4 finalTransform = transform * submesh.GetLocalTransform();
-
-					// TODO: We magically know transform is the push constant?...
-					for (const auto& p : submesh.GetPrimitives())
-					{
-						PushConstantData pcd;
-						pcd.Transform = finalTransform;
-
-						if (p.Material->HasFeature(MaterialFeatures::DiffuseMap))
-							pcd.DiffuseMapIndex = p.Material->DiffuseMapIndex;
-						if (p.Material->HasFeature(MaterialFeatures::NormalMap))
-							pcd.NormalMapIndex = p.Material->NormalMapIndex;
-						if (p.Material->HasFeature(MaterialFeatures::RoughnessMetallicMap))
-							pcd.RoughnessMetallicMapIndex = p.Material->RoughnessMetallicMapIndex;
-
-						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, 76, &pcd);
-
-						// Draw call
-						vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
-
-						// Update stats
-						//s_Data->Stats.VertexCount += p.VertexCount;
-						//s_Data->Stats.IndexCount += p.IndexCount;
-						//s_Data->Stats.DrawCalls++;
-					}
-				}
-			}
-		});
 	}
 }

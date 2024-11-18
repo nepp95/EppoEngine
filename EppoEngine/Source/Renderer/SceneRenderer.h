@@ -17,6 +17,13 @@ namespace Eppo
 	class Scene;
 	using EntityHandle = entt::entity;
 
+	enum class RenderMode
+	{
+		Standard = 0,
+		Depth = 1,
+		Normals = 2
+	};
+
 	// TODO: Move to renderer
 	struct RenderSpecification
 	{
@@ -28,6 +35,8 @@ namespace Eppo
 	{
 		uint32_t DrawCalls = 0;
 		uint32_t Meshes = 0;
+		uint32_t Submeshes = 0;
+		uint32_t MeshInstances = 0;
 	};
 
 	class SceneRenderer
@@ -45,7 +54,7 @@ namespace Eppo
 
 		void SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId);
 
-		Ref<Image> GetFinalImage() const;
+		Ref<Image> GetFinalImage();
 
 	private:
 		void Flush();
@@ -69,7 +78,9 @@ namespace Eppo
 		uint32_t Width = 0;
 		uint32_t Height = 0;
 
-		// Binding 0
+		static const uint32_t s_MaxLights = 8;
+
+		// Set 1, Binding 0
 		struct CameraData
 		{
 			glm::mat4 View;
@@ -79,7 +90,7 @@ namespace Eppo
 		} m_CameraBuffer;
 		Ref<UniformBuffer> m_CameraUB;
 
-		// Binding 1
+		// Set 1, Binding 1
 		struct Light
 		{
 			glm::mat4 View[6];
@@ -90,10 +101,13 @@ namespace Eppo
 		struct LightsData
 		{
 			glm::mat4 Projection;
-			Light Lights[8];
+			Light Lights[s_MaxLights];
 			uint32_t NumLights;
 		} m_LightsBuffer;
 		Ref<UniformBuffer> m_LightsUB;
+
+		// Set 1, Binding 2
+		std::array<Ref<Image>, s_MaxLights> m_ShadowMaps;
 
 		// Draw commands
 		struct DrawCommand
@@ -104,6 +118,7 @@ namespace Eppo
 		};
 		
 		std::vector<DrawCommand> m_DrawList;
+		Buffer m_PushConstantBuffer;
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;

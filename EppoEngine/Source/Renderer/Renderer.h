@@ -16,11 +16,9 @@ namespace Eppo
 
 		static uint32_t GetCurrentFrameIndex();
 
-		// Render commands
+		// Render queue commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
-		static void RegisterSingleUseDescriptor(VkDescriptorSet descriptorSet);
-		static void ClearSingleUseDescriptors();
 
 		// Render passes
 		static void RT_BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline);
@@ -29,8 +27,5 @@ namespace Eppo
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);
 		static VkDescriptorSet AllocateDescriptor(VkDescriptorSetLayout layout);
-
-		// Geometry
-		static void RT_RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, const glm::mat4& transform);
 	};
 }

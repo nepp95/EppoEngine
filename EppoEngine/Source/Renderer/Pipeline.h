@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Image.h"
 #include "Renderer/Shader.h"
 #include "Renderer/VertexBufferLayout.h"
@@ -27,13 +28,26 @@ namespace Eppo
 		uint32_t Width = 0;
 		uint32_t Height = 0;
 
-		std::vector<ColorAttachment> ColorAttachments;
+		// Input Assembly
+		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-		Ref<Image> DepthImage = nullptr;
+		// Rasterization
+		VkPolygonMode PolygonMode = VK_POLYGON_MODE_FILL;
+		VkCullModeFlags CullMode = VK_CULL_MODE_BACK_BIT;
+		VkFrontFace CullFrontFace = VK_FRONT_FACE_CLOCKWISE;
+
+		// Depth Stencil
 		bool DepthTesting = false;
+		bool DepthCubeMapImage = false;
 		bool ClearDepthOnLoad = true;
 		float ClearDepth = 1.0f;
+		VkCompareOp DepthCompareOp = VK_COMPARE_OP_LESS;
+		Ref<Image> DepthImage = nullptr;
 
+		// Color Attachments
+		std::vector<ColorAttachment> ColorAttachments;
+
+		// Push Constants
 		std::vector<VkPushConstantRange> PushConstantRanges;
 	};
 
@@ -43,7 +57,16 @@ namespace Eppo
 		Pipeline(const PipelineSpecification& specification);
 		~Pipeline();
 
+		void RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const;
+		void RT_BindDescriptorSets(Ref<RenderCommandBuffer> renderCommandBuffer, uint32_t start, uint32_t count);
+		void RT_Draw(Ref<RenderCommandBuffer> renderCommandBuffer, const Primitive& primitive) const;
+
+		void RT_SetViewport(Ref<RenderCommandBuffer> renderCommandBuffer) const;
+		void RT_SetScissor(Ref<RenderCommandBuffer> renderCommandBuffer) const;
+		void RT_SetPushConstants(Ref<RenderCommandBuffer> renderCommandBuffer, Buffer data) const;
+
 		const PipelineSpecification& GetSpecification() const { return m_Specification; }
+		PipelineSpecification& GetSpecification() { return m_Specification; }
 
 		VkPipeline GetPipeline() const { return m_Pipeline; }
 		VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }

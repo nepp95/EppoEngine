@@ -94,24 +94,15 @@ namespace Eppo
 
 			// Diffuse texture
 			if (mat.pbrMetallicRoughness.baseColorTexture.index != -1)
-			{
-				material->FeatureFlags |= MaterialFeatures::DiffuseMap;
 				material->DiffuseMapIndex = model.textures[mat.pbrMetallicRoughness.baseColorTexture.index].source;
-			}
-
+			
 			// Normal texture
 			if (mat.normalTexture.index != -1)
-			{
-				material->FeatureFlags |= MaterialFeatures::NormalMap;
 				material->NormalMapIndex = model.textures[mat.normalTexture.index].source;
-			}
 
 			// Roughness/Metallic texture
 			if (mat.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
-			{
-				material->FeatureFlags |= MaterialFeatures::RoughnessMetallicMap;
 				material->RoughnessMetallicMapIndex = model.textures[mat.pbrMetallicRoughness.metallicRoughnessTexture.index].source;
-			}
 
 			m_Materials[i] = material;
 		}

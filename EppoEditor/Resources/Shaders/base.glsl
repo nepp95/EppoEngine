@@ -1,6 +1,9 @@
 #define MAX_NUM_OF_LIGHTS 8
 
-// Descriptor Set 0
+// Descriptor Set 0 - Global
+
+
+// Descriptor Set 1 - Scene
 layout(set = 0, binding = 0) uniform Camera
 {
     mat4 View;
@@ -23,7 +26,7 @@ layout(set = 0, binding = 1) uniform Lights
     int NumLights;
 } uLights;
 
-layout(set = 0, binding = 2) uniform samplerCube uShadowMap;
+layout(set = 0, binding = 2) uniform samplerCube uShadowMaps[MAX_NUM_OF_LIGHTS];
 
-// Descriptor Set 1
+// Descriptor Set 2 - Mesh
 layout(set = 1, binding = 0) uniform sampler2D uMaterialTex[];

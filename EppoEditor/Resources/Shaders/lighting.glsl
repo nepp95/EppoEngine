@@ -40,38 +40,15 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 gridSamplingDisk[20] = vec3[]
-(
-    vec3(1.0, 1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(-1.0, -1.0, 1.0), vec3(-1.0, 1.0, 1.0),
-    vec3(1.0, 1.0, -1.0), vec3(1.0, -1.0, -1.0), vec3(-1.0, -1.0, -1.0), vec3(-1.0, 1.0, -1.0),
-    vec3(1.0, 1.0, 0.0), vec3(1.0, -1.0, 0.0), vec3(-1.0, -1.0, 0.0), vec3(-1.0, 1.0, 0.0),
-    vec3(1.0, 0.0, 1.0), vec3(-1.0, 0.0, 1.0), vec3(1.0, 0.0, -1.0), vec3(-1.0, 0.0, -1.0),
-    vec3(0.0, 1.0, 1.0), vec3(0.0, -1.0, 1.0), vec3(0.0, 1.0, -1.0), vec3(0.0, 1.0, -1.0)
-);
-
-float CalculateShadow(vec3 fragPos, Light light, float farPlane)
+float CalculateShadow(vec3 fragPos, float farPlane, int lightIndex)
 {
-    vec3 fragToLight = fragPos - light.Position.xyz;
+	vec3 fragToLight = fragPos - uLights.Lights[lightIndex].Position.xyz;
 
-    // Calculate current depth from light
-    float currentDepth = length(fragToLight);
+	float distance = length(fragToLight) / farPlane;
+	float closestDepth = texture(uShadowMaps[lightIndex], fragToLight).r;
 
-    // Percentage close filtering
-    float bias = 0.15;
-    float shadow = 0.0;
-    int samples = 20;
-    float diskRadius = 0.05;
+	float bias = 0.015;
+	float shadow = closestDepth + bias < distance ? 0.15 : 1.0;
 
-    for (int i = 0; i < samples; ++i)
-    {
-        float closestDepth = texture(uShadowMap, fragToLight + gridSamplingDisk[i] * diskRadius).r;
-        closestDepth *= farPlane;
-
-        if (currentDepth - bias > closestDepth)
-            shadow += 1.0;
-    }
-
-    shadow /= float(samples);
-
-    return shadow;
+	return shadow;
 }
