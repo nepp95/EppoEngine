@@ -16,7 +16,6 @@ namespace Eppo
 	VertexBuffer::~VertexBuffer()
 	{
 		EPPO_WARN("Releasing vertex buffer {}", (void*)this);
-		m_LocalStorage.Release();
 		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 
@@ -59,5 +58,6 @@ namespace Eppo
 
 		// Clean up
 		Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+		m_LocalStorage.Release();
 	}
 }
