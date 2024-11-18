@@ -180,7 +180,7 @@ namespace Eppo
 			}
 		}
 
-		if (m_Specification.DepthTesting);
+		if (m_Specification.DepthTesting)
 		{
 			// We simply want a depth attachment to go with our color attachments
 			ImageSpecification imageSpec;
