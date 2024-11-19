@@ -160,13 +160,13 @@ namespace Eppo
 
 		// TODO:
 		// Write cache
-		//std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
-		//Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
+		std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
+		Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
 
 		// Write cache hash
-		//std::string cacheHashPath = cachePath + ".hash";
-		//uint64_t hash = Hash::GenerateFnv(source);
-		//Filesystem::WriteText(cacheHashPath, std::to_string(hash));
+		std::string cacheHashPath = cachePath + ".hash";
+		uint64_t hash = Hash::GenerateFnv(source);
+		Filesystem::WriteText(cacheHashPath, std::to_string(hash));
 	}
 
 	void Shader::CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources)
