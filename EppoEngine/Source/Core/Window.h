@@ -27,6 +27,8 @@ namespace Eppo
 
 		Window(const WindowSpecification& specification);
 
+		const WindowSpecification& GetSpecification() const { return m_Specification; }
+
 		void Init();
 		void Shutdown();
 
