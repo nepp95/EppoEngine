@@ -40,6 +40,7 @@ namespace Eppo
 		RenderSpecification renderSpec;
 		renderSpec.Width = 1600;
 		renderSpec.Height = 900;
+		renderSpec.DebugRendering = true;
 
 		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, renderSpec);
 	}

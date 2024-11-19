@@ -55,8 +55,8 @@ namespace Eppo
 
 		// Load shaders
 		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
-		// TODO: We aren't using this because of imgui?
 		s_Data->ShaderLibrary->Load("Resources/Shaders/composite.glsl");
+		s_Data->ShaderLibrary->Load("Resources/Shaders/debug.glsl");
 		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
 		s_Data->ShaderLibrary->Load("Resources/Shaders/predepth.glsl");
 	}

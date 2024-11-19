@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Allocator.h"
+#include "RenderCommandBuffer.h"
 
 namespace Eppo
 {
@@ -11,6 +12,7 @@ namespace Eppo
 		~IndexBuffer();
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
+		void RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const;
 
 		uint32_t GetIndexCount() const { return m_Size / sizeof(uint32_t); }
 

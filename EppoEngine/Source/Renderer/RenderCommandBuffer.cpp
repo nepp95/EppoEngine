@@ -74,8 +74,8 @@ namespace Eppo
 			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
 			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
 
-		for (size_t i = 0; i < m_PipelineQueryPools.size(); i++)
-			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &m_PipelineQueryPools[i]), "Failed to create query pool!");
+		for (auto& pipelineQueryPool : m_PipelineQueryPools)
+			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &pipelineQueryPool), "Failed to create query pool!");
 
 		m_PipelineStatistics.resize(VulkanConfig::MaxFramesInFlight);
 
@@ -153,7 +153,7 @@ namespace Eppo
 		});
 	}
 
-	void RenderCommandBuffer::RT_Submit()
+	void RenderCommandBuffer::RT_Submit() const
 	{
 		if (!m_ManualSubmission)
 		{

@@ -2,6 +2,7 @@
 
 #include "Core/Buffer.h"
 #include "Renderer/Allocator.h"
+#include "Renderer/RenderCommandBuffer.h"
 
 namespace Eppo
 {
@@ -12,6 +13,7 @@ namespace Eppo
 		~VertexBuffer();
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
+		void RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const;
 
 	private:
 		void CreateBuffer(VmaMemoryUsage usage);

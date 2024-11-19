@@ -2,6 +2,7 @@
 #include "VertexBuffer.h"
 
 #include "Renderer/RendererContext.h"
+#include "Renderer/Renderer.h"
 
 namespace Eppo
 {
@@ -17,6 +18,17 @@ namespace Eppo
 	{
 		EPPO_WARN("Releasing vertex buffer {}", (void*)this);
 		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
+	}
+
+	void VertexBuffer::RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const
+	{
+		Renderer::SubmitCommand([this, renderCommandBuffer]()
+		{
+			VkBuffer vb = { m_Buffer };
+			VkDeviceSize offsets[] = { 0 };
+
+			vkCmdBindVertexBuffers(renderCommandBuffer->GetCurrentCommandBuffer(), 0, 1, &vb, offsets);
+		});
 	}
 
 	void VertexBuffer::CreateBuffer(VmaMemoryUsage usage)

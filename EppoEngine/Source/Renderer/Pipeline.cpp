@@ -167,7 +167,7 @@ namespace Eppo
 		// Create the images from the attachment info
 		for (const auto& attachment : m_Specification.ColorAttachments)
 		{
-			if (!m_Specification.SwapchainTarget)
+			if (!m_Specification.SwapchainTarget && !m_Specification.ExistingImage)
 			{
 				ImageSpecification imageSpec;
 				imageSpec.Format = attachment.Format;
@@ -178,6 +178,9 @@ namespace Eppo
 				Ref<Image> image = CreateRef<Image>(imageSpec);
 				m_Images.emplace_back(image);
 			}
+
+			if (m_Specification.ExistingImage)
+				m_Images.emplace_back(m_Specification.ExistingImage);
 		}
 
 		if (m_Specification.DepthTesting)
@@ -234,7 +237,19 @@ namespace Eppo
 		});
 	}
 
-	void Pipeline::RT_Draw(Ref<RenderCommandBuffer> renderCommandBuffer, const Primitive& primitive) const
+	void Pipeline::RT_DrawIndexed(Ref<RenderCommandBuffer> renderCommandBuffer, uint32_t count)
+	{
+		auto instance = this;
+
+		Renderer::SubmitCommand([instance, renderCommandBuffer, count]()
+		{
+			VkCommandBuffer cb = renderCommandBuffer->GetCurrentCommandBuffer();
+
+			vkCmdDrawIndexed(cb, count, 1, 0, 0, 0);
+		});
+	}
+
+	void Pipeline::RT_DrawIndexed(Ref<RenderCommandBuffer> renderCommandBuffer, const Primitive& primitive) const
 	{
 		auto instance = this;
 
