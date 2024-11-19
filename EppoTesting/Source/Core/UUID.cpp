@@ -3,30 +3,36 @@
 // TODO: Fixed random number seed?
 namespace Eppo
 {
-	TEST(UUIDTest, Ctor)
+	class UUIDTestFixture : public testing::TestWithParam<uint64_t>
+	{};
+
+	INSTANTIATE_TEST_SUITE_P(UUIDTest, UUIDTestFixture,
+		testing::Values(4, 20, 1024, 2024));
+
+	TEST(UUIDTest, Constructor)
 	{
 		UUID uuid;
 
 		EXPECT_LT(0, uuid);
 	}
 
-	TEST(UUIDTest, Ctor_Zero)
+	TEST(UUIDTest, Constructor_Zero)
 	{
 		UUID uuid(0);
 
 		EXPECT_EQ(0, uuid);
 	}
 
-	TEST(UUIDTest, Ctor_UInt64)
+	TEST_P(UUIDTestFixture, Constructor_UInt64)
 	{
-		UUID uuid(12345);
+		UUID uuid(GetParam());
 
-		EXPECT_EQ(12345, uuid);
+		EXPECT_EQ(GetParam(), uuid);
 	}
 
-	TEST(UUIDTest, Ctor_Copy)
+	TEST_P(UUIDTestFixture, Constructor_Copy)
 	{
-		UUID uuid(12345);
+		UUID uuid(GetParam());
 		UUID targetUuid(uuid);
 
 		EXPECT_EQ(uuid, targetUuid);
