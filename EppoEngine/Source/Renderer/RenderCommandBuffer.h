@@ -22,7 +22,7 @@ namespace Eppo
 
 		void RT_Begin();
 		void RT_End();
-		void RT_Submit();
+		void RT_Submit() const;
 
 		uint32_t BeginTimestampQuery();
 		void EndTimestampQuery(uint32_t queryIndex);
@@ -41,7 +41,7 @@ namespace Eppo
 		std::vector<std::vector<uint64_t>> m_Timestamps;
 		std::vector<std::vector<float>> m_TimestampDeltas;
 		uint32_t m_QueryIndex = 2;
-		uint32_t m_QueryCount = 8;
+		uint32_t m_QueryCount = 10;
 
 		std::vector<VkQueryPool> m_PipelineQueryPools;
 		std::vector<PipelineStatistics> m_PipelineStatistics;

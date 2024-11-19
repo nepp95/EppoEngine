@@ -2,6 +2,7 @@
 #include "IndexBuffer.h"
 
 #include "Renderer/RendererContext.h"
+#include "Renderer/Renderer.h"
 
 namespace Eppo
 {
@@ -54,5 +55,13 @@ namespace Eppo
 	{
 		EPPO_WARN("Releasing index buffer {}", (void*)this);
 		Allocator::DestroyBuffer(m_Buffer, m_Allocation);
+	}
+
+	void IndexBuffer::RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const
+	{
+		Renderer::SubmitCommand([this, renderCommandBuffer]()
+		{
+			vkCmdBindIndexBuffer(renderCommandBuffer->GetCurrentCommandBuffer(), m_Buffer, 0, VK_INDEX_TYPE_UINT32);
+		});
 	}
 }

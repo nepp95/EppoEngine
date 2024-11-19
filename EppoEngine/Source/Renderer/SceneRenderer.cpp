@@ -86,6 +86,30 @@ namespace Eppo
 			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
 		}
 
+		// Debug Line
+		if (m_RenderSpecification.DebugRendering)
+		{
+			Ref<Image> dstImage = m_GeometryPipeline->GetFinalImage();
+
+			PipelineSpecification pipelineSpec;
+			pipelineSpec.ColorAttachments = {
+				{ ImageFormat::RGBA8, false }
+			};
+			pipelineSpec.ExistingImage = dstImage;
+			pipelineSpec.Topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			pipelineSpec.PolygonMode = VK_POLYGON_MODE_LINE;
+			pipelineSpec.Width = dstImage->GetWidth();
+			pipelineSpec.Height = dstImage->GetHeight();
+			pipelineSpec.Shader = Renderer::GetShader("debug");
+			pipelineSpec.PushConstantRanges = pipelineSpec.Shader->GetPushConstantRanges();
+			pipelineSpec.Layout = {
+				{ ShaderDataType::Float3, "inPosition" },
+				{ ShaderDataType::Float4, "inColor" }
+			};
+
+			m_DebugLinePipeline = CreateRef<Pipeline>(pipelineSpec);
+		}
+
 		// Composite
 		{
 			PipelineSpecification pipelineSpec;
@@ -118,6 +142,10 @@ namespace Eppo
 		ImGui::Text("GPU Time: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex));
 		ImGui::Text("PreDepth Pass: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex, m_TimestampQueries.PreDepthQuery));
 		ImGui::Text("Geometry Pass: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex, m_TimestampQueries.GeometryQuery));
+		
+		if (m_RenderSpecification.DebugRendering)
+			ImGui::Text("Debug Line Pass: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex, m_TimestampQueries.DebugLineQuery));
+		
 		ImGui::Text("Composite Pass: %.3fms", m_CommandBuffer->GetTimestamp(frameIndex, m_TimestampQueries.CompositeQuery));
 
 		ImGui::Separator();
@@ -172,9 +200,6 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
 
-		// Reset statistics
-		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
-
 		// Camera UB
 		m_CameraBuffer.View = editorCamera.GetViewMatrix();
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
@@ -182,43 +207,12 @@ namespace Eppo
 		m_CameraBuffer.Position = glm::vec4(editorCamera.GetPosition(), 0.0f);
 		m_CameraUB->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
-		// Lights UB
-		m_LightsBuffer.Projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
-		//m_LightsBuffer.Projection[1][1] *= -1.0f;
-		m_LightsBuffer.NumLights = 2;
-
-		for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
-		{
-			auto& light = m_LightsBuffer.Lights[i];
-			glm::vec3 position;
-			if (i == 0)
-				position = { 5.0f, 1.0f, 0.0f };
-			else
-				position = { -10.0f, 1.0f, 0.0f };
-
-			light.Position = glm::vec4(position, 1.0f);
-			light.Color = glm::vec4(1.0f, 0.8f, 0.8f, 1.0f);
-
-			light.View[0] = glm::lookAt(position, position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[1] = glm::lookAt(position, position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[2] = glm::lookAt(position, position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-			light.View[3] = glm::lookAt(position, position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-			light.View[4] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[5] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-		}
-
-		m_LightsUB->SetData(&m_LightsBuffer, sizeof(LightsData));
-
-		// Cleanup from last draw
-		m_DrawList.clear();
+		BeginSceneInternal();
 	}
 
 	void SceneRenderer::BeginScene(const Camera& camera, const glm::mat4& transform)
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::BeginScene");
-
-		// Reset statistics
-		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
 		// Camera UB
 		m_CameraBuffer.View = glm::inverse(transform);
@@ -227,35 +221,7 @@ namespace Eppo
 		m_CameraBuffer.Position = transform[3];
 		m_CameraUB->SetData(&m_CameraBuffer, sizeof(m_CameraBuffer));
 
-		// Lights UB
-		m_LightsBuffer.Projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
-		//m_LightsBuffer.Projection[1][1] *= -1.0f;
-		m_LightsBuffer.NumLights = 2;
-
-		for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
-		{
-			auto& light = m_LightsBuffer.Lights[i];
-			glm::vec3 position;
-			if (i == 0)
-				position = { 5.0f, 1.0f, 0.0f };
-			else
-				position = { -10.0f, 1.0f, 0.0f };
-
-			light.Position = glm::vec4(position, 1.0f);
-			light.Color = glm::vec4(0.8f, 0.4f, 0.4f, 1.0f);
-
-			light.View[0] = glm::lookAt(position, position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[1] = glm::lookAt(position, position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[2] = glm::lookAt(position, position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-			light.View[3] = glm::lookAt(position, position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-			light.View[4] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[5] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-		}
-
-		m_LightsUB->SetData(&m_LightsBuffer, sizeof(LightsData));
-
-		// Cleanup from last draw
-		m_DrawList.clear();
+		BeginSceneInternal();
 	}
 
 	void SceneRenderer::EndScene()
@@ -280,6 +246,79 @@ namespace Eppo
 		return m_GeometryPipeline->GetFinalImage();
 	}
 
+	void SceneRenderer::BeginSceneInternal()
+	{
+		// Reset statistics
+		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
+
+		// Lights UB
+		m_LightsBuffer.Projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
+		//m_LightsBuffer.Projection[1][1] *= -1.0f;
+		m_LightsBuffer.NumLights = 2;
+
+		std::vector<LineVertex> lineVertices;
+		std::vector<uint32_t> lineIndices;
+		uint32_t vertexCount = 0;
+		for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
+		{
+			// Setup Lights
+			auto& light = m_LightsBuffer.Lights[i];
+			glm::vec3 position;
+			if (i == 0)
+				position = { 5.0f, 1.0f, 0.0f };
+			else
+				position = { -10.0f, 1.0f, 0.0f };
+
+			light.Position = glm::vec4(position, 1.0f);
+			light.Color = glm::vec4(1.0f, 0.8f, 0.8f, 1.0f);
+			light.View[0] = glm::lookAt(position, position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[1] = glm::lookAt(position, position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[2] = glm::lookAt(position, position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+			light.View[3] = glm::lookAt(position, position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+			light.View[4] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[5] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+
+			// Setup Debug Lines
+			LineVertex& p0 = lineVertices.emplace_back();
+			p0.Position = position - glm::vec3(0.0f, 0.5f, 0.0f);
+			p0.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			lineIndices.emplace_back(vertexCount++);
+
+			LineVertex& p1 = lineVertices.emplace_back();
+			p1.Position = position + glm::vec3(0.0f, 0.5f, 0.0f);
+			p1.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			lineIndices.emplace_back(vertexCount++);
+
+			LineVertex& p2 = lineVertices.emplace_back();
+			p2.Position = position - glm::vec3(0.5f, 0.0f, 0.0f);
+			p2.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			lineIndices.emplace_back(vertexCount++);
+
+			LineVertex& p3 = lineVertices.emplace_back();
+			p3.Position = position + glm::vec3(0.5f, 0.0f, 0.0f);
+			p3.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			lineIndices.emplace_back(vertexCount++);
+
+			LineVertex& p4 = lineVertices.emplace_back();
+			p4.Position = position - glm::vec3(0.0f, 0.0f, 0.5f);
+			p4.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			lineIndices.emplace_back(vertexCount++);
+
+			LineVertex& p5 = lineVertices.emplace_back();
+			p5.Position = position + glm::vec3(0.0f, 0.0f, 0.5f);
+			p5.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			lineIndices.emplace_back(vertexCount++);
+		}
+
+		m_DebugLineVertexBuffer = CreateRef<VertexBuffer>((void*)lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
+		m_DebugLineIndexBuffer = CreateRef<IndexBuffer>((void*)lineIndices.data(), lineIndices.size() * sizeof(uint32_t));
+
+		m_LightsUB->SetData(&m_LightsBuffer, sizeof(LightsData));
+
+		// Cleanup from last draw
+		m_DrawList.clear();
+	}
+
 	void SceneRenderer::Flush()
 	{
 		EPPO_PROFILE_FUNCTION("SceneRenderer::Flush");
@@ -290,6 +329,10 @@ namespace Eppo
 		
 		PreDepthPass();
 		GeometryPass();
+
+		if (m_RenderSpecification.DebugRendering)
+			DebugLinePass();
+
 		CompositePass();
 
 		m_CommandBuffer->RT_End();
@@ -380,7 +423,7 @@ namespace Eppo
 
 						m_RenderStatistics.DrawCalls++;
 						m_PreDepthPipeline->RT_SetPushConstants(m_CommandBuffer, buffer);
-						m_PreDepthPipeline->RT_Draw(m_CommandBuffer, p);
+						m_PreDepthPipeline->RT_DrawIndexed(m_CommandBuffer, p);
 					}
 				}
 			}
@@ -500,7 +543,7 @@ namespace Eppo
 
 					m_RenderStatistics.DrawCalls++;
 					m_GeometryPipeline->RT_SetPushConstants(m_CommandBuffer, buffer);
-					m_GeometryPipeline->RT_Draw(m_CommandBuffer, p);
+					m_GeometryPipeline->RT_DrawIndexed(m_CommandBuffer, p);
 				}
 			}
 		}
@@ -509,6 +552,52 @@ namespace Eppo
 		Renderer::RT_EndRenderPass(m_CommandBuffer);
 
 		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.GeometryQuery);
+	}
+
+	void SceneRenderer::DebugLinePass()
+	{
+		m_TimestampQueries.DebugLineQuery = m_CommandBuffer->BeginTimestampQuery();
+
+		// Update descriptors
+		Renderer::SubmitCommand([this]()
+		{
+			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+			const auto& descriptorSets = m_DebugLinePipeline->GetDescriptorSets(frameIndex);
+
+			DescriptorWriter writer;
+
+			// Set 1 - Scene
+			{
+				const auto& buffers = m_CameraUB->GetBuffers();
+				VkBuffer buffer = buffers[frameIndex];
+				writer.WriteBuffer(m_CameraUB->GetBinding(), buffer, sizeof(CameraData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+
+			{
+				const auto& buffers = m_LightsUB->GetBuffers();
+				VkBuffer buffer = buffers[frameIndex];
+				writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+
+			writer.UpdateSet(descriptorSets[0]);
+		});
+
+		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_DebugLinePipeline);
+
+		m_DebugLinePipeline->RT_Bind(m_CommandBuffer);
+		m_DebugLinePipeline->RT_SetViewport(m_CommandBuffer);
+		m_DebugLinePipeline->RT_SetScissor(m_CommandBuffer);
+		m_DebugLinePipeline->RT_BindDescriptorSets(m_CommandBuffer, 0, 1);
+
+		// Lights
+		m_DebugLineVertexBuffer->RT_Bind(m_CommandBuffer);
+		m_DebugLineIndexBuffer->RT_Bind(m_CommandBuffer);
+		m_DebugLinePipeline->RT_DrawIndexed(m_CommandBuffer, m_DebugLineIndexBuffer->GetIndexCount());
+		m_RenderStatistics.DrawCalls++;
+
+		Renderer::RT_EndRenderPass(m_CommandBuffer);
+
+		m_CommandBuffer->EndTimestampQuery(m_TimestampQueries.DebugLineQuery);
 	}
 
 	void SceneRenderer::CompositePass()

@@ -16,4 +16,15 @@ namespace Eppo
 			: Position(position), Color(color)
 		{}
 	};
+
+	struct LineVertex
+	{
+		glm::vec3 Position;
+		glm::vec4 Color;
+
+		LineVertex() = default;
+		LineVertex(const glm::vec3& position, const glm::vec4& color)
+			: Position(position), Color(color)
+		{}
+	};
 }

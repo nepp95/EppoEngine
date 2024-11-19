@@ -46,6 +46,7 @@ namespace Eppo
 
 		// Color Attachments
 		std::vector<ColorAttachment> ColorAttachments;
+		Ref<Image> ExistingImage;
 
 		// Push Constants
 		std::vector<VkPushConstantRange> PushConstantRanges;
@@ -59,7 +60,8 @@ namespace Eppo
 
 		void RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const;
 		void RT_BindDescriptorSets(Ref<RenderCommandBuffer> renderCommandBuffer, uint32_t start, uint32_t count);
-		void RT_Draw(Ref<RenderCommandBuffer> renderCommandBuffer, const Primitive& primitive) const;
+		void RT_DrawIndexed(Ref<RenderCommandBuffer> renderCommandBuffer, uint32_t count);
+		void RT_DrawIndexed(Ref<RenderCommandBuffer> renderCommandBuffer, const Primitive& primitive) const;
 
 		void RT_SetViewport(Ref<RenderCommandBuffer> renderCommandBuffer) const;
 		void RT_SetScissor(Ref<RenderCommandBuffer> renderCommandBuffer) const;

@@ -29,6 +29,8 @@ namespace Eppo
 	{
 		uint32_t Width = 0;
 		uint32_t Height = 0;
+
+		bool DebugRendering = false;
 	};
 
 	struct RenderStatistics
@@ -57,12 +59,14 @@ namespace Eppo
 		Ref<Image> GetFinalImage();
 
 	private:
-		void Flush();
+		void BeginSceneInternal();
 
+		void Flush();
 		void PrepareRender();
 
 		void PreDepthPass();
 		void GeometryPass();
+		void DebugLinePass();
 		void CompositePass();
 
 	private:
@@ -73,6 +77,7 @@ namespace Eppo
 
 		Ref<Pipeline> m_PreDepthPipeline;
 		Ref<Pipeline> m_GeometryPipeline;
+		Ref<Pipeline> m_DebugLinePipeline;
 		Ref<Pipeline> m_CompositePipeline;
 
 		uint32_t Width = 0;
@@ -118,7 +123,11 @@ namespace Eppo
 		};
 		
 		std::vector<DrawCommand> m_DrawList;
+
+		// Buffers
 		Buffer m_PushConstantBuffer;
+		Ref<VertexBuffer> m_DebugLineVertexBuffer;
+		Ref<IndexBuffer> m_DebugLineIndexBuffer;
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;
@@ -127,6 +136,7 @@ namespace Eppo
 		{
 			uint32_t PreDepthQuery = UINT32_MAX;
 			uint32_t GeometryQuery = UINT32_MAX;
+			uint32_t DebugLineQuery = UINT32_MAX;
 			uint32_t CompositeQuery = UINT32_MAX;
 		} m_TimestampQueries;
 	};
