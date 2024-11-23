@@ -5,6 +5,7 @@
 #include "Platform/Vulkan/VulkanContext.h"
 
 #include <GLFW/glfw3.h>
+#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {

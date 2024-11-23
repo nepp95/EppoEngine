@@ -5,7 +5,9 @@
 #include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <tracy/TracyOpenGL.hpp>
 
 namespace Eppo
 {
@@ -128,6 +130,12 @@ namespace Eppo
 
 			ExecuteMainThreadQueue();
 
+			float time = (float)glfwGetTime();
+			float timestep = time - m_LastFrameTime;
+			m_LastFrameTime = time;
+
+			ExecuteMainThreadQueue();
+
 			{
 				EPPO_PROFILE_FUNCTION("CPU Update");
 
@@ -156,6 +164,17 @@ namespace Eppo
 		}
 
 		context->WaitIdle();
+	}
+
+	void Application::ExecuteMainThreadQueue()
+	{
+		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+
+		for (size_t i = 0; i < m_MainThreadQueue.size(); i++)
+		{
+			m_MainThreadQueue.front()();
+			m_MainThreadQueue.pop();
+		}
 	}
 
 	void Application::ExecuteMainThreadQueue()
