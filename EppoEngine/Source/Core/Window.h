@@ -27,11 +27,12 @@ namespace Eppo
 
 		Window(const WindowSpecification& specification);
 
+		const WindowSpecification& GetSpecification() const { return m_Specification; }
+
 		void Init();
 		void Shutdown();
 
 		void ProcessEvents();
-		void SwapBuffers();
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
 		void SetWindowTitle(const std::string& name);

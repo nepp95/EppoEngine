@@ -5,7 +5,23 @@ namespace Eppo
 	//
 	// Buffer
 	//
-	TEST(BufferTest, Constructor)
+	class BufferTestFixture : public testing::TestWithParam<uint32_t>
+	{};
+
+	INSTANTIATE_TEST_SUITE_P(BufferTest, BufferTestFixture,
+		testing::Values(4, 20, 1024, 2024));
+
+	TEST_P(BufferTestFixture, Constructor)
+	{
+		Buffer buffer(GetParam());
+
+		EXPECT_EQ(GetParam(), buffer.Size);
+		EXPECT_TRUE(buffer.Data);
+
+		buffer.Release();
+	}
+
+	TEST(BufferTest, ZeroInitialize)
 	{
 		// Default
 		{
@@ -13,46 +29,37 @@ namespace Eppo
 
 			EXPECT_EQ(0, buffer.Size);
 			EXPECT_FALSE(buffer.Data);
-		
+
 			buffer.Release();
 		}
 
 		// Zero initialize
 		{
 			Buffer buffer(0);
-			
+
 			EXPECT_EQ(0, buffer.Size);
-
-			buffer.Release();
-		}
-
-		// Parameterized
-		{
-			Buffer buffer(1024);
-
-			EXPECT_EQ(1024, buffer.Size);
-			EXPECT_TRUE(buffer.Data);
+			// Technically a new allocation with a size 0 can have a valid pointer
 
 			buffer.Release();
 		}
 	}
 
-	TEST(BufferTest, Allocate)
+	TEST_P(BufferTestFixture, Allocate)
 	{
 		Buffer buffer;
-		buffer.Allocate(1024);
+		buffer.Allocate(GetParam());
 
-		EXPECT_EQ(1024, buffer.Size);
+		EXPECT_EQ(GetParam(), buffer.Size);
 		EXPECT_TRUE(buffer.Data);
 
 		buffer.Release();
 	}
 
-	TEST(BufferTest, Release)
+	TEST_P(BufferTestFixture, Release)
 	{
-		Buffer buffer(1024);
+		Buffer buffer(GetParam());
 
-		EXPECT_EQ(1024, buffer.Size);
+		EXPECT_EQ(GetParam(), buffer.Size);
 		EXPECT_TRUE(buffer.Data);
 
 		buffer.Release();
@@ -61,17 +68,17 @@ namespace Eppo
 		EXPECT_FALSE(buffer.Data);
 	}
 
-	TEST(BufferTest, Copy_Buffer)
+	TEST_P(BufferTestFixture, Copy_Buffer)
 	{
-		Buffer buffer(1024);
+		Buffer buffer(GetParam());
 		memset(buffer.Data, 5, buffer.Size);
 
-		EXPECT_EQ(1024, buffer.Size);
+		EXPECT_EQ(GetParam(), buffer.Size);
 		EXPECT_TRUE(buffer.Data);
 
 		Buffer targetBuffer = Buffer::Copy(buffer);
 
-		EXPECT_EQ(1024, targetBuffer.Size);
+		EXPECT_EQ(GetParam(), targetBuffer.Size);
 		EXPECT_TRUE(targetBuffer.Data);
 
 		for (uint32_t i = 0; i < targetBuffer.Size; i++)
@@ -81,17 +88,17 @@ namespace Eppo
 		targetBuffer.Release();
 	}
 
-	TEST(BufferTest, Copy_DataAndSize)
+	TEST_P(BufferTestFixture, Copy_DataAndSize)
 	{
-		uint8_t* data = new uint8_t[1024];
-		memset(data, 5, 1024);
+		uint8_t* data = new uint8_t[GetParam()];
+		memset(data, 5, GetParam());
 
-		Buffer targetBuffer = Buffer::Copy(data, 1024);
+		Buffer targetBuffer = Buffer::Copy(data, GetParam());
 
 		delete[] data;
 		data = nullptr;
 
-		EXPECT_EQ(1024, targetBuffer.Size);
+		EXPECT_EQ(GetParam(), targetBuffer.Size);
 		EXPECT_TRUE(targetBuffer.Data);
 
 		for (uint32_t i = 0; i < targetBuffer.Size; i++)
@@ -100,25 +107,48 @@ namespace Eppo
 		targetBuffer.Release();
 	}
 
-	TEST(BufferTest, Copy_VoidDataAndSize)
+	TEST_P(BufferTestFixture, Copy_VoidDataAndSize)
 	{
-		void* data = new uint8_t[1024];
-		memset(data, 5, 1024);
+		void* data = new uint8_t[GetParam()];
+		memset(data, 5, GetParam());
 
-		Buffer targetBuffer = Buffer::Copy(data, 1024);
+		Buffer targetBuffer = Buffer::Copy(data, GetParam());
 
-		EXPECT_EQ(1024, targetBuffer.Size);
+		EXPECT_EQ(GetParam(), targetBuffer.Size);
 		EXPECT_TRUE(targetBuffer.Data);
 
 		for (uint32_t i = 0; i < targetBuffer.Size; i++)
 			EXPECT_EQ(5, targetBuffer.Data[i]);
 
 		targetBuffer.Release();
+	}
+
+	TEST_P(BufferTestFixture, SetData)
+	{
+		Buffer buffer(100);
+		
+		buffer.SetData(GetParam());
+		EXPECT_EQ(100, buffer.Size);
+		EXPECT_TRUE(buffer.Data);
+		EXPECT_EQ(GetParam(), buffer.As<uint16_t>()[0]);
+
+		buffer.SetData(GetParam(), 50);
+		EXPECT_EQ(100, buffer.Size);
+		EXPECT_TRUE(buffer.Data);
+		EXPECT_EQ(GetParam(), buffer.As<uint16_t>()[25]);
+
+		buffer.Release();
 	}
 
 	//
 	// ScopedBuffer
 	//
+	class ScopedBufferTestFixture : public testing::TestWithParam<uint32_t>
+	{};
+
+	INSTANTIATE_TEST_SUITE_P(ScopedBufferTest, ScopedBufferTestFixture,
+		testing::Values(4, 20, 1024, 2024));
+
 	TEST(ScopedBufferTest, Constructor)
 	{
 		ScopedBuffer buffer;
@@ -127,32 +157,39 @@ namespace Eppo
 		EXPECT_FALSE(buffer.Data());
 	}
 
-	TEST(ScopedBufferTest, Constructor_Int)
+	TEST_P(ScopedBufferTestFixture, Constructor_Int)
 	{
-		{
-			ScopedBuffer buffer(0);
+		ScopedBuffer buffer(GetParam());
 
-			EXPECT_EQ(0, buffer.Size());
-		}
-
-		{
-			ScopedBuffer buffer(1024);
-
-			EXPECT_EQ(1024, buffer.Size());
-			EXPECT_TRUE(buffer.Data());
-		}
+		EXPECT_EQ(GetParam(), buffer.Size());
+		EXPECT_TRUE(buffer.Data());
 	}
 
-	TEST(ScopedBufferTest, Constructor_Buffer)
+	TEST_P(ScopedBufferTestFixture, Constructor_Buffer)
 	{
-		Buffer buffer(1024);
+		Buffer buffer(GetParam());
 		
-		EXPECT_EQ(1024, buffer.Size);
+		EXPECT_EQ(GetParam(), buffer.Size);
 		EXPECT_TRUE(buffer.Data);
 
 		ScopedBuffer scopedBuffer(buffer);
 
-		EXPECT_EQ(1024, scopedBuffer.Size());
+		EXPECT_EQ(GetParam(), scopedBuffer.Size());
 		EXPECT_TRUE(scopedBuffer.Data());
+	}
+
+	TEST_P(ScopedBufferTestFixture, SetData)
+	{
+		ScopedBuffer buffer(100);
+
+		buffer.SetData(GetParam());
+		EXPECT_EQ(100, buffer.Size());
+		EXPECT_TRUE(buffer.Data());
+		EXPECT_EQ(GetParam(), buffer.As<uint16_t>()[0]);
+
+		buffer.SetData(GetParam(), 50);
+		EXPECT_EQ(100, buffer.Size());
+		EXPECT_TRUE(buffer.Data());
+		EXPECT_EQ(GetParam(), buffer.As<uint16_t>()[25]);
 	}
 }

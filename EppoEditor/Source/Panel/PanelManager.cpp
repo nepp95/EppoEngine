@@ -2,6 +2,11 @@
 
 namespace Eppo
 {
+	void PanelManager::Shutdown()
+	{
+		m_PanelData.clear();
+	}
+
 	void PanelManager::RenderGui()
 	{
 		for (const auto& [name, panelData] : m_PanelData)

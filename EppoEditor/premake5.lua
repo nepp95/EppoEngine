@@ -54,15 +54,9 @@ project "EppoEditor"
         }
 
         links {
-            "%{StaticLibrary.glad}",
             "%{StaticLibrary.glfw}",
-            "%{StaticLibrary.shaderc}",
-            "%{StaticLibrary.spirv_cross}",
-            "%{StaticLibrary.spirv_cross_glsl}",
-            "%{StaticLibrary.spirv_tools}",
             "%{StaticLibrary.imgui}",
-            "%{StaticLibrary.yaml_cpp}",
-            "%{StaticLibrary.assimp}"
+            "%{StaticLibrary.yaml_cpp}"
         }
 
     filter "configurations:Debug"
@@ -77,7 +71,6 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Debug"}
 		postbuildcommands {
-			'{COPY} "%{DynamicLibrary.assimp_debug}" "%{cfg.targetdir}"',
             '{COPY} "%{DynamicLibrary.mono_debug}" "%{cfg.targetdir}"'
 		}
 
@@ -93,7 +86,6 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Release"}
 		postbuildcommands {
-			'{COPY} "%{DynamicLibrary.assimp_release}" "%{cfg.targetdir}"',
             '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
 		}
 
@@ -104,6 +96,5 @@ project "EppoEditor"
 
     filter {"system:windows", "configurations:Dist"}
 		postbuildcommands {
-			'{COPY} "%{DynamicLibrary.assimp_release}" "%{cfg.targetdir}"',
             '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
 		}

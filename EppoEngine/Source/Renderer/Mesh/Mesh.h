@@ -2,38 +2,53 @@
 
 #include "Asset/Asset.h"
 #include "Renderer/Mesh/Submesh.h"
+#include "Renderer/Mesh/Material.h"
+#include "Renderer/Image.h"
+#include "Renderer/Vertex.h"
 
-struct aiNode;
+namespace tinygltf
+{
+	class Model;
+	class Node;
+	struct Mesh;
+}
 
 namespace Eppo
 {
+	struct MeshData
+	{
+		std::vector<Vertex> Vertices;
+		std::vector<uint32_t> Indices;
+		std::vector<Primitive> Primitives;
+	};
+
 	class Mesh : public Asset
 	{
 	public:
 		Mesh(const std::filesystem::path& filepath);
 		~Mesh() = default;
 
-		// TODO: Refactor material system
-		struct MeshMaterial
-		{
-			std::string Name;
-			glm::vec3 DiffuseColor;
-			float Roughness;
-		};
-
 		const std::vector<Submesh>& GetSubmeshes() const  { return m_Submeshes; }
-		const MeshMaterial& GetMaterial(uint32_t index = 0) const { return m_Materials[index]; }
+		const std::vector<Ref<Image>>& GetImages() const { return m_Images; }
+		const std::vector<Ref<Material>>& GetMaterials() const { return m_Materials; }
+
+		Ref<Image> GetImage(uint32_t materialIndex) { return m_Images[materialIndex]; }
 
 		// Asset
 		static AssetType GetStaticType() { return AssetType::Mesh; }
 
 	private:
-		void ProcessNode(aiNode* node, const aiScene* scene);
+		void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node);
+		void ProcessMaterials(const tinygltf::Model& model);
+		void ProcessImages(const tinygltf::Model& model);
+
+		MeshData GetVertexData(const tinygltf::Model& model, const tinygltf::Mesh& mesh);
 
 	private:
 		std::filesystem::path m_Filepath;
 
 		std::vector<Submesh> m_Submeshes;
-		std::vector<MeshMaterial> m_Materials;
+		std::vector<Ref<Image>> m_Images;
+		std::vector<Ref<Material>> m_Materials;
 	};
 }

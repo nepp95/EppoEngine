@@ -12,7 +12,8 @@ project "EppoEngine"
 
 	defines {
 		"GLFW_INCLUDE_NONE",
-		"YAML_CPP_STATIC_DEFINE"
+        "VK_NO_PROTOTYPES",
+		"YAML_CPP_STATIC_DEFINE",
 	}
 
     files {
@@ -21,22 +22,26 @@ project "EppoEngine"
 
 		"%{IncludeDir.stb}/*.h",
 		"%{IncludeDir.stb}/*.cpp",
+		"%{IncludeDir.tinygltf}/tinygltf.cpp",
+        "%{IncludeDir.volk}/*.h",
+        "%{IncludeDir.volk}/*.cpp"
     }
 
     includedirs {
         "Source",
-		"%{IncludeDir.assimp}",
         "%{IncludeDir.bullet}",
 		"%{IncludeDir.entt}",
         "%{IncludeDir.filewatch}",
-        "%{IncludeDir.glad}",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.mono}",
         "%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
+		"%{IncludeDir.tinygltf}",
 		"%{IncludeDir.tracy}",
+        "%{IncludeDir.vma}",
+        "%{IncludeDir.volk}",
         "%{IncludeDir.vulkan}",
 		"%{IncludeDir.yaml_cpp}"
     }
@@ -45,11 +50,11 @@ project "EppoEngine"
         systemversion "latest"
 
         defines {
-            "EPPO_PLATFORM_WINDOWS"
+            "EPPO_PLATFORM_WINDOWS",
+            "VK_USE_PLATFORM_WIN32_KHR"
         }
 
         links {
-			"%{StaticLibrary.glad}",
             "%{StaticLibrary.glfw}",
             "%{StaticLibrary.imgui}",
             "%{StaticLibrary.yaml_cpp}",
@@ -65,7 +70,8 @@ project "EppoEngine"
     
     filter "system:linux"
         defines {
-            "EPPO_PLATFORM_LINUX"
+            "EPPO_PLATFORM_LINUX",
+            "VK_USE_PLATFORM_XLIB_KHR"
         }
 
         removefiles {
@@ -91,7 +97,6 @@ project "EppoEngine"
     filter {"system:windows", "configurations:Debug"}
 
         links {
-			"%{StaticLibrary.assimp_debug}",
             "%{StaticLibrary.bullet_common_debug}",
             "%{StaticLibrary.bullet_collision_debug}",
             "%{StaticLibrary.bullet_dynamics_debug}",
@@ -116,7 +121,6 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Release"}
         links {
-			"%{StaticLibrary.assimp_release}",
             "%{StaticLibrary.bullet_common_release}",
             "%{StaticLibrary.bullet_collision_release}",
             "%{StaticLibrary.bullet_dynamics_release}",
@@ -136,7 +140,6 @@ project "EppoEngine"
 
     filter {"system:windows", "configurations:Dist"}
         links {
-			"%{StaticLibrary.assimp_release}",
             "%{StaticLibrary.bullet_common_release}",
             "%{StaticLibrary.bullet_collision_release}",
             "%{StaticLibrary.bullet_dynamics_release}",

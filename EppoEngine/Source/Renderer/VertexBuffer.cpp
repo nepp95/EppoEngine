@@ -1,44 +1,19 @@
 #include "pch.h"
 #include "VertexBuffer.h"
 
-#include <glad/glad.h>
+#include "Platform/Vulkan/VulkanVertexBuffer.h"
+#include "Renderer/RendererContext.h"
 
 namespace Eppo
 {
-	VertexBuffer::VertexBuffer(void* data, uint32_t size)
-		: m_Size(size)
+	Ref<VertexBuffer> VertexBuffer::Create(void* data, uint32_t size)
 	{
-		EPPO_PROFILE_FUNCTION("VertexBuffer::VertexBuffer");
+		switch(RendererContext::GetAPI())
+		{
+			case RendererAPI::Vulkan:	return CreateRef<VulkanVertexBuffer>(data, size);
+		}
 
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, m_Size, data, GL_STATIC_DRAW);
-	}
-
-	VertexBuffer::VertexBuffer(uint32_t size)
-		: m_Size(size)
-	{
-		EPPO_PROFILE_FUNCTION("VertexBuffer::VertexBuffer");
-
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, m_Size, nullptr, GL_DYNAMIC_DRAW);
-	}
-
-	VertexBuffer::~VertexBuffer()
-	{
-		EPPO_PROFILE_FUNCTION("VertexBuffer::~VertexBuffer");
-
-		glDeleteBuffers(1, &m_RendererID);
-	}
-
-	void VertexBuffer::Bind() const
-	{
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-	}
-
-	void VertexBuffer::Unbind() const
-	{
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		EPPO_ASSERT(false);
+		return nullptr;
 	}
 }

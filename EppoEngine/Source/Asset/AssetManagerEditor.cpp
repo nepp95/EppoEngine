@@ -11,7 +11,8 @@ namespace Eppo
 	static std::map<std::filesystem::path, AssetType> s_AssetExtensionMap =
 	{
 		{ ".epscene", AssetType::Scene },
-		{ ".fbx", AssetType::Mesh },
+		{ ".glb", AssetType::Mesh },
+		{ ".gltf", AssetType::Mesh },
 		{ ".jpeg", AssetType::Texture },
 		{ ".jpg", AssetType::Texture },
 		{ ".png", AssetType::Texture },

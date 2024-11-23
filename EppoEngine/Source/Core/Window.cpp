@@ -22,9 +22,10 @@ namespace Eppo
 		int success = glfwInit();
 		EPPO_ASSERT(success);
 
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
 		#ifdef EPPO_DEBUG
 			glfwSetErrorCallback(GLFWErrorCallback);
-			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		#endif
 
 		// Get primary monitor
@@ -50,7 +51,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Window::Init");
 
 		// Create renderer context
-		m_Context = CreateRef<RendererContext>(m_Window);
+		m_Context = RendererContext::Create(m_Window);
 		m_Context->Init();
 
 		glfwSetWindowUserPointer(m_Window, &m_Callback);
@@ -157,13 +158,6 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Window::ProcessEvents");
 
 		glfwPollEvents();
-	}
-
-	void Window::SwapBuffers()
-	{
-		EPPO_PROFILE_FUNCTION("Window::SwapBuffers");
-
-		glfwSwapBuffers(m_Window);
 	}
 
 	void Window::SetWindowTitle(const std::string& name)

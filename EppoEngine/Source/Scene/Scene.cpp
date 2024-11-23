@@ -364,17 +364,6 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Scene::RenderScene");
 
 		{
-			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
-
-			for (const EntityHandle entity : view)
-			{
-				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
-				sceneRenderer->SubmitDirectionalLight(dlc);
-				break;
-			}
-		}
-
-		{
 			auto view = m_Registry.view<MeshComponent, TransformComponent>();
 
 			for (const EntityHandle entity : view)
@@ -383,7 +372,11 @@ namespace Eppo
 				if (meshC.MeshHandle)
 				{
 					Ref<Mesh> mesh = AssetManager::GetAsset<Mesh>(meshC.MeshHandle);
-					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
+
+					if (mesh)
+						sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
+					else
+						EPPO_WARN("Trying to submit a null value!");
 				}
 			}
 		}

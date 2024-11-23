@@ -1,23 +1,15 @@
 #pragma once
 
-#include "Core/Buffer.h"
-#include "Renderer/Shader.h"
-
 namespace Eppo
 {
 	class UniformBuffer
 	{
 	public:
-		UniformBuffer(uint32_t size, uint32_t binding);
-		~UniformBuffer();
+		virtual ~UniformBuffer() {};
 
-		void RT_SetData(void* data);
-		void RT_SetData(void* data, uint32_t size);
-		uint32_t GetBinding() const { return m_Binding; }
+		virtual void SetData(void* data, uint32_t size) = 0;
+		virtual uint32_t GetBinding() const = 0;
 
-	private:
-		uint32_t m_RendererID;
-		uint32_t m_Size;
-		uint32_t m_Binding;
+		static Ref<UniformBuffer> Create(uint32_t size, uint32_t binding);
 	};
 }

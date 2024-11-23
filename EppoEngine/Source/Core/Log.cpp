@@ -12,7 +12,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Log::Init");
 
-		spdlog::set_pattern("%^[%T] [%n]: %v%$");
+		spdlog::set_pattern("%^[%T.%e] [%n]: %v%$");
 
 		s_CoreLogger = spdlog::stdout_color_mt("Engine");
 		s_CoreLogger->set_level(spdlog::level::trace);
