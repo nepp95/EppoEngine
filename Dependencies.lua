@@ -19,6 +19,7 @@ IncludeDir["stb"] = "%{wks.location}/EppoEngine/Vendor/stb"
 IncludeDir["tinygltf"] = "%{wks.location}/EppoEngine/Vendor/tinygltf"
 IncludeDir["tracy"] = "%{wks.location}/EppoEngine/Vendor/tracy/public"
 IncludeDir["vma"] = "%{wks.location}/EppoEngine/Vendor/vulkan-memory-allocator"
+IncludeDir["volk"] = "%{wks.location}/EppoEngine/Vendor/volk"
 IncludeDir["vulkan"] = "%{VulkanSdk}/Include"
 IncludeDir["yaml_cpp"] = "%{wks.location}/EppoEngine/Vendor/yaml-cpp/include"
 

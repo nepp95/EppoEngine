@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
+#include "Platform/Vulkan/Vulkan.h"
 
 namespace Eppo
 {

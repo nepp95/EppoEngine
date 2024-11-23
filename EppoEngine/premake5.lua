@@ -21,7 +21,9 @@ project "EppoEngine"
 
 		"%{IncludeDir.stb}/*.h",
 		"%{IncludeDir.stb}/*.cpp",
-		"%{IncludeDir.tinygltf}/tinygltf.cpp"
+		"%{IncludeDir.tinygltf}/tinygltf.cpp",
+        "%{IncludeDir.volk}/*.h",
+        "%{IncludeDir.volk}/*.cpp"
     }
 
     includedirs {
@@ -38,6 +40,7 @@ project "EppoEngine"
 		"%{IncludeDir.tinygltf}",
 		"%{IncludeDir.tracy}",
         "%{IncludeDir.vma}",
+        "%{IncludeDir.volk}",
         "%{IncludeDir.vulkan}",
 		"%{IncludeDir.yaml_cpp}"
     }

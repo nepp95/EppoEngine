@@ -120,7 +120,11 @@ namespace Eppo
 			if (image.component == 4)
 			{
 				imageSpec.Format = ImageFormat::RGBA8;
-				CreateImage(imageSpec, (void*)image.image.data(), 4);
+
+				Ref<Image> dstImage = Image::Create(imageSpec);
+				dstImage->SetData((void*)image.image.data());
+
+				m_Images.emplace_back(dstImage);
 			}
 			else
 			{
@@ -216,52 +220,5 @@ namespace Eppo
 		}
 
 		return meshData;
-	}
-
-	void Mesh::CreateImage(const ImageSpecification& imageSpec, void* data, uint32_t channels)
-	{
-		Ref<Image> image = m_Images.emplace_back(CreateRef<Image>(imageSpec));
-
-		uint64_t size = imageSpec.Width * imageSpec.Height * channels;
-
-		// Create staging buffer
-		VkBufferCreateInfo stagingBufferInfo{};
-		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		stagingBufferInfo.size = size;
-		stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		VkBuffer stagingBuffer;
-		VmaAllocation stagingBufferAlloc = Allocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-		void* memData = Allocator::MapMemory(stagingBufferAlloc);
-		memcpy(memData, data, size);
-		Allocator::UnmapMemory(stagingBufferAlloc);
-
-		VkCommandBuffer commandBuffer = RendererContext::Get()->GetLogicalDevice()->GetCommandBuffer(true);
-
-		// Transition to layout optimal for transferring
-		Image::TransitionImage(commandBuffer, image->GetImageInfo().Image, image->GetImageInfo().ImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-		// Copy image data to image
-		VkBufferImageCopy copyRegion{};
-		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		copyRegion.imageSubresource.baseArrayLayer = 0;
-		copyRegion.imageSubresource.layerCount = 1;
-		copyRegion.imageSubresource.mipLevel = 0;
-		copyRegion.imageExtent.width = imageSpec.Width;
-		copyRegion.imageExtent.height = imageSpec.Height;
-		copyRegion.imageExtent.depth = 1;
-		copyRegion.bufferOffset = 0;
-
-		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, image->GetImageInfo().Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-		// Transition image back to presentable layout
-		Image::TransitionImage(commandBuffer, image->GetImageInfo().Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		// Flush command buffer
-		RendererContext::Get()->GetLogicalDevice()->FlushCommandBuffer(commandBuffer);
-
-		Allocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
 	}
 }

@@ -8,34 +8,17 @@ namespace Eppo
 	Submesh::Submesh(const std::string& name, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<Primitive>& primitives, const glm::mat4& transform)
 		: m_Name(name), m_LocalTransform(transform), m_Primitives(primitives)
 	{
-		m_VertexBuffer = CreateRef<VertexBuffer>((void*)vertices.data(), vertices.size() * sizeof(Vertex));
-		m_IndexBuffer = CreateRef<IndexBuffer>((void*)indices.data(), indices.size() * sizeof(uint32_t));
+		m_VertexBuffer = VertexBuffer::Create((void*)vertices.data(), vertices.size() * sizeof(Vertex));
+		m_IndexBuffer = IndexBuffer::Create((void*)indices.data(), indices.size() * sizeof(uint32_t));
 	}
 
-	void Submesh::RT_BindVertexBuffer(Ref<RenderCommandBuffer> renderCommandBuffer) const
+	void Submesh::RT_BindVertexBuffer(Ref<CommandBuffer> renderCommandBuffer) const
 	{
-		auto instance = this;
-
-		Renderer::SubmitCommand([instance, renderCommandBuffer]()
-		{
-			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
-
-			VkBuffer vb = { instance->m_VertexBuffer->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
-
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-		});
+		m_VertexBuffer->RT_Bind(renderCommandBuffer);
 	}
 
-	void Submesh::RT_BindIndexBuffer(Ref<RenderCommandBuffer> renderCommandBuffer) const
+	void Submesh::RT_BindIndexBuffer(Ref<CommandBuffer> renderCommandBuffer) const
 	{
-		auto instance = this;
-
-		Renderer::SubmitCommand([instance, renderCommandBuffer]()
-		{
-			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
-		
-			vkCmdBindIndexBuffer(commandBuffer, instance->m_IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-		});
+		m_IndexBuffer->RT_Bind(renderCommandBuffer);
 	}
 }

@@ -1,20 +1,20 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 namespace Eppo
 {
 	struct VulkanConfig
 	{
-	#if defined(EPPO_DEBUG)
-		inline static const bool EnableValidation = true;
-	#else
-		inline static const bool EnableValidation = false;
-	#endif
+		#if defined(EPPO_DEBUG)
+			inline static const bool EnableValidation = true;
+		#else
+			inline static const bool EnableValidation = false;
+		#endif
 
 		inline static constexpr uint32_t MaxFramesInFlight = 2;
 		inline static constexpr std::array<const char*, 1> ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-		inline static constexpr std::array<const char*, 5> DeviceExtensions = { 
+		inline static constexpr std::array<const char*, 5> DeviceExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 			VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
 			VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,

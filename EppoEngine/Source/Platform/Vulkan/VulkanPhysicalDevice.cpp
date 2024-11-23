@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "PhysicalDevice.h"
+#include "VulkanPhysicalDevice.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 #include <GLFW/glfw3.h>
 
@@ -57,9 +57,9 @@ namespace Eppo
 		{ 0x8086, "Intel" }
 	};
 
-    PhysicalDevice::PhysicalDevice()
-    {
-		auto instance = RendererContext::GetVulkanInstance();
+	VulkanPhysicalDevice::VulkanPhysicalDevice()
+	{
+		auto instance = VulkanContext::GetVulkanInstance();
 
 		// Get physical devices available
 		uint32_t deviceCount = 0;
@@ -101,12 +101,13 @@ namespace Eppo
 			DecodeDriverVersion(m_Properties.driverVersion, m_Properties.vendorID));
 
 		// Create surface
-		VK_CHECK(glfwCreateWindowSurface(RendererContext::GetVulkanInstance(), RendererContext::Get()->GetWindowHandle(), nullptr, &m_Surface), "Failed to create surface!");
+		Ref<VulkanContext> context = VulkanContext::Get();
+		VK_CHECK(glfwCreateWindowSurface(VulkanContext::GetVulkanInstance(), context->GetWindowHandle(), nullptr, &m_Surface), "Failed to create surface!");
 
-		RendererContext::Get()->SubmitResourceFree([this]()
+		context->SubmitResourceFree([this]()
 		{
 			EPPO_WARN("Releasing surface {}", (void*)this);
-			vkDestroySurfaceKHR(RendererContext::GetVulkanInstance(), m_Surface, nullptr);
+			vkDestroySurfaceKHR(VulkanContext::GetVulkanInstance(), m_Surface, nullptr);
 		});
 
 		// Queue family indices
@@ -122,14 +123,14 @@ namespace Eppo
 		EPPO_INFO("Selected device has {} extensions", availableExtensions.size());
 		for (const auto& extension : availableExtensions)
 			m_SupportedExtensions.emplace_back(extension.extensionName);
-    }
+	}
 
-	bool PhysicalDevice::IsExtensionSupported(std::string_view extension)
+	bool VulkanPhysicalDevice::IsExtensionSupported(std::string_view extension)
 	{
 		return std::find(m_SupportedExtensions.begin(), m_SupportedExtensions.end(), extension) != m_SupportedExtensions.end();
 	}
 
-	QueueFamilyIndices PhysicalDevice::FindQueueFamilyIndices()
+	QueueFamilyIndices VulkanPhysicalDevice::FindQueueFamilyIndices() const
 	{
 		QueueFamilyIndices indices;
 

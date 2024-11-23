@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
+#include "Platform/Vulkan/Vulkan.h"
+#include "Renderer/CommandBuffer.h"
 
 namespace Eppo
 {
@@ -14,18 +15,18 @@ namespace Eppo
 		uint64_t FragmentShaderInvocations = 0;
 	};
 
-	class RenderCommandBuffer
+	class VulkanCommandBuffer : public CommandBuffer
 	{
 	public:
-		RenderCommandBuffer(bool manualSubmission = true, uint32_t count = 0);
-		~RenderCommandBuffer() = default;
+		VulkanCommandBuffer(bool manualSubmission, uint32_t count);
+		virtual ~VulkanCommandBuffer() {}
 
-		void RT_Begin();
-		void RT_End();
-		void RT_Submit() const;
+		void RT_Begin() override;
+		void RT_End() override;
+		void RT_Submit() const override;
 
-		uint32_t BeginTimestampQuery();
-		void EndTimestampQuery(uint32_t queryIndex);
+		uint32_t RT_BeginTimestampQuery();
+		void RT_EndTimestampQuery(uint32_t queryIndex);
 		float GetTimestamp(uint32_t frameIndex, uint32_t queryIndex = 0) const;
 		const PipelineStatistics& GetPipelineStatistics(uint32_t frameIndex) const { return m_PipelineStatistics[frameIndex]; }
 

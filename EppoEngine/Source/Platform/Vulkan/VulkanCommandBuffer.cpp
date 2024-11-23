@@ -1,15 +1,15 @@
 #include "pch.h"
-#include "RenderCommandBuffer.h"
+#include "VulkanCommandBuffer.h"
 
+#include "Platform/Vulkan/VulkanContext.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/RendererContext.h"
 
 namespace Eppo
 {
-	RenderCommandBuffer::RenderCommandBuffer(bool manualSubmission, uint32_t count)
+	VulkanCommandBuffer::VulkanCommandBuffer(bool manualSubmission, uint32_t count)
 		: m_ManualSubmission(manualSubmission)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		// Create command pool
@@ -41,8 +41,8 @@ namespace Eppo
 		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		for (size_t i = 0; i < m_Fences.size(); i++)
-			VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fences!");
+		for (auto& fence : m_Fences)
+			VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence), "Failed to create fences!");
 
 		// Queries
 		m_QueryPools.resize(VulkanConfig::MaxFramesInFlight);
@@ -52,8 +52,8 @@ namespace Eppo
 		queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
 		queryPoolInfo.queryCount = m_QueryCount;
 
-		for (size_t i = 0; i < m_QueryPools.size(); i++)
-			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &m_QueryPools[i]), "Failed to create query pool!");
+		for (auto& queryPool : m_QueryPools)
+			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &queryPool), "Failed to create query pool!");
 
 		m_Timestamps.resize(VulkanConfig::MaxFramesInFlight);
 		for (auto& timestamp : m_Timestamps)
@@ -82,7 +82,7 @@ namespace Eppo
 		// Cleanup
 		context->SubmitResourceFree([this]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
+			Ref<VulkanContext> context = VulkanContext::Get();
 			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
@@ -96,13 +96,13 @@ namespace Eppo
 		});
 	}
 
-	void RenderCommandBuffer::RT_Begin()
+	void VulkanCommandBuffer::RT_Begin()
 	{
 		m_QueryIndex = 2;
 
 		Renderer::SubmitCommand([this]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
+			Ref<VulkanContext> context = VulkanContext::Get();
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
 			VkCommandBufferBeginInfo commandBufferBeginInfo{};
@@ -111,7 +111,7 @@ namespace Eppo
 			commandBufferBeginInfo.pNext = nullptr;
 
 			VK_CHECK(vkBeginCommandBuffer(m_CommandBuffers[frameIndex], &commandBufferBeginInfo), "Failed to begin command buffer!");
-		
+
 			vkCmdResetQueryPool(m_CommandBuffers[frameIndex], m_QueryPools[frameIndex], 0, m_QueryCount);
 			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[frameIndex], 0);
 
@@ -120,11 +120,11 @@ namespace Eppo
 		});
 	}
 
-	void RenderCommandBuffer::RT_End()
+	void VulkanCommandBuffer::RT_End()
 	{
 		Renderer::SubmitCommand([this]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
+			Ref<VulkanContext> context = VulkanContext::Get();
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
 			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[frameIndex], 1);
@@ -133,7 +133,7 @@ namespace Eppo
 			VK_CHECK(vkEndCommandBuffer(m_CommandBuffers[frameIndex]), "Failed to end command buffer!");
 
 			// Statistics
-			Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+			Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 			VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 			vkGetQueryPoolResults(device, m_QueryPools[frameIndex], 0, m_QueryCount, sizeof(uint64_t) * m_QueryCount, m_Timestamps[frameIndex].data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
 
@@ -153,7 +153,7 @@ namespace Eppo
 		});
 	}
 
-	void RenderCommandBuffer::RT_Submit() const
+	void VulkanCommandBuffer::RT_Submit() const
 	{
 		if (!m_ManualSubmission)
 		{
@@ -163,30 +163,32 @@ namespace Eppo
 
 		Renderer::SubmitCommand([this]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+			Ref<VulkanContext> context = VulkanContext::Get();
+			Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 			VkDevice device = logicalDevice->GetNativeDevice();
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
-			VkSubmitInfo submitInfo{};
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &m_CommandBuffers[frameIndex];
+			VkCommandBufferSubmitInfo cmdSubmitInfo{};
+			cmdSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+			cmdSubmitInfo.commandBuffer = m_CommandBuffers[frameIndex];
+
+			VkSubmitInfo2 submitInfo{};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+			submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
 
 			VK_CHECK(vkResetFences(device, 1, &m_Fences[frameIndex]), "Failed to reset fence!");
-			VK_CHECK(vkQueueSubmit(logicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[frameIndex]), "Failed to submit work to queue!");
+			VK_CHECK(vkQueueSubmit2(logicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[frameIndex]), "Failed to submit work to queue!");
 			VK_CHECK(vkWaitForFences(device, 1, &m_Fences[frameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence!");
 		});
 	}
 
-	uint32_t RenderCommandBuffer::BeginTimestampQuery()
+	uint32_t VulkanCommandBuffer::RT_BeginTimestampQuery()
 	{
 		uint32_t queryIndex = m_QueryIndex;
 		m_QueryIndex += 2;
 
 		Renderer::SubmitCommand([this, queryIndex]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
 			uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 
 			vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex);
@@ -195,30 +197,29 @@ namespace Eppo
 		return queryIndex;
 	}
 
-	void RenderCommandBuffer::EndTimestampQuery(uint32_t queryIndex)
+	void VulkanCommandBuffer::RT_EndTimestampQuery(uint32_t queryIndex)
 	{
 		Renderer::SubmitCommand([this, queryIndex]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
 			uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 
 			vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex + 1);
 		});
 	}
 
-	float RenderCommandBuffer::GetTimestamp(uint32_t frameIndex, uint32_t queryIndex) const
+	float VulkanCommandBuffer::GetTimestamp(uint32_t frameIndex, uint32_t queryIndex) const
 	{
 		const auto& timing = m_TimestampDeltas[frameIndex];
 
 		return timing[queryIndex / 2];
 	}
 
-	void RenderCommandBuffer::ResetCommandBuffer(uint32_t frameIndex)
+	void VulkanCommandBuffer::ResetCommandBuffer(uint32_t frameIndex)
 	{
 		vkResetCommandBuffer(m_CommandBuffers[frameIndex], 0);
 	}
 
-	VkCommandBuffer RenderCommandBuffer::GetCurrentCommandBuffer()
+	VkCommandBuffer VulkanCommandBuffer::GetCurrentCommandBuffer()
 	{
 		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
 		return m_CommandBuffers[imageIndex];

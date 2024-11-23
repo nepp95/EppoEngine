@@ -1,25 +1,17 @@
 #pragma once
 
-#include "Renderer/Allocator.h"
-#include "RenderCommandBuffer.h"
+#include "Renderer/CommandBuffer.h"
 
 namespace Eppo
 {
 	class IndexBuffer
 	{
 	public:
-		IndexBuffer(void* data, uint32_t size);
-		~IndexBuffer();
+		virtual ~IndexBuffer() {};
 
-		VkBuffer GetBuffer() const { return m_Buffer; }
-		void RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const;
+		virtual void RT_Bind(Ref<CommandBuffer> commandBuffer) const = 0;
+		virtual uint32_t GetIndexCount() const = 0;
 
-		uint32_t GetIndexCount() const { return m_Size / sizeof(uint32_t); }
-
-	private:
-		uint32_t m_Size;
-
-		VkBuffer m_Buffer;
-		VmaAllocation m_Allocation;
+		static Ref<IndexBuffer> Create(void* data, uint32_t size);
 	};
 }

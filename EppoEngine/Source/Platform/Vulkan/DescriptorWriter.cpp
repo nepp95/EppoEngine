@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "DescriptorWriter.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -59,7 +59,7 @@ namespace Eppo
 
 	void DescriptorWriter::UpdateSet(VkDescriptorSet descriptorSet)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (VkWriteDescriptorSet& write : m_WriteDescriptors)

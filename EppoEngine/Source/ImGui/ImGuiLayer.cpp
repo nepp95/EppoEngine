@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ImGuiLayer.h"
 
+#include "Platform/Vulkan/VulkanContext.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
 
@@ -56,11 +57,11 @@ namespace Eppo
 		}
 
 		// Init
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		ImGui_ImplGlfw_InitForVulkan(context->GetWindowHandle(), true);
 
-		Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
-		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
+		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 
 		// Create descriptor pool
 		VkDescriptorPoolSize poolSizes[] = {
@@ -88,7 +89,7 @@ namespace Eppo
 
 		// Init
 		ImGui_ImplVulkan_InitInfo initInfo{};
-		initInfo.Instance = RendererContext::GetVulkanInstance();
+		initInfo.Instance = VulkanContext::GetVulkanInstance();
 		initInfo.PhysicalDevice = physicalDevice->GetNativeDevice();
 		initInfo.Device = logicalDevice->GetNativeDevice();
 		initInfo.QueueFamily = physicalDevice->GetQueueFamilyIndices().Graphics;
@@ -126,7 +127,7 @@ namespace Eppo
 
 	void ImGuiLayer::OnDetach()
 	{
-		VkDevice device = RendererContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
 		vkDestroyDescriptorPool(device, s_DescriptorPool, nullptr);
 
 		ImGui_ImplVulkan_Shutdown();

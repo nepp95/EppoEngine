@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "DescriptorLayoutBuilder.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -30,7 +30,7 @@ namespace Eppo
 		descriptorSetLayoutCreateInfo.flags = createFlags;
 		descriptorSetLayoutCreateInfo.pNext = pNext;
 
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorSetLayout layout;

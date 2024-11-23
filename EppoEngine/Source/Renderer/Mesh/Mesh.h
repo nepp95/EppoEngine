@@ -44,8 +44,6 @@ namespace Eppo
 
 		MeshData GetVertexData(const tinygltf::Model& model, const tinygltf::Mesh& mesh);
 
-		void CreateImage(const ImageSpecification& imageSpec, void* data, uint32_t channels);
-
 	private:
 		std::filesystem::path m_Filepath;
 

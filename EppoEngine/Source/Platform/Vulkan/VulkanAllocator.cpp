@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "Allocator.h"
+#include "VulkanAllocator.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -20,28 +20,33 @@ namespace Eppo
 
 	static AllocatorData* s_Data;
 
-	void Allocator::Init()
+	void VulkanAllocator::Init()
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 
 		s_Data = new AllocatorData();
 
+		VmaVulkanFunctions vulkanFunctions{};
+		vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+		vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
 		VmaAllocatorCreateInfo createInfo{};
 		createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-		createInfo.instance = RendererContext::GetVulkanInstance();
+		createInfo.instance = VulkanContext::GetVulkanInstance();
 		createInfo.physicalDevice = context->GetPhysicalDevice()->GetNativeDevice();
 		createInfo.device = context->GetLogicalDevice()->GetNativeDevice();
+		createInfo.pVulkanFunctions = &vulkanFunctions;
 
 		VK_CHECK(vmaCreateAllocator(&createInfo, &s_Data->Allocator), "Failed to create vma allocator!");
 
 		context->SubmitResourceFree([]()
 		{
 			EPPO_WARN("Allocator::Shutdown");
-			Allocator::Shutdown();
+			VulkanAllocator::Shutdown();
 		});
 	}
 
-	void Allocator::Shutdown()
+	void VulkanAllocator::Shutdown()
 	{
 		if (s_Data->MemoryUsed() > 0)
 			EPPO_WARN("Still {} memory in use by VMA", s_Data->MemoryUsed());
@@ -50,7 +55,7 @@ namespace Eppo
 		delete s_Data;
 	}
 
-	VmaAllocation Allocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
+	VmaAllocation VulkanAllocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
 		VmaAllocationCreateInfo allocationCreateInfo{};
 		allocationCreateInfo.usage = usage;
@@ -65,7 +70,7 @@ namespace Eppo
 		return allocation;
 	}
 
-	void Allocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+	void VulkanAllocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 	{
 		VmaAllocationInfo allocationInfo{};
 		vmaGetAllocationInfo(s_Data->Allocator, allocation, &allocationInfo);
@@ -75,7 +80,7 @@ namespace Eppo
 		s_Data->MemoryFreed += allocationInfo.size;
 	}
 
-	VmaAllocation Allocator::AllocateImage(VkImage& image, const VkImageCreateInfo& createInfo, VmaMemoryUsage usage)
+	VmaAllocation VulkanAllocator::AllocateImage(VkImage& image, const VkImageCreateInfo& createInfo, VmaMemoryUsage usage)
 	{
 		VmaAllocationCreateInfo  allocationCreateInfo{};
 		allocationCreateInfo.usage = usage;
@@ -90,7 +95,7 @@ namespace Eppo
 		return allocation;
 	}
 
-	void Allocator::DestroyImage(VkImage image, VmaAllocation allocation)
+	void VulkanAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
 	{
 		VmaAllocationInfo  allocationInfo{};
 		vmaGetAllocationInfo(s_Data->Allocator, allocation, &allocationInfo);
@@ -100,14 +105,14 @@ namespace Eppo
 		s_Data->MemoryFreed += allocationInfo.size;
 	}
 
-	void* Allocator::MapMemory(VmaAllocation allocation)
+	void* VulkanAllocator::MapMemory(VmaAllocation allocation)
 	{
 		void* data;
 		vmaMapMemory(s_Data->Allocator, allocation, &data);
 		return data;
 	}
 
-	void Allocator::UnmapMemory(VmaAllocation allocation)
+	void VulkanAllocator::UnmapMemory(VmaAllocation allocation)
 	{
 		vmaUnmapMemory(s_Data->Allocator, allocation);
 	}

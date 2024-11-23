@@ -118,11 +118,11 @@ namespace Eppo
 
 	void Application::Run()
 	{
+		Ref<RendererContext> context = RendererContext::Get();
+
 		while (m_IsRunning)
 		{
-			Ref<RendererContext> context = RendererContext::Get();
-
-			float time = (float)glfwGetTime();
+			auto time = static_cast<float>(glfwGetTime());
 			float timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
 
@@ -137,8 +137,6 @@ namespace Eppo
 
 			if (!m_IsMinimized)
 			{
-				Ref<Swapchain> swapchain = RendererContext::Get()->GetSwapchain();
-
 				{
 					EPPO_PROFILE_FUNCTION("CPU Render");
 
@@ -146,9 +144,9 @@ namespace Eppo
 						layer->Render();
 				}
 
-				swapchain->BeginFrame();
+				context->BeginFrame();
 				Renderer::ExecuteRenderCommands();
-				swapchain->Present();
+				context->PresentFrame();
 			}
 
 			m_Window->ProcessEvents();
@@ -157,7 +155,7 @@ namespace Eppo
 			EPPO_PROFILE_FRAME_MARK;
 		}
 
-		RendererContext::Get()->WaitIdle();
+		context->WaitIdle();
 	}
 
 	void Application::ExecuteMainThreadQueue()
