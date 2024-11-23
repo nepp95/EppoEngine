@@ -2,7 +2,7 @@
 
 #include "Renderer/Mesh/Material.h"
 #include "Renderer/IndexBuffer.h"
-#include "Renderer/RenderCommandBuffer.h"
+#include "Renderer/CommandBuffer.h"
 #include "Renderer/Vertex.h"
 #include "Renderer/VertexBuffer.h"
 
@@ -23,8 +23,8 @@ namespace Eppo
 	public:
 		Submesh(const std::string& name, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<Primitive>& primitives, const glm::mat4& transform);
 
-		void RT_BindVertexBuffer(Ref<RenderCommandBuffer> renderCommandBuffer) const;
-		void RT_BindIndexBuffer(Ref<RenderCommandBuffer> renderCommandBuffer) const;
+		void RT_BindVertexBuffer(Ref<CommandBuffer> renderCommandBuffer) const;
+		void RT_BindIndexBuffer(Ref<CommandBuffer> renderCommandBuffer) const;
 
 		const std::vector<Primitive>& GetPrimitives() const { return m_Primitives; }
 

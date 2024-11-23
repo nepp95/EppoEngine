@@ -38,7 +38,11 @@
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Image.h"
+#include "Renderer/IndexBuffer.h"
 #include "Renderer/SceneRenderer.h"
+#include "Renderer/Shader.h"
+#include "Renderer/UniformBuffer.h"
+#include "Renderer/VertexBuffer.h"
 
 // Scene
 #include "Scene/Entity.h"

@@ -1,26 +1,24 @@
 #include "pch.h"
-#include "Swapchain.h"
+#include "VulkanSwapchain.h"
 
 #include "Core/Application.h"
-#include "Renderer/Image.h"
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
+#include "Platform/Vulkan/VulkanImage.h"
 
 #include <GLFW/glfw3.h>
 
 namespace Eppo
 {
-	Swapchain::Swapchain(Ref<LogicalDevice> logicalDevice)
+	VulkanSwapchain::VulkanSwapchain(Ref<VulkanLogicalDevice> logicalDevice)
 		: m_LogicalDevice(logicalDevice)
 	{
 		Create();
-
-		Ref<RendererContext> context = RendererContext::Get();
 	}
 
-	void Swapchain::Create(bool recreate)
+	void VulkanSwapchain::Create(bool recreate)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
-		Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+		Ref<VulkanContext> context = VulkanContext::Get();
+		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 
 		// Swapchain support details
 		SwapchainSupportDetails details = QuerySwapchainSupportDetails(physicalDevice);
@@ -67,7 +65,8 @@ namespace Eppo
 			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamilies.size());
 			createInfo.pQueueFamilyIndices = queueFamilies.data();
-		} else
+		}
+		else
 		{
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			createInfo.queueFamilyIndexCount = 0;
@@ -109,7 +108,7 @@ namespace Eppo
 			VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageViews[i]), "Failed to create image view!");
 
 			// Transition images to present layout
-			Image::TransitionImage(cmd, m_Images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			VulkanImage::TransitionImage(cmd, m_Images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		}
 
 		m_LogicalDevice->FlushCommandBuffer(cmd);
@@ -117,7 +116,7 @@ namespace Eppo
 		if (!recreate)
 		{
 			// These things do not need to be recreated upon swapchain recreation
-			m_CommandBuffer = CreateRef<RenderCommandBuffer>(false);
+			m_CommandBuffer = CreateRef<VulkanCommandBuffer>(false, 0);
 
 			// Sync objects
 			m_Fences.resize(VulkanConfig::MaxFramesInFlight);
@@ -134,11 +133,9 @@ namespace Eppo
 			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 			{
 				VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_RenderSemaphores[i]), "Failed to create semaphore!")
-				VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]), "Failed to create semaphore!")
-				VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fence!")
+					VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]), "Failed to create semaphore!")
+					VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fence!")
 			}
-
-			// TODO: misschien toch die features ook al extension toevoegen? Supported extensions enzo... EXT > KHR > ...?
 		}
 
 		context->SubmitResourceFree([this]()
@@ -148,7 +145,12 @@ namespace Eppo
 		});
 	}
 
-	void Swapchain::Destroy()
+	void VulkanSwapchain::Cleanup()
+	{
+
+	}
+
+	void VulkanSwapchain::Destroy()
 	{
 		VkDevice device = m_LogicalDevice->GetNativeDevice();
 
@@ -170,7 +172,7 @@ namespace Eppo
 		vkDestroySwapchainKHR(device, m_Swapchain, nullptr);
 	}
 
-	void Swapchain::BeginFrame()
+	void VulkanSwapchain::BeginFrame()
 	{
 		VkDevice device = m_LogicalDevice->GetNativeDevice();
 
@@ -178,7 +180,7 @@ namespace Eppo
 		m_CommandBuffer->ResetCommandBuffer(m_CurrentFrameIndex);
 	}
 
-	void Swapchain::Present()
+	void VulkanSwapchain::PresentFrame()
 	{
 		VkResult result;
 		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -213,21 +215,21 @@ namespace Eppo
 			OnResize();
 
 		m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % VulkanConfig::MaxFramesInFlight;
-		
+
 		// TODO: Maybe do this elsewhere?
 		m_FrameCounter++;
-		RendererContext::Get()->RunGC(m_FrameCounter);
+		VulkanContext::Get()->RunGC(m_FrameCounter);
 
 		vkWaitForFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
 	}
 
-	void Swapchain::OnResize()
+	void VulkanSwapchain::OnResize()
 	{
 		// TODO: Swapchain::OnResize
 		EPPO_ASSERT(false);
 	}
 
-	SwapchainSupportDetails Swapchain::QuerySwapchainSupportDetails(const Ref<PhysicalDevice>& physicalDevice)
+	SwapchainSupportDetails VulkanSwapchain::QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice)
 	{
 		SwapchainSupportDetails details;
 		VkPhysicalDevice device = physicalDevice->GetNativeDevice();
@@ -260,7 +262,7 @@ namespace Eppo
 		return details;
 	}
 
-	VkSurfaceFormatKHR Swapchain::SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats)
+	VkSurfaceFormatKHR VulkanSwapchain::SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats)
 	{
 		VkSurfaceFormatKHR surfaceFormat{};
 
@@ -282,7 +284,7 @@ namespace Eppo
 		return surfaceFormat;
 	}
 
-	VkPresentModeKHR Swapchain::SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes)
+	VkPresentModeKHR VulkanSwapchain::SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes)
 	{
 		VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR; // FIFO_KHR is required to be supported so will always be valid
 
@@ -298,7 +300,7 @@ namespace Eppo
 		return presentMode;
 	}
 
-	VkExtent2D Swapchain::SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+	VkExtent2D VulkanSwapchain::SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 	{
 		VkExtent2D extent = capabilities.currentExtent;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Vulkan.h"
+#include "Platform/Vulkan/Vulkan.h"
 
 namespace Eppo
 {
@@ -15,11 +15,11 @@ namespace Eppo
 		}
 	};
 
-	class PhysicalDevice
+	class VulkanPhysicalDevice
 	{
 	public:
-		PhysicalDevice();
-		~PhysicalDevice() = default;
+		VulkanPhysicalDevice();
+		~VulkanPhysicalDevice() = default;
 
 		VkPhysicalDevice GetNativeDevice() const { return m_PhysicalDevice; }
 		VkSurfaceKHR GetSurface() const { return m_Surface; }
@@ -34,7 +34,7 @@ namespace Eppo
 		bool IsExtensionSupported(std::string_view extension);
 
 	private:
-		QueueFamilyIndices FindQueueFamilyIndices();
+		QueueFamilyIndices FindQueueFamilyIndices() const;
 
 	private:
 		VkPhysicalDevice m_PhysicalDevice;

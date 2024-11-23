@@ -1,54 +1,33 @@
 #pragma once
 
-#include "Debug/Profiler.h"
-#include "Renderer/GarbageCollector.h"
-#include "Renderer/LogicalDevice.h"
-#include "Renderer/PhysicalDevice.h"
-#include "Renderer/Swapchain.h"
-#include "Renderer/Vulkan.h"
-
-#include <deque>
-#include <functional>
-
 struct GLFWwindow;
 
 namespace Eppo
 {
+	enum class RendererAPI
+	{
+		Vulkan = 1
+	};
+
 	class RendererContext
 	{
 	public:
-		RendererContext(GLFWwindow* windowHandle);
-		~RendererContext() = default;
+		virtual ~RendererContext() = default;
 
-		void Init();
-		void Shutdown();
-		void WaitIdle();
+		virtual void Init() = 0;
+		virtual void Shutdown() = 0;
 
-		void SubmitResourceFree(std::function<void()> fn, bool freeOnShutdown = true);
-		void RunGC(uint32_t frameNumber);
+		virtual void BeginFrame() = 0;
+		virtual void PresentFrame() = 0;
+		virtual void WaitIdle() = 0;
 
-		Ref<LogicalDevice> GetLogicalDevice() const { return m_LogicalDevice; }
-		Ref<PhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
-		Ref<Swapchain> GetSwapchain() const { return m_Swapchain; }
+		virtual GLFWwindow* GetWindowHandle() = 0;
 
-		static VkInstance GetVulkanInstance() { return s_Instance; }
-		GLFWwindow* GetWindowHandle() { return m_WindowHandle; }
-
+		static RendererAPI GetAPI() { return s_API; }
 		static Ref<RendererContext> Get();
+		static Ref<RendererContext> Create(GLFWwindow* windowHandle);
 
 	private:
-		std::vector<const char*> GetRequiredExtensions();
-
-	private:
-		GLFWwindow* m_WindowHandle = nullptr;
-		VkDebugUtilsMessengerEXT m_DebugMessenger;
-
-		Ref<PhysicalDevice> m_PhysicalDevice;
-		Ref<LogicalDevice> m_LogicalDevice;
-		Ref<Swapchain> m_Swapchain;
-
-		GarbageCollector m_GarbageCollector;
-
-		inline static VkInstance s_Instance;
+		static RendererAPI s_API;
 	};
 }

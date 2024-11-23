@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Renderer/Allocator.h"
-#include "Renderer/RendererContext.h"
-
 namespace Eppo
 {
 	enum class ImageFormat
@@ -40,78 +37,23 @@ namespace Eppo
 		{}
 	};
 
-	struct ImageInfo
-	{
-		VkImage Image = nullptr;
-		VkImageView ImageView = nullptr;
-		VkImageLayout ImageLayout;
-		VkSampler Sampler = nullptr;
-		VmaAllocation Allocation = nullptr;
-	};
-
 	class Image
 	{
 	public:
-		Image(const ImageSpecification& specification);
-		Image() = default;
-		~Image();
+		virtual ~Image() {}
 
-		void Release();
+		virtual void SetData(void* data, uint32_t channels = 4) = 0;
+		virtual void Release() = 0;
 
-		const ImageSpecification& GetSpecification() const { return m_Specification; }
+		virtual const ImageSpecification& GetSpecification() const = 0;
+		virtual uint32_t GetWidth() const = 0;
+		virtual uint32_t GetHeight() const = 0;
 
-		uint32_t GetWidth() const { return m_Specification.Width; }
-		uint32_t GetHeight() const { return m_Specification.Height; }
-
-		ImageInfo& GetImageInfo() { return m_ImageInfo; }
-
-		static void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout);
-		static VkImageAspectFlags GetImageAspectFlags(VkImageLayout layout);
-
-	private:
-		void SetData(void* data);
-
-	private:
-		ImageSpecification m_Specification;
-		ImageInfo m_ImageInfo{};
-
-		void* m_ImageData = nullptr;
+		static Ref<Image> Create(const ImageSpecification& specification);
 	};
 
 	namespace Utils
 	{
-		inline VkFormat FindSupportedDepthFormat()
-		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<PhysicalDevice> physicalDevice = context->GetPhysicalDevice();
-
-			std::vector<VkFormat> depthFormats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
-
-			for (const auto& format : depthFormats)
-			{
-				VkFormatProperties properties;
-				vkGetPhysicalDeviceFormatProperties(physicalDevice->GetNativeDevice(), format, &properties);
-				if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-					return format;
-			}
-
-			EPPO_ASSERT(false);
-			return VK_FORMAT_UNDEFINED;
-		}
-
-		inline VkFormat ImageFormatToVkFormat(ImageFormat format)
-		{
-			switch (format)
-			{
-				case ImageFormat::None:     return VK_FORMAT_UNDEFINED;
-				case ImageFormat::RGBA8:    return VK_FORMAT_R8G8B8A8_SRGB;
-				case ImageFormat::Depth:    return FindSupportedDepthFormat();
-			}
-
-			EPPO_ASSERT(false);
-			return VK_FORMAT_UNDEFINED;
-		}
-
 		inline bool IsDepthFormat(ImageFormat format)
 		{
 			return format == ImageFormat::Depth;

@@ -6,11 +6,11 @@ namespace Eppo
 {
 	ThumbnailCache::ThumbnailCache()
 	{
-		m_AssetTypeThumbnails[AssetType::None] = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/Unknown.png"));
-		m_AssetTypeThumbnails[AssetType::Mesh] = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/Mesh.png"));
-		m_AssetTypeThumbnails[AssetType::Scene] = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/Scene.png"));
-		m_AssetTypeThumbnails[AssetType::Script] = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/Script.png"));
-		m_AssetTypeThumbnails[AssetType::Texture] = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/Texture.png"));
+		m_AssetTypeThumbnails[AssetType::None] = Image::Create(ImageSpecification("Resources/Textures/Icons/Unknown.png"));
+		m_AssetTypeThumbnails[AssetType::Mesh] = Image::Create(ImageSpecification("Resources/Textures/Icons/Mesh.png"));
+		m_AssetTypeThumbnails[AssetType::Scene] = Image::Create(ImageSpecification("Resources/Textures/Icons/Scene.png"));
+		m_AssetTypeThumbnails[AssetType::Script] = Image::Create(ImageSpecification("Resources/Textures/Icons/Script.png"));
+		m_AssetTypeThumbnails[AssetType::Texture] = Image::Create(ImageSpecification("Resources/Textures/Icons/Texture.png"));
 	}
 
 	Ref<Image> ThumbnailCache::GetOrCreateThumbnail(const std::filesystem::path& filepath)

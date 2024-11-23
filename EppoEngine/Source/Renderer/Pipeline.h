@@ -19,6 +19,41 @@ namespace Eppo
 		{}
 	};
 
+	enum class PrimitiveTopology
+	{
+		Lines,
+		Triangles
+	};
+
+	enum class PolygonMode
+	{
+		Fill,
+		Line
+	};
+
+	enum class CullMode
+	{
+		Back,
+		Front,
+		FrontAndBack
+	};
+
+	enum class CullFrontFace
+	{
+		Clockwise,
+		CounterClockwise
+	};
+
+	enum class DepthCompareOp
+	{
+		Less,
+		Equal,
+		LessOrEqual,
+		Greater,
+		NotEqual,
+		GreaterOrEqual
+	};
+
 	struct PipelineSpecification
 	{
 		Ref<Shader> Shader;
@@ -29,65 +64,37 @@ namespace Eppo
 		uint32_t Height = 0;
 
 		// Input Assembly
-		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		PrimitiveTopology Topology = PrimitiveTopology::Triangles;
 
 		// Rasterization
-		VkPolygonMode PolygonMode = VK_POLYGON_MODE_FILL;
-		VkCullModeFlags CullMode = VK_CULL_MODE_BACK_BIT;
-		VkFrontFace CullFrontFace = VK_FRONT_FACE_CLOCKWISE;
+		PolygonMode PolygonMode = PolygonMode::Fill;
+		CullMode CullMode = CullMode::Back;
+		CullFrontFace CullFrontFace = CullFrontFace::Clockwise;
 
 		// Depth Stencil
 		bool DepthTesting = false;
 		bool DepthCubeMapImage = false;
 		bool ClearDepthOnLoad = true;
 		float ClearDepth = 1.0f;
-		VkCompareOp DepthCompareOp = VK_COMPARE_OP_LESS;
+		DepthCompareOp DepthCompareOp = DepthCompareOp::Less;
 		Ref<Image> DepthImage = nullptr;
 
 		// Color Attachments
 		std::vector<ColorAttachment> ColorAttachments;
-
-		// Push Constants
-		std::vector<VkPushConstantRange> PushConstantRanges;
+		Ref<Image> ExistingImage;
 	};
 
 	class Pipeline
 	{
 	public:
-		Pipeline(const PipelineSpecification& specification);
-		~Pipeline();
+		virtual ~Pipeline() {};
 
-		void RT_Bind(Ref<RenderCommandBuffer> renderCommandBuffer) const;
-		void RT_BindDescriptorSets(Ref<RenderCommandBuffer> renderCommandBuffer, uint32_t start, uint32_t count);
-		void RT_Draw(Ref<RenderCommandBuffer> renderCommandBuffer, const Primitive& primitive) const;
+		virtual const PipelineSpecification& GetSpecification() const = 0;
+		virtual PipelineSpecification& GetSpecification() = 0;
 
-		void RT_SetViewport(Ref<RenderCommandBuffer> renderCommandBuffer) const;
-		void RT_SetScissor(Ref<RenderCommandBuffer> renderCommandBuffer) const;
-		void RT_SetPushConstants(Ref<RenderCommandBuffer> renderCommandBuffer, Buffer data) const;
+		virtual Ref<Image> GetImage(uint32_t index) const = 0;
+		virtual Ref<Image> GetFinalImage() const = 0;
 
-		const PipelineSpecification& GetSpecification() const { return m_Specification; }
-		PipelineSpecification& GetSpecification() { return m_Specification; }
-
-		VkPipeline GetPipeline() const { return m_Pipeline; }
-		VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
-
-		Ref<Image> GetImage(uint32_t index) const { return m_Images[index]; }
-		Ref<Image> GetFinalImage() const { return m_Images[0]; }
-
-		const std::vector<VkDescriptorSet>& GetDescriptorSets(uint32_t frameIndex) { return m_DescriptorSets[frameIndex]; }
-		const std::vector<VkRenderingAttachmentInfo>& GetAttachmentInfos() const { return m_AttachmentInfos; }
-
-	private:
-		std::vector<VkFormat> GetVkColorAttachmentFormats() const;		
-
-	private:
-		PipelineSpecification m_Specification;
-
-		VkPipeline m_Pipeline;
-		VkPipelineLayout m_PipelineLayout;
-
-		std::unordered_map<uint32_t, std::vector<VkDescriptorSet>> m_DescriptorSets;
-		std::vector<VkRenderingAttachmentInfo> m_AttachmentInfos;
-		std::vector<Ref<Image>> m_Images;
+		static Ref<Pipeline> Create(const PipelineSpecification& specification);
 	};
 }

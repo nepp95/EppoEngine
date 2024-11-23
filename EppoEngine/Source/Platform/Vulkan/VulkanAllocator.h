@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Renderer/Vma.h"
+#include "Platform/Vulkan/Vma.h"
 
 namespace Eppo
 {
-	class Allocator
+	class VulkanAllocator
 	{
 	public:
 		static void Init();

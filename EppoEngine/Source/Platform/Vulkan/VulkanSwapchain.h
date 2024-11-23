@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Renderer/LogicalDevice.h"
-#include "Renderer/RenderCommandBuffer.h"
+#include "Platform/Vulkan/VulkanCommandBuffer.h"
+#include "Platform/Vulkan/VulkanLogicalDevice.h"
 
 struct GLFWwindow;
 
@@ -14,10 +14,10 @@ namespace Eppo
 		std::vector<VkPresentModeKHR> PresentModes;
 	};
 
-	class Swapchain
+	class VulkanSwapchain
 	{
 	public:
-		Swapchain(Ref<LogicalDevice> logicalDevice);
+		VulkanSwapchain(Ref<VulkanLogicalDevice> logicalDevice);
 
 		void Create(bool recreate = false);
 
@@ -25,7 +25,7 @@ namespace Eppo
 		void Destroy();
 
 		void BeginFrame();
-		void Present();
+		void PresentFrame();
 
 		void OnResize();
 
@@ -37,18 +37,18 @@ namespace Eppo
 		uint32_t GetHeight() const { return m_Extent.height; }
 		VkExtent2D GetExtent() const { return m_Extent; }
 
-		Ref<RenderCommandBuffer> GetCommandBuffer() const { return m_CommandBuffer; }
+		Ref<VulkanCommandBuffer> GetCommandBuffer() const { return m_CommandBuffer; }
 
 	private:
-		SwapchainSupportDetails QuerySwapchainSupportDetails(const Ref<PhysicalDevice>& physicalDevice);
+		SwapchainSupportDetails QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice);
 
 		VkSurfaceFormatKHR SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats);
 		VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
 		VkExtent2D SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
 	private:
-		Ref<LogicalDevice> m_LogicalDevice;
-		Ref<RenderCommandBuffer> m_CommandBuffer;
+		Ref<VulkanLogicalDevice> m_LogicalDevice;
+		Ref<VulkanCommandBuffer> m_CommandBuffer;
 
 		VkSwapchainKHR m_Swapchain;
 		VkExtent2D m_Extent;

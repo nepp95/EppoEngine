@@ -25,8 +25,8 @@ namespace Eppo
 	void EditorLayer::OnAttach()
 	{
 		// Load resources
-		m_IconPlay = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/PlayButton.png"));
-		m_IconStop = CreateRef<Image>(ImageSpecification("Resources/Textures/Icons/StopButton.png"));
+		m_IconPlay = Image::Create(ImageSpecification("Resources/Textures/Icons/PlayButton.png"));
+		m_IconStop = Image::Create(ImageSpecification("Resources/Textures/Icons/StopButton.png"));
 
 		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
@@ -40,8 +40,9 @@ namespace Eppo
 		RenderSpecification renderSpec;
 		renderSpec.Width = 1600;
 		renderSpec.Height = 900;
+		renderSpec.DebugRendering = true;
 
-		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, renderSpec);
+		m_ViewportRenderer = SceneRenderer::Create(m_EditorScene, renderSpec);
 	}
 	
 	void EditorLayer::OnDetach()

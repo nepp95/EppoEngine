@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "Renderer.h"
 
-#include "Renderer/DescriptorAllocator.h"
+#include "Platform/Vulkan/DescriptorAllocator.h"
+#include "Platform/Vulkan/VulkanImage.h"
+#include "Platform/Vulkan/VulkanContext.h"
 #include "Renderer/IndexBuffer.h"
 #include "Renderer/RendererContext.h"
 #include "Renderer/ShaderLibrary.h"
@@ -33,9 +35,9 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Renderer::Init");
 
-		Ref<RendererContext> context = RendererContext::Get();
-		Ref<LogicalDevice> logicalDevice = context->GetLogicalDevice();
-		Ref<Swapchain> swapchain = context->GetSwapchain();
+		Ref<VulkanContext> context = VulkanContext::Get();
+		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
+		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 
 		s_Data = new RendererData();
 
@@ -55,8 +57,8 @@ namespace Eppo
 
 		// Load shaders
 		s_Data->ShaderLibrary = CreateScope<ShaderLibrary>();
-		// TODO: We aren't using this because of imgui?
 		s_Data->ShaderLibrary->Load("Resources/Shaders/composite.glsl");
+		s_Data->ShaderLibrary->Load("Resources/Shaders/debug.glsl");
 		s_Data->ShaderLibrary->Load("Resources/Shaders/geometry.glsl");
 		s_Data->ShaderLibrary->Load("Resources/Shaders/predepth.glsl");
 	}
@@ -76,7 +78,7 @@ namespace Eppo
 
 	uint32_t Renderer::GetCurrentFrameIndex()
 	{
-		return RendererContext::Get()->GetSwapchain()->GetCurrentImageIndex();
+		return VulkanContext::Get()->GetSwapchain()->GetCurrentImageIndex();
 	}
 
 	void Renderer::ExecuteRenderCommands()
@@ -93,12 +95,12 @@ namespace Eppo
 		s_Data->CommandQueue.AddCommand(command);
 	}
 
-	void Renderer::RT_BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline)
+	void Renderer::RT_BeginRenderPass(Ref<CommandBuffer> commandBuffer, Ref<Pipeline> pipeline)
 	{
-		SubmitCommand([renderCommandBuffer, pipeline]()
+		SubmitCommand([commandBuffer, pipeline]()
 		{
-			Ref<RendererContext> context = RendererContext::Get();
-			Ref<Swapchain> swapchain = context->GetSwapchain();
+			Ref<VulkanContext> context = VulkanContext::Get();
+			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 
 			const auto& spec = pipeline->GetSpecification();
 
@@ -123,8 +125,9 @@ namespace Eppo
 				renderingInfo.colorAttachmentCount = 1;
 				renderingInfo.pColorAttachments = &attachmentInfo;
 
-				VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
-				vkCmdBeginRendering(commandBuffer, &renderingInfo);
+				auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+				VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
+				vkCmdBeginRendering(cb, &renderingInfo);
 			} else
 			{
 				std::vector<VkRenderingAttachmentInfo> attachmentInfos;
@@ -139,7 +142,7 @@ namespace Eppo
 					attachmentInfo.loadOp = attachment.Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 					attachmentInfo.clearValue = { attachment.ClearValue.r, attachment.ClearValue.g, attachment.ClearValue.b, attachment.ClearValue.a };
 					attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-					attachmentInfo.imageView = pipeline->GetImage(i)->GetImageInfo().ImageView;
+					attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(pipeline->GetImage(i))->GetImageInfo().ImageView;
 				}
 
 				renderingInfo.colorAttachmentCount = static_cast<uint32_t>(attachmentInfos.size());
@@ -153,7 +156,7 @@ namespace Eppo
 					attachmentInfo.loadOp = spec.ClearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 					attachmentInfo.clearValue = { spec.ClearDepth, 0 };
 					attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-					attachmentInfo.imageView = spec.DepthImage->GetImageInfo().ImageView;
+					attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(spec.DepthImage)->GetImageInfo().ImageView;
 
 					renderingInfo.pDepthAttachment = &attachmentInfo;
 
@@ -161,18 +164,20 @@ namespace Eppo
 						renderingInfo.viewMask = 0b111111;
 				}
 
-				VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
-				vkCmdBeginRendering(commandBuffer, &renderingInfo);
+				auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+				VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
+				vkCmdBeginRendering(cb, &renderingInfo);
 			}
 		});
 	}
 
-	void Renderer::RT_EndRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer)
+	void Renderer::RT_EndRenderPass(Ref<CommandBuffer> commandBuffer)
 	{
-		SubmitCommand([renderCommandBuffer]()
+		SubmitCommand([commandBuffer]()
 		{
-			VkCommandBuffer commandBuffer = renderCommandBuffer->GetCurrentCommandBuffer();
-			vkCmdEndRendering(commandBuffer);
+			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
+			vkCmdEndRendering(cb);
 		});
 	}
 

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "DescriptorAllocator.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -17,7 +17,7 @@ namespace Eppo
 
 	void DescriptorAllocator::ClearPools()
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto& pool : m_AvailablePools)
@@ -34,7 +34,7 @@ namespace Eppo
 
 	void DescriptorAllocator::DestroyPools()
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (auto& pool : m_AvailablePools)
@@ -48,7 +48,7 @@ namespace Eppo
 
 	VkDescriptorSet DescriptorAllocator::Allocate(VkDescriptorSetLayout layout, void* pNext /*= nullptr*/)
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorPool pool = GetPool();
@@ -82,7 +82,7 @@ namespace Eppo
 
 	VkDescriptorPool DescriptorAllocator::GetPool()
 	{
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorPool newPool;
@@ -122,7 +122,7 @@ namespace Eppo
 		poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		poolCreateInfo.pPoolSizes = poolSizes.data();
 
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorPool newPool;

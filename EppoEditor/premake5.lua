@@ -26,9 +26,7 @@ project "EppoEditor"
 		"%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
         "%{IncludeDir.tracy}",
-		"%{IncludeDir.yaml_cpp}",
-		"%{IncludeDir.vma}",
-        "%{IncludeDir.vulkan}"
+		"%{IncludeDir.yaml_cpp}"
     }
 
     links {
@@ -57,9 +55,6 @@ project "EppoEditor"
 
         links {
             "%{StaticLibrary.glfw}",
-            "%{StaticLibrary.shaderc}",
-            "%{StaticLibrary.spirv_cross}",
-            "%{StaticLibrary.spirv_cross_glsl}",
             "%{StaticLibrary.imgui}",
             "%{StaticLibrary.yaml_cpp}"
         }

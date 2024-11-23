@@ -1,11 +1,11 @@
 #include "pch.h"
-#include "LogicalDevice.h"
+#include "VulkanLogicalDevice.h"
 
-#include "Renderer/RendererContext.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
-	LogicalDevice::LogicalDevice(Ref<PhysicalDevice> physicalDevice)
+	VulkanLogicalDevice::VulkanLogicalDevice(Ref<VulkanPhysicalDevice> physicalDevice)
 		: m_PhysicalDevice(physicalDevice)
 	{
 		// Check if requested extensions are supported by the GPU
@@ -66,7 +66,8 @@ namespace Eppo
 		{
 			deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(VulkanConfig::ValidationLayers.size());
 			deviceCreateInfo.ppEnabledLayerNames = VulkanConfig::ValidationLayers.data();
-		} else
+		}
+		else
 		{
 			deviceCreateInfo.enabledLayerCount = 0;
 			deviceCreateInfo.ppEnabledLayerNames = nullptr;
@@ -86,7 +87,7 @@ namespace Eppo
 		VK_CHECK(vkCreateCommandPool(m_Device, &commandPoolCreateInfo, nullptr, &m_CommandPool), "Failed to create command pool!");
 
 		// Clean up
-		Ref<RendererContext> context = RendererContext::Get();
+		Ref<VulkanContext> context = VulkanContext::Get();
 		context->SubmitResourceFree([this]()
 		{
 			EPPO_WARN("Releasing logical device and command pool {}", (void*)this);
@@ -97,7 +98,7 @@ namespace Eppo
 		});
 	}
 
-	VkCommandBuffer LogicalDevice::GetCommandBuffer(bool begin)
+	VkCommandBuffer VulkanLogicalDevice::GetCommandBuffer(bool begin) const
 	{
 		VkCommandBuffer commandBuffer;
 
@@ -121,7 +122,7 @@ namespace Eppo
 		return commandBuffer;
 	}
 
-	VkCommandBuffer LogicalDevice::GetSecondaryCommandBuffer()
+	VkCommandBuffer VulkanLogicalDevice::GetSecondaryCommandBuffer() const
 	{
 		VkCommandBuffer commandBuffer;
 
@@ -136,7 +137,7 @@ namespace Eppo
 		return commandBuffer;
 	}
 
-	void LogicalDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer)
+	void VulkanLogicalDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer) const
 	{
 		VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
 
