@@ -2,6 +2,7 @@
 
 #include "Core/Buffer.h"
 #include "Renderer/Mesh/Mesh.h"
+#include "Renderer/DebugRenderer.h"
 #include "Renderer/Image.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/SceneRenderer.h"
@@ -41,6 +42,7 @@ namespace Eppo
 		Ref<Scene> m_Scene;
 
 		Ref<CommandBuffer> m_CommandBuffer;
+		Ref<DebugRenderer> m_DebugRenderer;
 
 		Ref<Pipeline> m_PreDepthPipeline;
 		Ref<Pipeline> m_GeometryPipeline;

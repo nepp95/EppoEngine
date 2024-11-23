@@ -29,6 +29,7 @@ namespace Eppo
 		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 		
 		m_CommandBuffer = swapchain->GetCommandBuffer();
+		m_DebugRenderer = DebugRenderer::Create();
 
 		// PreDepth
 		{
@@ -348,22 +349,7 @@ namespace Eppo
 		m_TimestampQueries.PreDepthQuery = cmd->RT_BeginTimestampQuery();
 
 		if (m_RenderSpecification.DebugRendering)
-		{
-			Renderer::SubmitCommand([cmd]()
-			{
-				VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-
-				VkDebugUtilsLabelEXT debugLabel{};
-				debugLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-				debugLabel.pLabelName = "PreDepthPass";
-				debugLabel.color[0] = 0.5f;
-				debugLabel.color[1] = 0.5f;
-				debugLabel.color[2] = 0.0f;
-				debugLabel.color[3] = 1.0f;
-
-				vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &debugLabel);
-			});
-		}
+			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "PreDepthPass");
 
 		// Transition depth image for writing
 		Renderer::SubmitCommand([this, cmd]()
@@ -445,12 +431,10 @@ namespace Eppo
 
 			for (uint32_t i = 0; i < s_MaxLights; i++)
 				VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-
-			if (m_RenderSpecification.DebugRendering)
-			{
-				vkCmdEndDebugUtilsLabelEXT(commandBuffer);
-			}
 		});
+
+		if (m_RenderSpecification.DebugRendering)
+			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.PreDepthQuery);
 	}
@@ -461,6 +445,9 @@ namespace Eppo
 		auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_GeometryPipeline);
 
 		m_TimestampQueries.GeometryQuery = cmd->RT_BeginTimestampQuery();
+
+		if (m_RenderSpecification.DebugRendering)
+			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "GeometryPass");
 
 		// Update descriptors
 		Renderer::SubmitCommand([this, pipeline]()
@@ -565,6 +552,9 @@ namespace Eppo
 
 		// End rendering
 		Renderer::RT_EndRenderPass(m_CommandBuffer);
+		
+		if (m_RenderSpecification.DebugRendering)
+			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.GeometryQuery);
 	}
@@ -575,6 +565,9 @@ namespace Eppo
 		auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_DebugLinePipeline);
 	
 		m_TimestampQueries.DebugLineQuery = cmd->RT_BeginTimestampQuery();
+
+		if (m_RenderSpecification.DebugRendering)
+			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "DebugLinePass");
 
 		// Update descriptors
 		Renderer::SubmitCommand([this, pipeline]()
@@ -615,6 +608,9 @@ namespace Eppo
 
 		Renderer::RT_EndRenderPass(m_CommandBuffer);
 
+		if (m_RenderSpecification.DebugRendering)
+			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
+
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.DebugLineQuery);
 	}
 
@@ -624,6 +620,9 @@ namespace Eppo
 		auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_CompositePipeline);
 
 		m_TimestampQueries.CompositeQuery = cmd->RT_BeginTimestampQuery();
+
+		if (m_RenderSpecification.DebugRendering)
+			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "CompositePass");
 
 		Renderer::SubmitCommand([cmd]()
 		{
@@ -666,6 +665,9 @@ namespace Eppo
 
 			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		});
+
+		if (m_RenderSpecification.DebugRendering)
+			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.CompositeQuery);
 	}
