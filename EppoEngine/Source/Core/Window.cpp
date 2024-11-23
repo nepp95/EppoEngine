@@ -160,11 +160,6 @@ namespace Eppo
 		glfwPollEvents();
 	}
 
-	{
-	void Window::SetWindowTitle(const std::string& name)
-		glfwSetWindowTitle(m_Window, name.c_str());
-	}
-
 	void Window::SetWindowTitle(const std::string& name)
 	{
 		glfwSetWindowTitle(m_Window, name.c_str());
