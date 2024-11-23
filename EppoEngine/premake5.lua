@@ -12,7 +12,8 @@ project "EppoEngine"
 
 	defines {
 		"GLFW_INCLUDE_NONE",
-		"YAML_CPP_STATIC_DEFINE"
+        "VK_NO_PROTOTYPES",
+		"YAML_CPP_STATIC_DEFINE",
 	}
 
     files {
@@ -49,14 +50,14 @@ project "EppoEngine"
         systemversion "latest"
 
         defines {
-            "EPPO_PLATFORM_WINDOWS"
+            "EPPO_PLATFORM_WINDOWS",
+            "VK_USE_PLATFORM_WIN32_KHR"
         }
 
         links {
             "%{StaticLibrary.glfw}",
             "%{StaticLibrary.imgui}",
             "%{StaticLibrary.yaml_cpp}",
-            "%{StaticLibrary.vulkan}",
 			"%{StaticLibrary.winsock}",
 			"%{StaticLibrary.winmm}",
 			"%{StaticLibrary.winversion}",
@@ -69,7 +70,8 @@ project "EppoEngine"
     
     filter "system:linux"
         defines {
-            "EPPO_PLATFORM_LINUX"
+            "EPPO_PLATFORM_LINUX",
+            "VK_USE_PLATFORM_XLIB_KHR"
         }
 
         removefiles {

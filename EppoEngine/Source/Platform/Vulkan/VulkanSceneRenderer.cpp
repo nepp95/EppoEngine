@@ -23,7 +23,7 @@
 namespace Eppo
 {
 	VulkanSceneRenderer::VulkanSceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpec)
-		: m_Scene(scene), m_RenderSpecification(renderSpec)
+		: m_RenderSpecification(renderSpec), m_Scene(scene)
 	{
 		Ref<VulkanContext> context = VulkanContext::Get();
 		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
