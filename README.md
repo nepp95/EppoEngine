@@ -1,6 +1,5 @@
 # EppoEngine
-[![Master Build](https://github.com/nepp95/EppoEngine/actions/workflows/ci-master.yml/badge.svg?branch=master)](https://github.com/nepp95/EppoEngine/actions/workflows/ci-master.yml)
-[![Development Build](https://github.com/nepp95/EppoEngine/actions/workflows/ci-develop.yml/badge.svg?branch=develop)](https://github.com/nepp95/EppoEngine/actions/workflows/ci-develop.yml)
+[![Build](https://github.com/nepp95/EppoEngine/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/nepp95/EppoEngine/actions/workflows/ci.yml)
 
 ## Introduction
 
