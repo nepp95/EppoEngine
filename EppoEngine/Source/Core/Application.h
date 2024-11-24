@@ -67,8 +67,8 @@ namespace Eppo
 		void Run();
 		void ExecuteMainThreadQueue();
 
-		bool OnWindowClose(WindowCloseEvent& e);
-		bool OnWindowResize(WindowResizeEvent& e);
+		bool OnWindowClose(const WindowCloseEvent& e);
+		bool OnWindowResize(const WindowResizeEvent& e);
 
 	private:
 		ApplicationSpecification m_Specification;

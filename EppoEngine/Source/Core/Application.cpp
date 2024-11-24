@@ -169,14 +169,14 @@ namespace Eppo
 		}
 	}
 
-	bool Application::OnWindowClose(WindowCloseEvent& e)
+	bool Application::OnWindowClose(const WindowCloseEvent& e)
 	{
 		Close();
 
 		return true;
 	}
 
-	bool Application::OnWindowResize(WindowResizeEvent& e)
+	bool Application::OnWindowResize(const WindowResizeEvent& e)
 	{
 		EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
 		

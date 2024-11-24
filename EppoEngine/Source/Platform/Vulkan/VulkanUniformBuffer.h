@@ -9,7 +9,7 @@ namespace Eppo
 	{
 	public:
 		VulkanUniformBuffer(uint32_t size, uint32_t binding);
-		~VulkanUniformBuffer();
+		~VulkanUniformBuffer() override;
 
 		void SetData(void* data, uint32_t size) override;
 

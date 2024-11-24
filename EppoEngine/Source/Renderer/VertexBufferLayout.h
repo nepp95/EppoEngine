@@ -25,7 +25,7 @@ namespace Eppo
 
 		BufferElement() = default;
 		BufferElement(ShaderDataType type, const std::string& name, bool normalized = false)
-			: Type(type), Name(name), Normalized(normalized), Size(Utils::ShaderDataTypeSize(Type)), Offset(0)
+			: Type(type), Name(name), Size(Utils::ShaderDataTypeSize(Type)), Offset(0), Normalized(normalized)
 		{}
 
 		uint32_t GetComponentCount() const

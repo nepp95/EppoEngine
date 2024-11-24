@@ -14,14 +14,6 @@ namespace Eppo
 {
 	namespace Utils
 	{
-		inline std::filesystem::path GetCacheDirectory()
-		{
-			if (!Filesystem::Exists("Resources/Shaders/Cache"))
-				std::filesystem::create_directories("Resources/Shaders/Cache");
-
-			return "Resources/Shaders/Cache";
-		}
-
 		inline shaderc_shader_kind ShaderStageToShaderCKind(ShaderStage stage)
 		{
 			switch (stage)
@@ -32,27 +24,6 @@ namespace Eppo
 
 			EPPO_ASSERT(false);
 			return (shaderc_shader_kind)-1;
-		}
-
-		inline std::string ShaderStageToString(ShaderStage stage)
-		{
-			switch (stage)
-			{
-				case ShaderStage::Vertex:	return "vert";
-				case ShaderStage::Fragment:	return "frag";
-			}
-
-			EPPO_ASSERT(false);
-			return "Invalid";
-		}
-
-		inline ShaderStage StringToShaderStage(std::string_view stage)
-		{
-			if (stage == "vert")			return ShaderStage::Vertex;
-			if (stage == "frag")			return ShaderStage::Fragment;
-
-			EPPO_ASSERT(false);
-			return ShaderStage::None;
 		}
 
 		inline VkShaderStageFlagBits ShaderStageToVkShaderStage(ShaderStage stage)
@@ -73,15 +44,13 @@ namespace Eppo
 	}
 
 	VulkanShader::VulkanShader(const ShaderSpecification& specification)
-		: m_Specification(specification)
+		: Shader(specification)
 	{
-		m_Name = m_Specification.Filepath.stem().string();
-
 		// Read shader source
-		const std::string shaderSource = Filesystem::ReadText(m_Specification.Filepath);
+		const std::string shaderSource = Filesystem::ReadText(GetSpecification().Filepath);
 
 		// Preprocess by shader stage
-		std::unordered_map<ShaderStage, std::string> sources = PreProcess(shaderSource);
+		auto sources = PreProcess(shaderSource);
 
 		// Compile or get cache
 		CompileOrGetCache(sources);
@@ -92,19 +61,14 @@ namespace Eppo
 		m_ShaderResources[3] = {};
 
 		// Reflection
-		for (auto&& [type, data] : m_ShaderBytes)
+		for (const auto& [type, data] : m_ShaderBytes)
 			Reflect(type, data);
 
 		CreatePipelineShaderInfos();
 		CreateDescriptorSetLayouts();
 	}
 
-	VulkanShader::~VulkanShader()
-	{
-
-	}
-
-	std::unordered_map<ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source)
+	std::unordered_map<Eppo::ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source)
 	{
 		std::unordered_map<ShaderStage, std::string> shaderSources;
 
@@ -122,7 +86,7 @@ namespace Eppo
 
 			// Extract shader stage
 			const size_t begin = pos + stageTokenLength + 1;
-			const std::string stage = std::string(source.substr(begin, eol - begin));
+			const auto stage = std::string(source.substr(begin, eol - begin));
 			EPPO_ASSERT((bool)Utils::StringToShaderStage(stage)); // "Invalid stage specified!"
 
 			// If there is no other stage token, take the string till eof. Otherwise till the next stage token
@@ -144,10 +108,10 @@ namespace Eppo
 		options.SetOptimizationLevel(shaderc_optimization_level_zero);
 
 		// Compile source
-		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
+		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
-			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath);
+			EPPO_ERROR("Failed to compile shader with filename: {}", GetSpecification().Filepath);
 			EPPO_ERROR(result.GetErrorMessage());
 			EPPO_ASSERT(false);
 		}
@@ -156,7 +120,7 @@ namespace Eppo
 
 		// TODO:
 		// Write cache
-		std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
+		std::string cachePath = Utils::GetOrCreateCacheDirectory().string() + "/" + GetName() + "." + Utils::ShaderStageToString(stage);
 		Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
 
 		// Write cache hash
@@ -167,11 +131,11 @@ namespace Eppo
 
 	void VulkanShader::CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources)
 	{
-		const std::filesystem::path cacheDir = Utils::GetCacheDirectory();
+		const std::filesystem::path cacheDir = Utils::GetOrCreateCacheDirectory();
 
 		for (const auto& [stage, source] : sources)
 		{
-			std::string cacheFile = cacheDir.string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
+			std::string cacheFile = cacheDir.string() + "/" + GetName() + "." + Utils::ShaderStageToString(stage);
 			std::string cacheHashFile = cacheFile + ".hash";
 
 			// Check if cache needs to be busted
@@ -188,7 +152,7 @@ namespace Eppo
 
 			if (cacheVerified)
 			{
-				EPPO_INFO("Loading shader cache: {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
+				EPPO_INFO("Loading shader cache: {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 
 				// Read shader cache
 				ScopedBuffer buffer = Filesystem::ReadBytes(cacheFile);
@@ -202,7 +166,7 @@ namespace Eppo
 			}
 			else
 			{
-				EPPO_INFO("Triggering recompilation of shader due to hash mismatch: {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
+				EPPO_INFO("Triggering recompilation of shader due to hash mismatch: {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 
 				Compile(stage, source);
 			}
@@ -214,7 +178,7 @@ namespace Eppo
 		spirv_cross::Compiler compiler(shaderBytes);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-		EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
+		EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 		EPPO_TRACE("    {} Push constants", resources.push_constant_buffers.size());
 		EPPO_TRACE("    {} Uniform buffers", resources.uniform_buffers.size());
 		EPPO_TRACE("    {} Sampled images", resources.sampled_images.size());
@@ -228,13 +192,6 @@ namespace Eppo
 			const auto& bufferType = compiler.get_type(resource.base_type_id);
 			size_t bufferSize = compiler.get_declared_struct_size(bufferType);
 			size_t memberCount = bufferType.member_types.size();
-
-			/*uint32_t offset = 0;
-			if (!m_PushConstantRanges.empty())
-			{
-				for (const auto& pcr : m_PushConstantRanges)
-					offset += pcr.size;
-			}*/
 
 			if (m_PushConstantRanges.empty())
 			{

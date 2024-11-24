@@ -5,7 +5,7 @@ namespace Eppo
 	class UniformBuffer
 	{
 	public:
-		virtual ~UniformBuffer() {};
+		virtual ~UniformBuffer() = default;
 
 		virtual void SetData(void* data, uint32_t size) = 0;
 		virtual uint32_t GetBinding() const = 0;
