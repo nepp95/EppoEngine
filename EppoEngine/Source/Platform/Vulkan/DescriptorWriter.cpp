@@ -7,6 +7,8 @@ namespace Eppo
 {
 	void DescriptorWriter::WriteImage(uint32_t binding, VkImageView imageView, VkSampler sampler, VkImageLayout layout, VkDescriptorType type)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorWriter::WriteImage");
+
 		VkDescriptorImageInfo& info = m_ImageInfos.emplace_back();
 		info.imageView = imageView;
 		info.sampler = sampler;
@@ -23,6 +25,8 @@ namespace Eppo
 
 	void DescriptorWriter::WriteImages(uint32_t binding, const std::vector<VkDescriptorImageInfo>& imageInfos, VkDescriptorType type)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorWriter::WriteImages");
+
 		VkWriteDescriptorSet& writeDescriptorSet = m_WriteDescriptors.emplace_back();
 		writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet.dstBinding = binding;
@@ -34,6 +38,8 @@ namespace Eppo
 
 	void DescriptorWriter::WriteBuffer(uint32_t binding, VkBuffer buffer, uint32_t size, uint32_t offset, VkDescriptorType type)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorWriter::WriteBuffer");
+
 		VkDescriptorBufferInfo& info = m_BufferInfos.emplace_back();
 		info.buffer = buffer;
 		info.range = size;
@@ -59,6 +65,8 @@ namespace Eppo
 
 	void DescriptorWriter::UpdateSet(VkDescriptorSet descriptorSet)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorWriter::UpdateSet");
+
 		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 

@@ -100,6 +100,8 @@ namespace Eppo
 
 	VkCommandBuffer VulkanLogicalDevice::GetCommandBuffer(bool begin) const
 	{
+		EPPO_PROFILE_FUNCTION("VulkanLogicalDevice::GetCommandBuffer");
+
 		VkCommandBuffer commandBuffer;
 
 		VkCommandBufferAllocateInfo allocateInfo{};
@@ -124,6 +126,8 @@ namespace Eppo
 
 	VkCommandBuffer VulkanLogicalDevice::GetSecondaryCommandBuffer() const
 	{
+		EPPO_PROFILE_FUNCTION("VulkanLogicalDevice::GetSecondaryCommandBuffer");
+
 		VkCommandBuffer commandBuffer;
 
 		VkCommandBufferAllocateInfo allocateInfo{};
@@ -139,6 +143,8 @@ namespace Eppo
 
 	void VulkanLogicalDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer) const
 	{
+		EPPO_PROFILE_FUNCTION("VulkanLogicalDevice::FlushCommandBuffer");
+
 		VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
 
 		VkSubmitInfo submitInfo{};
@@ -159,6 +165,11 @@ namespace Eppo
 
 		// Clean up
 		vkDestroyFence(m_Device, fence, nullptr);
+		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
+	}
+
+	void VulkanLogicalDevice::FreeCommandBuffer(VkCommandBuffer commandBuffer) const
+	{
 		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
 	}
 }

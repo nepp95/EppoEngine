@@ -6,8 +6,8 @@
 #include "Renderer/RenderCommandQueue.h"
 #include "Renderer/Shader.h"
 
-typedef struct VkDescriptorSet_T* VkDescriptorSet;
-typedef struct VkDescriptorSetLayout_T* VkDescriptorSetLayout;
+using VkDescriptorSet = struct VkDescriptorSet_T*;
+using VkDescriptorSetLayout = struct VkDescriptorSetLayout_T*;
 
 namespace Eppo
 {
@@ -24,8 +24,8 @@ namespace Eppo
 		static void SubmitCommand(RenderCommand command);
 
 		// Render passes
-		static void RT_BeginRenderPass(Ref<CommandBuffer> commandBuffer, Ref<Pipeline> pipeline);
-		static void RT_EndRenderPass(Ref<CommandBuffer> commandBuffer);
+		static void BeginRenderPass(Ref<CommandBuffer> commandBuffer, Ref<Pipeline> pipeline);
+		static void EndRenderPass(Ref<CommandBuffer> commandBuffer);
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);

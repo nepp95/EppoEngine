@@ -13,7 +13,6 @@ namespace Eppo
 		~VulkanVertexBuffer() override;
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
-		void RT_Bind(Ref<CommandBuffer> commandBuffer) const override;
 
 	private:
 		VkBuffer m_Buffer;

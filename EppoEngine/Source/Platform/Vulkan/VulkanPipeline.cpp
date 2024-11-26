@@ -197,7 +197,7 @@ namespace Eppo
 		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
 		pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
-		pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<size_t>(shader->GetPushConstantRanges().size());
+		pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(shader->GetPushConstantRanges().size());
 		pipelineLayoutCreateInfo.pPushConstantRanges = !shader->GetPushConstantRanges().empty() ? shader->GetPushConstantRanges().data() : nullptr;
 	
 		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!");
@@ -287,101 +287,5 @@ namespace Eppo
 
 		EPPO_WARN("Releasing pipeline layout {}", (void*)m_PipelineLayout);
 		vkDestroyPipelineLayout(device, m_PipelineLayout, nullptr);
-	}
-
-	void VulkanPipeline::RT_Bind(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-			vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
-		});
-	}
-
-	void VulkanPipeline::RT_BindDescriptorSets(Ref<CommandBuffer> commandBuffer, uint32_t start, uint32_t count)
-	{
-		Renderer::SubmitCommand([this, commandBuffer, start, count]()
-		{
-			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			const auto& descriptorSets = GetDescriptorSets(frameIndex);
-			vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, start, count, descriptorSets.data(), 0, nullptr);
-		});
-	}
-
-	void VulkanPipeline::RT_DrawIndexed(Ref<CommandBuffer> commandBuffer, uint32_t count)
-	{
-		Renderer::SubmitCommand([commandBuffer, count]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			vkCmdDrawIndexed(cb, count, 1, 0, 0, 0);
-		});
-	}
-
-	void VulkanPipeline::RT_DrawIndexed(Ref<CommandBuffer> commandBuffer, const Primitive& primitive) const
-	{
-		Renderer::SubmitCommand([commandBuffer, primitive]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			vkCmdDrawIndexed(cb, primitive.IndexCount, 1, primitive.FirstIndex, primitive.FirstVertex, 0);
-		});
-	}
-
-	void VulkanPipeline::RT_SetViewport(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			const auto& spec = GetSpecification();
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(spec.Width);
-			viewport.height = static_cast<float>(spec.Height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			vkCmdSetViewport(cb, 0, 1, &viewport);
-		});
-	}
-
-	void VulkanPipeline::RT_SetScissor(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			const auto& spec = GetSpecification();
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = { spec.Width, spec.Height };
-
-			vkCmdSetScissor(cb, 0, 1, &scissor);
-		});
-	}
-
-	void VulkanPipeline::RT_SetPushConstants(Ref<CommandBuffer> commandBuffer, Buffer data) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer, data]() mutable
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			vkCmdPushConstants(cb, GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, data.Size, data.Data);
-
-			data.Release();
-		});
 	}
 }

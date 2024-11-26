@@ -12,9 +12,9 @@ namespace Eppo
 			inline static const bool EnableValidation = false;
 		#endif
 
-		inline static constexpr uint32_t MaxFramesInFlight = 2;
-		inline static constexpr std::array<const char*, 1> ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-		inline static constexpr std::array<const char*, 5> DeviceExtensions = {
+		static constexpr uint32_t MaxFramesInFlight = 2;
+		static constexpr std::array<const char*, 1> ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+		static constexpr std::array<const char*, 5> DeviceExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 			VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
 			VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,

@@ -73,7 +73,7 @@ namespace Eppo
 		{
 			Entity entity(e, this);
 			auto& transform = entity.GetComponent<TransformComponent>();
-			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
+			const auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
 			btRigidBody* body = rigidbody.RuntimeBody.GetBody();
 			btTransform trans;
@@ -282,7 +282,7 @@ namespace Eppo
 		{
 			const auto& tc = view.get<TagComponent>(e);
 			if (tc.Tag == name)
-				return Entity(e, this);
+				return { e, this };
 		}
 
 		return {};

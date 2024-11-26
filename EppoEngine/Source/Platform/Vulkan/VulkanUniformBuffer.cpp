@@ -43,6 +43,7 @@ namespace Eppo
 
 	void VulkanUniformBuffer::SetData(void* data, uint32_t size)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanUniformBuffer::SetData");
 		EPPO_ASSERT(size == m_Size);
 
 		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();

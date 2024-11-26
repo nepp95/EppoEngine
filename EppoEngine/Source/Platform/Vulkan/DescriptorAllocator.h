@@ -28,6 +28,6 @@ namespace Eppo
 		std::vector<VkDescriptorPool> m_FullPools;
 		std::vector<VkDescriptorPool> m_AvailablePools;
 
-		uint32_t m_SetsPerPool;
+		uint32_t m_SetsPerPool = 0;
 	};
 }

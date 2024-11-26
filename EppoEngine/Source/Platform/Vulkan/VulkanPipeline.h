@@ -14,15 +14,6 @@ namespace Eppo
 		VulkanPipeline(const PipelineSpecification& specification);
 		virtual ~VulkanPipeline();
 
-		void RT_Bind(Ref<CommandBuffer> renderCommandBuffer) const;
-		void RT_BindDescriptorSets(Ref<CommandBuffer> renderCommandBuffer, uint32_t start, uint32_t count);
-		void RT_DrawIndexed(Ref<CommandBuffer> renderCommandBuffer, uint32_t count);
-		void RT_DrawIndexed(Ref<CommandBuffer> renderCommandBuffer, const Primitive& primitive) const;
-
-		void RT_SetViewport(Ref<CommandBuffer> renderCommandBuffer) const;
-		void RT_SetScissor(Ref<CommandBuffer> renderCommandBuffer) const;
-		void RT_SetPushConstants(Ref<CommandBuffer> renderCommandBuffer, Buffer data) const;
-
 		Ref<Image> GetImage(uint32_t index) const override { return m_Images[index]; }
 		Ref<Image> GetFinalImage() const override { return m_Images[0]; }
 

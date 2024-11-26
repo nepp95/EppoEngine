@@ -12,8 +12,6 @@ namespace Eppo
 
 	Ref<RendererContext> RendererContext::Get()
 	{
-		EPPO_PROFILE_FUNCTION("RendererContext::Get");
-
 		return Application::Get().GetWindow().GetRendererContext();
 	}
 

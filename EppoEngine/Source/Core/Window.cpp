@@ -17,8 +17,6 @@ namespace Eppo
 	Window::Window(const WindowSpecification& specification)
 		: m_Specification(specification)
 	{
-		EPPO_PROFILE_FUNCTION("Window::Window");
-
 		int success = glfwInit();
 		EPPO_ASSERT(success);
 
@@ -48,8 +46,6 @@ namespace Eppo
 
 	void Window::Init()
 	{
-		EPPO_PROFILE_FUNCTION("Window::Init");
-
 		// Create renderer context
 		m_Context = RendererContext::Create(m_Window);
 		m_Context->Init();
@@ -145,8 +141,6 @@ namespace Eppo
 
 	void Window::Shutdown()
 	{
-		EPPO_PROFILE_FUNCTION("Window::Shutdown");
-
 		m_Context->Shutdown();
 
 		glfwDestroyWindow(m_Window);
@@ -155,8 +149,6 @@ namespace Eppo
 
 	void Window::ProcessEvents()
 	{
-		EPPO_PROFILE_FUNCTION("Window::ProcessEvents");
-
 		glfwPollEvents();
 	}
 

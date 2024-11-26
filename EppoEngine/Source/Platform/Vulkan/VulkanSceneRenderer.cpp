@@ -133,9 +133,12 @@ namespace Eppo
 
 	void VulkanSceneRenderer::RenderGui()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::RenderGui");
+
 		ImGui::Begin("Performance");
 
 		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+		frameIndex = frameIndex == 0 ? 1 : 0;
 
 		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
 
@@ -194,6 +197,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::BeginScene(const EditorCamera& editorCamera)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::BeginScene");
+
 		// Camera UB
 		m_CameraBuffer.View = editorCamera.GetViewMatrix();
 		m_CameraBuffer.Projection = editorCamera.GetProjectionMatrix();
@@ -206,6 +211,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::BeginScene(const Camera& camera, const glm::mat4& transform)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::BeginScene");
+
 		// Camera UB
 		m_CameraBuffer.View = glm::inverse(transform);
 		m_CameraBuffer.Projection = camera.GetProjectionMatrix();
@@ -218,6 +225,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::EndScene()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::EndScene");
+
 		Flush();
 	}
 
@@ -236,6 +245,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::BeginSceneInternal()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::BeginSceneInternal");
+
 		// Reset statistics
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
@@ -309,6 +320,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::Flush()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::Flush");
+
 		m_CommandBuffer->RT_Begin();
 
 		// Prepare buffers
@@ -328,9 +341,11 @@ namespace Eppo
 	}
 
 	void VulkanSceneRenderer::PrepareRender() const
-{
+	{
 		Renderer::SubmitCommand([]()
 		{
+			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::PrepareRender");
+
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
@@ -348,21 +363,25 @@ namespace Eppo
 
 		m_TimestampQueries.PreDepthQuery = cmd->RT_BeginTimestampQuery();
 
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "PreDepthPass");
-
-		// Transition depth image for writing
-		Renderer::SubmitCommand([this, cmd]()
+		Renderer::SubmitCommand([this, cmd, pipeline]()
 		{
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::PreDepthPass");
 
+			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			auto& spec = pipeline->GetSpecification();
+			
+			// Profiling
+			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "PreDepth");
+
+			// Insert debug label
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "PreDepthPass");
+
+			// Transition depth images for writing
 			for (uint32_t i = 0; i < s_MaxLights; i++)
 				VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-		});
-
-		// Update descriptors
-		Renderer::SubmitCommand([this, pipeline]()
-		{
+		
+			// Update descriptor sets
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 			const auto& descriptorSets = pipeline->GetDescriptorSets(frameIndex);
 
@@ -374,67 +393,86 @@ namespace Eppo
 			writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 			writer.UpdateSet(descriptorSets[0]);
-		});
 
-		for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
-		{
-			Renderer::SubmitCommand([this, i]()
+			for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
 			{
-				auto& spec = m_PreDepthPipeline->GetSpecification();
 				spec.DepthImage = m_ShadowMaps[i];
-			});
 
-			// Begin rendering
-			Renderer::RT_BeginRenderPass(m_CommandBuffer, m_PreDepthPipeline);
+				// Begin rendering
+				Renderer::BeginRenderPass(m_CommandBuffer, m_PreDepthPipeline);
 
-			pipeline->RT_Bind(m_CommandBuffer);
-			pipeline->RT_SetViewport(m_CommandBuffer);
-			pipeline->RT_SetScissor(m_CommandBuffer);
-			pipeline->RT_BindDescriptorSets(m_CommandBuffer, 0, 2);
+				// Bind pipeline
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
 
-			// Render geometry
-			for (const auto& dc : m_DrawList)
-			{
-				m_RenderStatistics.MeshInstances++;
+				// Set viewport and scissor
+				VkViewport viewport{};
+				viewport.x = 0.0f;
+				viewport.y = 0.0f;
+				viewport.width = static_cast<float>(spec.Width);
+				viewport.height = static_cast<float>(spec.Height);
+				viewport.minDepth = 0.0f;
+				viewport.maxDepth = 1.0f;
 
-				for (const auto& submesh : dc.Mesh->GetSubmeshes())
+				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+				VkRect2D scissor{};
+				scissor.offset = { 0, 0 };
+				scissor.extent = { spec.Width, spec.Height };
+
+				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+				// Bind descriptor sets
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 2, descriptorSets.data(), 0, nullptr);
+
+				// Render geometry
+				for (const auto& dc : m_DrawList)
 				{
-					submesh.RT_BindVertexBuffer(m_CommandBuffer);
-					submesh.RT_BindIndexBuffer(m_CommandBuffer);
+					m_RenderStatistics.MeshInstances++;
 
-					glm::mat4 finalTransform = dc.Transform * submesh.GetLocalTransform();
-
-					for (const auto& p : submesh.GetPrimitives())
+					for (const auto& submesh : dc.Mesh->GetSubmeshes())
 					{
-						const auto& shader = m_PreDepthPipeline->GetSpecification().Shader;
-						const auto& pcr = std::static_pointer_cast<VulkanShader>(shader)->GetPushConstantRanges();
+						// Bind vertex buffer
+						Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(submesh.GetVertexBuffer());
+						VkBuffer vb = { vertexBuffer->GetBuffer() };
+						VkDeviceSize offsets[] = { 0 };
 
-						Buffer buffer(pcr[0].size);
-						buffer.SetData(finalTransform);
-						buffer.SetData(i, 64);
+						vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
-						m_RenderStatistics.DrawCalls++;
-						pipeline->RT_SetPushConstants(m_CommandBuffer, buffer);
-						pipeline->RT_DrawIndexed(m_CommandBuffer, p);
+						// Bind index buffer
+						Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(submesh.GetIndexBuffer());
+						vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+						// Draw call
+						glm::mat4 finalTransform = dc.Transform * submesh.GetLocalTransform();
+
+						for (const auto& p : submesh.GetPrimitives())
+						{
+							const auto& shader = pipeline->GetSpecification().Shader;
+							const auto& pcr = std::static_pointer_cast<VulkanShader>(shader)->GetPushConstantRanges();
+
+							Buffer buffer(pcr[0].size);
+							buffer.SetData(finalTransform);
+							buffer.SetData(i, 64);
+
+							vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size, buffer.Data);
+							
+							m_RenderStatistics.DrawCalls++;
+							vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
+						}
 					}
 				}
+
+				// End rendering
+				Renderer::EndRenderPass(m_CommandBuffer);
+
+				// Transition image for reading
+				for (uint32_t i = 0; i < s_MaxLights; i++)
+					VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+				
+				if (m_RenderSpecification.DebugRendering)
+					m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 			}
-
-			// End rendering
-			Renderer::RT_EndRenderPass(m_CommandBuffer);
-		}
-
-		// Transition image for reading
-		Renderer::SubmitCommand([this, cmd]()
-		{
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-
-			for (uint32_t i = 0; i < s_MaxLights; i++)
-				VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 		});
-
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.PreDepthQuery);
 	}
@@ -446,12 +484,21 @@ namespace Eppo
 
 		m_TimestampQueries.GeometryQuery = cmd->RT_BeginTimestampQuery();
 
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "GeometryPass");
-
-		// Update descriptors
-		Renderer::SubmitCommand([this, pipeline]()
+		Renderer::SubmitCommand([this, cmd, pipeline]()
 		{
+			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::GeometryPass");
+
+			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			auto& spec = pipeline->GetSpecification();
+
+			// Profiling
+			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "GeometryPass");
+
+			// Insert debug label
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "GeometryPass");
+
+			// Update descriptor sets
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 			const auto& descriptorSets = pipeline->GetDescriptorSets(frameIndex);
 
@@ -505,56 +552,85 @@ namespace Eppo
 			// TODO:  For multiple meshes we can just up the texture index with the mesh material count?
 			writer.WriteImages(0, imageInfos, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 			writer.UpdateSet(descriptorSets[1]);
-		});
 
-		// Begin rendering
-		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
+			// Begin rendering
+			Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPipeline);
 
-		const auto& spec = m_GeometryPipeline->GetSpecification();
+			// Bind pipeline
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
 
-		pipeline->RT_Bind(m_CommandBuffer);
-		pipeline->RT_SetViewport(m_CommandBuffer);
-		pipeline->RT_SetScissor(m_CommandBuffer);
-		pipeline->RT_BindDescriptorSets(m_CommandBuffer, 0, 2);
+			// Set viewport and scissor
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = static_cast<float>(spec.Width);
+			viewport.height = static_cast<float>(spec.Height);
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
 
-		// Render geometry
-		for (auto& dc : m_DrawList)
-		{
-			m_RenderStatistics.Meshes++;
-			m_RenderStatistics.MeshInstances++;
+			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-			for (const auto& submesh : dc.Mesh->GetSubmeshes())
+			VkRect2D scissor{};
+			scissor.offset = { 0, 0 };
+			scissor.extent = { spec.Width, spec.Height };
+
+			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+			// Bind descriptor sets
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 2, descriptorSets.data(), 0, nullptr);
+		
+			// Render geometry
+			for (const auto& dc : m_DrawList)
 			{
-				m_RenderStatistics.Submeshes++;
+				m_RenderStatistics.Meshes++;
+				m_RenderStatistics.MeshInstances++;
 
-				submesh.RT_BindVertexBuffer(m_CommandBuffer);
-				submesh.RT_BindIndexBuffer(m_CommandBuffer);
-
-				glm::mat4 finalTransform = dc.Transform * submesh.GetLocalTransform();
-
-				for (const auto& p : submesh.GetPrimitives())
+				for (const auto& submesh : dc.Mesh->GetSubmeshes())
 				{
-					const auto& shader = pipeline->GetSpecification().Shader;
-					const auto& pcr = std::static_pointer_cast<VulkanShader>(shader)->GetPushConstantRanges();
+					m_RenderStatistics.Submeshes++;
 
-					Buffer buffer(pcr[0].size);
-					buffer.SetData(finalTransform);
-					buffer.SetData(p.Material->DiffuseMapIndex, 64);
-					buffer.SetData(p.Material->DiffuseMapIndex, 68);
-					buffer.SetData(p.Material->DiffuseMapIndex, 72);
+					// Bind vertex buffer
+					Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(submesh.GetVertexBuffer());
+					VkBuffer vb = { vertexBuffer->GetBuffer() };
+					VkDeviceSize offsets[] = { 0 };
 
-					m_RenderStatistics.DrawCalls++;
-					pipeline->RT_SetPushConstants(m_CommandBuffer, buffer);
-					pipeline->RT_DrawIndexed(m_CommandBuffer, p);
+					vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
+
+					// Bind index buffer
+					Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(submesh.GetIndexBuffer());
+					vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+					// Draw call
+					glm::mat4 finalTransform = dc.Transform * submesh.GetLocalTransform();
+
+					for (const auto& p : submesh.GetPrimitives())
+					{
+						const auto& shader = pipeline->GetSpecification().Shader;
+						const auto& pcr = std::static_pointer_cast<VulkanShader>(shader)->GetPushConstantRanges();
+
+						Buffer buffer(pcr[0].size);
+						buffer.SetData(finalTransform);
+						buffer.SetData(p.Material->DiffuseMapIndex, 64);
+						buffer.SetData(p.Material->DiffuseMapIndex, 68);
+						buffer.SetData(p.Material->DiffuseMapIndex, 72);
+
+						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size, buffer.Data);
+						
+						buffer.Release();
+					
+						m_RenderStatistics.DrawCalls++;
+						vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
+					}
 				}
 			}
-		}
 
-		// End rendering
-		Renderer::RT_EndRenderPass(m_CommandBuffer);
-		
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
+			// End rendering
+			Renderer::EndRenderPass(m_CommandBuffer);
+
+			// End debug label
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
+		});
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.GeometryQuery);
 	}
@@ -563,18 +639,27 @@ namespace Eppo
 	{
 		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
 		auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_DebugLinePipeline);
-	
+
 		m_TimestampQueries.DebugLineQuery = cmd->RT_BeginTimestampQuery();
 
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "DebugLinePass");
-
-		// Update descriptors
-		Renderer::SubmitCommand([this, pipeline]()
+		Renderer::SubmitCommand([this, cmd, pipeline]()
 		{
+			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::DebugLinePass");
+
+			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			auto& spec = pipeline->GetSpecification();
+		
+			// Profiling
+			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "DebugLinePass");
+
+			// Insert debug label
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "DebugLinePass");
+		
+			// Update descriptors
 			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 			const auto& descriptorSets = pipeline->GetDescriptorSets(frameIndex);
-
+		
 			DescriptorWriter writer;
 
 			// Set 1 - Scene
@@ -591,25 +676,53 @@ namespace Eppo
 			}
 
 			writer.UpdateSet(descriptorSets[0]);
+
+			// Begin rendering
+			Renderer::BeginRenderPass(m_CommandBuffer, m_DebugLinePipeline);
+
+			// Bind pipeline
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
+
+			// Set viewport and scissor
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = static_cast<float>(spec.Width);
+			viewport.height = static_cast<float>(spec.Height);
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+
+			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+			VkRect2D scissor{};
+			scissor.offset = { 0, 0 };
+			scissor.extent = { spec.Width, spec.Height };
+
+			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+			// Bind descriptor sets
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 1, descriptorSets.data(), 0, nullptr);
+		
+			// Bind vertex buffer
+			Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(m_DebugLineVertexBuffer);
+			VkBuffer vb = { vertexBuffer->GetBuffer() };
+			VkDeviceSize offsets[] = { 0 };
+
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
+
+			// Bind index buffer
+			Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(m_DebugLineIndexBuffer);
+		
+			// Draw call
+			m_RenderStatistics.DrawCalls++;
+			vkCmdDrawIndexed(commandBuffer, m_DebugLineIndexBuffer->GetIndexCount(), 1, 0, 0, 0);
+		
+			// End rendering
+			Renderer::EndRenderPass(m_CommandBuffer);
+
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 		});
-
-		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_DebugLinePipeline);
-
-		pipeline->RT_Bind(m_CommandBuffer);
-		pipeline->RT_SetViewport(m_CommandBuffer);
-		pipeline->RT_SetScissor(m_CommandBuffer);
-		pipeline->RT_BindDescriptorSets(m_CommandBuffer, 0, 1);
-
-		// Lights
-		std::static_pointer_cast<VulkanVertexBuffer>(m_DebugLineVertexBuffer)->RT_Bind(cmd);
-		std::static_pointer_cast<VulkanIndexBuffer>(m_DebugLineIndexBuffer)->RT_Bind(cmd);
-		pipeline->RT_DrawIndexed(m_CommandBuffer, m_DebugLineIndexBuffer->GetIndexCount());
-		m_RenderStatistics.DrawCalls++;
-
-		Renderer::RT_EndRenderPass(m_CommandBuffer);
-
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.DebugLineQuery);
 	}
@@ -621,25 +734,23 @@ namespace Eppo
 
 		m_TimestampQueries.CompositeQuery = cmd->RT_BeginTimestampQuery();
 
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "CompositePass");
-
-		Renderer::SubmitCommand([cmd]()
+		Renderer::SubmitCommand([this, cmd, pipeline]()
 		{
+			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::CompositePass");
+
 			Ref<VulkanContext> context = VulkanContext::Get();
 			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 
 			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		});
 
-		Renderer::RT_BeginRenderPass(m_CommandBuffer, m_CompositePipeline);
+			// Profiling
+			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "CompositePass");
 
-		Renderer::SubmitCommand([cmd]()
-		{
-			Ref<VulkanContext> context = VulkanContext::Get();
-			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->StartDebugLabel(cmd, "CompositePass");
+
+			Renderer::BeginRenderPass(cmd, pipeline);
 
 			ImDrawData* data = ImGui::GetDrawData();
 			ImGui_ImplVulkan_RenderDrawData(data, commandBuffer);
@@ -653,23 +764,15 @@ namespace Eppo
 				ImGui::RenderPlatformWindowsDefault();
 				glfwMakeContextCurrent(backupContext);
 			}
-		});
 
-		Renderer::RT_EndRenderPass(m_CommandBuffer);
-
-		Renderer::SubmitCommand([cmd]()
-		{
-			Ref<VulkanContext> context = VulkanContext::Get();
-			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			Renderer::EndRenderPass(cmd);
 
 			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-		});
 
-		if (m_RenderSpecification.DebugRendering)
-			m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->EndDebugLabel(cmd);
+		});
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.CompositeQuery);
 	}
-
 }

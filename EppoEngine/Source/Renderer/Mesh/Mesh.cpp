@@ -43,6 +43,8 @@ namespace Eppo
 
 	void Mesh::ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node)
 	{
+		EPPO_PROFILE_FUNCTION("Mesh::ProcessNode");
+
 		int32_t meshIndex = node.mesh;
 
 		if (meshIndex > -1)
@@ -78,6 +80,8 @@ namespace Eppo
 
 	void Mesh::ProcessMaterials(const tinygltf::Model& model)
 	{
+		EPPO_PROFILE_FUNCTION("Mesh::ProcessMaterials");
+
 		m_Materials.resize(model.materials.size());
 		for (size_t i = 0; i < model.materials.size(); i++)
 		{
@@ -110,6 +114,8 @@ namespace Eppo
 
 	void Mesh::ProcessImages(const tinygltf::Model& model)
 	{
+		EPPO_PROFILE_FUNCTION("Mesh::ProcessImages");
+
 		for (const auto& image : model.images)
 		{
 			ImageSpecification imageSpec;
@@ -135,6 +141,8 @@ namespace Eppo
 
 	MeshData Mesh::GetVertexData(const tinygltf::Model& model, const tinygltf::Mesh& mesh)
 	{
+		EPPO_PROFILE_FUNCTION("Mesh::GetVertexData");
+
 		MeshData meshData;
 
 		for (const auto& primitive : mesh.primitives)
@@ -212,7 +220,7 @@ namespace Eppo
 			}
 
 			p.VertexCount = vertexCount;
-			p.IndexCount = accessor.count;
+			p.IndexCount = static_cast<uint32_t>(accessor.count);
 
 			// Material
 			if (primitive.material != -1)

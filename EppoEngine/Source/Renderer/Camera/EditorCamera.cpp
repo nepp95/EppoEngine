@@ -10,16 +10,12 @@ namespace Eppo
 {
 	EditorCamera::EditorCamera()
 	{
-		EPPO_PROFILE_FUNCTION("EditorCamera::EditorCamera");
-
 		UpdateCameraVectors();
 	}
 
 	EditorCamera::EditorCamera(const glm::vec3& position, float pitch, float yaw)
 		: m_Position(position), m_Pitch(pitch), m_Yaw(yaw)
 	{
-		EPPO_PROFILE_FUNCTION("EditorCamera::EditorCamera");
-
 		UpdateCameraVectors();
 	}
 
@@ -64,8 +60,6 @@ namespace Eppo
 
 	void EditorCamera::SetViewportSize(const glm::vec2& size)
 	{
-		EPPO_PROFILE_FUNCTION("EditorCamera::SetViewportSize");
-
 		if (m_ViewportSize == size)
 			return;
 
@@ -76,7 +70,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("EditorCamera::UpdateCameraVectors");
 
-		glm::vec3 front = glm::vec3(
+		auto front = glm::vec3(
 			cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch)),
 			sin(glm::radians(m_Pitch)),
 			sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch))

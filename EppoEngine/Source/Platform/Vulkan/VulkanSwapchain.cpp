@@ -174,6 +174,8 @@ namespace Eppo
 
 	void VulkanSwapchain::BeginFrame()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSwapchain::BeginFrame");
+
 		VkDevice device = m_LogicalDevice->GetNativeDevice();
 
 		vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, m_PresentSemaphores[m_CurrentFrameIndex], VK_NULL_HANDLE, &m_CurrentImageIndex);
@@ -182,6 +184,8 @@ namespace Eppo
 
 	void VulkanSwapchain::PresentFrame()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSwapchain::PresentFrame");
+
 		VkResult result;
 		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -199,6 +203,9 @@ namespace Eppo
 
 		VK_CHECK(vkResetFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex]), "Failed to reset fence!");
 		VK_CHECK(vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[m_CurrentFrameIndex]), "Failed to submit work to queue!");
+
+		Ref<VulkanContext> context = VulkanContext::Get();
+		EPPO_PROFILE_GPU_END(context->GetTracyContext(), commandBuffer);
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

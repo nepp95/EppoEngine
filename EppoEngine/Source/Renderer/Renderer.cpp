@@ -33,8 +33,6 @@ namespace Eppo
 
 	void Renderer::Init()
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::Init");
-
 		Ref<VulkanContext> context = VulkanContext::Get();
 		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
 		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
@@ -65,8 +63,6 @@ namespace Eppo
 
 	void Renderer::Shutdown()
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::Shutdown");
-
 		for (auto& allocator : s_Data->DescriptorAllocators)
 		{
 			EPPO_WARN("Releasing descriptor pool {}", (void*)&allocator);
@@ -90,95 +86,91 @@ namespace Eppo
 
 	void Renderer::SubmitCommand(RenderCommand command)
 	{
-		EPPO_PROFILE_FUNCTION("Renderer::SubmitCommand");
-
 		s_Data->CommandQueue.AddCommand(command);
 	}
 
-	void Renderer::RT_BeginRenderPass(Ref<CommandBuffer> commandBuffer, Ref<Pipeline> pipeline)
+	void Renderer::BeginRenderPass(Ref<CommandBuffer> commandBuffer, Ref<Pipeline> pipeline)
 	{
-		SubmitCommand([commandBuffer, pipeline]()
+		EPPO_PROFILE_FUNCTION("Renderer::BeginRenderPass");
+
+		Ref<VulkanContext> context = VulkanContext::Get();
+		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
+
+		const auto& spec = pipeline->GetSpecification();
+
+		VkRenderingInfo renderingInfo{};
+		renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		renderingInfo.renderArea.offset = { 0, 0 };
+		renderingInfo.renderArea.extent = { spec.Width, spec.Height };
+		renderingInfo.layerCount = 1;
+
+		if (spec.SwapchainTarget)
 		{
-			Ref<VulkanContext> context = VulkanContext::Get();
-			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
+			VkRenderingAttachmentInfo attachmentInfo{};
+			attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			attachmentInfo.imageView = swapchain->GetCurrentImageView();
 
-			const auto& spec = pipeline->GetSpecification();
+			const glm::vec4& cv = spec.ColorAttachments[0].ClearValue;
+			attachmentInfo.clearValue = { cv.r, cv.g, cv.b, cv.a };
 
-			VkRenderingInfo renderingInfo{};
-			renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-			renderingInfo.renderArea.offset = { 0, 0 };
-			renderingInfo.renderArea.extent = { spec.Width, spec.Height };
-			renderingInfo.layerCount = 1;
+			renderingInfo.colorAttachmentCount = 1;
+			renderingInfo.pColorAttachments = &attachmentInfo;
 
-			if (spec.SwapchainTarget)
+			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
+			vkCmdBeginRendering(cb, &renderingInfo);
+		} else
+		{
+			std::vector<VkRenderingAttachmentInfo> attachmentInfos;
+
+			for (uint32_t i = 0; i < spec.ColorAttachments.size(); i++)
+			{
+				const auto& attachment = spec.ColorAttachments[i];
+
+				VkRenderingAttachmentInfo& attachmentInfo = attachmentInfos.emplace_back();
+				attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+				attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				attachmentInfo.loadOp = attachment.Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+				attachmentInfo.clearValue = { attachment.ClearValue.r, attachment.ClearValue.g, attachment.ClearValue.b, attachment.ClearValue.a };
+				attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(pipeline->GetImage(i))->GetImageInfo().ImageView;
+			}
+
+			renderingInfo.colorAttachmentCount = static_cast<uint32_t>(attachmentInfos.size());
+			renderingInfo.pColorAttachments = attachmentInfos.data();
+
+			if (spec.DepthImage)
 			{
 				VkRenderingAttachmentInfo attachmentInfo{};
 				attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 				attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-				attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-				attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				attachmentInfo.imageView = swapchain->GetCurrentImageView();
+				attachmentInfo.loadOp = spec.ClearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+				attachmentInfo.clearValue = { spec.ClearDepth, 0 };
+				attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+				attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(spec.DepthImage)->GetImageInfo().ImageView;
 
-				const glm::vec4& cv = spec.ColorAttachments[0].ClearValue;
-				attachmentInfo.clearValue = { cv.r, cv.g, cv.b, cv.a };
+				renderingInfo.pDepthAttachment = &attachmentInfo;
 
-				renderingInfo.colorAttachmentCount = 1;
-				renderingInfo.pColorAttachments = &attachmentInfo;
-
-				auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-				VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-				vkCmdBeginRendering(cb, &renderingInfo);
-			} else
-			{
-				std::vector<VkRenderingAttachmentInfo> attachmentInfos;
-
-				for (uint32_t i = 0; i < spec.ColorAttachments.size(); i++)
-				{
-					const auto& attachment = spec.ColorAttachments[i];
-
-					VkRenderingAttachmentInfo& attachmentInfo = attachmentInfos.emplace_back();
-					attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-					attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-					attachmentInfo.loadOp = attachment.Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-					attachmentInfo.clearValue = { attachment.ClearValue.r, attachment.ClearValue.g, attachment.ClearValue.b, attachment.ClearValue.a };
-					attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-					attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(pipeline->GetImage(i))->GetImageInfo().ImageView;
-				}
-
-				renderingInfo.colorAttachmentCount = static_cast<uint32_t>(attachmentInfos.size());
-				renderingInfo.pColorAttachments = attachmentInfos.data();
-
-				if (spec.DepthImage)
-				{
-					VkRenderingAttachmentInfo attachmentInfo{};
-					attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-					attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-					attachmentInfo.loadOp = spec.ClearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-					attachmentInfo.clearValue = { spec.ClearDepth, 0 };
-					attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-					attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(spec.DepthImage)->GetImageInfo().ImageView;
-
-					renderingInfo.pDepthAttachment = &attachmentInfo;
-
-					if (spec.DepthImage->GetSpecification().CubeMap)
-						renderingInfo.viewMask = 0b111111;
-				}
-
-				auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-				VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-				vkCmdBeginRendering(cb, &renderingInfo);
+				if (spec.DepthImage->GetSpecification().CubeMap)
+					renderingInfo.viewMask = 0b111111;
 			}
-		});
-	}
 
-	void Renderer::RT_EndRenderPass(Ref<CommandBuffer> commandBuffer)
-	{
-		SubmitCommand([commandBuffer]()
-		{
 			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
 			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-			vkCmdEndRendering(cb);
-		});
+			vkCmdBeginRendering(cb, &renderingInfo);
+		}
+	}
+
+	void Renderer::EndRenderPass(Ref<CommandBuffer> commandBuffer)
+	{
+		EPPO_PROFILE_FUNCTION("Renderer::EndRenderPass");
+
+		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+		VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
+		vkCmdEndRendering(cb);
 	}
 
 	Ref<Shader> Renderer::GetShader(const std::string& name)

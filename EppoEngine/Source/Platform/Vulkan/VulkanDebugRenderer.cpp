@@ -10,31 +10,24 @@ namespace Eppo
 	{
 		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
 
-		Renderer::SubmitCommand([cmd, label]()
-		{
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
+		VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
 
-			VkDebugUtilsLabelEXT debugLabel{};
-			debugLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-			debugLabel.pLabelName = label.c_str();
-			debugLabel.color[0] = 0.5f;
-			debugLabel.color[1] = 0.5f;
-			debugLabel.color[2] = 0.0f;
-			debugLabel.color[3] = 1.0f;
+		VkDebugUtilsLabelEXT debugLabel{};
+		debugLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		debugLabel.pLabelName = label.c_str();
+		debugLabel.color[0] = 0.5f;
+		debugLabel.color[1] = 0.5f;
+		debugLabel.color[2] = 0.0f;
+		debugLabel.color[3] = 1.0f;
 
-			vkCmdBeginDebugUtilsLabelEXT(cb, &debugLabel);
-		});
+		vkCmdBeginDebugUtilsLabelEXT(cb, &debugLabel);
 	}
 
 	void VulkanDebugRenderer::EndDebugLabel(Ref<CommandBuffer> commandBuffer)
 	{
 		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
 
-		Renderer::SubmitCommand([cmd]()
-		{
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			vkCmdEndDebugUtilsLabelEXT(cb);
-		});
+		VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
+		vkCmdEndDebugUtilsLabelEXT(cb);
 	}
 }

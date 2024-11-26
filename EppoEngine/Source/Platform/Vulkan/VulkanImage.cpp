@@ -8,6 +8,8 @@ namespace Eppo
 	VulkanImage::VulkanImage(const ImageSpecification& specification)
 		: m_Specification(specification)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanImage::VulkanImage");
+
 		// Do we have data?
 		if (!m_Specification.Filepath.empty())
 		{
@@ -122,6 +124,8 @@ namespace Eppo
 
 	void VulkanImage::SetData(void* data, uint32_t channels)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanImage::SetData");
+
 		uint64_t size = m_Specification.Width * m_Specification.Height * channels;
 
 		// Create staging buffer

@@ -13,8 +13,6 @@ namespace Eppo
 	
 	void Filesystem::Init()
 	{
-		EPPO_PROFILE_FUNCTION("Filesystem::Init");
-
 		s_Data = new FilesystemData();
 
 		s_Data->RootPath = std::filesystem::current_path();
@@ -23,8 +21,6 @@ namespace Eppo
 
 	void Filesystem::Shutdown()
 	{
-		EPPO_PROFILE_FUNCTION("Filesystem::Shutdown");
-
 		delete s_Data;
 	}
 

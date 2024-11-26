@@ -73,6 +73,18 @@ namespace Eppo
 
 		// Swapchain
 		m_Swapchain = CreateRef<VulkanSwapchain>(m_LogicalDevice);
+
+		// Create tracy profiler context
+		VkCommandBuffer cmd = m_LogicalDevice->GetCommandBuffer(false);
+
+		m_TracyContext = TracyVkContext(
+			m_PhysicalDevice->GetNativeDevice(),
+			m_LogicalDevice->GetNativeDevice(),
+			m_LogicalDevice->GetGraphicsQueue(),
+			cmd
+		);
+
+		m_LogicalDevice->FreeCommandBuffer(cmd);
 	}
 
 	void VulkanContext::Shutdown()
@@ -115,7 +127,7 @@ namespace Eppo
 		return std::static_pointer_cast<VulkanContext>(RendererContext::Get());
 	}
 
-	std::vector<const char*> VulkanContext::GetRequiredExtensions()
+	std::vector<const char*> VulkanContext::GetRequiredExtensions() const
 	{
 		uint32_t glfwExtensionCount = 0;
 		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);

@@ -9,6 +9,8 @@ namespace Eppo
 	VulkanIndexBuffer::VulkanIndexBuffer(void* data, uint32_t size)
 		: m_Size(size)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanIndexBuffer::VulkanIndexBuffer");
+
 		// Create staging buffer
 		VkBufferCreateInfo stagingBufferInfo{};
 		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -54,15 +56,5 @@ namespace Eppo
 	{
 		EPPO_WARN("Releasing index buffer {}", (void*)this);
 		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
-	}
-
-	void VulkanIndexBuffer::RT_Bind(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-
-			vkCmdBindIndexBuffer(cmd->GetCurrentCommandBuffer(), m_Buffer, 0, VK_INDEX_TYPE_UINT32);
-		});
 	}
 }

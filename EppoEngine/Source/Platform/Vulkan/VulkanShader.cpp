@@ -46,6 +46,8 @@ namespace Eppo
 	VulkanShader::VulkanShader(const ShaderSpecification& specification)
 		: Shader(specification)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::VulkanShader");
+
 		// Read shader source
 		const std::string shaderSource = Filesystem::ReadText(GetSpecification().Filepath);
 
@@ -70,6 +72,8 @@ namespace Eppo
 
 	std::unordered_map<Eppo::ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::PreProcess");
+
 		std::unordered_map<ShaderStage, std::string> shaderSources;
 
 		// Find stage token
@@ -101,6 +105,8 @@ namespace Eppo
 
 	void VulkanShader::Compile(ShaderStage stage, const std::string& source)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::Compile");
+
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
@@ -131,6 +137,8 @@ namespace Eppo
 
 	void VulkanShader::CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::CompileOrGetCache");
+
 		const std::filesystem::path cacheDir = Utils::GetOrCreateCacheDirectory();
 
 		for (const auto& [stage, source] : sources)
@@ -175,6 +183,8 @@ namespace Eppo
 
 	void VulkanShader::Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::Reflect");
+
 		spirv_cross::Compiler compiler(shaderBytes);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
@@ -219,7 +229,7 @@ namespace Eppo
 			for (const auto& resource : resources.uniform_buffers)
 			{
 				const auto& bufferType = compiler.get_type(resource.base_type_id);
-				uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
+				size_t bufferSize = compiler.get_declared_struct_size(bufferType);
 				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 				size_t memberCount = bufferType.member_types.size();
@@ -241,7 +251,7 @@ namespace Eppo
 					shaderResource.Type = stage;
 					shaderResource.ResourceType = ShaderResourceType::UniformBuffer;
 					shaderResource.Binding = binding;
-					shaderResource.Size = bufferSize;
+					shaderResource.Size = static_cast<uint32_t>(bufferSize);
 					shaderResource.Name = resource.name;
 				}
 
@@ -263,7 +273,6 @@ namespace Eppo
 
 				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
-				size_t memberCount = bufferType.member_types.size();
 				auto& spirVtype = compiler.get_type(resource.type_id);
 				uint32_t arraySize = 0;
 				if (!spirVtype.array.empty())
@@ -299,6 +308,8 @@ namespace Eppo
 
 	void VulkanShader::CreatePipelineShaderInfos()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::CreatePipelineShaderInfos");
+
 		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
@@ -328,6 +339,8 @@ namespace Eppo
 
 	void VulkanShader::CreateDescriptorSetLayouts()
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::CreateDescriptorSetLayouts");
+
 		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		m_DescriptorSetLayouts.resize(4);
@@ -368,10 +381,8 @@ namespace Eppo
 		}
 
 		Ref<VulkanContext> context = VulkanContext::Get();
-		context->SubmitResourceFree([this]()
+		context->SubmitResourceFree([this, device]()
 		{
-			VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
 			// Since we ALWAYS have 4 descriptor set layouts per shader AND some of them can be the same if not all descriptor sets are in use
 			// We keep track of which we have freed so we don't free the same layout twice.
 			std::unordered_set<void*> layoutsFreed;

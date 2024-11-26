@@ -28,6 +28,8 @@ namespace Eppo
 
 	Ref<Mesh> AssetImporter::ImportMesh(AssetHandle handle, const AssetMetadata& metadata)
 	{
+		EPPO_PROFILE_FUNCTION("AssetImporter::ImportMesh");
+
 		Ref<Mesh> mesh = CreateRef<Mesh>(Project::GetAssetFilepath(metadata.Filepath));
 
 		return mesh;
@@ -35,6 +37,8 @@ namespace Eppo
 
 	Ref<Scene> AssetImporter::ImportScene(AssetHandle handle, const AssetMetadata& metadata)
 	{
+		EPPO_PROFILE_FUNCTION("AssetImporter::ImportScene");
+
 		Ref<Scene> scene = CreateRef<Scene>();
 		SceneSerializer serializer(scene);
 		serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath));
@@ -44,6 +48,8 @@ namespace Eppo
 
 	bool AssetImporter::ExportScene(Ref<Scene> scene, const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("AssetImporter::ExportScene");
+
 		SceneSerializer serializer(scene);
 		return serializer.Serialize(filepath);
 	}

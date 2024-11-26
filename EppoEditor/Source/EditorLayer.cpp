@@ -40,7 +40,9 @@ namespace Eppo
 		RenderSpecification renderSpec;
 		renderSpec.Width = 1600;
 		renderSpec.Height = 900;
+#ifdef EPPO_DEBUG
 		renderSpec.DebugRendering = true;
+#endif
 
 		m_ViewportRenderer = SceneRenderer::Create(m_EditorScene, renderSpec);
 	}
@@ -224,10 +226,10 @@ namespace Eppo
 		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-		m_ViewportWidth = viewportSize.x;
-		m_ViewportHeight = viewportSize.y;
+		m_ViewportWidth = static_cast<uint32_t>(viewportSize.x);
+		m_ViewportHeight = static_cast<uint32_t>(viewportSize.y);
 
-		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
+		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -546,7 +548,7 @@ namespace Eppo
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
 
-		if (ImGui::BeginPopupModal("New Project", (bool*)0, flags))
+		if (ImGui::BeginPopupModal("New Project", nullptr, flags))
 		{
 			static char nameBuffer[200]{ 0 };
 			static bool projectExists = false;
@@ -597,7 +599,7 @@ namespace Eppo
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
 
-		if (ImGui::BeginPopupModal("Project settings", (bool*)0, flags))
+		if (ImGui::BeginPopupModal("Project settings", nullptr, flags))
 		{
 			auto& spec = Project::GetActive()->GetSpecification();
 			

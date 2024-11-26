@@ -14,8 +14,6 @@ namespace Eppo
 	Application::Application(const ApplicationSpecification& specification)
 		: m_Specification(specification)
 	{
-		EPPO_PROFILE_FUNCTION("Application::Application");
-
 		// Set instance if not set. We can only have one instance!
 		EPPO_ASSERT(!s_Instance);
 		s_Instance = this;
@@ -46,8 +44,6 @@ namespace Eppo
 
 	Application::~Application()
 	{
-		EPPO_PROFILE_FUNCTION("Application::~Application");
-
 		EPPO_INFO("Shutting down...");
 
 		for (Layer* layer : m_LayerStack)
@@ -83,6 +79,8 @@ namespace Eppo
 
 	void Application::SubmitToMainThread(const std::function<void()>& fn)
 	{
+		EPPO_PROFILE_FUNCTION("Application::SubmitToMainThread");
+
 		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
 
 		m_MainThreadQueue.push(fn);
@@ -147,12 +145,11 @@ namespace Eppo
 				context->BeginFrame();
 				Renderer::ExecuteRenderCommands();
 				context->PresentFrame();
+
+				EPPO_PROFILE_FRAME_MARK;
 			}
 
 			m_Window->ProcessEvents();
-
-			EPPO_PROFILE_GPU_END;
-			EPPO_PROFILE_FRAME_MARK;
 		}
 
 		context->WaitIdle();
@@ -160,6 +157,8 @@ namespace Eppo
 
 	void Application::ExecuteMainThreadQueue()
 	{
+		EPPO_PROFILE_FUNCTION("Application::ExecuteMainThreadQueue");
+
 		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
 
 		for (size_t i = 0; i < m_MainThreadQueue.size(); i++)
@@ -179,7 +178,7 @@ namespace Eppo
 	bool Application::OnWindowResize(const WindowResizeEvent& e)
 	{
 		EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
-		
+
 		uint32_t width = e.GetWidth();
 		uint32_t height = e.GetHeight();
 
@@ -188,8 +187,8 @@ namespace Eppo
 			m_IsMinimized = true;
 			return false;
 		}
-		else
-			m_IsMinimized = false;
+			
+		m_IsMinimized = false;
 
 		return true;
 	}

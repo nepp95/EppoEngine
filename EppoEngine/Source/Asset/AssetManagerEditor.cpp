@@ -47,7 +47,6 @@ namespace Eppo
 				case AssetType::Scene:
 				{
 					destPath = Project::GetAssetsDirectory() / "Scenes";
-					
 					break;
 				}
 
@@ -74,6 +73,8 @@ namespace Eppo
 
 	Ref<Asset> AssetManagerEditor::GetAsset(AssetHandle handle)
 	{
+		EPPO_PROFILE_FUNCTION("AssetManagerEditor::GetAsset");
+
 		if (!IsAssetHandleValid(handle))
 			return nullptr;
 
@@ -116,6 +117,8 @@ namespace Eppo
 
 	Ref<Asset> AssetManagerEditor::ImportAsset(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("AssetManagerEditor::ImportAsset");
+
 		// If the path is not inside the assets directory, we want to copy the file to the assets directory
 		std::filesystem::path baseCanonical = std::filesystem::canonical(Project::GetAssetsDirectory());
 		std::filesystem::path targetCanonical = std::filesystem::canonical(Project::GetAssetFilepath(filepath));
@@ -161,6 +164,7 @@ namespace Eppo
 
 	void AssetManagerEditor::SerializeAssetRegistry()
 	{
+		EPPO_PROFILE_FUNCTION("AssetManagerEditor::SerializeAssetRegistry");
 		EPPO_INFO("Serializing asset registry");
 
 		YAML::Emitter out;
@@ -185,6 +189,8 @@ namespace Eppo
 
 	bool AssetManagerEditor::DeserializeAssetRegistry()
 	{
+		EPPO_PROFILE_FUNCTION("AssetManagerEditor::DeserializeAssetRegistry");
+
 		std::filesystem::path assetRegistryFile = Project::GetAssetsDirectory() / "AssetRegistry.epporeg";
 
 		if (!Filesystem::Exists(assetRegistryFile))

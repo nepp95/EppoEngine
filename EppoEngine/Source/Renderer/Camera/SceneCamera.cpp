@@ -5,8 +5,6 @@ namespace Eppo
 {
 	SceneCamera::SceneCamera()
 	{
-		EPPO_PROFILE_FUNCTION("SceneCamera::SceneCamera");
-
 		RecalculateProjection();
 	}
 

@@ -7,6 +7,8 @@
 #include "Renderer/GarbageCollector.h"
 #include "Renderer/RendererContext.h"
 
+#include <tracy/TracyVulkan.hpp>
+
 namespace Eppo
 {
 	class VulkanContext : public RendererContext
@@ -31,11 +33,12 @@ namespace Eppo
 
 		static VkInstance GetVulkanInstance() { return s_Instance; }
 		GLFWwindow* GetWindowHandle() override { return m_WindowHandle; }
+		TracyVkCtx GetTracyContext() const { return m_TracyContext; }
 
 		static Ref<VulkanContext> Get();
 
 	private:
-		std::vector<const char*> GetRequiredExtensions();
+		std::vector<const char*> GetRequiredExtensions() const;
 
 	private:
 		GLFWwindow* m_WindowHandle = nullptr;
@@ -46,6 +49,8 @@ namespace Eppo
 		Ref<VulkanSwapchain> m_Swapchain;
 
 		GarbageCollector m_GarbageCollector;
+
+		TracyVkCtx m_TracyContext;
 
 		inline static VkInstance s_Instance;
 	};

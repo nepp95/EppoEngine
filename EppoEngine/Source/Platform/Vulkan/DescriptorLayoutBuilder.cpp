@@ -20,6 +20,8 @@ namespace Eppo
 
 	VkDescriptorSetLayout DescriptorLayoutBuilder::Build(VkShaderStageFlags shaderStageFlags, VkDescriptorSetLayoutCreateFlags createFlags, void* pNext)
 	{
+		EPPO_PROFILE_FUNCTION("DescriptorLayoutBuilder::Build");
+
 		for (auto& binding : m_Bindings)
 			binding.stageFlags |= shaderStageFlags;
 

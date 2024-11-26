@@ -19,7 +19,7 @@ namespace Eppo
 	{
 	public:
 		VulkanCommandBuffer(bool manualSubmission, uint32_t count);
-		virtual ~VulkanCommandBuffer() {}
+		~VulkanCommandBuffer() override = default;
 
 		void RT_Begin() override;
 		void RT_End() override;

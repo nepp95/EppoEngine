@@ -8,6 +8,8 @@ namespace Eppo
 {
 	VulkanVertexBuffer::VulkanVertexBuffer(Buffer buffer)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanVertexBuffer::VulkanVertexBuffer");
+
 		// Create staging buffer
 		VkBufferCreateInfo stagingBufferInfo{};
 		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -52,18 +54,5 @@ namespace Eppo
 	{
 		EPPO_WARN("Releasing vertex buffer {}", (void*)this);
 		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
-	}
-
-	void VulkanVertexBuffer::RT_Bind(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-
-			VkBuffer vb = { m_Buffer };
-			VkDeviceSize offsets[] = { 0 };
-
-			vkCmdBindVertexBuffers(cmd->GetCurrentCommandBuffer(), 0, 1, &vb, offsets);
-		});
 	}
 }

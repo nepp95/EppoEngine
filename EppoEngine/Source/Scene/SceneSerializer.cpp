@@ -113,6 +113,8 @@ namespace Eppo
 
 	bool SceneSerializer::Serialize(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("SceneSerializer:Serialize");
+
 		std::string sceneName = filepath.stem().string();
 
 		EPPO_INFO("Serializing scene '{}'", sceneName);
@@ -141,13 +143,15 @@ namespace Eppo
 
 	bool SceneSerializer::Deserialize(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("SceneSerializer:Deserialize");
+
 		YAML::Node data;
 
 		try
 		{
 			data = YAML::LoadFile(filepath.string());
 		}
-		catch (YAML::ParserException e)
+		catch (YAML::ParserException& e)
 		{
 			EPPO_ERROR("Failed to load scene file '{}'!", filepath);
 			EPPO_ERROR("YAML Error: {}", e.what());
@@ -174,14 +178,13 @@ namespace Eppo
 		for (auto entity : entities)
 		{
 			UUID uuid = entity["Entity"].as<uint64_t>();
-			std::string name;
+			std::string tag;
 
-			auto tagComponent = entity["TagComponent"];
-			if (tagComponent)
-				name = tagComponent["Tag"].as<std::string>();
+			if (auto tagComponent = entity["TagComponent"]; tagComponent)
+				tag = tagComponent["Tag"].as<std::string>();
 
-			Entity newEntity = m_SceneContext->CreateEntityWithUUID(uuid, name);
-			EPPO_INFO("Deserializing entity '{}' ({})", name, uuid);
+			Entity newEntity = m_SceneContext->CreateEntityWithUUID(uuid, tag);
+			EPPO_INFO("Deserializing entity '{}' ({})", tag, uuid);
 
 			{
 				auto c = entity["TransformComponent"];
@@ -443,7 +446,7 @@ namespace Eppo
 			out << YAML::Key << "RigidBodyComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			auto& c = entity.GetComponent<RigidBodyComponent>();
+			const auto& c = entity.GetComponent<RigidBodyComponent>();
 			out << YAML::Key << "BodyType" << YAML::Value << (int)c.Type;
 			out << YAML::Key << "Mass" << YAML::Value << c.Mass;
 
@@ -455,8 +458,8 @@ namespace Eppo
 			out << YAML::Key << "CameraComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			auto& c = entity.GetComponent<CameraComponent>();
-			auto& cc = c.Camera;
+			const auto& c = entity.GetComponent<CameraComponent>();
+			const auto& cc = c.Camera;
 
 			out << YAML::Key << "ProjectionType" << YAML::Value << (int)cc.GetProjectionType();
 			out << YAML::Key << "PerspectiveFov" << YAML::Value << cc.GetPerspectiveFov();
