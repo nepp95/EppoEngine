@@ -133,8 +133,8 @@ namespace Eppo
 			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 			{
 				VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_RenderSemaphores[i]), "Failed to create semaphore!")
-					VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]), "Failed to create semaphore!")
-					VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fence!")
+				VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]), "Failed to create semaphore!")
+				VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fence!")
 			}
 		}
 
@@ -156,16 +156,16 @@ namespace Eppo
 
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			EPPO_WARN("[Swapchain] Releasing semaphore {}", (void*)m_PresentSemaphores[i]);
+			EPPO_MEM_WARN("[Swapchain] Releasing semaphore {}", (void*)m_PresentSemaphores[i]);
 			vkDestroySemaphore(device, m_PresentSemaphores[i], nullptr);
 
-			EPPO_WARN("[Swapchain] Releasing semaphore {}", (void*)m_RenderSemaphores[i]);
+			EPPO_MEM_WARN("[Swapchain] Releasing semaphore {}", (void*)m_RenderSemaphores[i]);
 			vkDestroySemaphore(device, m_RenderSemaphores[i], nullptr);
 
-			EPPO_WARN("[Swapchain] Releasing fence {}", (void*)m_Fences[i]);
+			EPPO_MEM_WARN("[Swapchain] Releasing fence {}", (void*)m_Fences[i]);
 			vkDestroyFence(device, m_Fences[i], nullptr);
 
-			EPPO_WARN("[Swapchain] Releasing image view {}", (void*)m_ImageViews[i]);
+			EPPO_MEM_WARN("[Swapchain] Releasing image view {}", (void*)m_ImageViews[i]);
 			vkDestroyImageView(device, m_ImageViews[i], nullptr);
 		}
 

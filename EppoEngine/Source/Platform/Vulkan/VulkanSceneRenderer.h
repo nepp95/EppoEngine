@@ -14,7 +14,7 @@ namespace Eppo
 	{
 	public:
 		VulkanSceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpec);
-		virtual ~VulkanSceneRenderer() = default;
+		~VulkanSceneRenderer() override = default;
 
 		void RenderGui() override;
 		void Resize(uint32_t width, uint32_t height) override;

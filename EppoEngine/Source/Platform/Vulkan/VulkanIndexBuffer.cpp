@@ -54,7 +54,7 @@ namespace Eppo
 
 	VulkanIndexBuffer::~VulkanIndexBuffer()
 	{
-		EPPO_WARN("Releasing index buffer {}", (void*)this);
+		EPPO_MEM_WARN("Releasing index buffer {}", (void*)this);
 		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 }

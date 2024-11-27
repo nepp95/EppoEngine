@@ -282,10 +282,10 @@ namespace Eppo
 	{
 		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
-		EPPO_WARN("Releasing pipeline {}", (void*)m_Pipeline);
+		EPPO_MEM_WARN("Releasing pipeline {}", (void*)m_Pipeline);
 		vkDestroyPipeline(device, m_Pipeline, nullptr);
 
-		EPPO_WARN("Releasing pipeline layout {}", (void*)m_PipelineLayout);
+		EPPO_MEM_WARN("Releasing pipeline layout {}", (void*)m_PipelineLayout);
 		vkDestroyPipelineLayout(device, m_PipelineLayout, nullptr);
 	}
 }

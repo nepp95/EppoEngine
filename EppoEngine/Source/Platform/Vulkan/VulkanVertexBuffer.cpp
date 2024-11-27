@@ -52,7 +52,7 @@ namespace Eppo
 
 	VulkanVertexBuffer::~VulkanVertexBuffer()
 	{
-		EPPO_WARN("Releasing vertex buffer {}", (void*)this);
+		EPPO_MEM_WARN("Releasing vertex buffer {}", (void*)this);
 		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 }

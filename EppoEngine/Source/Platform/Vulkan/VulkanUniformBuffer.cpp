@@ -35,7 +35,7 @@ namespace Eppo
 	{
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			EPPO_WARN("Releasing uniform buffer {}", (void*)this);
+			EPPO_MEM_WARN("Releasing uniform buffer {}", (void*)this);
 			VulkanAllocator::UnmapMemory(m_Allocations[i]);
 			VulkanAllocator::DestroyBuffer(m_Buffers[i], m_Allocations[i]);
 		}

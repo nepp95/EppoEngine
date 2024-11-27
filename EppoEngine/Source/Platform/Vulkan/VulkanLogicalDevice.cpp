@@ -90,7 +90,7 @@ namespace Eppo
 		Ref<VulkanContext> context = VulkanContext::Get();
 		context->SubmitResourceFree([this]()
 		{
-			EPPO_WARN("Releasing logical device and command pool {}", (void*)this);
+			EPPO_MEM_WARN("Releasing logical device and command pool {}", (void*)this);
 			vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 
 			vkDeviceWaitIdle(m_Device);

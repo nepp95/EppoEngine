@@ -331,7 +331,7 @@ namespace Eppo
 
 			context->SubmitResourceFree([=]()
 			{
-				EPPO_WARN("Releasing shader module {}", (void*)shaderModule);
+				EPPO_MEM_WARN("Releasing shader module {}", (void*)shaderModule);
 				vkDestroyShaderModule(device, shaderModule, nullptr);
 			}, false);
 		}
@@ -392,7 +392,7 @@ namespace Eppo
 				if (layoutsFreed.find((void*)descriptorSetLayout) == layoutsFreed.end())
 				{
 					layoutsFreed.insert((void*)descriptorSetLayout);
-					EPPO_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
+					EPPO_MEM_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
 					vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 				}
 			}

@@ -175,21 +175,21 @@ namespace Eppo
 
 		if (m_ImageInfo.Sampler)
 		{
-			EPPO_WARN("Releasing sampler {}", (void*)m_ImageInfo.Sampler);
+			EPPO_MEM_WARN("Releasing sampler {}", (void*)m_ImageInfo.Sampler);
 			vkDestroySampler(device, m_ImageInfo.Sampler, nullptr);
 			m_ImageInfo.Sampler = nullptr;
 		}
 
 		if (m_ImageInfo.ImageView)
 		{
-			EPPO_WARN("Releasing image view {}", (void*)m_ImageInfo.ImageView);
+			EPPO_MEM_WARN("Releasing image view {}", (void*)m_ImageInfo.ImageView);
 			vkDestroyImageView(device, m_ImageInfo.ImageView, nullptr);
 			m_ImageInfo.ImageView = nullptr;
 		}
 
 		if (m_ImageInfo.Image)
 		{
-			EPPO_WARN("Releasing image {}", (void*)m_ImageInfo.Image);
+			EPPO_MEM_WARN("Releasing image {}", (void*)m_ImageInfo.Image);
 			VulkanAllocator::DestroyImage(m_ImageInfo.Image, m_ImageInfo.Allocation);
 			m_ImageInfo.Image = nullptr;
 			m_ImageInfo.Allocation = nullptr;
