@@ -101,7 +101,12 @@ namespace Eppo
 		VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &m_ImageInfo.Sampler), "Failed to create sampler!");
 
 		VkCommandBuffer commandBuffer = context->GetLogicalDevice()->GetCommandBuffer(true);
-		TransitionImage(commandBuffer, m_ImageInfo.Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		if (Utils::IsDepthFormat(m_Specification.Format))
+			TransitionImage(commandBuffer, m_ImageInfo.Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+		else
+			TransitionImage(commandBuffer, m_ImageInfo.Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		
 		context->GetLogicalDevice()->FlushCommandBuffer(commandBuffer);
 
 		if (m_Specification.Format == ImageFormat::Depth)

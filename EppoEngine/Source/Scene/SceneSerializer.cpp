@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneSerializer.h"
 
+#include "Core/Filesystem.h"
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptEngine.h"
 
@@ -117,7 +118,7 @@ namespace Eppo
 
 		std::string sceneName = filepath.stem().string();
 
-		EPPO_INFO("Serializing scene '{}'", sceneName);
+		EPPO_INFO("Serializing scene '{}' ({})", sceneName, m_SceneContext->Handle);
 
 		YAML::Emitter out;
 		out << YAML::BeginMap;
@@ -306,6 +307,15 @@ namespace Eppo
 					cc.Camera.SetOrthographicFarClip(c["OrthographicFarClip"].as<float>());
 				}
 			}
+
+			{
+				auto c = entity["PointLightComponent"];
+				if (c)
+				{
+					auto& pl = newEntity.AddComponent<PointLightComponent>();
+					pl.Color = c["Color"].as<glm::vec4>();
+				}
+			}
 		}
 
 		return true;
@@ -336,7 +346,7 @@ namespace Eppo
 			out << YAML::Key << "TransformComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			auto& c = entity.GetComponent<TransformComponent>();
+			const auto& c = entity.GetComponent<TransformComponent>();
 			out << YAML::Key << "Translation" << YAML::Value << c.Translation;
 			out << YAML::Key << "Rotation" << YAML::Value << c.Rotation;
 			out << YAML::Key << "Scale" << YAML::Value << c.Scale;
@@ -349,7 +359,7 @@ namespace Eppo
 			out << YAML::Key << "SpriteComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			auto& c = entity.GetComponent<SpriteComponent>();
+			const auto& c = entity.GetComponent<SpriteComponent>();
 			out << YAML::Key << "Color" << YAML::Value << c.Color;
 			out << YAML::Key << "TextureHandle" << YAML::Value << c.TextureHandle;
 
@@ -361,7 +371,7 @@ namespace Eppo
 			out << YAML::Key << "MeshComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			auto& c = entity.GetComponent<MeshComponent>();
+			const auto& c = entity.GetComponent<MeshComponent>();
 			out << YAML::Key << "MeshHandle" << YAML::Value << c.MeshHandle;
 
 			out << YAML::EndMap;
@@ -372,7 +382,7 @@ namespace Eppo
 			out << YAML::Key << "DirectionalLightComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			auto& c = entity.GetComponent<DirectionalLightComponent>();
+			const auto& c = entity.GetComponent<DirectionalLightComponent>();
 			out << YAML::Key << "Direction" << YAML::Value << c.Direction;
 			out << YAML::Key << "Albedo" << YAML::Value << c.AlbedoColor;
 			out << YAML::Key << "Ambient" << YAML::Value << c.AmbientColor;
@@ -386,7 +396,7 @@ namespace Eppo
 			out << YAML::Key << "ScriptComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			auto& c = entity.GetComponent<ScriptComponent>();
+			const auto& c = entity.GetComponent<ScriptComponent>();
 			out << YAML::Key << "ClassName" << YAML::Value << c.ClassName;
 
 			// Fields

@@ -129,6 +129,8 @@ namespace Eppo
 		// Set 1
 		m_CameraUB = UniformBuffer::Create(sizeof(CameraData), 0);
 		m_LightsUB = UniformBuffer::Create(sizeof(LightsData), 1);
+
+		m_LightsBuffer.Projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
 	}
 
 	void VulkanSceneRenderer::RenderGui()
@@ -230,12 +232,9 @@ namespace Eppo
 		Flush();
 	}
 
-	void VulkanSceneRenderer::SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId)
+	void VulkanSceneRenderer::SubmitDrawCommand(EntityType type, Ref<DrawCommand> drawCommand)
 	{
-		auto& drawCommand = m_DrawList.emplace_back();
-		drawCommand.Handle = entityId;
-		drawCommand.Mesh = mesh;
-		drawCommand.Transform = transform;
+		m_DrawList[type].emplace_back(drawCommand);
 	}
 
 	Ref<Image> VulkanSceneRenderer::GetFinalImage()
@@ -476,14 +475,14 @@ namespace Eppo
 
 				// End rendering
 				Renderer::EndRenderPass(m_CommandBuffer);
-
-				// Transition image for reading
-				for (uint32_t i = 0; i < s_MaxLights; i++)
-					VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-				
-				if (m_RenderSpecification.DebugRendering)
-					m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 			}
+
+			// Transition image for reading
+			for (uint32_t i = 0; i < s_MaxLights; i++)
+				VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 		});
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.PreDepthQuery);
@@ -762,13 +761,13 @@ namespace Eppo
 			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 
-			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
 			// Profiling
 			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "CompositePass");
 
 			if (m_RenderSpecification.DebugRendering)
 				m_DebugRenderer->StartDebugLabel(cmd, "CompositePass");
+
+			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 			Renderer::BeginRenderPass(cmd, pipeline);
 

@@ -63,6 +63,7 @@ namespace Eppo
 			DrawAddComponentEntry<ScriptComponent>("Script");
 			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
 			DrawAddComponentEntry<CameraComponent>("Camera");
+			DrawAddComponentEntry<PointLightComponent>("Point Light");
 
 			ImGui::EndPopup();
 		}
@@ -230,7 +231,7 @@ namespace Eppo
 			ImGui::ColorEdit4("Albedo Color", glm::value_ptr(component.AlbedoColor));
 			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(component.AmbientColor));
 			ImGui::ColorEdit4("Specular Color", glm::value_ptr(component.SpecularColor));
-		}, std::string("Directional Light"));
+		}, "Directional Light");
 
 		DrawComponent<ScriptComponent>(entity, [entity, scene = GetSceneContext()](auto& component) mutable
 		{
@@ -710,7 +711,7 @@ namespace Eppo
 			}
 
 			ImGui::DragFloat("Mass", &component.Mass, 0.1f);
-		}, std::string("Rigid Body"));
+		}, "Rigid Body");
 
 		DrawComponent<CameraComponent>(entity, [](auto& component)
 		{

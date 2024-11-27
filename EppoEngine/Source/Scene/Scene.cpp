@@ -268,12 +268,12 @@ namespace Eppo
 
 		auto it = m_EntityMap.find(uuid);
 		if (it != m_EntityMap.end())
-			return Entity(it->second, this);
+			return { it->second, this };
 
 		return {};
 	}
 
-	Entity Scene::FindEntityByName(const std::string& name)
+	Entity Scene::FindEntityByName(std::string_view name)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::FindEntityByName");
 
@@ -299,7 +299,7 @@ namespace Eppo
 		for (auto e : view)
 		{
 			Entity entity(e, this);
-			auto& transform = entity.GetComponent<TransformComponent>();
+			const auto& transform = entity.GetComponent<TransformComponent>();
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
 			btCollisionShape* shape = new btBoxShape(btVector3(transform.Scale.x, transform.Scale.y, transform.Scale.z));
@@ -318,9 +318,9 @@ namespace Eppo
 			if (isDynamic)
 				shape->calculateLocalInertia(mass, localInertia);
 
-			btDefaultMotionState* motionState = new btDefaultMotionState(bTransform);
+			auto* motionState = new btDefaultMotionState(bTransform);
 			btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, localInertia);
-			btRigidBody* body = new btRigidBody(rbInfo);
+			auto* body = new btRigidBody(rbInfo);
 
 			m_PhysicsWorld->addRigidBody(body);
 			rigidbody.RuntimeBody = RigidBody(body);
