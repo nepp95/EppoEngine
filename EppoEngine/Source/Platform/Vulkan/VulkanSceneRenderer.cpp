@@ -251,66 +251,77 @@ namespace Eppo
 		memset(&m_RenderStatistics, 0, sizeof(RenderStatistics));
 
 		// Lights UB
-		m_LightsBuffer.Projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
 		//m_LightsBuffer.Projection[1][1] *= -1.0f;
-		m_LightsBuffer.NumLights = 2;
+		m_LightsBuffer.NumLights = 0;
 
 		std::vector<LineVertex> lineVertices;
 		std::vector<uint32_t> lineIndices;
 		uint32_t vertexCount = 0;
-		for (uint32_t i = 0; i < m_LightsBuffer.NumLights; i++)
-		{
-			// Setup Lights
-			auto& light = m_LightsBuffer.Lights[i];
-			glm::vec3 position;
-			if (i == 0)
-				position = { 5.0f, 1.0f, 0.0f };
-			else
-				position = { -10.0f, 1.0f, 0.0f };
 
-			light.Position = glm::vec4(position, 1.0f);
-			light.Color = glm::vec4(1.0f, 0.8f, 0.8f, 1.0f);
-			light.View[0] = glm::lookAt(position, position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[1] = glm::lookAt(position, position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[2] = glm::lookAt(position, position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-			light.View[3] = glm::lookAt(position, position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-			light.View[4] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[5] = glm::lookAt(position, position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+		uint32_t i = 0;
+		while (i < 8 && !m_DrawList[EntityType::PointLight].empty())
+		{
+			Ref<DrawCommand> dc = m_DrawList[EntityType::PointLight].back();
+			Ref<PointLightCommand> plCmd = std::static_pointer_cast<PointLightCommand>(dc);
+
+			auto& light = m_LightsBuffer.Lights[i];
+			light.Position = glm::vec4(plCmd->Position, 1.0f);
+			light.Color = plCmd->Color;
+			light.View[0] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[1] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[2] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+			light.View[3] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+			light.View[4] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			light.View[5] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 
 			// Setup Debug Lines
 			LineVertex& p0 = lineVertices.emplace_back();
-			p0.Position = position - glm::vec3(0.0f, 0.5f, 0.0f);
+			p0.Position = plCmd->Position - glm::vec3(0.0f, 0.5f, 0.0f);
 			p0.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-			lineIndices.emplace_back(vertexCount++);
+			lineIndices.emplace_back(vertexCount);
+			vertexCount++;
 
 			LineVertex& p1 = lineVertices.emplace_back();
-			p1.Position = position + glm::vec3(0.0f, 0.5f, 0.0f);
+			p1.Position = plCmd->Position + glm::vec3(0.0f, 0.5f, 0.0f);
 			p1.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-			lineIndices.emplace_back(vertexCount++);
+			lineIndices.emplace_back(vertexCount);
+			vertexCount++;
 
 			LineVertex& p2 = lineVertices.emplace_back();
-			p2.Position = position - glm::vec3(0.5f, 0.0f, 0.0f);
+			p2.Position = plCmd->Position - glm::vec3(0.5f, 0.0f, 0.0f);
 			p2.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-			lineIndices.emplace_back(vertexCount++);
+			lineIndices.emplace_back(vertexCount);
+			vertexCount++;
 
 			LineVertex& p3 = lineVertices.emplace_back();
-			p3.Position = position + glm::vec3(0.5f, 0.0f, 0.0f);
+			p3.Position = plCmd->Position + glm::vec3(0.5f, 0.0f, 0.0f);
 			p3.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-			lineIndices.emplace_back(vertexCount++);
+			lineIndices.emplace_back(vertexCount);
+			vertexCount++;
 
 			LineVertex& p4 = lineVertices.emplace_back();
-			p4.Position = position - glm::vec3(0.0f, 0.0f, 0.5f);
+			p4.Position = plCmd->Position - glm::vec3(0.0f, 0.0f, 0.5f);
 			p4.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-			lineIndices.emplace_back(vertexCount++);
+			lineIndices.emplace_back(vertexCount);
+			vertexCount++;
 
 			LineVertex& p5 = lineVertices.emplace_back();
-			p5.Position = position + glm::vec3(0.0f, 0.0f, 0.5f);
+			p5.Position = plCmd->Position + glm::vec3(0.0f, 0.0f, 0.5f);
 			p5.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-			lineIndices.emplace_back(vertexCount++);
+			lineIndices.emplace_back(vertexCount);
+			vertexCount++;
+
+			m_DrawList[EntityType::PointLight].pop_back();
+			i++;
 		}
 
-		m_DebugLineVertexBuffer = VertexBuffer::Create((void*)lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
-		m_DebugLineIndexBuffer = IndexBuffer::Create((void*)lineIndices.data(), lineIndices.size() * sizeof(uint32_t));
+		m_LightsBuffer.NumLights = i;
+
+		if (!lineVertices.empty() && !lineIndices.empty())
+		{
+			m_DebugLineVertexBuffer = VertexBuffer::Create((void*)lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
+			m_DebugLineIndexBuffer = IndexBuffer::Create((void*)lineIndices.data(), lineIndices.size() * sizeof(uint32_t));
+		}
 
 		m_LightsUB->SetData(&m_LightsBuffer, sizeof(LightsData));
 
@@ -425,11 +436,12 @@ namespace Eppo
 				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 2, descriptorSets.data(), 0, nullptr);
 
 				// Render geometry
-				for (const auto& dc : m_DrawList)
+				for (const auto& dc : m_DrawList[EntityType::Mesh])
 				{
+					Ref<MeshCommand> meshCmd = std::static_pointer_cast<MeshCommand>(dc);
 					m_RenderStatistics.MeshInstances++;
 
-					for (const auto& submesh : dc.Mesh->GetSubmeshes())
+					for (const auto& submesh : meshCmd->Mesh->GetSubmeshes())
 					{
 						// Bind vertex buffer
 						Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(submesh.GetVertexBuffer());
@@ -443,7 +455,7 @@ namespace Eppo
 						vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 						// Draw call
-						glm::mat4 finalTransform = dc.Transform * submesh.GetLocalTransform();
+						glm::mat4 finalTransform = meshCmd->Transform * submesh.GetLocalTransform();
 
 						for (const auto& p : submesh.GetPrimitives())
 						{
@@ -536,9 +548,11 @@ namespace Eppo
 			// Set 2 - Mesh
 			imageInfos.clear();
 
-			for (const auto& dc : m_DrawList)
+			for (const auto& dc : m_DrawList[EntityType::Mesh])
 			{
-				for (const auto& image : dc.Mesh->GetImages())
+				Ref<MeshCommand> meshCmd = std::static_pointer_cast<MeshCommand>(dc);
+
+				for (const auto& image : meshCmd->Mesh->GetImages())
 				{
 					const ImageInfo& imageInfo = std::static_pointer_cast<VulkanImage>(image)->GetImageInfo();
 
@@ -580,12 +594,14 @@ namespace Eppo
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 2, descriptorSets.data(), 0, nullptr);
 		
 			// Render geometry
-			for (const auto& dc : m_DrawList)
+			for (const auto& dc : m_DrawList[EntityType::Mesh])
 			{
+				Ref<MeshCommand> meshCmd = std::static_pointer_cast<MeshCommand>(dc);
+
 				m_RenderStatistics.Meshes++;
 				m_RenderStatistics.MeshInstances++;
 
-				for (const auto& submesh : dc.Mesh->GetSubmeshes())
+				for (const auto& submesh : meshCmd->Mesh->GetSubmeshes())
 				{
 					m_RenderStatistics.Submeshes++;
 
@@ -601,7 +617,7 @@ namespace Eppo
 					vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 					// Draw call
-					glm::mat4 finalTransform = dc.Transform * submesh.GetLocalTransform();
+					glm::mat4 finalTransform = meshCmd->Transform * submesh.GetLocalTransform();
 
 					for (const auto& p : submesh.GetPrimitives())
 					{
@@ -642,87 +658,91 @@ namespace Eppo
 
 		m_TimestampQueries.DebugLineQuery = cmd->RT_BeginTimestampQuery();
 
-		Renderer::SubmitCommand([this, cmd, pipeline]()
+		if (m_LightsBuffer.NumLights > 0)
 		{
-			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::DebugLinePass");
-
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-			auto& spec = pipeline->GetSpecification();
-		
-			// Profiling
-			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "DebugLinePass");
-
-			// Insert debug label
-			if (m_RenderSpecification.DebugRendering)
-				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "DebugLinePass");
-		
-			// Update descriptors
-			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-			const auto& descriptorSets = pipeline->GetDescriptorSets(frameIndex);
-		
-			DescriptorWriter writer;
-
-			// Set 1 - Scene
+			Renderer::SubmitCommand([this, cmd, pipeline]()
 			{
-				const auto& buffers = std::static_pointer_cast<VulkanUniformBuffer>(m_CameraUB)->GetBuffers();
-				VkBuffer buffer = buffers[frameIndex];
-				writer.WriteBuffer(m_CameraUB->GetBinding(), buffer, sizeof(CameraData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-			}
+				EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::DebugLinePass");
 
-			{
-				const auto& buffers = std::static_pointer_cast<VulkanUniformBuffer>(m_LightsUB)->GetBuffers();
-				VkBuffer buffer = buffers[frameIndex];
-				writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-			}
-
-			writer.UpdateSet(descriptorSets[0]);
-
-			// Begin rendering
-			Renderer::BeginRenderPass(m_CommandBuffer, m_DebugLinePipeline);
-
-			// Bind pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
-
-			// Set viewport and scissor
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(spec.Width);
-			viewport.height = static_cast<float>(spec.Height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = { spec.Width, spec.Height };
-
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			// Bind descriptor sets
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 1, descriptorSets.data(), 0, nullptr);
+				VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+				const auto& spec = pipeline->GetSpecification();
 		
-			// Bind vertex buffer
-			Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(m_DebugLineVertexBuffer);
-			VkBuffer vb = { vertexBuffer->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
+				// Profiling
+				EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "DebugLinePass");
 
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-			// Bind index buffer
-			Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(m_DebugLineIndexBuffer);
+				// Insert debug label
+				if (m_RenderSpecification.DebugRendering)
+					m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "DebugLinePass");
 		
-			// Draw call
-			m_RenderStatistics.DrawCalls++;
-			vkCmdDrawIndexed(commandBuffer, m_DebugLineIndexBuffer->GetIndexCount(), 1, 0, 0, 0);
+				// Update descriptors
+				uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+				const auto& descriptorSets = pipeline->GetDescriptorSets(frameIndex);
 		
-			// End rendering
-			Renderer::EndRenderPass(m_CommandBuffer);
+				DescriptorWriter writer;
 
-			if (m_RenderSpecification.DebugRendering)
-				m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
-		});
+				// Set 1 - Scene
+				{
+					const auto& buffers = std::static_pointer_cast<VulkanUniformBuffer>(m_CameraUB)->GetBuffers();
+					VkBuffer buffer = buffers[frameIndex];
+					writer.WriteBuffer(m_CameraUB->GetBinding(), buffer, sizeof(CameraData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+				}
+
+				{
+					const auto& buffers = std::static_pointer_cast<VulkanUniformBuffer>(m_LightsUB)->GetBuffers();
+					VkBuffer buffer = buffers[frameIndex];
+					writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+				}
+
+				writer.UpdateSet(descriptorSets[0]);
+
+				// Begin rendering
+				Renderer::BeginRenderPass(m_CommandBuffer, m_DebugLinePipeline);
+
+				// Bind pipeline
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
+
+				// Set viewport and scissor
+				VkViewport viewport{};
+				viewport.x = 0.0f;
+				viewport.y = 0.0f;
+				viewport.width = static_cast<float>(spec.Width);
+				viewport.height = static_cast<float>(spec.Height);
+				viewport.minDepth = 0.0f;
+				viewport.maxDepth = 1.0f;
+
+				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+				VkRect2D scissor{};
+				scissor.offset = { 0, 0 };
+				scissor.extent = { spec.Width, spec.Height };
+
+				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+				// Bind descriptor sets
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 1, descriptorSets.data(), 0, nullptr);
+		
+				// Bind vertex buffer
+				Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(m_DebugLineVertexBuffer);
+				VkBuffer vb = { vertexBuffer->GetBuffer() };
+				VkDeviceSize offsets[] = { 0 };
+
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
+
+				// Bind index buffer
+				Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(m_DebugLineIndexBuffer);
+				vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+		
+				// Draw call
+				m_RenderStatistics.DrawCalls++;
+				vkCmdDrawIndexed(commandBuffer, m_DebugLineIndexBuffer->GetIndexCount(), 1, 0, 0, 0);
+		
+				// End rendering
+				Renderer::EndRenderPass(m_CommandBuffer);
+
+				if (m_RenderSpecification.DebugRendering)
+					m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
+			});
+		}
 
 		cmd->RT_EndTimestampQuery(m_TimestampQueries.DebugLineQuery);
 	}

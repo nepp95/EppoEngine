@@ -118,4 +118,12 @@ namespace Eppo
 		CameraComponent() = default;
 		CameraComponent(const CameraComponent&) = default;
 	};
+
+	struct PointLightComponent
+	{
+		glm::vec4 Color = glm::vec4(1.0f);
+
+		PointLightComponent() = default;
+		PointLightComponent(const PointLightComponent&) = default;
+	};
 }

@@ -2,11 +2,13 @@
 
 #include "Core/Buffer.h"
 #include "Renderer/Mesh/Mesh.h"
+#include "Renderer/DrawCommand.h"
 #include "Renderer/DebugRenderer.h"
 #include "Renderer/Image.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/SceneRenderer.h"
 #include "Renderer/UniformBuffer.h"
+#include "Renderer/RenderTypes.h"
 
 namespace Eppo
 {
@@ -23,7 +25,7 @@ namespace Eppo
 		void BeginScene(const Camera& camera, const glm::mat4& transform) override;
 		void EndScene() override;
 		
-		void SubmitMesh(const glm::mat4& transform, Ref<Mesh> mesh, EntityHandle entityId) override;
+		void SubmitDrawCommand(EntityType type, Ref<DrawCommand> drawCommand) override;
 		Ref<Image> GetFinalImage() override;
 
 	private:
@@ -62,17 +64,10 @@ namespace Eppo
 		Ref<UniformBuffer> m_CameraUB;
 
 		// Set 1, Binding 1
-		struct Light
-		{
-			glm::mat4 View[6];
-			glm::vec4 Position = glm::vec4(0.0f);
-			glm::vec4 Color = glm::vec4(0.0f);
-		};
-
 		struct LightsData
 		{
 			glm::mat4 Projection;
-			Light Lights[s_MaxLights];
+			PointLight Lights[s_MaxLights];
 			uint32_t NumLights;
 		} m_LightsBuffer;
 		Ref<UniformBuffer> m_LightsUB;
@@ -81,14 +76,7 @@ namespace Eppo
 		std::array<Ref<Image>, s_MaxLights> m_ShadowMaps;
 
 		// Draw commands
-		struct DrawCommand
-		{
-			EntityHandle Handle;
-			Ref<Mesh> Mesh;
-			glm::mat4 Transform;
-		};
-
-		std::vector<DrawCommand> m_DrawList;
+		std::unordered_map<EntityType, std::vector<Ref<DrawCommand>>> m_DrawList;
 
 		// Buffers
 		Buffer m_PushConstantBuffer;

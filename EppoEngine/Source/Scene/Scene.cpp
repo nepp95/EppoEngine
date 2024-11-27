@@ -374,10 +374,31 @@ namespace Eppo
 					Ref<Mesh> mesh = AssetManager::GetAsset<Mesh>(meshC.MeshHandle);
 
 					if (mesh)
-						sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
-					else
-						EPPO_WARN("Trying to submit a null value!");
+					{
+						Ref<MeshCommand> meshCommand = CreateRef<MeshCommand>();
+						meshCommand->Handle = entity;
+						meshCommand->Mesh = mesh;
+						meshCommand->Transform = transform.GetTransform();
+
+						sceneRenderer->SubmitDrawCommand(EntityType::Mesh, meshCommand);
+					}
 				}
+			}
+		}
+
+		{
+			auto view = m_Registry.view<PointLightComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [pl, transform] = view.get<PointLightComponent, TransformComponent>(entity);
+				
+				Ref<PointLightCommand> pointLightCommand = CreateRef<PointLightCommand>();
+				pointLightCommand->Handle = entity;
+				pointLightCommand->Position = transform.Translation;
+				pointLightCommand->Color = pl.Color;
+
+				sceneRenderer->SubmitDrawCommand(EntityType::PointLight, pointLightCommand);
 			}
 		}
 	}

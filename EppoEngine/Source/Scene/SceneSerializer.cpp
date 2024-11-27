@@ -471,6 +471,18 @@ namespace Eppo
 			out << YAML::EndMap;
 		}
 
+		if (entity.HasComponent<PointLightComponent>())
+		{
+			out << YAML::Key << "PointLightComponent" << YAML::Value;
+			out << YAML::BeginMap;
+
+			const auto& c = entity.GetComponent<PointLightComponent>();
+
+			out << YAML::Key << "Color" << YAML::Value << c.Color;
+
+			out << YAML::EndMap;
+		}
+
 		out << YAML::EndMap;
 	}
 }

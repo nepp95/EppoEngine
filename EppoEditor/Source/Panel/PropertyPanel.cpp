@@ -768,6 +768,11 @@ namespace Eppo
 					camera.SetOrthographicFarClip(farClip);
 			}
 		});
+
+		DrawComponent<PointLightComponent>(entity, [](auto& component)
+		{
+			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+		}, "Point Light");
 	}
 
 	template<typename T>
