@@ -452,10 +452,10 @@ namespace Eppo
 			std::filesystem::path scriptPath = Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
 			ScriptEngine::LoadAppAssembly(scriptPath);
 
-			if (projSpec.StartScene.empty())
+			if (!projSpec.StartScene)
 				NewScene();
 			else
-				OpenScene(Project::GetAssetFilepath(projSpec.StartScene));
+				OpenScene(projSpec.StartScene);
 
 			m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 			Application::Get().GetWindow().SetWindowTitle("EppoEngine Editor - " + projSpec.Name);
@@ -465,6 +465,10 @@ namespace Eppo
 	void EditorLayer::SaveProject()
 	{
 		EPPO_ASSERT(Project::GetActive());
+
+		Ref<Project> project = Project::GetActive();
+		project->GetSpecification().StartScene = m_ActiveScene->Handle;
+
 		Project::SaveActive();
 	}
 
@@ -506,11 +510,9 @@ namespace Eppo
 		if (m_SceneState != SceneState::Edit)
 			OnSceneStop();
 
-		Ref<Scene> sceneAsset = AssetManager::GetAsset<Scene>(handle);
-		Ref<Scene> newScene = Scene::Copy(sceneAsset);
-
-		m_EditorScene = newScene;
+		m_EditorScene = AssetManager::GetAsset<Scene>(handle);
 		m_ActiveScene = m_EditorScene;
+
 		m_ActiveScenePath = Project::GetActive()->GetAssetManagerEditor()->GetFilepath(handle);
 		
 		m_PanelManager.SetSceneContext(m_ActiveScene);
@@ -612,22 +614,24 @@ namespace Eppo
 			ImGui::InputText("##ProjectDirectory", &spec.ProjectDirectory.string()[0], spec.ProjectDirectory.string().length(), ImGuiInputTextFlags_ReadOnly);
 
 			ImGui::Text("Start Scene");
-			if (ImGui::BeginCombo("##StartScene", spec.StartScene.filename().string().c_str()))
+
+			Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
+			const auto& assetRegistry = assetManager->GetAssetRegistry();
+
+			AssetHandle startScene = spec.StartScene;
+			const auto& startSceneMetadata = assetRegistry.at(startScene);
+
+			if (ImGui::BeginCombo("##StartScene", startSceneMetadata.GetName().c_str()))
 			{
-				Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
-				const auto& assetRegistry = assetManager->GetAssetRegistry();
-
-				std::string startScene = spec.StartScene.filename().string();
-
 				for (const auto& [handle, metadata] : assetRegistry)
 				{
 					if (metadata.Type != AssetType::Scene)
 						continue;
 
-					bool isSelected = startScene == metadata.GetName();
+					bool isSelected = startSceneMetadata.GetName() == metadata.GetName();
 
 					if (ImGui::Selectable(metadata.GetName().c_str(), isSelected))
-						startScene == metadata.GetName();
+						spec.StartScene = metadata.Handle;
 
 					if (isSelected)
 						ImGui::SetItemDefaultFocus();

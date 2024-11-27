@@ -25,7 +25,7 @@ namespace Eppo
 		out << YAML::BeginMap;
 		out << YAML::Key << "Name" << YAML::Value << spec.Name;
 		out << YAML::Key << "ProjectDirectory" << YAML::Value << spec.ProjectDirectory.string();
-		out << YAML::Key << "StartScene" << YAML::Value << spec.StartScene.string();
+		out << YAML::Key << "StartScene" << YAML::Value << spec.StartScene;
 		out << YAML::EndMap;
 
 		out << YAML::EndMap;
@@ -64,7 +64,7 @@ namespace Eppo
 			spec.ProjectDirectory = std::filesystem::path(projectNode["ProjectDirectory"].as<std::string>());
 
 		if (projectNode["StartScene"])
-			spec.StartScene = projectNode["StartScene"].as<std::string>();
+			spec.StartScene = projectNode["StartScene"].as<uint64_t>();
 
 		return true;
 	}

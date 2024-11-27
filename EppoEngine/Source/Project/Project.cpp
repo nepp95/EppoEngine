@@ -92,7 +92,7 @@ namespace Eppo
 			Ref<Scene> scene = AssetManager::GetAsset<Scene>(handle);
 
 			SceneSerializer serializer(scene);
-			serializer.Serialize(metadata.Filepath);
+			serializer.Serialize(Project::GetAssetFilepath(metadata.Filepath));
 		}
 
 		s_ActiveProject->GetAssetManagerEditor()->SerializeAssetRegistry();

@@ -8,7 +8,7 @@ namespace Eppo
 	{
 		std::string Name = "Untitled";
 
-		std::filesystem::path StartScene;
+		AssetHandle StartScene = 0;
 		std::filesystem::path ProjectDirectory;
 	};
 

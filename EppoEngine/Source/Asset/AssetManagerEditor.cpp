@@ -91,6 +91,7 @@ namespace Eppo
 				EPPO_ERROR("Asset importing failed!");				
 			}
 
+			asset->Handle = handle;
 			m_Assets.insert_or_assign(handle, asset);
 		}
 

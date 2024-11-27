@@ -135,8 +135,7 @@ namespace Eppo
 
 		out << YAML::EndSeq << YAML::EndMap;
 
-		std::ofstream fout(filepath);
-		fout << out.c_str();
+		Filesystem::WriteText(filepath, out.c_str());
 
 		return true;
 	}
