@@ -125,6 +125,10 @@ namespace Eppo
 			m_CompositePipeline = Pipeline::Create(pipelineSpec);
 		}
 
+		// Vertex and Index buffers
+		m_DebugLineVertexBuffer = VertexBuffer::Create(sizeof(LineVertex) * 100);
+		m_DebugLineIndexBuffer = IndexBuffer::Create(sizeof(uint32_t) * 100);
+
 		// Uniform buffers
 		// Set 1
 		m_CameraUB = UniformBuffer::Create(sizeof(CameraData), 0);
@@ -318,8 +322,15 @@ namespace Eppo
 
 		if (!lineVertices.empty() && !lineIndices.empty())
 		{
-			m_DebugLineVertexBuffer = VertexBuffer::Create((void*)lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
-			m_DebugLineIndexBuffer = IndexBuffer::Create((void*)lineIndices.data(), lineIndices.size() * sizeof(uint32_t));
+			Buffer ib = Buffer::Copy((void*)lineIndices.data(), lineIndices.size() * sizeof(uint32_t));
+			m_DebugLineIndexBuffer->SetData(ib);
+			ib.Release();
+
+			Buffer vb = Buffer::Copy((void*)lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
+			m_DebugLineVertexBuffer->SetData(vb);
+			vb.Release();
+
+			m_DebugLineCount = static_cast<uint32_t>(lineIndices.size());
 		}
 
 		m_LightsUB->SetData(&m_LightsBuffer, sizeof(LightsData));
@@ -345,6 +356,14 @@ namespace Eppo
 			DebugLinePass();
 
 		CompositePass();
+
+		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
+		Renderer::SubmitCommand([cmd]()
+		{
+			Ref<VulkanContext> context = VulkanContext::Get();
+			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			EPPO_PROFILE_GPU_END(context->GetTracyContext(), commandBuffer);
+		});
 
 		// Submit work
 		m_CommandBuffer->RT_End();
@@ -466,6 +485,8 @@ namespace Eppo
 							buffer.SetData(i, 64);
 
 							vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size, buffer.Data);
+
+							buffer.Release();
 							
 							m_RenderStatistics.DrawCalls++;
 							vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
@@ -733,7 +754,7 @@ namespace Eppo
 		
 				// Draw call
 				m_RenderStatistics.DrawCalls++;
-				vkCmdDrawIndexed(commandBuffer, m_DebugLineIndexBuffer->GetIndexCount(), 1, 0, 0, 0);
+				vkCmdDrawIndexed(commandBuffer, m_DebugLineCount, 1, 0, 0, 0);
 		
 				// End rendering
 				Renderer::EndRenderPass(m_CommandBuffer);

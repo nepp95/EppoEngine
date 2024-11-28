@@ -67,6 +67,12 @@ namespace Eppo
 			memcpy(Data + offset, &value, sizeof(T));
 		}
 
+		void SetData(void* data, uint32_t size)
+		{
+			EPPO_ASSERT(size <= Size);
+			memcpy(Data, data, size);
+		}
+
 		operator bool() const { return (bool)Data; }
 	};
 
@@ -101,6 +107,11 @@ namespace Eppo
 		void SetData(const T& value, uint32_t offset = 0)
 		{
 			m_Buffer.SetData(value, offset);
+		}
+
+		void SetData(void* data, uint32_t size)
+		{
+			m_Buffer.SetData(data, size);
 		}
 
 	private:

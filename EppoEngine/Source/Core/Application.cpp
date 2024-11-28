@@ -83,7 +83,7 @@ namespace Eppo
 
 		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
 
-		m_MainThreadQueue.push(fn);
+		m_MainThreadQueue->AddCommand(fn);
 	}
 
 	void Application::RenderGui()
@@ -161,11 +161,7 @@ namespace Eppo
 
 		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
 
-		for (size_t i = 0; i < m_MainThreadQueue.size(); i++)
-		{
-			m_MainThreadQueue.front()();
-			m_MainThreadQueue.pop();
-		}
+		m_MainThreadQueue->Execute();
 	}
 
 	bool Application::OnWindowClose(const WindowCloseEvent& e)

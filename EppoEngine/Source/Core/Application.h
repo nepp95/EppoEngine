@@ -5,8 +5,8 @@
 #include "Debug/Profiler.h"
 #include "Event/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
+#include "Renderer/CommandQueue.h"
 
-#include <queue>
 #include <string>
 
 int main(int argc, char** argv);
@@ -78,7 +78,7 @@ namespace Eppo
 
 		ImGuiLayer* m_ImGuiLayer;
 
-		std::queue<std::function<void()>> m_MainThreadQueue;
+		Scope<CommandQueue> m_MainThreadQueue = CreateScope<CommandQueue>();
 		std::mutex m_MainThreadMutex;
 
 		bool m_IsRunning = true;

@@ -82,6 +82,7 @@ namespace Eppo
 		Buffer m_PushConstantBuffer;
 		Ref<VertexBuffer> m_DebugLineVertexBuffer;
 		Ref<IndexBuffer> m_DebugLineIndexBuffer;
+		uint32_t m_DebugLineCount = 0;
 
 		// Statistics
 		RenderStatistics m_RenderStatistics;

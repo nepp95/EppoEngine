@@ -201,9 +201,6 @@ namespace Eppo
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &m_RenderSemaphores[m_CurrentFrameIndex];
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		EPPO_PROFILE_GPU_END(context->GetTracyContext(), commandBuffer);
-
 		VK_CHECK(vkResetFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex]), "Failed to reset fence!");
 		VK_CHECK(vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[m_CurrentFrameIndex]), "Failed to submit work to queue!");
 

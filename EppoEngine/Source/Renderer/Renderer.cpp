@@ -16,7 +16,7 @@ namespace Eppo
 {
 	struct RendererData
 	{
-		RenderCommandQueue CommandQueue;
+		CommandQueue CommandQueue;
 		std::vector<DescriptorAllocator> DescriptorAllocators;
 		Scope<ShaderLibrary> ShaderLibrary;
 

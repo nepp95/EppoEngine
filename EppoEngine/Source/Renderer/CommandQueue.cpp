@@ -1,9 +1,13 @@
 #include "pch.h"
-#include "RenderCommandQueue.h"
+#include "CommandQueue.h"
 
 namespace Eppo
 {
-	void RenderCommandQueue::AddCommand(RenderCommand fn)
+	CommandQueue::CommandQueue(bool isMultiThreaded)
+		: m_IsMultiThreaded(isMultiThreaded)
+	{}
+
+	void CommandQueue::AddCommand(RenderCommand fn)
 	{
 		EPPO_PROFILE_FUNCTION("RenderCommandQueue::AddCommand");
 
@@ -11,7 +15,7 @@ namespace Eppo
 		m_CommandCount++;
 	}
 
-	void RenderCommandQueue::Execute()
+	void CommandQueue::Execute()
 	{
 		EPPO_PROFILE_FUNCTION("RenderCommandQueue::Execute");
 
