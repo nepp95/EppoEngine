@@ -417,9 +417,11 @@ namespace Eppo
 			DescriptorWriter writer;
 
 			// Set 1 - Scene
-			const auto& buffers = std::static_pointer_cast<VulkanUniformBuffer>(m_LightsUB)->GetBuffers();
-			VkBuffer buffer = buffers[frameIndex];
-			writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			{
+				const auto& buffers = std::static_pointer_cast<VulkanUniformBuffer>(m_LightsUB)->GetBuffers();
+				VkBuffer buffer = buffers[frameIndex];
+				writer.WriteBuffer(m_LightsUB->GetBinding(), buffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
 
 			writer.UpdateSet(descriptorSets[0]);
 
@@ -480,14 +482,12 @@ namespace Eppo
 							const auto& shader = pipeline->GetSpecification().Shader;
 							const auto& pcr = std::static_pointer_cast<VulkanShader>(shader)->GetPushConstantRanges();
 
-							Buffer buffer(pcr[0].size);
+							ScopedBuffer buffer(pcr[0].size);
 							buffer.SetData(finalTransform);
 							buffer.SetData(i, 64);
 
-							vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size, buffer.Data);
+							vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size(), buffer.Data());
 
-							buffer.Release();
-							
 							m_RenderStatistics.DrawCalls++;
 							vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
 						}
@@ -644,16 +644,14 @@ namespace Eppo
 						const auto& shader = pipeline->GetSpecification().Shader;
 						const auto& pcr = std::static_pointer_cast<VulkanShader>(shader)->GetPushConstantRanges();
 
-						Buffer buffer(pcr[0].size);
+						ScopedBuffer buffer(pcr[0].size);
 						buffer.SetData(finalTransform);
 						buffer.SetData(p.Material->DiffuseMapIndex, 64);
 						buffer.SetData(p.Material->DiffuseMapIndex, 68);
 						buffer.SetData(p.Material->DiffuseMapIndex, 72);
 
-						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size, buffer.Data);
+						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size(), buffer.Data());
 						
-						buffer.Release();
-					
 						m_RenderStatistics.DrawCalls++;
 						vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
 					}
