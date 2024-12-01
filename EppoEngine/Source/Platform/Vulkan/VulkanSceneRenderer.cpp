@@ -238,6 +238,12 @@ namespace Eppo
 
 	void VulkanSceneRenderer::SubmitDrawCommand(EntityType type, Ref<DrawCommand> drawCommand)
 	{
+		if (type == EntityType::PointLight && m_DrawList[EntityType::PointLight].size() == 8)
+		{
+			EPPO_WARN("Trying to submit more point lights than we currently support!");
+			return;
+		}	
+
 		m_DrawList[type].emplace_back(drawCommand);
 	}
 

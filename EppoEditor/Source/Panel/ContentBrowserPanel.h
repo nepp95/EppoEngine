@@ -12,11 +12,6 @@ namespace Eppo
 
 		void RenderGui() override;
 
-		void UpdateFileList();
-
-	private:
-		void TraverseDirectory(const std::filesystem::path& path, uint32_t depth = 0);
-
 	private:
 		ThumbnailCache m_ThumbnailCache;
 

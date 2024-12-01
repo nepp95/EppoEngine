@@ -4,3 +4,6 @@
 - AssetHandle: 17362452449132321929
   Type: Mesh
   Filepath: Meshes\Sponza.glb
+- AssetHandle: 17791877549614086362
+  Type: Scene
+  Filepath: Scenes\Demo.epscene

@@ -69,7 +69,34 @@ namespace Eppo
 		}
 	}
 
-	static AssetMetadata s_NullMetadata;
+	static const AssetMetadata s_NullMetadata = AssetMetadata();
+
+	bool AssetManagerEditor::CreateAsset(Ref<Asset> asset, const std::filesystem::path& filepath)
+	{
+		EPPO_PROFILE_FUNCTION("AssetManagerEditor::CreateAsset");
+
+		AssetHandle handle = asset->Handle;
+		if (IsAssetHandleValid(handle))
+			return false;
+
+		if (IsAssetLoaded(handle))
+			return false;
+
+		AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
+		EPPO_ASSERT(type != AssetType::None);
+
+		AssetMetadata metadata;
+		metadata.Filepath = Project::GetAssetRelativeFilepath(filepath);
+		metadata.Handle = handle;
+		metadata.Type = type;
+
+		m_AssetData[handle] = metadata;
+		m_Assets[handle] = asset;
+
+		SerializeAssetRegistry();
+
+		return true;
+	}
 
 	Ref<Asset> AssetManagerEditor::GetAsset(AssetHandle handle)
 	{
@@ -163,7 +190,7 @@ namespace Eppo
 		return GetMetadata(handle).Filepath;
 	}
 
-	void AssetManagerEditor::SerializeAssetRegistry()
+	void AssetManagerEditor::SerializeAssetRegistry() const
 	{
 		EPPO_PROFILE_FUNCTION("AssetManagerEditor::SerializeAssetRegistry");
 		EPPO_INFO("Serializing asset registry");
@@ -239,5 +266,7 @@ namespace Eppo
 
 		// Since the information can have changed if a asset did not exist, we serialize it again
 		SerializeAssetRegistry();
+
+		return true;
 	}
 }

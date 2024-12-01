@@ -138,7 +138,6 @@ namespace Eppo
 		EPPO_ASSERT(stream);
 
 		stream.write(buffer.As<char>(), buffer.Size);
-		stream.close();
 	}
 
 	void Filesystem::WriteBytes(const std::filesystem::path& filepath, const std::vector<uint32_t>& buffer, bool overwrite)
@@ -152,7 +151,6 @@ namespace Eppo
 		EPPO_ASSERT(stream);
 
 		stream.write((char*)buffer.data(), buffer.size() * sizeof(uint32_t));
-		stream.close();
 	}
 
 	void Filesystem::WriteText(const std::filesystem::path& filepath, const std::string& text, bool overwrite)
@@ -166,6 +164,5 @@ namespace Eppo
 		EPPO_ASSERT(stream);
 
 		stream.write(text.c_str(), text.size());
-		stream.close();
 	}
 }

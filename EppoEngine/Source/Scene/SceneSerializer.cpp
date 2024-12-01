@@ -125,14 +125,16 @@ namespace Eppo
 		out << YAML::Key << "Scene" << YAML::Value << sceneName;
 		out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
 		
-		m_SceneContext->m_Registry.each([&](auto entityID)
+		m_SceneContext->m_Registry.sort<IDComponent>([](const auto& lhs, const auto& rhs) { return lhs.ID < rhs.ID; });
+		auto view = m_SceneContext->m_Registry.view<IDComponent>();
+		for (auto entity : view)
 		{
-			Entity entity(entityID, m_SceneContext.get());
+			Entity entity(entity, m_SceneContext.get());
 			if (!entity)
-				return;
+				continue;
 
 			SerializeEntity(out, entity);
-		});
+		}
 
 		out << YAML::EndSeq << YAML::EndMap;
 

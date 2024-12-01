@@ -8,6 +8,11 @@ namespace Eppo
 	class AssetManager
 	{
 	public:
+		static bool CreateAsset(Ref<Asset> asset, const std::filesystem::path& filepath)
+		{
+			return Project::GetActive()->GetAssetManager()->CreateAsset(asset, filepath);
+		}
+
 		template<typename T>
 		static Ref<T> GetAsset(AssetHandle handle)
 		{

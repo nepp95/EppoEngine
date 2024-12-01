@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "AssetImporter.h"
 
+#include "Asset/AssetManager.h"
 #include "Scene/SceneSerializer.h"
 #include "Project/Project.h"
 
@@ -9,7 +10,7 @@
 namespace Eppo
 {
 	using fn = std::function<Ref<Asset>(AssetHandle, const AssetMetadata&)>;
-	static std::map<AssetType, fn> s_AssetImportFunctions =
+	static const std::map<AssetType, fn> s_AssetImportFunctions =
 	{
 		{ AssetType::Mesh, AssetImporter::ImportMesh },
 		{ AssetType::Scene, AssetImporter::ImportScene },
@@ -51,6 +52,12 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("AssetImporter::ExportScene");
 
 		SceneSerializer serializer(scene);
-		return serializer.Serialize(filepath);
+		if (!serializer.Serialize(filepath))
+			return false;
+
+		if (!AssetManager::IsAssetHandleValid(scene->Handle) && !AssetManager::IsAssetLoaded(scene->Handle))
+			return AssetManager::CreateAsset(scene, filepath);
+		
+		return true;
 	}
 }

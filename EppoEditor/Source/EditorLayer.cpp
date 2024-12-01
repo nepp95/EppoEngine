@@ -466,8 +466,7 @@ namespace Eppo
 	{
 		EPPO_ASSERT(Project::GetActive());
 
-		Ref<Project> project = Project::GetActive();
-		project->GetSpecification().StartScene = m_ActiveScene->Handle;
+		SaveScene();
 
 		Project::SaveActive();
 	}

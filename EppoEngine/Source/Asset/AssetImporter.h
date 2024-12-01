@@ -15,7 +15,7 @@ namespace Eppo
 		static Ref<Mesh> ImportMesh(AssetHandle handle, const AssetMetadata& metadata);
 		static Ref<Scene> ImportScene(AssetHandle handle, const AssetMetadata& metadata);
 
-		// Saving
+		// Exporting
 		static bool ExportScene(Ref<Scene> scene, const std::filesystem::path& filepath);
 	};
 }
