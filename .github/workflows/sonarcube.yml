@@ -38,7 +38,7 @@ jobs:
 
       - name: Run build-wrapper
         run: |
-          build-wrapper-win-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild /m /p:Configuration=${{ matrix.config }} EppoEngine.sln
+          build-wrapper-win-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild /m /t:rebuild /nodeReuse:false /p:Configuration=${{ matrix.config }} EppoEngine.sln
 
       - name: Run sonar-scanner
         env:
