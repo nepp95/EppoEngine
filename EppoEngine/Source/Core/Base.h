@@ -7,6 +7,7 @@
 	#define EPPO_ENABLE_VERIFY
 	//#define EPPO_TRACK_MEMORY
 #elif defined(EPPO_RELEASE)
+	#define EPPO_ENABLE_ASSERTS
 	#define EPPO_ENABLE_VERIFY
 #endif
 

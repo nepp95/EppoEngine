@@ -1,20 +1,20 @@
 #pragma once
 
+#include "Core/Buffer.h"
+#include "Renderer/CommandBuffer.h"
+
 namespace Eppo
 {
 	class IndexBuffer
 	{
 	public:
-		IndexBuffer(void* data, uint32_t size);
-		~IndexBuffer();
+		virtual ~IndexBuffer() = default;
 
-		void Bind() const;
-		void Unbind() const;
+		virtual void SetData(Buffer buffer) = 0;
+		virtual uint32_t GetIndexCount() const = 0;
 
-		uint32_t GetIndexCount() const { return m_Size / sizeof(uint32_t); }
-
-	private:
-		uint32_t m_RendererID;
-		uint32_t m_Size;
+		static Ref<IndexBuffer> Create(uint32_t size);
+		static Ref<IndexBuffer> Create(void* data, uint32_t size);
+		static Ref<IndexBuffer> Create(Buffer buffer);
 	};
 }

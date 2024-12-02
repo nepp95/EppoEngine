@@ -54,7 +54,7 @@ namespace Eppo
 		
 		// Editor
 		PanelManager& m_PanelManager;
-		EditorCamera m_EditorCamera;
+		EditorCamera m_EditorCamera = EditorCamera(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
 
 		// Viewport
 		uint32_t m_ViewportWidth = 0;
@@ -71,7 +71,7 @@ namespace Eppo
 		SceneState m_SceneState = SceneState::Edit;
 
 		// Resources
-		Ref<Texture> m_IconPlay;
-		Ref<Texture> m_IconStop;
+		Ref<Image> m_IconPlay;
+		Ref<Image> m_IconStop;
 	};
 }

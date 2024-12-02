@@ -43,7 +43,7 @@ namespace Eppo
 		void DestroyEntity(Entity entity);
 
 		Entity FindEntityByUUID(UUID uuid);
-		Entity FindEntityByName(const std::string& name);
+		Entity FindEntityByName(std::string_view name);
 
 		bool IsRunning() const { return m_IsRunning; }
 

@@ -81,7 +81,7 @@ namespace Eppo
 
 	struct DirectionalLightComponent
 	{
-		glm::vec3 Direction;
+		glm::vec3 Direction = glm::vec3(0.0f);
 		glm::vec4 AlbedoColor = glm::vec4(1.0f);
 		glm::vec4 AmbientColor = glm::vec4(1.0f);
 		glm::vec4 SpecularColor = glm::vec4(1.0f);
@@ -117,5 +117,13 @@ namespace Eppo
 
 		CameraComponent() = default;
 		CameraComponent(const CameraComponent&) = default;
+	};
+
+	struct PointLightComponent
+	{
+		glm::vec4 Color = glm::vec4(1.0f);
+
+		PointLightComponent() = default;
+		PointLightComponent(const PointLightComponent&) = default;
 	};
 }

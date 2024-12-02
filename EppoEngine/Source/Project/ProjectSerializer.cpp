@@ -13,6 +13,8 @@ namespace Eppo
 
 	bool ProjectSerializer::Serialize()
 	{
+		EPPO_PROFILE_FUNCTION("ProjectSerializer::Serialize");
+
 		const auto& spec = m_Project->GetSpecification();
 
 		YAML::Emitter out;
@@ -23,7 +25,7 @@ namespace Eppo
 		out << YAML::BeginMap;
 		out << YAML::Key << "Name" << YAML::Value << spec.Name;
 		out << YAML::Key << "ProjectDirectory" << YAML::Value << spec.ProjectDirectory.string();
-		out << YAML::Key << "StartScene" << YAML::Value << spec.StartScene.string();
+		out << YAML::Key << "StartScene" << YAML::Value << spec.StartScene;
 		out << YAML::EndMap;
 
 		out << YAML::EndMap;
@@ -36,6 +38,8 @@ namespace Eppo
 
 	bool ProjectSerializer::Deserialize(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("ProjectSerializer::Deserialize");
+
 		auto& spec = m_Project->GetSpecification();
 
 		YAML::Node data;
@@ -43,7 +47,7 @@ namespace Eppo
 		try
 		{
 			data = YAML::LoadFile(filepath.string());
-		} catch (YAML::ParserException e)
+		} catch (YAML::ParserException& e)
 		{
 			EPPO_ERROR("Failed to load project file '{}'!\nError: {}", filepath, e.what());
 			return false;
@@ -60,7 +64,7 @@ namespace Eppo
 			spec.ProjectDirectory = std::filesystem::path(projectNode["ProjectDirectory"].as<std::string>());
 
 		if (projectNode["StartScene"])
-			spec.StartScene = projectNode["StartScene"].as<std::string>();
+			spec.StartScene = projectNode["StartScene"].as<uint64_t>();
 
 		return true;
 	}

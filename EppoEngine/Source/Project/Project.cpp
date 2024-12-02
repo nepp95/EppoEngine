@@ -57,6 +57,8 @@ namespace Eppo
 
 	Ref<Project> Project::Open(const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("Project::Open");
+
 		Ref<Project> project = CreateRef<Project>();
 
 		ProjectSerializer serializer(project);
@@ -77,6 +79,8 @@ namespace Eppo
 
 	bool Project::SaveActive()
 	{
+		EPPO_PROFILE_FUNCTION("Project::SaveActive");
+
 		// Serialize every scene
 		const auto& registry = s_ActiveProject->GetAssetManagerEditor()->GetAssetRegistry();
 
@@ -88,7 +92,7 @@ namespace Eppo
 			Ref<Scene> scene = AssetManager::GetAsset<Scene>(handle);
 
 			SceneSerializer serializer(scene);
-			serializer.Serialize(metadata.Filepath);
+			serializer.Serialize(Project::GetAssetFilepath(metadata.Filepath));
 		}
 
 		s_ActiveProject->GetAssetManagerEditor()->SerializeAssetRegistry();

@@ -25,8 +25,8 @@ namespace Eppo
 	void EditorLayer::OnAttach()
 	{
 		// Load resources
-		m_IconPlay = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/PlayButton.png"));
-		m_IconStop = CreateRef<Texture>(TextureSpecification("Resources/Textures/Icons/StopButton.png"));
+		m_IconPlay = Image::Create(ImageSpecification("Resources/Textures/Icons/PlayButton.png"));
+		m_IconStop = Image::Create(ImageSpecification("Resources/Textures/Icons/StopButton.png"));
 
 		// Setup UI panels
 		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
@@ -37,11 +37,27 @@ namespace Eppo
 		// Open scene
 		OpenProject();
 
-		m_ViewportRenderer = CreateRef<SceneRenderer>(m_EditorScene, RenderSpecification());
+		RenderSpecification renderSpec;
+		renderSpec.Width = 1600;
+		renderSpec.Height = 900;
+#ifdef EPPO_DEBUG
+		renderSpec.DebugRendering = true;
+#endif
+
+		m_ViewportRenderer = SceneRenderer::Create(m_EditorScene, renderSpec);
 	}
 	
 	void EditorLayer::OnDetach()
-	{}
+	{
+		CloseProject();
+
+		m_PanelManager.Shutdown();
+
+		m_IconPlay = nullptr;
+		m_IconStop = nullptr;
+
+		m_ViewportRenderer = nullptr;
+	}
 	
 	void EditorLayer::Update(float timestep)
 	{
@@ -210,10 +226,10 @@ namespace Eppo
 		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-		m_ViewportWidth = viewportSize.x;
-		m_ViewportHeight = viewportSize.y;
+		m_ViewportWidth = static_cast<uint32_t>(viewportSize.x);
+		m_ViewportHeight = static_cast<uint32_t>(viewportSize.y);
 
-		ImGui::Image((ImTextureID)(m_ViewportRenderer->GetFinalImageID()), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
+		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -436,10 +452,10 @@ namespace Eppo
 			std::filesystem::path scriptPath = Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
 			ScriptEngine::LoadAppAssembly(scriptPath);
 
-			if (projSpec.StartScene.empty())
+			if (!projSpec.StartScene)
 				NewScene();
 			else
-				OpenScene(Project::GetAssetFilepath(projSpec.StartScene));
+				OpenScene(projSpec.StartScene);
 
 			m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 			Application::Get().GetWindow().SetWindowTitle("EppoEngine Editor - " + projSpec.Name);
@@ -449,6 +465,9 @@ namespace Eppo
 	void EditorLayer::SaveProject()
 	{
 		EPPO_ASSERT(Project::GetActive());
+
+		SaveScene();
+
 		Project::SaveActive();
 	}
 
@@ -490,11 +509,9 @@ namespace Eppo
 		if (m_SceneState != SceneState::Edit)
 			OnSceneStop();
 
-		Ref<Scene> sceneAsset = AssetManager::GetAsset<Scene>(handle);
-		Ref<Scene> newScene = Scene::Copy(sceneAsset);
-
-		m_EditorScene = newScene;
+		m_EditorScene = AssetManager::GetAsset<Scene>(handle);
 		m_ActiveScene = m_EditorScene;
+
 		m_ActiveScenePath = Project::GetActive()->GetAssetManagerEditor()->GetFilepath(handle);
 		
 		m_PanelManager.SetSceneContext(m_ActiveScene);
@@ -520,7 +537,7 @@ namespace Eppo
 
 	void EditorLayer::ImportAsset()
 	{
-		std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .fbx, .jpeg, .jpg, .png)\0*.epscene;*.fbx;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
+		std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
 
 		if (!filepath.empty())
 		{
@@ -532,7 +549,7 @@ namespace Eppo
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
 
-		if (ImGui::BeginPopupModal("New Project", (bool*)0, flags))
+		if (ImGui::BeginPopupModal("New Project", nullptr, flags))
 		{
 			static char nameBuffer[200]{ 0 };
 			static bool projectExists = false;
@@ -583,7 +600,7 @@ namespace Eppo
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
 
-		if (ImGui::BeginPopupModal("Project settings", (bool*)0, flags))
+		if (ImGui::BeginPopupModal("Project settings", nullptr, flags))
 		{
 			auto& spec = Project::GetActive()->GetSpecification();
 			
@@ -596,22 +613,24 @@ namespace Eppo
 			ImGui::InputText("##ProjectDirectory", &spec.ProjectDirectory.string()[0], spec.ProjectDirectory.string().length(), ImGuiInputTextFlags_ReadOnly);
 
 			ImGui::Text("Start Scene");
-			if (ImGui::BeginCombo("##StartScene", spec.StartScene.filename().string().c_str()))
+
+			Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
+			const auto& assetRegistry = assetManager->GetAssetRegistry();
+
+			AssetHandle startScene = spec.StartScene;
+			const auto& startSceneMetadata = assetRegistry.at(startScene);
+
+			if (ImGui::BeginCombo("##StartScene", startSceneMetadata.GetName().c_str()))
 			{
-				Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
-				const auto& assetRegistry = assetManager->GetAssetRegistry();
-
-				std::string startScene = spec.StartScene.filename().string();
-
 				for (const auto& [handle, metadata] : assetRegistry)
 				{
 					if (metadata.Type != AssetType::Scene)
 						continue;
 
-					bool isSelected = startScene == metadata.GetName();
+					bool isSelected = startSceneMetadata.GetName() == metadata.GetName();
 
 					if (ImGui::Selectable(metadata.GetName().c_str(), isSelected))
-						startScene == metadata.GetName();
+						spec.StartScene = metadata.Handle;
 
 					if (isSelected)
 						ImGui::SetItemDefaultFocus();
@@ -647,12 +666,12 @@ namespace Eppo
 
 		if (m_SceneState == SceneState::Edit)
 		{
-			if (ImGui::ImageButton("##Play", (ImTextureID)m_IconPlay->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+			if (UI::ImageButton("##Play", m_IconPlay, ImVec2(buttonSize, buttonSize)))
 				OnScenePlay();
 		}
 		else if (m_SceneState == SceneState::Play)
 		{
-			if (ImGui::ImageButton("##Stop", (ImTextureID)m_IconStop->GetRendererID(), ImVec2(buttonSize, buttonSize)))
+			if (UI::ImageButton("##Stop", m_IconStop, ImVec2(buttonSize, buttonSize)))
 				OnSceneStop();
 		}
 

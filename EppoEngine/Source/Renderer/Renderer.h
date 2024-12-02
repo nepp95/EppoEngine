@@ -1,46 +1,34 @@
 #pragma once
 
-#include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Mesh/Mesh.h"
-#include "Renderer/Framebuffer.h"
-#include "Renderer/RenderCommandBuffer.h"
-#include "Renderer/RenderCommandQueue.h"
+#include "Renderer/Pipeline.h"
+#include "Renderer/CommandBuffer.h"
+#include "Renderer/CommandQueue.h"
 #include "Renderer/Shader.h"
-#include "Renderer/UniformBuffer.h"
 
-typedef unsigned int GLenum;
+using VkDescriptorSet = struct VkDescriptorSet_T*;
+using VkDescriptorSetLayout = struct VkDescriptorSetLayout_T*;
 
 namespace Eppo
 {
-	enum class FaceCulling
-	{
-		FRONT_LEFT = 1024,
-		FRONT_RIGHT,
-		BACK_LEFT,
-		BACK_RIGHT,
-		FRONT,
-		BACK,
-		LEFT,
-		RIGHT,
-		FRONT_AND_BACK
-	};
-
 	class Renderer
 	{
 	public:
 		static void Init();
 		static void Shutdown();
 
-		// Render commands
+		static uint32_t GetCurrentFrameIndex();
+
+		// Render queue commands
 		static void ExecuteRenderCommands();
 		static void SubmitCommand(RenderCommand command);
-		static void RT_Clear(bool color = true, bool depth = true);
-		static void RT_SetFaceCulling(FaceCulling face);
+
+		// Render passes
+		static void BeginRenderPass(Ref<CommandBuffer> commandBuffer, Ref<Pipeline> pipeline);
+		static void EndRenderPass(Ref<CommandBuffer> commandBuffer);
 
 		// Shaders
 		static Ref<Shader> GetShader(const std::string& name);
-
-		// Geometry
-		static void RT_RenderGeometry(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<UniformBuffer> materialUB, Ref<Mesh> mesh);
+		static VkDescriptorSet AllocateDescriptor(VkDescriptorSetLayout layout);
 	};
 }

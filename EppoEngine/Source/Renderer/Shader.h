@@ -13,7 +13,8 @@ namespace Eppo
 	{
 		None = 0,
 		Vertex,
-		Fragment
+		Fragment,
+		All
 	};
 
 	enum class ShaderResourceType
@@ -35,38 +36,28 @@ namespace Eppo
 	struct ShaderSpecification
 	{
 		std::filesystem::path Filepath;
-		bool Optimize = false;
 	};
 
 	class Shader
 	{
 	public:
-		Shader(const ShaderSpecification& specification);
-		Shader(const Shader&) = delete;
-		Shader& operator=(const Shader&) = delete;
-		~Shader();
+		explicit Shader(const ShaderSpecification& specification);
+		virtual ~Shader() = default;
 
-		void RT_Bind() const;
-		void RT_Unbind() const;
-
-		const std::unordered_map<uint32_t, std::vector<ShaderResource>>& GetShaderResources() const { return m_ShaderResources; }
-
+		const ShaderSpecification& GetSpecification() const { return m_Specification; }
 		const std::string& GetName() const { return m_Name; }
 
-	private:
-		std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source);
-		void Compile(ShaderStage stage, const std::string& source);
-		void CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources);
-		void CreateProgram();
-		void Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes);
+		static Ref<Shader> Create(const ShaderSpecification& specification);
 
 	private:
 		ShaderSpecification m_Specification;
 		std::string m_Name;
-
-		uint32_t m_RendererID;
-
-		std::unordered_map<ShaderStage, std::vector<uint32_t>> m_ShaderBytes;
-		std::unordered_map<uint32_t, std::vector<ShaderResource>> m_ShaderResources;
 	};
+
+	namespace Utils
+	{
+		std::filesystem::path GetOrCreateCacheDirectory();
+		std::string ShaderStageToString(ShaderStage stage);
+		ShaderStage StringToShaderStage(std::string_view stage);
+	}
 }

@@ -25,6 +25,6 @@
 	void operator delete[](void* block)
 	{
 		TracyFreeS(block, 32);
-		free(block);
+			free(block);
 	}
 #endif

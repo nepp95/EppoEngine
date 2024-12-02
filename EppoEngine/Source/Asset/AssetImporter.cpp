@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "AssetImporter.h"
 
+#include "Asset/AssetManager.h"
 #include "Scene/SceneSerializer.h"
 #include "Project/Project.h"
 
@@ -9,11 +10,10 @@
 namespace Eppo
 {
 	using fn = std::function<Ref<Asset>(AssetHandle, const AssetMetadata&)>;
-	static std::map<AssetType, fn> s_AssetImportFunctions =
+	static const std::map<AssetType, fn> s_AssetImportFunctions =
 	{
 		{ AssetType::Mesh, AssetImporter::ImportMesh },
 		{ AssetType::Scene, AssetImporter::ImportScene },
-		{ AssetType::Texture, AssetImporter::ImportTexture }
 	};
 
 	Ref<Asset> AssetImporter::ImportAsset(AssetHandle handle, const AssetMetadata& metadata)
@@ -29,6 +29,8 @@ namespace Eppo
 
 	Ref<Mesh> AssetImporter::ImportMesh(AssetHandle handle, const AssetMetadata& metadata)
 	{
+		EPPO_PROFILE_FUNCTION("AssetImporter::ImportMesh");
+
 		Ref<Mesh> mesh = CreateRef<Mesh>(Project::GetAssetFilepath(metadata.Filepath));
 
 		return mesh;
@@ -36,6 +38,8 @@ namespace Eppo
 
 	Ref<Scene> AssetImporter::ImportScene(AssetHandle handle, const AssetMetadata& metadata)
 	{
+		EPPO_PROFILE_FUNCTION("AssetImporter::ImportScene");
+
 		Ref<Scene> scene = CreateRef<Scene>();
 		SceneSerializer serializer(scene);
 		serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath));
@@ -43,19 +47,17 @@ namespace Eppo
 		return scene;
 	}
 
-	Ref<Texture> AssetImporter::ImportTexture(AssetHandle handle, const AssetMetadata& metadata)
-	{
-		TextureSpecification spec;
-		spec.Filepath = metadata.Filepath;
-
-		Ref<Texture> texture = CreateRef<Texture>(spec);
-
-		return texture;
-	}
-
 	bool AssetImporter::ExportScene(Ref<Scene> scene, const std::filesystem::path& filepath)
 	{
+		EPPO_PROFILE_FUNCTION("AssetImporter::ExportScene");
+
 		SceneSerializer serializer(scene);
-		return serializer.Serialize(filepath);
+		if (!serializer.Serialize(filepath))
+			return false;
+
+		if (!AssetManager::IsAssetHandleValid(scene->Handle) && !AssetManager::IsAssetLoaded(scene->Handle))
+			return AssetManager::CreateAsset(scene, filepath);
+		
+		return true;
 	}
 }

@@ -1,19 +1,19 @@
 #pragma once
 
+#include "Core/Buffer.h"
+#include "Renderer/CommandBuffer.h"
+
 namespace Eppo
 {
 	class VertexBuffer
 	{
 	public:
-		VertexBuffer(void* data, uint32_t size);
-		VertexBuffer(uint32_t size);
-		~VertexBuffer();
+		virtual ~VertexBuffer() = default;
 
-		void Bind() const;
-		void Unbind() const;
+		virtual void SetData(Buffer buffer) = 0;
 
-	private:
-		uint32_t m_RendererID;
-		uint32_t m_Size;
+		static Ref<VertexBuffer> Create(uint32_t size);
+		static Ref<VertexBuffer> Create(void* data, uint32_t size);
+		static Ref<VertexBuffer> Create(Buffer buffer);
 	};
 }

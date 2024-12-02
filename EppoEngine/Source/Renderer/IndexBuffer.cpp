@@ -1,34 +1,37 @@
 #include "pch.h"
 #include "IndexBuffer.h"
 
-#include <glad/glad.h>
+#include "Platform/Vulkan/VulkanIndexBuffer.h"
+#include "Renderer/RendererContext.h"
 
 namespace Eppo
 {
-	IndexBuffer::IndexBuffer(void* data, uint32_t size)
-		: m_Size(size)
+	Ref<IndexBuffer> IndexBuffer::Create(uint32_t size)
 	{
-		EPPO_PROFILE_FUNCTION("IndexBuffer::IndexBuffer");
+		switch (RendererContext::GetAPI())
+		{
+			case RendererAPI::Vulkan:	return CreateRef<VulkanIndexBuffer>(size);
+		}
 
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, m_Size, data, GL_STATIC_DRAW);
+		EPPO_ASSERT(false);
+		return nullptr;
 	}
 
-	IndexBuffer::~IndexBuffer()
+	Ref<IndexBuffer> IndexBuffer::Create(void* data, uint32_t size)
 	{
-		EPPO_PROFILE_FUNCTION("IndexBuffer::~IndexBuffer");
+		Buffer buffer = Buffer::Copy(data, size);
 
-		glDeleteBuffers(1, &m_RendererID);
+		return Create(buffer);
 	}
 
-	void IndexBuffer::Bind() const
+	Ref<IndexBuffer> IndexBuffer::Create(Buffer buffer)
 	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
-	}
+		switch (RendererContext::GetAPI())
+		{
+			case RendererAPI::Vulkan:	return CreateRef<VulkanIndexBuffer>(buffer);
+		}
 
-	void IndexBuffer::Unbind() const
-	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		EPPO_ASSERT(false);
+		return nullptr;
 	}
 }

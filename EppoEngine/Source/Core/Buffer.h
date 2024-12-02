@@ -60,6 +60,19 @@ namespace Eppo
 			return (T*)Data;
 		}
 
+		template<typename T>
+		void SetData(const T& value, uint32_t offset = 0)
+		{
+			EPPO_ASSERT(sizeof(T) + offset <= Size);
+			memcpy(Data + offset, &value, sizeof(T));
+		}
+
+		void SetData(void* data, uint32_t size)
+		{
+			EPPO_ASSERT(size <= Size);
+			memcpy(Data, data, size);
+		}
+
 		operator bool() const { return (bool)Data; }
 	};
 
@@ -88,6 +101,17 @@ namespace Eppo
 		T* As()
 		{
 			return m_Buffer.As<T>();
+		}
+
+		template<typename T>
+		void SetData(const T& value, uint32_t offset = 0)
+		{
+			m_Buffer.SetData(value, offset);
+		}
+
+		void SetData(void* data, uint32_t size)
+		{
+			m_Buffer.SetData(data, size);
 		}
 
 	private:

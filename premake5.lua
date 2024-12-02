@@ -20,7 +20,6 @@ workspace "EppoEngine"
 
     group "Dependencies"
         include "EppoEngine/Vendor/googletest"
-		include "EppoEngine/Vendor/glad"
         include "EppoEngine/Vendor/glfw"
         include "EppoEngine/Vendor/imgui"
         include "EppoEngine/Vendor/spdlog"

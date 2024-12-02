@@ -17,6 +17,7 @@ namespace Eppo
 	public:
 		~PanelManager() = default;
 
+		void Shutdown();
 		void RenderGui();
 
 		Ref<Scene> GetSceneContext() { return m_SceneContext; }

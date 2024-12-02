@@ -73,7 +73,7 @@ namespace Eppo
 		{
 			Entity entity(e, this);
 			auto& transform = entity.GetComponent<TransformComponent>();
-			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
+			const auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
 			btRigidBody* body = rigidbody.RuntimeBody.GetBody();
 			btTransform trans;
@@ -268,12 +268,12 @@ namespace Eppo
 
 		auto it = m_EntityMap.find(uuid);
 		if (it != m_EntityMap.end())
-			return Entity(it->second, this);
+			return { it->second, this };
 
 		return {};
 	}
 
-	Entity Scene::FindEntityByName(const std::string& name)
+	Entity Scene::FindEntityByName(std::string_view name)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::FindEntityByName");
 
@@ -282,7 +282,7 @@ namespace Eppo
 		{
 			const auto& tc = view.get<TagComponent>(e);
 			if (tc.Tag == name)
-				return Entity(e, this);
+				return { e, this };
 		}
 
 		return {};
@@ -299,7 +299,7 @@ namespace Eppo
 		for (auto e : view)
 		{
 			Entity entity(e, this);
-			auto& transform = entity.GetComponent<TransformComponent>();
+			const auto& transform = entity.GetComponent<TransformComponent>();
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
 			btCollisionShape* shape = new btBoxShape(btVector3(transform.Scale.x, transform.Scale.y, transform.Scale.z));
@@ -318,9 +318,9 @@ namespace Eppo
 			if (isDynamic)
 				shape->calculateLocalInertia(mass, localInertia);
 
-			btDefaultMotionState* motionState = new btDefaultMotionState(bTransform);
+			auto* motionState = new btDefaultMotionState(bTransform);
 			btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, localInertia);
-			btRigidBody* body = new btRigidBody(rbInfo);
+			auto* body = new btRigidBody(rbInfo);
 
 			m_PhysicsWorld->addRigidBody(body);
 			rigidbody.RuntimeBody = RigidBody(body);
@@ -364,17 +364,6 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Scene::RenderScene");
 
 		{
-			auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>();
-
-			for (const EntityHandle entity : view)
-			{
-				auto [dlc, tc] = view.get<DirectionalLightComponent, TransformComponent>(entity);
-				sceneRenderer->SubmitDirectionalLight(dlc);
-				break;
-			}
-		}
-
-		{
 			auto view = m_Registry.view<MeshComponent, TransformComponent>();
 
 			for (const EntityHandle entity : view)
@@ -383,8 +372,33 @@ namespace Eppo
 				if (meshC.MeshHandle)
 				{
 					Ref<Mesh> mesh = AssetManager::GetAsset<Mesh>(meshC.MeshHandle);
-					sceneRenderer->SubmitMesh(transform.GetTransform(), mesh, entity);
+
+					if (mesh)
+					{
+						Ref<MeshCommand> meshCommand = CreateRef<MeshCommand>();
+						meshCommand->Handle = entity;
+						meshCommand->Mesh = mesh;
+						meshCommand->Transform = transform.GetTransform();
+
+						sceneRenderer->SubmitDrawCommand(EntityType::Mesh, meshCommand);
+					}
 				}
+			}
+		}
+
+		{
+			auto view = m_Registry.view<PointLightComponent, TransformComponent>();
+
+			for (const EntityHandle entity : view)
+			{
+				auto [pl, transform] = view.get<PointLightComponent, TransformComponent>(entity);
+				
+				Ref<PointLightCommand> pointLightCommand = CreateRef<PointLightCommand>();
+				pointLightCommand->Handle = entity;
+				pointLightCommand->Position = transform.Translation;
+				pointLightCommand->Color = pl.Color;
+
+				sceneRenderer->SubmitDrawCommand(EntityType::PointLight, pointLightCommand);
 			}
 		}
 	}
