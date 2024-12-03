@@ -17,6 +17,17 @@ namespace Eppo::UI
 
 	static std::unordered_map<void*, ImageInfo> s_ImageCache;
 
+	void ClearResources()
+	{
+		Ref<VulkanContext> context = VulkanContext::Get();
+
+		for (const auto& [imageView, imageInfo] : s_ImageCache)
+		{
+			auto descriptorSet = imageInfo.DescriptorSet;
+			ImGui_ImplVulkan_RemoveTexture(descriptorSet);
+		}
+	}
+
 	void Image(Ref<Eppo::Image> image, const ImVec2& imageSize, const ImVec2& uv0, const ImVec2& uv1)
 	{
 		auto vkImage = std::dynamic_pointer_cast<VulkanImage>(image);

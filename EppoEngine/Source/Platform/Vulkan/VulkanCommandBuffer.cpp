@@ -10,7 +10,8 @@ namespace Eppo
 		: m_ManualSubmission(manualSubmission)
 	{
 		Ref<VulkanContext> context = VulkanContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
+		VkDevice device = logicalDevice->GetNativeDevice();
 
 		// Create command pool
 		VkCommandPoolCreateInfo commandPoolCreateInfo{};
@@ -45,6 +46,7 @@ namespace Eppo
 			VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence), "Failed to create fences!");
 
 		// Queries
+		VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 		m_QueryPools.resize(VulkanConfig::MaxFramesInFlight);
 
 		VkQueryPoolCreateInfo queryPoolInfo{};
@@ -53,7 +55,10 @@ namespace Eppo
 		queryPoolInfo.queryCount = m_QueryCount;
 
 		for (auto& queryPool : m_QueryPools)
+		{
 			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &queryPool), "Failed to create query pool!");
+			vkCmdResetQueryPool(commandBuffer, queryPool, 0, m_QueryCount);
+		}
 
 		m_Timestamps.resize(VulkanConfig::MaxFramesInFlight);
 		for (auto& timestamp : m_Timestamps)
@@ -75,7 +80,12 @@ namespace Eppo
 			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
 
 		for (auto& pipelineQueryPool : m_PipelineQueryPools)
+		{
 			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &pipelineQueryPool), "Failed to create query pool!");
+			vkCmdResetQueryPool(commandBuffer, pipelineQueryPool, 0, m_PipelineQueryCount);
+		}
+
+		logicalDevice->FlushCommandBuffer(commandBuffer);
 
 		m_PipelineStatistics.resize(VulkanConfig::MaxFramesInFlight);
 

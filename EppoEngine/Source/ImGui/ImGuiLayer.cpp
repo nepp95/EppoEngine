@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ImGuiLayer.h"
 
+#include "ImGui/Image.h"
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RendererContext.h"
@@ -123,15 +124,21 @@ namespace Eppo
 		s_ImGuiCommandBuffers.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 			s_ImGuiCommandBuffers[i] = logicalDevice->GetSecondaryCommandBuffer();
-
 	}
 
 	void ImGuiLayer::OnDetach()
 	{
 		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		// Clear resources which in turn calls the vulkan API to clear all the descriptor sets allocated for ImGui
+		UI::ClearResources();
+
+		// Destroy other vulkan resources
+		ImGui_ImplVulkan_Shutdown();
+
+		// Finally destroy the descriptor pool - this needs to happen after ImGui_ImplVulkan_Shutdown because of the font texture
 		vkDestroyDescriptorPool(device, s_DescriptorPool, nullptr);
 
-		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}

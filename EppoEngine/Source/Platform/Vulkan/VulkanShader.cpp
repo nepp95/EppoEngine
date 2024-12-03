@@ -70,6 +70,26 @@ namespace Eppo
 		CreateDescriptorSetLayouts();
 	}
 
+	VulkanShader::~VulkanShader()
+	{
+		Ref<VulkanContext> context = VulkanContext::Get();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+
+		// Since we ALWAYS have 4 descriptor set layouts per shader AND some of them can be the same if not all descriptor sets are in use
+		// We keep track of which we have freed so we don't free the same layout twice.
+		std::unordered_set<void*> layoutsFreed;
+
+		for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
+		{
+			if (layoutsFreed.find((void*)descriptorSetLayout) == layoutsFreed.end())
+			{
+				layoutsFreed.insert((void*)descriptorSetLayout);
+				EPPO_MEM_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
+				vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+			}
+		}
+	}
+
 	std::unordered_map<Eppo::ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanShader::PreProcess");
@@ -379,23 +399,5 @@ namespace Eppo
 			if (!descriptorSetLayout)
 				descriptorSetLayout = layout;
 		}
-
-		Ref<VulkanContext> context = VulkanContext::Get();
-		context->SubmitResourceFree([this, device]()
-		{
-			// Since we ALWAYS have 4 descriptor set layouts per shader AND some of them can be the same if not all descriptor sets are in use
-			// We keep track of which we have freed so we don't free the same layout twice.
-			std::unordered_set<void*> layoutsFreed;
-
-			for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
-			{
-				if (layoutsFreed.find((void*)descriptorSetLayout) == layoutsFreed.end())
-				{
-					layoutsFreed.insert((void*)descriptorSetLayout);
-					EPPO_MEM_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
-					vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-				}
-			}
-		});
 	}
 }

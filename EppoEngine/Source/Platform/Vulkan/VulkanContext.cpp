@@ -82,18 +82,21 @@ namespace Eppo
 			m_LogicalDevice->GetNativeDevice(),
 			m_LogicalDevice->GetGraphicsQueue(),
 			cmd
-		);
+		)
 
 		m_LogicalDevice->FreeCommandBuffer(cmd);
 	}
 
 	void VulkanContext::Shutdown()
 	{
+		EPPO_PROFILE_GPU_DESTROY(m_TracyContext)
+
 		m_GarbageCollector.Shutdown();
 
 		if (VulkanConfig::EnableValidation)
 			DestroyDebugUtilsMessengerEXT(s_Instance, m_DebugMessenger, nullptr);
 
+		EPPO_MEM_WARN("Releasing vulkan instance {}", (void*)s_Instance);
 		vkDestroyInstance(s_Instance, nullptr);
 	}
 
