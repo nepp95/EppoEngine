@@ -2,7 +2,7 @@ Scene: Test
 Entities:
   - Entity: 4053877638510577070
     TagComponent:
-      Tag: Floor
+      Tag: Sponza
     TransformComponent:
       Translation: [0, 0, 0]
       Rotation: [0, 0, 0]

@@ -52,7 +52,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("AssetImporter::ExportScene");
 
 		SceneSerializer serializer(scene);
-		if (!serializer.Serialize(filepath))
+		if (!serializer.Serialize(Project::GetAssetFilepath(filepath)))
 			return false;
 
 		if (!AssetManager::IsAssetHandleValid(scene->Handle) && !AssetManager::IsAssetLoaded(scene->Handle))

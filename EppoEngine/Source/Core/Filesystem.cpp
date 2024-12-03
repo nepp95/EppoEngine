@@ -160,7 +160,12 @@ namespace Eppo
 		if (Exists(filepath) && !overwrite)
 			return;
 
-		std::ofstream stream(filepath);
+		std::ofstream stream;
+		if (overwrite)
+			stream.open(filepath, std::ios::out | std::ios::trunc);
+		else
+			stream.open(filepath, std::ios::out);
+
 		EPPO_ASSERT(stream);
 
 		stream.write(text.c_str(), text.size());

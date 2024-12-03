@@ -230,6 +230,15 @@ namespace Eppo
 		m_ViewportHeight = static_cast<uint32_t>(viewportSize.y);
 
 		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_ASSET"))
+			{
+				auto handle = payload->Data;
+				OpenScene(*(AssetHandle*)handle);
+			}
+			ImGui::EndDragDropTarget();
+		}
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -257,7 +266,7 @@ namespace Eppo
 		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
 	}
 
-	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
+	bool EditorLayer::OnKeyPressed(const KeyPressedEvent& e)
 	{
 		if (e.IsRepeat())
 			return false;
