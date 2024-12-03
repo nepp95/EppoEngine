@@ -77,19 +77,24 @@ namespace Eppo
 		// Create tracy profiler context
 		VkCommandBuffer cmd = m_LogicalDevice->GetCommandBuffer(false);
 
+		#if defined(TRACY_ENABLE)
 		m_TracyContext = TracyVkContext(
 			m_PhysicalDevice->GetNativeDevice(),
 			m_LogicalDevice->GetNativeDevice(),
 			m_LogicalDevice->GetGraphicsQueue(),
 			cmd
 		)
+		#endif
 
 		m_LogicalDevice->FreeCommandBuffer(cmd);
 	}
 
 	void VulkanContext::Shutdown()
 	{
-		EPPO_PROFILE_GPU_DESTROY(m_TracyContext)
+		#if defined(TRACY_ENABLE)
+		EPPO_MEM_WARN("Releasing tracy context {}", (void*)m_TracyContext);
+		TracyVkDestroy(m_TracyContext)
+		#endif
 
 		m_GarbageCollector.Shutdown();
 
