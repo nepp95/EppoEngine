@@ -27,6 +27,9 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorWriter::WriteImages");
 
+		if (imageInfos.empty())
+			return;
+
 		VkWriteDescriptorSet& writeDescriptorSet = m_WriteDescriptors.emplace_back();
 		writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet.dstBinding = binding;
