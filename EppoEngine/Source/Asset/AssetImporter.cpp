@@ -18,6 +18,8 @@ namespace Eppo
 
 	Ref<Asset> AssetImporter::ImportAsset(AssetHandle handle, const AssetMetadata& metadata)
 	{
+		EPPO_PROFILE_FUNCTION("AssetImporter::ImportAsset");
+
 		if (s_AssetImportFunctions.find(metadata.Type) == s_AssetImportFunctions.end())
 		{
 			EPPO_ERROR("No importer available for asset type: {}", Utils::AssetTypeToString(metadata.Type));

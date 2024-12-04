@@ -401,9 +401,13 @@ namespace Eppo
 		Renderer::SubmitCommand([this, cmd, pipeline]()
 		{
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::PreDepthPass");
-
+			
+			// Get all required variables
 			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 			auto& spec = pipeline->GetSpecification();
+
+			const auto& pcr = std::static_pointer_cast<VulkanShader>(spec.Shader)->GetPushConstantRanges();
+			ScopedBuffer pcrBuffer(pcr[0].size);
 			
 			// Profiling
 			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "PreDepth");
@@ -485,14 +489,10 @@ namespace Eppo
 
 						for (const auto& p : submesh.GetPrimitives())
 						{
-							const auto& shader = pipeline->GetSpecification().Shader;
-							const auto& pcr = std::static_pointer_cast<VulkanShader>(shader)->GetPushConstantRanges();
+							pcrBuffer.SetData(finalTransform);
+							pcrBuffer.SetData(i, 64);
 
-							ScopedBuffer buffer(pcr[0].size);
-							buffer.SetData(finalTransform);
-							buffer.SetData(i, 64);
-
-							vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size(), buffer.Data());
+							vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, pcrBuffer.Size(), pcrBuffer.Data());
 
 							m_RenderStatistics.DrawCalls++;
 							vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);

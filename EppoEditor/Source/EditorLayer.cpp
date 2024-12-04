@@ -647,16 +647,8 @@ namespace Eppo
 				ImGui::EndCombo();
 			}
 
-			if (ImGui::Button("Cancel", ImVec2(100, 30)))
+			if (ImGui::Button("OK", ImVec2(100, 30)))
 				ImGui::CloseCurrentPopup();
-
-			ImGui::SameLine();
-
-			if (ImGui::Button("Apply", ImVec2(100, 30)))
-			{
-				// TODO: Save settings
-				ImGui::CloseCurrentPopup();
-			}
 
 			ImGui::EndPopup();
 		}

@@ -203,6 +203,8 @@ namespace Eppo
 
 	void VulkanImage::TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanImage::TransitionImage");
+
 		VkImageMemoryBarrier2 imageBarrier{};
 		imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;

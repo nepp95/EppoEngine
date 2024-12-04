@@ -21,17 +21,20 @@ namespace Eppo
 		std::string error;
 		std::string warning;
 
-		bool result = loader.LoadBinaryFromFile(&model, &error, &warning, m_Filepath.string());
-
-		if (!warning.empty())
-			EPPO_WARN(warning);
-		if (!error.empty())
-			EPPO_ERROR(error);
-
-		if (!result)
 		{
-			EPPO_ERROR("Failed to parse mesh file '{}'!", m_Filepath.string());
-			return;
+			EPPO_PROFILE_FUNCTION("LoadGLB");
+			bool result = loader.LoadBinaryFromFile(&model, &error, &warning, m_Filepath.string());
+			
+			if (!warning.empty())
+				EPPO_WARN(warning);
+			if (!error.empty())
+				EPPO_ERROR(error);
+
+			if (!result)
+			{
+				EPPO_ERROR("Failed to parse mesh file '{}'!", m_Filepath.string());
+				return;
+			}
 		}
 
 		ProcessMaterials(model);
