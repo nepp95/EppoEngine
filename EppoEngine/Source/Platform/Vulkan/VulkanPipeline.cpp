@@ -245,9 +245,12 @@ namespace Eppo
 		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!");
 
 		// Create the images from the attachment info
-		for (const auto& attachment : m_Specification.ColorAttachments)
+		for (auto& existingImage : m_Specification.ExistingImages)
+			m_Images.emplace_back(existingImage);
+
+		if (!m_Specification.SwapchainTarget)
 		{
-			if (!m_Specification.SwapchainTarget && !m_Specification.ExistingImage)
+			for (const auto& attachment : m_Specification.ColorAttachments)
 			{
 				ImageSpecification imageSpec;
 				imageSpec.Format = attachment.Format;
@@ -258,9 +261,6 @@ namespace Eppo
 				Ref<Image> image = Image::Create(imageSpec);
 				m_Images.emplace_back(image);
 			}
-
-			if (m_Specification.ExistingImage)
-				m_Images.emplace_back(m_Specification.ExistingImage);
 		}
 
 		if (m_Specification.DepthTesting)

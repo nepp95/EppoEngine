@@ -95,7 +95,6 @@ namespace Eppo
 			pipelineSpec.ColorAttachments = {
 				{ ImageFormat::RGBA8, false }
 			};
-			pipelineSpec.ExistingImage = dstImage;
 			pipelineSpec.Topology = PrimitiveTopology::Lines;
 			pipelineSpec.PolygonMode = PolygonMode::Line;
 			pipelineSpec.Width = dstImage->GetWidth();
@@ -105,6 +104,8 @@ namespace Eppo
 				{ ShaderDataType::Float3, "inPosition" },
 				{ ShaderDataType::Float4, "inColor" }
 			};
+
+			pipelineSpec.ExistingImages.emplace_back(dstImage);
 
 			m_DebugLinePipeline = Pipeline::Create(pipelineSpec);
 		}
@@ -531,7 +532,7 @@ namespace Eppo
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::GeometryPass");
 
 			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-			auto& spec = pipeline->GetSpecification();
+			const auto& spec = pipeline->GetSpecification();
 
 			// Profiling
 			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "GeometryPass");

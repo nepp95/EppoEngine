@@ -81,7 +81,7 @@ namespace Eppo
 
 		// Color Attachments
 		std::vector<ColorAttachment> ColorAttachments;
-		Ref<Image> ExistingImage;
+		std::vector<Ref<Image>> ExistingImages;
 	};
 
 	class Pipeline
