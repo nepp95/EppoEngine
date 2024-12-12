@@ -101,8 +101,8 @@ namespace Eppo
 
 		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
 		vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-		vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputStateCreateInfo.vertexBindingDescriptionCount = elements.empty() ? 0 : 1;
+		vertexInputStateCreateInfo.pVertexBindingDescriptions = elements.empty() ? nullptr : &bindingDescription;
 		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 		vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -193,6 +193,7 @@ namespace Eppo
 				m_DescriptorSets[i][j] = Renderer::AllocateDescriptor(descriptorSetLayouts[j]);
 		}
 
+		// Create pipeline layout
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
@@ -202,6 +203,7 @@ namespace Eppo
 	
 		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!");
 
+		// Create pipeline rendering infos
 		const auto& shaderStageInfos = shader->GetPipelineShaderStageInfos();
 	
 		std::vector<VkFormat> formats;
@@ -220,6 +222,7 @@ namespace Eppo
 		if (m_Specification.DepthCubeMapImage)
 			renderingInfo.viewMask = 0b111111;
 
+		// Create pipeline
 		VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
 		graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		graphicsPipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStageInfos.size());

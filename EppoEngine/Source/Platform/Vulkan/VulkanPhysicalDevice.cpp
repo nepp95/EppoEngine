@@ -48,7 +48,7 @@ namespace Eppo
 		return versionStr;
 	}
 
-	static std::unordered_map<uint32_t, std::string> s_GpuVendors = {
+	static const std::unordered_map<uint32_t, std::string> s_GpuVendors = {
 		{ 0x1002, "AMD" },
 		{ 0x1010, "ImgTec" },
 		{ 0x10DE, "NVIDIA" },

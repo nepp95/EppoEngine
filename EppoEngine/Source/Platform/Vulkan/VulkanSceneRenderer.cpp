@@ -31,6 +31,8 @@ namespace Eppo
 		m_CommandBuffer = swapchain->GetCommandBuffer();
 		m_DebugRenderer = DebugRenderer::Create();
 
+		VkCommandBuffer cmd = context->GetLogicalDevice()->GetCommandBuffer(true);
+
 		// PreDepth
 		{
 			PipelineSpecification pipelineSpec;
@@ -58,9 +60,7 @@ namespace Eppo
 
 				m_ShadowMaps[i] = Image::Create(imageSpec);
 
-				VkCommandBuffer cmd = context->GetLogicalDevice()->GetCommandBuffer(true);
 				VulkanImage::TransitionImage(cmd, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-				context->GetLogicalDevice()->FlushCommandBuffer(cmd);
 			}
 		}
 
@@ -124,6 +124,8 @@ namespace Eppo
 
 			m_CompositePipeline = Pipeline::Create(pipelineSpec);
 		}
+
+		context->GetLogicalDevice()->FlushCommandBuffer(cmd);
 
 		// Vertex and Index buffers
 		m_DebugLineVertexBuffer = VertexBuffer::Create(sizeof(LineVertex) * 100);
@@ -238,6 +240,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::SubmitDrawCommand(EntityType type, Ref<DrawCommand> drawCommand)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::SubmitDrawCommand");
+
 		if (type == EntityType::PointLight && m_DrawList[EntityType::PointLight].size() == 8)
 		{
 			EPPO_WARN("Trying to submit more point lights than we currently support!");
@@ -410,7 +414,7 @@ namespace Eppo
 			ScopedBuffer pcrBuffer(pcr[0].size);
 			
 			// Profiling
-			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "PreDepth");
+			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "PreDepth")
 
 			// Insert debug label
 			if (m_RenderSpecification.DebugRendering)

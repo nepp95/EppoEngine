@@ -74,7 +74,7 @@ namespace Eppo
 			}
 
 			MeshData meshData = GetVertexData(model, model.meshes[meshIndex]);
-			Submesh& submesh = m_Submeshes.emplace_back(node.name, meshData.Vertices, meshData.Indices, meshData.Primitives, localTransform);
+			m_Submeshes.emplace_back(node.name, meshData.Vertices, meshData.Indices, meshData.Primitives, localTransform);
 		}
 
 		for (size_t i = 0; i < node.children.size(); i++)
@@ -91,9 +91,9 @@ namespace Eppo
 			const tinygltf::Material& mat = model.materials[i];
 
 			Ref<Material> material = CreateRef<Material>();
-			material->Roughness = mat.pbrMetallicRoughness.roughnessFactor;
-			material->Metallic = mat.pbrMetallicRoughness.metallicFactor;
-			material->NormalMapIntensity = mat.normalTexture.scale;
+			material->Roughness = static_cast<float>(mat.pbrMetallicRoughness.roughnessFactor);
+			material->Metallic = static_cast<float>(mat.pbrMetallicRoughness.metallicFactor);
+			material->NormalMapIntensity = static_cast<float>(mat.normalTexture.scale);
 
 			// Diffuse color
 			if (mat.values.find("baseColorFactor") != mat.values.end())

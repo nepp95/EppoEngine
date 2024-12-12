@@ -90,7 +90,7 @@ namespace Eppo
 		}
 	}
 
-	std::unordered_map<Eppo::ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source)
+	std::unordered_map<ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source) const
 	{
 		EPPO_PROFILE_FUNCTION("VulkanShader::PreProcess");
 
@@ -183,7 +183,7 @@ namespace Eppo
 				EPPO_INFO("Loading shader cache: {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 
 				// Read shader cache
-				ScopedBuffer buffer = Filesystem::ReadBytes(cacheFile);
+				ScopedBuffer buffer(Filesystem::ReadBytes(cacheFile));
 
 				// Since the buffer size is 1 byte aligned and a uint32_t is 4 byte aligned, we only need a quarter of the size
 				std::vector<uint32_t> vec(buffer.Size() / sizeof(uint32_t));
@@ -349,7 +349,7 @@ namespace Eppo
 			shaderStageCreateInfo.module = shaderModule;
 			shaderStageCreateInfo.pName = "main";
 
-			context->SubmitResourceFree([=]()
+			context->SubmitResourceFree([device, shaderModule]()
 			{
 				EPPO_MEM_WARN("Releasing shader module {}", (void*)shaderModule);
 				vkDestroyShaderModule(device, shaderModule, nullptr);
@@ -361,7 +361,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanShader::CreateDescriptorSetLayouts");
 
-		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = VulkanContext::Get();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		m_DescriptorSetLayouts.resize(4);
 		for (const auto& [set, setResources] : m_ShaderResources)
@@ -399,5 +400,11 @@ namespace Eppo
 			if (!descriptorSetLayout)
 				descriptorSetLayout = layout;
 		}
+
+		context->SubmitResourceFree([device, layout]()
+		{
+			EPPO_MEM_WARN("Releasing descriptor set layout {}", (void*)layout);
+			vkDestroyDescriptorSetLayout(device, layout, nullptr);
+		});
 	}
 }

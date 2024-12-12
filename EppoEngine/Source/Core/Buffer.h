@@ -81,7 +81,7 @@ namespace Eppo
 	public:
 		ScopedBuffer() = default;
 
-		ScopedBuffer(Buffer buffer)
+		explicit ScopedBuffer(Buffer buffer)
 			: m_Buffer(buffer)
 		{}
 
@@ -95,7 +95,7 @@ namespace Eppo
 		}
 
 		uint8_t* Data() { return m_Buffer.Data; }
-		uint32_t Size() { return m_Buffer.Size; }
+		uint32_t Size() const { return m_Buffer.Size; }
 
 		template<typename T>
 		T* As()

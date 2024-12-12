@@ -11,7 +11,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("RenderCommandQueue::AddCommand");
 
-		m_CommandQueue.push(fn);
+		m_CommandQueue.push(std::move(fn));
 		m_CommandCount++;
 	}
 

@@ -11,8 +11,8 @@ namespace Eppo
 	class VulkanPipeline : public Pipeline
 	{
 	public:
-		VulkanPipeline(const PipelineSpecification& specification);
-		virtual ~VulkanPipeline();
+		explicit VulkanPipeline(const PipelineSpecification& specification);
+		~VulkanPipeline() override;
 
 		Ref<Image> GetImage(uint32_t index) const override { return m_Images[index]; }
 		Ref<Image> GetFinalImage() const override { return m_Images[0]; }

@@ -16,7 +16,7 @@ namespace Eppo
 		const std::vector<VkPushConstantRange>& GetPushConstantRanges() const { return m_PushConstantRanges; }
 
 	private:
-		std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source);
+		std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source) const;
 		void Compile(ShaderStage stage, const std::string& source);
 		void CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources);
 		void Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes);
