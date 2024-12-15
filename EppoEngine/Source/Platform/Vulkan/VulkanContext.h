@@ -27,13 +27,13 @@ namespace Eppo
 		void SubmitResourceFree(std::function<void()> fn, bool freeOnShutdown = true);
 		void RunGC(uint32_t frameNumber);
 
-		Ref<VulkanLogicalDevice> GetLogicalDevice() const { return m_LogicalDevice; }
-		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
-		Ref<VulkanSwapchain> GetSwapchain() const { return m_Swapchain; }
+		[[nodiscard]] Ref<VulkanLogicalDevice> GetLogicalDevice() const { return m_LogicalDevice; }
+		[[nodiscard]] Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
+		[[nodiscard]] Ref<VulkanSwapchain> GetSwapchain() const { return m_Swapchain; }
 
 		static VkInstance GetVulkanInstance() { return s_Instance; }
 		GLFWwindow* GetWindowHandle() override { return m_WindowHandle; }
-		TracyVkCtx GetTracyContext() const { return m_TracyContext; }
+		[[nodiscard]] TracyVkCtx GetTracyContext() const { return m_TracyContext; }
 
 		static Ref<VulkanContext> Get();
 

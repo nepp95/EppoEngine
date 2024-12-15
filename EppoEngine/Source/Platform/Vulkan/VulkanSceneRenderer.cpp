@@ -149,7 +149,7 @@ namespace Eppo
 		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 		frameIndex = frameIndex == 0 ? 1 : 0;
 
-		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
+		const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
 
 		ImGui::Text("GPU Time: %.3fms", cmd->GetTimestamp(frameIndex));
 		ImGui::Text("PreDepth Pass: %.3fms", cmd->GetTimestamp(frameIndex, m_TimestampQueries.PreDepthQuery));
@@ -185,14 +185,14 @@ namespace Eppo
 		ImGui::Begin("Debug Maps");
 
 		{
-			Ref<Image> image = m_GeometryPipeline->GetImage(1);
-			float height = (static_cast<float>(image->GetHeight()) / static_cast<float>(image->GetWidth())) * 300;
+			const Ref<Image> image = m_GeometryPipeline->GetImage(1);
+			const float height = (static_cast<float>(image->GetHeight()) / static_cast<float>(image->GetWidth())) * 300;
 			UI::Image(m_GeometryPipeline->GetImage(1), ImVec2(300.0f, height), ImVec2(0, 1), ImVec2(1, 0));
 		}
 
 		{
-			Ref<Image> image = m_GeometryPipeline->GetImage(2);
-			float height = (static_cast<float>(image->GetHeight()) / static_cast<float>(image->GetWidth())) * 300;
+			const Ref<Image> image = m_GeometryPipeline->GetImage(2);
+			const float height = (static_cast<float>(image->GetHeight()) / static_cast<float>(image->GetWidth())) * 300;
 			UI::Image(m_GeometryPipeline->GetImage(2), ImVec2(300.0f, height), ImVec2(0, 1), ImVec2(1, 0));
 		}
 
@@ -333,11 +333,11 @@ namespace Eppo
 
 		if (!lineVertices.empty() && !lineIndices.empty())
 		{
-			Buffer ib = Buffer::Copy((void*)lineIndices.data(), lineIndices.size() * sizeof(uint32_t));
+			Buffer ib = Buffer::Copy(lineIndices.data(), sizeof(uint32_t) * lineIndices.size());
 			m_DebugLineIndexBuffer->SetData(ib);
 			ib.Release();
 
-			Buffer vb = Buffer::Copy((void*)lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
+			Buffer vb = Buffer::Copy(lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
 			m_DebugLineVertexBuffer->SetData(vb);
 			vb.Release();
 
@@ -398,8 +398,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::PreDepthPass()
 	{
-		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
-		auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_PreDepthPipeline);
+		const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
+		const auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_PreDepthPipeline);
 
 		m_TimestampQueries.PreDepthQuery = cmd->RT_BeginTimestampQuery();
 
@@ -473,20 +473,20 @@ namespace Eppo
 				// Render geometry
 				for (const auto& dc : m_DrawList[EntityType::Mesh])
 				{
-					Ref<MeshCommand> meshCmd = std::static_pointer_cast<MeshCommand>(dc);
+					const auto meshCmd = std::static_pointer_cast<MeshCommand>(dc);
 					m_RenderStatistics.MeshInstances++;
 
 					for (const auto& submesh : meshCmd->Mesh->GetSubmeshes())
 					{
 						// Bind vertex buffer
-						Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(submesh.GetVertexBuffer());
+						const auto vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(submesh.GetVertexBuffer());
 						VkBuffer vb = { vertexBuffer->GetBuffer() };
-						VkDeviceSize offsets[] = { 0 };
+						constexpr VkDeviceSize offsets[] = { 0 };
 
 						vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
 						// Bind index buffer
-						Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(submesh.GetIndexBuffer());
+						const auto indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(submesh.GetIndexBuffer());
 						vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 						// Draw call
@@ -500,7 +500,7 @@ namespace Eppo
 							vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, pcrBuffer.Size(), pcrBuffer.Data());
 
 							m_RenderStatistics.DrawCalls++;
-							vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
+							vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, static_cast<int32_t>(p.FirstVertex), 0);
 						}
 					}
 				}
@@ -605,7 +605,7 @@ namespace Eppo
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
 
 			// Set viewport and scissor
-			VkViewport viewport{};
+			VkViewport viewport;
 			viewport.x = 0.0f;
 			viewport.y = 0.0f;
 			viewport.width = static_cast<float>(spec.Width);
@@ -615,7 +615,7 @@ namespace Eppo
 
 			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-			VkRect2D scissor{};
+			VkRect2D scissor;
 			scissor.offset = { 0, 0 };
 			scissor.extent = { spec.Width, spec.Height };
 
@@ -627,7 +627,7 @@ namespace Eppo
 			// Render geometry
 			for (const auto& dc : m_DrawList[EntityType::Mesh])
 			{
-				Ref<MeshCommand> meshCmd = std::static_pointer_cast<MeshCommand>(dc);
+				const auto meshCmd = std::static_pointer_cast<MeshCommand>(dc);
 
 				m_RenderStatistics.Meshes++;
 				m_RenderStatistics.MeshInstances++;
@@ -637,14 +637,14 @@ namespace Eppo
 					m_RenderStatistics.Submeshes++;
 
 					// Bind vertex buffer
-					Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(submesh.GetVertexBuffer());
+					const auto vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(submesh.GetVertexBuffer());
 					VkBuffer vb = { vertexBuffer->GetBuffer() };
-					VkDeviceSize offsets[] = { 0 };
+					constexpr VkDeviceSize offsets[] = { 0 };
 
 					vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
 					// Bind index buffer
-					Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(submesh.GetIndexBuffer());
+					const auto indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(submesh.GetIndexBuffer());
 					vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 					// Draw call
@@ -664,7 +664,7 @@ namespace Eppo
 						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size(), buffer.Data());
 						
 						m_RenderStatistics.DrawCalls++;
-						vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, p.FirstVertex, 0);
+						vkCmdDrawIndexed(commandBuffer, p.IndexCount, 1, p.FirstIndex, static_cast<int32_t>(p.FirstVertex), 0);
 					}
 				}
 			}
@@ -682,8 +682,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::DebugLinePass()
 	{
-		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
-		auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_DebugLinePipeline);
+		const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
+		const auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_DebugLinePipeline);
 
 		m_TimestampQueries.DebugLineQuery = cmd->RT_BeginTimestampQuery();
 
@@ -693,11 +693,11 @@ namespace Eppo
 			{
 				EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::DebugLinePass");
 
-				VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+				const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 				const auto& spec = pipeline->GetSpecification();
 		
 				// Profiling
-				EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "DebugLinePass");
+				EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "DebugLinePass")
 
 				// Insert debug label
 				if (m_RenderSpecification.DebugRendering)
@@ -731,7 +731,7 @@ namespace Eppo
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
 
 				// Set viewport and scissor
-				VkViewport viewport{};
+				VkViewport viewport;
 				viewport.x = 0.0f;
 				viewport.y = 0.0f;
 				viewport.width = static_cast<float>(spec.Width);
@@ -741,7 +741,7 @@ namespace Eppo
 
 				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-				VkRect2D scissor{};
+				VkRect2D scissor;
 				scissor.offset = { 0, 0 };
 				scissor.extent = { spec.Width, spec.Height };
 
@@ -778,8 +778,8 @@ namespace Eppo
 
 	void VulkanSceneRenderer::CompositePass()
 	{
-		auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
-		auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_CompositePipeline);
+		const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(m_CommandBuffer);
+		const auto pipeline = std::static_pointer_cast<VulkanPipeline>(m_CompositePipeline);
 
 		m_TimestampQueries.CompositeQuery = cmd->RT_BeginTimestampQuery();
 
@@ -787,12 +787,12 @@ namespace Eppo
 		{
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::CompositePass");
 
-			Ref<VulkanContext> context = VulkanContext::Get();
-			Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			const Ref<VulkanContext> context = VulkanContext::Get();
+			const Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
+			const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 
 			// Profiling
-			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "CompositePass");
+			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "CompositePass")
 
 			if (m_RenderSpecification.DebugRendering)
 				m_DebugRenderer->StartDebugLabel(cmd, "CompositePass");
@@ -804,9 +804,8 @@ namespace Eppo
 			ImDrawData* data = ImGui::GetDrawData();
 			ImGui_ImplVulkan_RenderDrawData(data, commandBuffer);
 
-			const ImGuiIO& io = ImGui::GetIO();
-
-			if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+			if (const ImGuiIO& io = ImGui::GetIO();
+				io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 			{
 				GLFWwindow* backupContext = glfwGetCurrentContext();
 				ImGui::UpdatePlatformWindows();

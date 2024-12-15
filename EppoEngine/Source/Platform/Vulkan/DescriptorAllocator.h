@@ -21,7 +21,7 @@ namespace Eppo
 
 	private:
 		VkDescriptorPool GetPool();
-		VkDescriptorPool CreatePool(uint32_t setCount);
+		VkDescriptorPool CreatePool(uint32_t setCount) const;
 
 	private:
 		std::vector<PoolSizeRatio> m_PoolSizeRatios;

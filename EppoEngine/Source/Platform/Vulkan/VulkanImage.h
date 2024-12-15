@@ -24,10 +24,10 @@ namespace Eppo
 		void SetData(void* data, uint32_t channels = 4) override;
 		void Release() override;
 
-		const ImageSpecification& GetSpecification() const override { return m_Specification; }
+		[[nodiscard]] const ImageSpecification& GetSpecification() const override { return m_Specification; }
 
-		uint32_t GetWidth() const override { return m_Specification.Width; }
-		uint32_t GetHeight() const override { return m_Specification.Height; }
+		[[nodiscard]] uint32_t GetWidth() const override { return m_Specification.Width; }
+		[[nodiscard]] uint32_t GetHeight() const override { return m_Specification.Height; }
 
 		ImageInfo& GetImageInfo() { return m_ImageInfo; }
 

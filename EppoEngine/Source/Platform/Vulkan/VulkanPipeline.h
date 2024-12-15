@@ -17,13 +17,13 @@ namespace Eppo
 		Ref<Image> GetImage(uint32_t index) const override { return m_Images[index]; }
 		Ref<Image> GetFinalImage() const override { return m_Images[0]; }
 
-		VkPipeline GetPipeline() const { return m_Pipeline; }
-		VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
+		[[nodiscard]] VkPipeline GetPipeline() const { return m_Pipeline; }
+		[[nodiscard]] VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
 
 		const std::vector<VkDescriptorSet>& GetDescriptorSets(uint32_t frameIndex) { return m_DescriptorSets[frameIndex]; }
 		const std::vector<VkRenderingAttachmentInfo>& GetAttachmentInfos() const { return m_AttachmentInfos; }
 
-		const PipelineSpecification& GetSpecification() const override { return m_Specification; }
+		[[nodiscard]] const PipelineSpecification& GetSpecification() const override { return m_Specification; }
 		PipelineSpecification& GetSpecification() override { return m_Specification; }
 
 	private:

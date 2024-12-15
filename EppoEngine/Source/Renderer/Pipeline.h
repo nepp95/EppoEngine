@@ -19,32 +19,32 @@ namespace Eppo
 		{}
 	};
 
-	enum class PrimitiveTopology
+	enum class PrimitiveTopology : uint8_t
 	{
 		Lines,
 		Triangles
 	};
 
-	enum class PolygonMode
+	enum class PolygonMode : uint8_t
 	{
 		Fill,
 		Line
 	};
 
-	enum class CullMode
+	enum class CullMode : uint8_t
 	{
 		Back,
 		Front,
 		FrontAndBack
 	};
 
-	enum class CullFrontFace
+	enum class CullFrontFace : uint8_t
 	{
 		Clockwise,
 		CounterClockwise
 	};
 
-	enum class DepthCompareOp
+	enum class DepthCompareOp : uint8_t
 	{
 		Less,
 		Equal,
@@ -87,13 +87,13 @@ namespace Eppo
 	class Pipeline
 	{
 	public:
-		virtual ~Pipeline() {};
+		virtual ~Pipeline() = default;
 
-		virtual const PipelineSpecification& GetSpecification() const = 0;
+		[[nodiscard]] virtual const PipelineSpecification& GetSpecification() const = 0;
 		virtual PipelineSpecification& GetSpecification() = 0;
 
-		virtual Ref<Image> GetImage(uint32_t index) const = 0;
-		virtual Ref<Image> GetFinalImage() const = 0;
+		[[nodiscard]] virtual Ref<Image> GetImage(uint32_t index) const = 0;
+		[[nodiscard]] virtual Ref<Image> GetFinalImage() const = 0;
 
 		static Ref<Pipeline> Create(const PipelineSpecification& specification);
 	};

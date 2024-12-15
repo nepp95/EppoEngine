@@ -41,10 +41,10 @@ namespace Eppo
 		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
-		for (auto& pool : m_AvailablePools)
+		for (const auto& pool : m_AvailablePools)
 			vkDestroyDescriptorPool(device, pool, nullptr);
 
-		for (auto& pool : m_FullPools)
+		for (const auto& pool : m_FullPools)
 			vkDestroyDescriptorPool(device, pool, nullptr);
 
 		m_FullPools.clear();
@@ -103,23 +103,22 @@ namespace Eppo
 			newPool = CreatePool(m_SetsPerPool);
 
 			m_SetsPerPool *= 1.5;
-			if (m_SetsPerPool > 4092)
-				m_SetsPerPool = 4092;
+			m_SetsPerPool = std::min<uint32_t>(m_SetsPerPool, 4092);
 		}
 
 		return newPool;
 	}
 
-	VkDescriptorPool DescriptorAllocator::CreatePool(uint32_t setCount)
+	VkDescriptorPool DescriptorAllocator::CreatePool(uint32_t setCount) const
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorAllocator::CreatePool");
 
 		std::vector<VkDescriptorPoolSize> poolSizes;
-		for (const auto& ratio : m_PoolSizeRatios)
+		for (const auto& [type, ratio] : m_PoolSizeRatios)
 		{
 			VkDescriptorPoolSize& poolSize = poolSizes.emplace_back();
-			poolSize.type = ratio.Type;
-			poolSize.descriptorCount = ratio.Ratio * setCount;
+			poolSize.type = type;
+			poolSize.descriptorCount = ratio * setCount;
 		}
 
 		VkDescriptorPoolCreateInfo poolCreateInfo{};

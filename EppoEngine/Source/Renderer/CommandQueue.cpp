@@ -3,7 +3,7 @@
 
 namespace Eppo
 {
-	CommandQueue::CommandQueue(bool isMultiThreaded)
+	CommandQueue::CommandQueue(const bool isMultiThreaded)
 		: m_IsMultiThreaded(isMultiThreaded)
 	{}
 

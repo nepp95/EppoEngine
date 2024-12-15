@@ -141,13 +141,13 @@ namespace Eppo
 		stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer stagingBuffer;
-		VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		const VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
 		memcpy(memData, data, size);
 		VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
-		VkCommandBuffer commandBuffer = VulkanContext::Get()->GetLogicalDevice()->GetCommandBuffer(true);
+		const VkCommandBuffer commandBuffer = VulkanContext::Get()->GetLogicalDevice()->GetCommandBuffer(true);
 
 		// Transition to layout optimal for transferring
 		TransitionImage(commandBuffer, m_ImageInfo.Image, m_ImageInfo.ImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -176,32 +176,32 @@ namespace Eppo
 
 	void VulkanImage::Release()
 	{
-		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		const VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		if (m_ImageInfo.Sampler)
 		{
-			EPPO_MEM_WARN("Releasing sampler {}", (void*)m_ImageInfo.Sampler);
+			EPPO_MEM_WARN("Releasing sampler {}", static_cast<void*>(m_ImageInfo.Sampler));
 			vkDestroySampler(device, m_ImageInfo.Sampler, nullptr);
 			m_ImageInfo.Sampler = nullptr;
 		}
 
 		if (m_ImageInfo.ImageView)
 		{
-			EPPO_MEM_WARN("Releasing image view {}", (void*)m_ImageInfo.ImageView);
+			EPPO_MEM_WARN("Releasing image view {}", static_cast<void*>(m_ImageInfo.ImageView));
 			vkDestroyImageView(device, m_ImageInfo.ImageView, nullptr);
 			m_ImageInfo.ImageView = nullptr;
 		}
 
 		if (m_ImageInfo.Image)
 		{
-			EPPO_MEM_WARN("Releasing image {}", (void*)m_ImageInfo.Image);
+			EPPO_MEM_WARN("Releasing image {}", static_cast<void*>(m_ImageInfo.Image));
 			VulkanAllocator::DestroyImage(m_ImageInfo.Image, m_ImageInfo.Allocation);
 			m_ImageInfo.Image = nullptr;
 			m_ImageInfo.Allocation = nullptr;
 		}
 	}
 
-	void VulkanImage::TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout)
+	void VulkanImage::TransitionImage(const VkCommandBuffer commandBuffer, const VkImage image, const VkImageLayout srcLayout, const VkImageLayout dstLayout)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanImage::TransitionImage");
 
@@ -261,7 +261,7 @@ namespace Eppo
 			}
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return VK_IMAGE_ASPECT_NONE;
 	}
 }
