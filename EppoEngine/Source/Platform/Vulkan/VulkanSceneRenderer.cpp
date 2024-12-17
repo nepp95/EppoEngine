@@ -2,7 +2,7 @@
 #include "VulkanSceneRenderer.h"
 
 #include "Core/Application.h"
-#include "ImGui/Image.h";
+#include "ImGui/Image.h"
 #include "Platform/Vulkan/DescriptorWriter.h"
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Platform/Vulkan/VulkanImage.h"
@@ -276,17 +276,17 @@ namespace Eppo
 		while (i < 8 && !m_DrawList[EntityType::PointLight].empty())
 		{
 			Ref<DrawCommand> dc = m_DrawList[EntityType::PointLight].back();
-			Ref<PointLightCommand> plCmd = std::static_pointer_cast<PointLightCommand>(dc);
+			const auto plCmd = std::static_pointer_cast<PointLightCommand>(dc);
 
-			auto& light = m_LightsBuffer.Lights[i];
-			light.Position = glm::vec4(plCmd->Position, 1.0f);
-			light.Color = plCmd->Color;
-			light.View[0] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[1] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[2] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-			light.View[3] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-			light.View[4] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-			light.View[5] = glm::lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			auto& [view, position, color] = m_LightsBuffer.Lights[i];
+			position = glm::vec4(plCmd->Position, 1.0f);
+			color = plCmd->Color;
+			view[0] = lookAt(plCmd->Position, plCmd->Position + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			view[1] = lookAt(plCmd->Position, plCmd->Position + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			view[2] = lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+			view[3] = lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+			view[4] = lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+			view[5] = lookAt(plCmd->Position, plCmd->Position + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 
 			// Setup Debug Lines
 			LineVertex& p0 = lineVertices.emplace_back();
@@ -408,7 +408,7 @@ namespace Eppo
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::PreDepthPass");
 			
 			// Get all required variables
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 			auto& spec = pipeline->GetSpecification();
 
 			const auto& pcr = std::static_pointer_cast<VulkanShader>(spec.Shader)->GetPushConstantRanges();
@@ -531,7 +531,7 @@ namespace Eppo
 		{
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::GeometryPass");
 
-			VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
+			const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 			const auto& spec = pipeline->GetSpecification();
 
 			// Profiling

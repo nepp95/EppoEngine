@@ -123,6 +123,24 @@ namespace Eppo
 		EPPO_INFO("Selected device has {} extensions", availableExtensions.size());
 		for (const auto& extension : availableExtensions)
 			m_SupportedExtensions.emplace_back(extension.extensionName);
+
+		// Device image formats
+		// These formats are mandatory to be supported
+		m_SupportedImageFormats[ImageFormat::RGBA8] = VK_FORMAT_R8G8B8A8_SRGB;
+		m_SupportedImageFormats[ImageFormat::RGB16] = VK_FORMAT_R32G32B32A32_SFLOAT;
+
+		// Depth
+		constexpr std::array<VkFormat, 2> formats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
+		for (const auto& format : formats)
+		{
+			VkFormatProperties properties;
+			vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, format, &properties);
+			if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+			{
+				m_SupportedImageFormats[ImageFormat::Depth] = format;
+				break;
+			}
+		}
 	}
 
 	bool VulkanPhysicalDevice::IsExtensionSupported(std::string_view extension)

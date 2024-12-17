@@ -10,7 +10,7 @@ namespace Eppo
 {
 	namespace Utils
 	{
-		static VkPrimitiveTopology TopologyToVkTopology(PrimitiveTopology topology)
+		static VkPrimitiveTopology TopologyToVkTopology(const PrimitiveTopology topology)
 		{
 			switch (topology)
 			{
@@ -18,11 +18,11 @@ namespace Eppo
 				case PrimitiveTopology::Triangles:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 		}
 
-		static VkPolygonMode PolygonModeToVkPolygonMode(PolygonMode mode)
+		static VkPolygonMode PolygonModeToVkPolygonMode(const PolygonMode mode)
 		{
 			switch (mode)
 			{
@@ -30,11 +30,11 @@ namespace Eppo
 				case PolygonMode::Line:	return VK_POLYGON_MODE_LINE;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_POLYGON_MODE_MAX_ENUM;
 		}
 
-		static VkCullModeFlags CullModeToVkCullMode(CullMode mode)
+		static VkCullModeFlags CullModeToVkCullMode(const CullMode mode)
 		{
 			switch (mode)
 			{
@@ -43,11 +43,11 @@ namespace Eppo
 				case CullMode::FrontAndBack:	return VK_CULL_MODE_FRONT_AND_BACK;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
 		}
 
-		static VkFrontFace CullFrontFaceToVkFrontFace(CullFrontFace frontFace)
+		static VkFrontFace CullFrontFaceToVkFrontFace(const CullFrontFace frontFace)
 		{
 			switch (frontFace)
 			{
@@ -55,11 +55,11 @@ namespace Eppo
 				case CullFrontFace::CounterClockwise:	return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_FRONT_FACE_MAX_ENUM;
 		}
 
-		static VkCompareOp DepthCompareOpToVkCompareOp(DepthCompareOp op)
+		static VkCompareOp DepthCompareOpToVkCompareOp(const DepthCompareOp op)
 		{
 			switch (op)
 			{
@@ -71,13 +71,13 @@ namespace Eppo
 				case DepthCompareOp::GreaterOrEqual:return VK_COMPARE_OP_GREATER_OR_EQUAL;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_COMPARE_OP_MAX_ENUM;
 		}
 	}
 
-	VulkanPipeline::VulkanPipeline(const PipelineSpecification& specification)
-		: m_Specification(specification)
+	VulkanPipeline::VulkanPipeline(PipelineSpecification specification)
+		: m_Specification(std::move(specification))
 	{
 		Ref<VulkanContext> context = VulkanContext::Get();
 		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();

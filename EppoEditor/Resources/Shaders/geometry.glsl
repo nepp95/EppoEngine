@@ -35,7 +35,8 @@ void main()
 #version 450
 
 #include "base.glsl"
-#include "lighting.glsl"
+#include "Includes/constants.glsl"
+#include "Includes/lighting.glsl"
 
 #extension GL_EXT_nonuniform_qualifier : enable
 

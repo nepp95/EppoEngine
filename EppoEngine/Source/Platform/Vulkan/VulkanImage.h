@@ -43,36 +43,14 @@ namespace Eppo
 
 	namespace Utils
 	{
-		inline VkFormat FindSupportedDepthFormat()
+		inline VkFormat ImageFormatToVkFormat(ImageFormat format)
 		{
+			EPPO_ASSERT(format != ImageFormat::None);
+
 			Ref<VulkanContext> context = VulkanContext::Get();
 			Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 
-			std::vector<VkFormat> depthFormats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
-
-			for (const auto& format : depthFormats)
-			{
-				VkFormatProperties properties;
-				vkGetPhysicalDeviceFormatProperties(physicalDevice->GetNativeDevice(), format, &properties);
-				if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-					return format;
-			}
-
-			EPPO_ASSERT(false);
-			return VK_FORMAT_UNDEFINED;
-		}
-
-		inline VkFormat ImageFormatToVkFormat(ImageFormat format)
-		{
-			switch (format)
-			{
-				case ImageFormat::None:     return VK_FORMAT_UNDEFINED;
-				case ImageFormat::RGBA8:    return VK_FORMAT_R8G8B8A8_SRGB;
-				case ImageFormat::Depth:    return FindSupportedDepthFormat();
-			}
-
-			EPPO_ASSERT(false);
-			return VK_FORMAT_UNDEFINED;
+			return physicalDevice->GetSupportedImageFormat(format);
 		}
 	}
 }
