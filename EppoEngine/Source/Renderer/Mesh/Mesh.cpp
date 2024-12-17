@@ -193,7 +193,6 @@ namespace Eppo
 				vertex.Position = glm::make_vec3(&positionData[i * 3]);
 				vertex.Normal = glm::make_vec3(&normalData[i * 3]);
 				vertex.TexCoord = glm::make_vec2(&texCoordData[i * 2]);
-				vertex.Color = glm::vec4(vertex.Normal, 1.0f);
 			}
 
 			// Indices

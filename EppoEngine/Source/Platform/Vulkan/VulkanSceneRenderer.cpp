@@ -79,8 +79,7 @@ namespace Eppo
 			pipelineSpec.Layout = {
 				{ ShaderDataType::Float3, "inPosition" },
 				{ ShaderDataType::Float3, "inNormal" },
-				{ ShaderDataType::Float2, "inTexCoord" },
-				{ ShaderDataType::Float4, "inColor" }
+				{ ShaderDataType::Float2, "inTexCoord" }
 			};
 
 			m_GeometryPipeline = Pipeline::Create(pipelineSpec);
@@ -657,9 +656,10 @@ namespace Eppo
 
 						ScopedBuffer buffer(pcr[0].size);
 						buffer.SetData(finalTransform);
-						buffer.SetData(p.Material->DiffuseMapIndex, 64);
-						buffer.SetData(p.Material->DiffuseMapIndex, 68);
-						buffer.SetData(p.Material->DiffuseMapIndex, 72);
+						buffer.SetData(p.Material->DiffuseColor, 64);
+						buffer.SetData(p.Material->DiffuseMapIndex, 80);
+						buffer.SetData(p.Material->NormalMapIndex, 84);
+						buffer.SetData(p.Material->RoughnessMetallicMapIndex, 88);
 
 						vkCmdPushConstants(commandBuffer, pipeline->GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, buffer.Size(), buffer.Data());
 						

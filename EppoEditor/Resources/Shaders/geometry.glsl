@@ -6,26 +6,24 @@
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
-layout(location = 3) in vec4 inColor;
 
 layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec2 outTexCoord;
-layout(location = 2) out vec4 outColor;
-layout(location = 3) out vec3 outFragPos;
+layout(location = 2) out vec3 outFragPos;
 
 layout(push_constant) uniform Transform
 {
 	layout(offset = 0) mat4 Transform;
-	layout(offset = 64) int DiffuseMapIndex;
-    layout(offset = 68) int NormalMapIndex;
-    layout(offset = 72) int RoughnessMetallicMapIndex;
+	layout(offset = 64) vec4 DiffuseColor;
+	layout(offset = 80) int DiffuseMapIndex;
+    layout(offset = 84) int NormalMapIndex;
+    layout(offset = 88) int RoughnessMetallicMapIndex;
 } uTransform;
 
 void main()
 {
 	outNormal = inNormal;
     outTexCoord = inTexCoord;
-    outColor = inColor;
     outFragPos = vec3(uTransform.Transform * vec4(inPosition, 1.0));
 
 	gl_Position = uCamera.ViewProjection * uTransform.Transform * vec4(inPosition, 1.0);
@@ -42,8 +40,7 @@ void main()
 
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
-layout(location = 2) in vec4 inColor;
-layout(location = 3) in vec3 inFragPos;
+layout(location = 2) in vec3 inFragPos;
 
 layout(location = 0) out vec4 outFragColor;
 layout(location = 1) out vec4 outDepthColor;
@@ -51,15 +48,21 @@ layout(location = 2) out vec4 outNormalColor;
 
 layout(push_constant) uniform Material
 {
-    layout(offset = 0) mat4 Transform;
-	layout(offset = 64) int DiffuseMapIndex;
-    layout(offset = 68) int NormalMapIndex;
-    layout(offset = 72) int RoughnessMetallicMapIndex;
+	layout(offset = 0) mat4 Transform;
+	layout(offset = 64) vec4 DiffuseColor;
+	layout(offset = 80) int DiffuseMapIndex;
+    layout(offset = 84) int NormalMapIndex;
+    layout(offset = 88) int RoughnessMetallicMapIndex;
 } uMaterial;
 
 void main()
 {
-	vec3 diffuse = texture(uMaterialTex[uMaterial.DiffuseMapIndex], inTexCoord).rgb;
+	vec3 diffuse = vec3(0.0);
+	if (uMaterial.DiffuseMapIndex > 0)
+		diffuse = texture(uMaterialTex[uMaterial.DiffuseMapIndex], inTexCoord).rgb;
+	else
+		diffuse = uMaterial.DiffuseColor.rgb;
+
     vec3 metallicTexColor = texture(uMaterialTex[uMaterial.RoughnessMetallicMapIndex], inTexCoord).rgb;
 
     float metallic = metallicTexColor.b;
