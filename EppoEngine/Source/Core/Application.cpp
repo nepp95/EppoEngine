@@ -11,11 +11,11 @@ namespace Eppo
 {
 	Application* Application::s_Instance = nullptr;
 
-	Application::Application(const ApplicationSpecification& specification)
-		: m_Specification(specification)
+	Application::Application(ApplicationSpecification specification)
+		: m_Specification(std::move(specification))
 	{
 		// Set instance if not set. We can only have one instance!
-		EPPO_ASSERT(!s_Instance);
+		EPPO_ASSERT(!s_Instance)
 		s_Instance = this;
 
 		// Set working directory
@@ -94,7 +94,7 @@ namespace Eppo
 			layer->RenderGui();
 	}
 
-	void Application::PushLayer(Layer* layer, bool overlay)
+	void Application::PushLayer(Layer* layer, const bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PushLayer");
 
@@ -104,7 +104,7 @@ namespace Eppo
 			m_LayerStack.PushLayer(layer);
 	}
 
-	void Application::PopLayer(Layer* layer, bool overlay)
+	void Application::PopLayer(Layer* layer, const bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PopLayer");
 

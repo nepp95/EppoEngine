@@ -12,12 +12,12 @@ namespace Eppo
 
 		std::filesystem::path Filepath;
 
-		bool IsValid() const
+		[[nodiscard]] bool IsValid() const
 		{
 			return Handle && Filesystem::Exists(Filepath);
 		}
 
-		std::string GetName() const
+		[[nodiscard]] std::string GetName() const
 		{
 			return Filepath.filename().string();
 		}

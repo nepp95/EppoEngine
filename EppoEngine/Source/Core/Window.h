@@ -25,23 +25,23 @@ namespace Eppo
 	public:
 		using EventCallbackFn = std::function<void(Event&)>;
 
-		Window(const WindowSpecification& specification);
+		explicit Window(WindowSpecification specification);
 
-		const WindowSpecification& GetSpecification() const { return m_Specification; }
+		[[nodiscard]] const WindowSpecification& GetSpecification() const { return m_Specification; }
 
 		void Init();
-		void Shutdown();
+		void Shutdown() const;
 
-		void ProcessEvents();
+		void ProcessEvents() const;
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
-		void SetWindowTitle(const std::string& name);
+		void SetWindowTitle(const std::string& name) const;
 
-		uint32_t GetWidth() const { return m_Specification.Width; }
-		uint32_t GetHeight() const { return m_Specification.Height; }
+		[[nodiscard]] uint32_t GetWidth() const { return m_Specification.Width; }
+		[[nodiscard]] uint32_t GetHeight() const { return m_Specification.Height; }
 
-		GLFWwindow* GetNativeWindow() const { return m_Window; }
-		Ref<RendererContext> GetRendererContext() const { return m_Context; }
+		[[nodiscard]] GLFWwindow* GetNativeWindow() const { return m_Window; }
+		[[nodiscard]] Ref<RendererContext> GetRendererContext() const { return m_Context; }
 
 	private:
 		WindowSpecification m_Specification;

@@ -8,7 +8,7 @@ int main(int argc, char** argv)
 {
 	Log::Init();
 
-	ApplicationCommandLineArgs args(argc, argv);
+	const ApplicationCommandLineArgs args(argc, argv);
 
 	Application* app = CreateApplication(args);
 	app->Run();

@@ -40,7 +40,7 @@ namespace Eppo
 	{
 		static MonoAssembly* LoadMonoAssembly(const std::filesystem::path& filepath, bool loadPDB = false)
 		{
-			ScopedBuffer buffer = Filesystem::ReadBytes(filepath);
+			ScopedBuffer buffer(Filesystem::ReadBytes(filepath));
 
 			MonoImageOpenStatus status;
 			MonoImage* image = mono_image_open_from_data_full(buffer.As<char>(), buffer.Size(), 1, &status, 0);
@@ -59,7 +59,7 @@ namespace Eppo
 
 				if (Filesystem::Exists(pdbPath))
 				{
-					ScopedBuffer pdbBuffer = Filesystem::ReadBytes(pdbPath);
+					ScopedBuffer pdbBuffer(Filesystem::ReadBytes(pdbPath));
 					mono_debug_open_image_from_memory(image, pdbBuffer.As<const mono_byte>(), pdbBuffer.Size());
 					EPPO_INFO("Loaded PDB: {}", pdbPath);
 				}

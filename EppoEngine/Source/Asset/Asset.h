@@ -9,6 +9,9 @@ namespace Eppo
 
 	struct Asset
 	{
+		Asset() = default;
+		virtual ~Asset() = default;
+
 		AssetHandle Handle;
 
 		static AssetType GetStaticType() { return AssetType::None; }
