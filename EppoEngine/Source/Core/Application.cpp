@@ -2,7 +2,6 @@
 #include "Application.h"
 
 #include "Core/Filesystem.h"
-#include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <GLFW/glfw3.h>
@@ -34,7 +33,6 @@ namespace Eppo
 
 		// Initialize systems
 		Filesystem::Init();
-		Renderer::Init();
 		ScriptEngine::Init();
 
 		// Add GUI layer
@@ -50,7 +48,7 @@ namespace Eppo
 			layer->OnDetach();
 
 		ScriptEngine::Shutdown();
-		Renderer::Shutdown();
+		// TODO: Remove Renderer::Shutdown();
 		m_Window->Shutdown();
 	}
 
@@ -143,7 +141,7 @@ namespace Eppo
 				}
 
 				context->BeginFrame();
-				Renderer::ExecuteRenderCommands();
+				context->GetRenderer()->ExecuteRenderCommands();
 				context->PresentFrame();
 
 				EPPO_PROFILE_FRAME_MARK;

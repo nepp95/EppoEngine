@@ -17,7 +17,7 @@ namespace Eppo
 		void ClearPools();
 		void DestroyPools();
 
-		VkDescriptorSet Allocate(VkDescriptorSetLayout layout, void* pNext = nullptr);
+		void* Allocate(void* layout, void* pNext = nullptr);
 
 	private:
 		VkDescriptorPool GetPool();

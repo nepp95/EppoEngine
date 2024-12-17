@@ -7,16 +7,28 @@
 
 namespace Eppo
 {
-	struct ColorAttachment
+	struct RenderAttachment
 	{
-		ImageFormat Format;
-
+		Ref<Image> RenderImage;
 		bool Clear = true;
-		glm::vec4 ClearValue = glm::vec4(0.0f);
 
-		ColorAttachment(ImageFormat format, bool clear = true, const glm::vec4& clearValue = glm::vec4(0.0f))
-			: Format(format), Clear(clear), ClearValue(clearValue)
-		{}
+		union ClearValue
+		{
+			glm::vec4 Color;
+			float Depth = 1.0f;
+		} ClearValue;
+
+		explicit RenderAttachment(Ref<Image> image, const bool clear = true, const glm::vec4& clearValue = glm::vec4(0.0f))
+			: RenderImage(image), Clear(clear)
+		{
+			ClearValue.Color = clearValue;
+		}
+
+		explicit RenderAttachment(Ref<Image> image, const bool clear = true, const float clearValue = 1.0f)
+			: RenderImage(image), Clear(clear)
+		{
+			ClearValue.Depth = clearValue;
+		}
 	};
 
 	enum class PrimitiveTopology : uint8_t
@@ -51,7 +63,10 @@ namespace Eppo
 		LessOrEqual,
 		Greater,
 		NotEqual,
-		GreaterOrEqual
+		GreaterOrEqual,
+
+		Always,
+		Never
 	};
 
 	struct PipelineSpecification
@@ -72,16 +87,16 @@ namespace Eppo
 		CullFrontFace CullFrontFace = CullFrontFace::Clockwise;
 
 		// Depth Stencil
-		bool DepthTesting = false;
-		bool DepthCubeMapImage = false;
+		bool CreateDepthImage = false;
+		bool TestDepth = false;
+		bool WriteDepth = false;
 		bool ClearDepthOnLoad = true;
 		float ClearDepth = 1.0f;
 		DepthCompareOp DepthCompareOp = DepthCompareOp::Less;
-		Ref<Image> DepthImage = nullptr;
 
-		// Color Attachments
-		std::vector<ColorAttachment> ColorAttachments;
-		std::vector<Ref<Image>> ExistingImages;
+		// Render Attachments
+		std::vector<RenderAttachment> RenderAttachments;
+		bool CubeMap = false;
 	};
 
 	class Pipeline

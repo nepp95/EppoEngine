@@ -38,6 +38,8 @@ namespace Eppo
 		ImageSpecification m_Specification;
 		ImageInfo m_ImageInfo;
 
+		bool m_IsHDR = false;
+
 		void* m_ImageData = nullptr;
 	};
 

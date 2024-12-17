@@ -7,6 +7,7 @@ namespace Eppo
 		None = 0,
 
 		// Color
+		RGB16,
 		RGBA8,
 
 		// Depth

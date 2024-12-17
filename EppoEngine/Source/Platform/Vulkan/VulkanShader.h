@@ -9,7 +9,6 @@ namespace Eppo
 	{
 	public:
 		explicit VulkanShader(const ShaderSpecification& specification);
-		~VulkanShader() override;
 
 		const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageInfos() const { return m_ShaderInfos; }
 		const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts() const { return m_DescriptorSetLayouts; }

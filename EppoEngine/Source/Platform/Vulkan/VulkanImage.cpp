@@ -19,11 +19,23 @@ namespace Eppo
 
 			stbi_set_flip_vertically_on_load(1);
 
-			m_ImageData = stbi_load(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 4);
+			if (stbi_is_hdr(m_Specification.Filepath.string().c_str()))
+			{
+				m_ImageData = stbi_loadf(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 4);
+				m_IsHDR = true;
+			}
+			else
+				m_ImageData = stbi_load(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 4);
+
+			auto format = ImageFormat::None;
+			if (m_IsHDR)
+				format = ImageFormat::RGB16;
+			else
+				format = ImageFormat::RGBA8;
 
 			m_Specification.Width = width;
 			m_Specification.Height = height;
-			m_Specification.Format = ImageFormat::RGBA8;
+			m_Specification.Format = format;
 			m_Specification.Usage = ImageUsage::Texture;
 		}
 
@@ -131,7 +143,11 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanImage::SetData");
 
-		uint64_t size = m_Specification.Width * m_Specification.Height * channels;
+		uint64_t size = static_cast<uint64_t>(m_Specification.Width) * m_Specification.Height * channels;
+
+		// HDR uses 32 bit instead of 8 bit so we need double the size
+		if (m_IsHDR)
+			size *= 4;
 
 		// Create staging buffer
 		VkBufferCreateInfo stagingBufferInfo{};

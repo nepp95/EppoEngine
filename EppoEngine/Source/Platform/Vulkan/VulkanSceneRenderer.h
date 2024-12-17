@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Buffer.h"
+#include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/Mesh/Mesh.h"
 #include "Renderer/DrawCommand.h"
 #include "Renderer/DebugRenderer.h"
@@ -29,12 +30,15 @@ namespace Eppo
 		Ref<Image> GetFinalImage() override;
 
 	private:
-		void BeginSceneInternal();
-
 		void Flush();
-		void PrepareRender() const;
+		void PrepareBuffers();
+		void PrepareImages() const;
+		void UpdateDescriptors();
 
+		void GuiPass();
 		void PreDepthPass();
+		void EnvPass();
+		void SkyboxPass();
 		void GeometryPass();
 		void DebugLinePass();
 		void CompositePass();
@@ -47,11 +51,29 @@ namespace Eppo
 		Ref<DebugRenderer> m_DebugRenderer;
 
 		Ref<Pipeline> m_PreDepthPipeline;
+		Ref<Pipeline> m_EnvPipeline;
+		Ref<Pipeline> m_SkyboxPipeline;
 		Ref<Pipeline> m_GeometryPipeline;
 		Ref<Pipeline> m_DebugLinePipeline;
 		Ref<Pipeline> m_CompositePipeline;
 
-		static const uint32_t s_MaxLights = 8;
+		static constexpr uint32_t s_MaxLights = 8;
+
+		// Frame in flight --> Set
+		std::unordered_map<uint32_t, std::array<VkDescriptorSet, 4>> m_DescriptorSets;
+
+		// Set 0, Binding 0
+		struct EnvironmentData
+		{
+			glm::mat4 Projection;
+			std::array<glm::mat4, 6> View;
+		} m_EnvironmentBuffer;
+		Ref<UniformBuffer> m_EnvironmentUB;
+
+		// Set 0, Binding 1
+		Ref<Image> m_EnvironmentMap;
+		// Set 0, Binding 2
+		Ref<Image> m_EnvironmentCubeMap;
 
 		// Set 1, Binding 0
 		struct CameraData
@@ -89,10 +111,11 @@ namespace Eppo
 
 		struct TimestampQueries
 		{
-			uint32_t PreDepthQuery = UINT32_MAX;
-			uint32_t GeometryQuery = UINT32_MAX;
-			uint32_t DebugLineQuery = UINT32_MAX;
 			uint32_t CompositeQuery = UINT32_MAX;
+			uint32_t DebugLineQuery = UINT32_MAX;
+			uint32_t GeometryQuery = UINT32_MAX;
+			uint32_t PreDepthQuery = UINT32_MAX;
+			uint32_t SkyboxQuery = UINT32_MAX;
 		} m_TimestampQueries;
 	};
 }

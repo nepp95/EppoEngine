@@ -74,6 +74,9 @@ namespace Eppo
 		// Swapchain
 		m_Swapchain = CreateRef<VulkanSwapchain>(m_LogicalDevice);
 
+		// Renderer
+		m_Renderer = CreateRef<VulkanRenderer>();
+
 		// Create tracy profiler context
 		VkCommandBuffer cmd = m_LogicalDevice->GetCommandBuffer(false);
 
@@ -96,6 +99,7 @@ namespace Eppo
 		TracyVkDestroy(m_TracyContext)
 		#endif
 
+		m_Renderer->Shutdown();
 		m_GarbageCollector.Shutdown();
 
 		if (VulkanConfig::EnableValidation)

@@ -1,7 +1,7 @@
 #stage vert
 #version 450
 
-#include "base.glsl"
+#include "Includes/base.glsl"
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
@@ -32,7 +32,7 @@ void main()
 #stage frag
 #version 450
 
-#include "base.glsl"
+#include "Includes/base.glsl"
 #include "Includes/constants.glsl"
 #include "Includes/lighting.glsl"
 

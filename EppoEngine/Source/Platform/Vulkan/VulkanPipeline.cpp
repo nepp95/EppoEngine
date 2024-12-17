@@ -69,6 +69,9 @@ namespace Eppo
 				case DepthCompareOp::Greater:		return VK_COMPARE_OP_GREATER;
 				case DepthCompareOp::NotEqual:		return VK_COMPARE_OP_NOT_EQUAL;
 				case DepthCompareOp::GreaterOrEqual:return VK_COMPARE_OP_GREATER_OR_EQUAL;
+
+				case DepthCompareOp::Always:		return VK_COMPARE_OP_ALWAYS;
+				case DepthCompareOp::Never:			return VK_COMPARE_OP_NEVER;
 			}
 
 			EPPO_ASSERT(false)
@@ -140,8 +143,8 @@ namespace Eppo
 
 		VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
 		depthStencilStateCreateInfo.stencilTestEnable = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencilStateCreateInfo.depthTestEnable = m_Specification.DepthTesting;
-		depthStencilStateCreateInfo.depthWriteEnable = m_Specification.DepthTesting;
+		depthStencilStateCreateInfo.depthTestEnable = m_Specification.TestDepth;
+		depthStencilStateCreateInfo.depthWriteEnable = m_Specification.WriteDepth;
 		depthStencilStateCreateInfo.depthCompareOp = Utils::DepthCompareOpToVkCompareOp(m_Specification.DepthCompareOp);
 		depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
 		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
@@ -149,8 +152,11 @@ namespace Eppo
 		depthStencilStateCreateInfo.stencilTestEnable = VK_FALSE;
 
 		std::vector<VkPipelineColorBlendAttachmentState> attachmentStates;
-		for (size_t i = 0; i < m_Specification.ColorAttachments.size(); i++)
+		for (const auto& attachment : m_Specification.RenderAttachments)
 		{
+			if (attachment.RenderImage->GetSpecification().Format == ImageFormat::Depth)
+				continue;
+
 			VkPipelineColorBlendAttachmentState& colorBlendAttachmentState = attachmentStates.emplace_back();
 			colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 			colorBlendAttachmentState.blendEnable = VK_FALSE;
@@ -183,15 +189,9 @@ namespace Eppo
 		dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
+		// Allocate descriptor sets
 		Ref<VulkanShader> shader = std::static_pointer_cast<VulkanShader>(m_Specification.Shader);
 		const auto& descriptorSetLayouts = shader->GetDescriptorSetLayouts();
-
-		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-		{
-			m_DescriptorSets[i].resize(4);
-			for (uint32_t j = 0; j < 4; j++)
-				m_DescriptorSets[i][j] = Renderer::AllocateDescriptor(descriptorSetLayouts[j]);
-		}
 
 		// Create pipeline layout
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
@@ -207,19 +207,23 @@ namespace Eppo
 		const auto& shaderStageInfos = shader->GetPipelineShaderStageInfos();
 	
 		std::vector<VkFormat> formats;
-		for (const auto& colorAttachment : m_Specification.ColorAttachments)
+		for (const auto& colorAttachment : m_Specification.RenderAttachments)
 		{
-			VkFormat& format = formats.emplace_back();
-			format = Utils::ImageFormatToVkFormat(colorAttachment.Format);
+			if (const auto format = colorAttachment.RenderImage->GetSpecification().Format;
+				format != ImageFormat::Depth)
+			{
+				VkFormat& vkFormat = formats.emplace_back();
+				vkFormat = Utils::ImageFormatToVkFormat(format);
+			}
 		}
 
 		VkPipelineRenderingCreateInfo renderingInfo{};
 		renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		renderingInfo.colorAttachmentCount = static_cast<uint32_t>(formats.size());
 		renderingInfo.pColorAttachmentFormats = formats.data();
-		renderingInfo.depthAttachmentFormat = m_Specification.DepthTesting ? Utils::ImageFormatToVkFormat(ImageFormat::Depth) : VK_FORMAT_UNDEFINED;
+		renderingInfo.depthAttachmentFormat = m_Specification.TestDepth ? Utils::ImageFormatToVkFormat(ImageFormat::Depth) : VK_FORMAT_UNDEFINED;
 
-		if (m_Specification.DepthCubeMapImage)
+		if (m_Specification.CubeMap)
 			renderingInfo.viewMask = 0b111111;
 
 		// Create pipeline
@@ -244,26 +248,7 @@ namespace Eppo
 
 		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!");
 
-		// Create the images from the attachment info
-		for (auto& existingImage : m_Specification.ExistingImages)
-			m_Images.emplace_back(existingImage);
-
-		if (!m_Specification.SwapchainTarget)
-		{
-			for (const auto& attachment : m_Specification.ColorAttachments)
-			{
-				ImageSpecification imageSpec;
-				imageSpec.Format = attachment.Format;
-				imageSpec.Width = m_Specification.Width;
-				imageSpec.Height = m_Specification.Height;
-				imageSpec.Usage = ImageUsage::Attachment;
-
-				Ref<Image> image = Image::Create(imageSpec);
-				m_Images.emplace_back(image);
-			}
-		}
-
-		if (m_Specification.DepthTesting)
+		if (m_Specification.CreateDepthImage)
 		{
 			// We simply want a depth attachment to go with our color attachments
 			ImageSpecification imageSpec;
@@ -271,12 +256,13 @@ namespace Eppo
 			imageSpec.Width = m_Specification.Width;
 			imageSpec.Height = m_Specification.Height;
 			imageSpec.Usage = ImageUsage::Attachment;
-			imageSpec.CubeMap = m_Specification.DepthCubeMapImage;
 
-			m_Specification.DepthImage = Image::Create(imageSpec);
+			Ref<Image> image = Image::Create(imageSpec);
+
+			m_Specification.RenderAttachments.emplace_back(image, true, 1.0f);
 
 			VkCommandBuffer cmd = context->GetLogicalDevice()->GetCommandBuffer(true);
-			VulkanImage::TransitionImage(cmd, std::static_pointer_cast<VulkanImage>(m_Specification.DepthImage)->GetImageInfo().Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+			VulkanImage::TransitionImage(cmd, std::static_pointer_cast<VulkanImage>(image)->GetImageInfo().Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 			context->GetLogicalDevice()->FlushCommandBuffer(cmd);
 		}
 	}

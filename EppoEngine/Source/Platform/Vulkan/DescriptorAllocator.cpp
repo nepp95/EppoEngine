@@ -50,7 +50,7 @@ namespace Eppo
 		m_FullPools.clear();
 	}
 
-	VkDescriptorSet DescriptorAllocator::Allocate(VkDescriptorSetLayout layout, void* pNext)
+	void* DescriptorAllocator::Allocate(void* layout, void* pNext)
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorAllocator::Allocate");
 
@@ -58,12 +58,13 @@ namespace Eppo
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorPool pool = GetPool();
+		const auto vkLayout = static_cast<VkDescriptorSetLayout>(layout);
 
 		VkDescriptorSetAllocateInfo allocateInfo{};
 		allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocateInfo.descriptorPool = pool;
 		allocateInfo.descriptorSetCount = 1;
-		allocateInfo.pSetLayouts = &layout;
+		allocateInfo.pSetLayouts = &vkLayout;
 		allocateInfo.pNext = pNext;
 
 		VkDescriptorSet descriptorSet;

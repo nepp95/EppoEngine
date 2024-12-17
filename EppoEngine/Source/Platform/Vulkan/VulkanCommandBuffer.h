@@ -42,7 +42,7 @@ namespace Eppo
 		std::vector<std::vector<uint64_t>> m_Timestamps;
 		std::vector<std::vector<float>> m_TimestampDeltas;
 		uint32_t m_QueryIndex = 2;
-		uint32_t m_QueryCount = 10;
+		uint32_t m_QueryCount = 12;
 
 		std::vector<VkQueryPool> m_PipelineQueryPools;
 		std::vector<PipelineStatistics> m_PipelineStatistics;

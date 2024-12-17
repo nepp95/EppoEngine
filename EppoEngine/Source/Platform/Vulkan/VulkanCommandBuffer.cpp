@@ -107,7 +107,8 @@ namespace Eppo
 	{
 		m_QueryIndex = 2;
 
-		Renderer::SubmitCommand([this]()
+		const auto renderer = VulkanContext::Get()->GetRenderer();
+		renderer->SubmitCommand([this]()
 		{
 			const auto context = VulkanContext::Get();
 			const uint32_t frameIndex = context->GetCurrentFrameIndex();
@@ -129,7 +130,8 @@ namespace Eppo
 
 	void VulkanCommandBuffer::RT_End()
 	{
-		Renderer::SubmitCommand([this]()
+		const auto renderer = VulkanContext::Get()->GetRenderer();
+		renderer->SubmitCommand([this]()
 		{
 			const auto context = VulkanContext::Get();
 			const uint32_t frameIndex = context->GetCurrentFrameIndex();
@@ -168,7 +170,8 @@ namespace Eppo
 			return;
 		}
 
-		Renderer::SubmitCommand([this]()
+		const auto renderer = VulkanContext::Get()->GetRenderer();
+		renderer->SubmitCommand([this]()
 		{
 			const auto context = VulkanContext::Get();
 			const auto logicalDevice = context->GetLogicalDevice();
@@ -194,9 +197,10 @@ namespace Eppo
 		uint32_t queryIndex = m_QueryIndex;
 		m_QueryIndex += 2;
 
-		Renderer::SubmitCommand([this, queryIndex]()
+		const auto renderer = VulkanContext::Get()->GetRenderer();
+		renderer->SubmitCommand([this, queryIndex]()
 		{
-			uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+			uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
 
 			vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex);
 		});
@@ -206,9 +210,10 @@ namespace Eppo
 
 	void VulkanCommandBuffer::RT_EndTimestampQuery(uint32_t queryIndex)
 	{
-		Renderer::SubmitCommand([this, queryIndex]()
+		const auto renderer = VulkanContext::Get()->GetRenderer();
+		renderer->SubmitCommand([this, queryIndex]()
 		{
-			uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+			uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
 
 			vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex + 1);
 		});
@@ -228,7 +233,7 @@ namespace Eppo
 
 	VkCommandBuffer VulkanCommandBuffer::GetCurrentCommandBuffer()
 	{
-		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+		uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
 		return m_CommandBuffers[imageIndex];
 	}
 }
