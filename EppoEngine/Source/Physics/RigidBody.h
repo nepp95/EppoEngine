@@ -9,11 +9,11 @@ namespace Eppo
 	class RigidBody
 	{
 	public:
-		RigidBody(btRigidBody* body);
+		explicit RigidBody(btRigidBody* body);
 		RigidBody() = default;
 
-		void ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& worldPosition);
-		void ApplyLinearImpulse(const glm::vec3& impulse);
+		void ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& worldPosition) const;
+		void ApplyLinearImpulse(const glm::vec3& impulse) const;
 
 		btRigidBody* GetBody() const { return m_Body; }
 		void SetBody(btRigidBody* body) { m_Body = body; }

@@ -24,7 +24,7 @@ namespace Eppo
 		}
 	}
 
-	void GarbageCollector::SubmitFreeFn(std::function<void()> fn, bool freeOnShutdown)
+	void GarbageCollector::SubmitFreeFn(std::function<void()> fn, const bool freeOnShutdown)
 	{
 		if (freeOnShutdown)
 			m_FreeFnsOnShutdown.emplace_back(fn);
