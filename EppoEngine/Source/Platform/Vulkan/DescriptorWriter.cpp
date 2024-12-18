@@ -5,7 +5,7 @@
 
 namespace Eppo
 {
-	void DescriptorWriter::WriteImage(uint32_t binding, VkImageView imageView, VkSampler sampler, VkImageLayout layout, VkDescriptorType type)
+	void DescriptorWriter::WriteImage(const uint32_t binding, const VkImageView imageView, const VkSampler sampler, const VkImageLayout layout, const VkDescriptorType type)
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorWriter::WriteImage");
 
@@ -23,7 +23,7 @@ namespace Eppo
 		writeDescriptorSet.pImageInfo = &info;
 	}
 
-	void DescriptorWriter::WriteImages(uint32_t binding, const std::vector<VkDescriptorImageInfo>& imageInfos, VkDescriptorType type)
+	void DescriptorWriter::WriteImages(const uint32_t binding, const std::vector<VkDescriptorImageInfo>& imageInfos, const VkDescriptorType type)
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorWriter::WriteImages");
 
@@ -39,7 +39,7 @@ namespace Eppo
 		writeDescriptorSet.pImageInfo = imageInfos.data();
 	}
 
-	void DescriptorWriter::WriteBuffer(uint32_t binding, VkBuffer buffer, uint32_t size, uint32_t offset, VkDescriptorType type)
+	void DescriptorWriter::WriteBuffer(const uint32_t binding, const VkBuffer buffer, const uint32_t size, const uint32_t offset, const VkDescriptorType type)
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorWriter::WriteBuffer");
 
@@ -66,12 +66,12 @@ namespace Eppo
 		m_ImageInfos.clear();
 	}
 
-	void DescriptorWriter::UpdateSet(VkDescriptorSet descriptorSet)
+	void DescriptorWriter::UpdateSet(const VkDescriptorSet descriptorSet)
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorWriter::UpdateSet");
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		const auto context = VulkanContext::Get();
+		const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (VkWriteDescriptorSet& write : m_WriteDescriptors)
 			write.dstSet = descriptorSet;

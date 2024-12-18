@@ -9,7 +9,7 @@ namespace Eppo
 		std::vector<VkDescriptorSetLayoutBinding> Bindings;
 
 		bool operator==(const DescriptorLayoutInfo& other) const;
-		size_t hash() const;
+		[[nodiscard]] size_t hash() const;
 	};
 
 	struct DescriptorLayoutHash
@@ -26,7 +26,7 @@ namespace Eppo
 		void AddBinding(uint32_t binding, VkDescriptorType type, uint32_t count);
 		void Clear();
 
-		VkDescriptorSetLayout Build(VkShaderStageFlags shaderStageFlags, VkDescriptorSetLayoutCreateFlags createFlags = 0, void* pNext = nullptr);
+		VkDescriptorSetLayout Build(VkShaderStageFlags shaderStageFlags, VkDescriptorSetLayoutCreateFlags createFlags = 0, const void* pNext = nullptr);
 
 	private:
 		DescriptorLayoutInfo m_CurrentLayoutInfo;
