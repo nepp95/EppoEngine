@@ -40,7 +40,7 @@ jobs:
 
       - name: Setup gcovr
         run: |
-          pip install gcovr
+          pip install gcovr==5.0
 
       - name: Cache VulkanSDK
         id: cache-vulkansdk
