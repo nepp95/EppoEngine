@@ -65,7 +65,7 @@ jobs:
 
       - name: Run tests
         run: |
-          \.Bin\${{ matrix.config }}-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{ env.RUNNER_TEMP }}\testoutput.junit.xml"
+          .\Bin\${{ matrix.config }}-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{ env.RUNNER_TEMP }}\testoutput.junit.xml"
 
       - name: Run gcovr
         run: |
