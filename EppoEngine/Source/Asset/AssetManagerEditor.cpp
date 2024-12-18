@@ -33,7 +33,7 @@ namespace Eppo
 
 		static std::filesystem::path CopyAssetToAssetsDirectory(const std::filesystem::path& filepath)
 		{
-			AssetType type = GetAssetTypeFromFileExtension(filepath.extension());
+			const AssetType type = GetAssetTypeFromFileExtension(filepath.extension());
 			std::filesystem::path destPath;
 
 			switch (type)
@@ -69,21 +69,21 @@ namespace Eppo
 		}
 	}
 
-	static const AssetMetadata s_NullMetadata = AssetMetadata();
+	static const auto s_NullMetadata = AssetMetadata();
 
-	bool AssetManagerEditor::CreateAsset(Ref<Asset> asset, const std::filesystem::path& filepath)
+	bool AssetManagerEditor::CreateAsset(const Ref<Asset> asset, const std::filesystem::path& filepath)
 	{
 		EPPO_PROFILE_FUNCTION("AssetManagerEditor::CreateAsset");
 
-		AssetHandle handle = asset->Handle;
+		const AssetHandle handle = asset->Handle;
 		if (IsAssetHandleValid(handle))
 			return false;
 
 		if (IsAssetLoaded(handle))
 			return false;
 
-		AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
-		EPPO_ASSERT(type != AssetType::None);
+		const AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
+		EPPO_ASSERT(type != AssetType::None)
 
 		AssetMetadata metadata;
 		metadata.Filepath = Project::GetAssetRelativeFilepath(filepath);
@@ -98,7 +98,7 @@ namespace Eppo
 		return true;
 	}
 
-	Ref<Asset> AssetManagerEditor::GetAsset(AssetHandle handle)
+	Ref<Asset> AssetManagerEditor::GetAsset(const AssetHandle handle)
 	{
 		EPPO_PROFILE_FUNCTION("AssetManagerEditor::GetAsset");
 
@@ -125,17 +125,17 @@ namespace Eppo
 		return asset;
 	}
 
-	bool AssetManagerEditor::IsAssetHandleValid(AssetHandle handle) const
+	bool AssetManagerEditor::IsAssetHandleValid(const AssetHandle handle) const
 	{
 		return handle != 0 && m_AssetData.find(handle) != m_AssetData.end();
 	}
 
-	bool AssetManagerEditor::IsAssetLoaded(AssetHandle handle) const
+	bool AssetManagerEditor::IsAssetLoaded(const AssetHandle handle) const
 	{
 		return m_Assets.find(handle) != m_Assets.end();
 	}
 
-	AssetType AssetManagerEditor::GetAssetType(AssetHandle handle) const
+	AssetType AssetManagerEditor::GetAssetType(const AssetHandle handle) const
 	{
 		if (!IsAssetHandleValid(handle))
 			return AssetType::None;
@@ -151,14 +151,12 @@ namespace Eppo
 		std::filesystem::path baseCanonical = std::filesystem::canonical(Project::GetAssetsDirectory());
 		std::filesystem::path targetCanonical = std::filesystem::canonical(Project::GetAssetFilepath(filepath));
 
-		AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
-		EPPO_ASSERT(type != AssetType::None);
+		const AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
+		EPPO_ASSERT(type != AssetType::None)
 
 		std::filesystem::path newPath;
-		if (!(std::mismatch(baseCanonical.begin(), baseCanonical.end(), targetCanonical.begin()).first == baseCanonical.end()))
+		if (std::mismatch(baseCanonical.begin(), baseCanonical.end(), targetCanonical.begin()).first != baseCanonical.end())
 			newPath = Utils::CopyAssetToAssetsDirectory(targetCanonical);
-
-		AssetHandle handle;
 
 		AssetMetadata metadata;
 		metadata.Filepath = Project::GetAssetRelativeFilepath(newPath.empty() ? filepath : newPath);
@@ -167,6 +165,7 @@ namespace Eppo
 		Ref<Asset> asset = AssetImporter::ImportAsset(metadata.Handle, metadata);
 		if (asset)
 		{
+			const AssetHandle handle;
 			asset->Handle = handle;
 			m_Assets[handle] = asset;
 			m_AssetData[handle] = metadata;
@@ -236,7 +235,7 @@ namespace Eppo
 		{
 			data = YAML::LoadFile(assetRegistryFile.string());
 		}
-		catch (YAML::ParserException e)
+		catch (YAML::ParserException& e)
 		{
 			EPPO_ERROR("Failed to load asset registry file '{}'!", assetRegistryFile);
 			EPPO_ERROR("YAML Error: {}", e.what());

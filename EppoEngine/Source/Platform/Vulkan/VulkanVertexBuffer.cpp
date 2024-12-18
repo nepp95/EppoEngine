@@ -107,5 +107,6 @@ namespace Eppo
 
 		// Clean up
 		VulkanAllocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+		buffer.Release();
 	}
 }

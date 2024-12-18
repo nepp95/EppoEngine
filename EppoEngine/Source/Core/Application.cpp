@@ -2,7 +2,6 @@
 #include "Application.h"
 
 #include "Core/Filesystem.h"
-#include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <GLFW/glfw3.h>
@@ -11,11 +10,11 @@ namespace Eppo
 {
 	Application* Application::s_Instance = nullptr;
 
-	Application::Application(const ApplicationSpecification& specification)
-		: m_Specification(specification)
+	Application::Application(ApplicationSpecification specification)
+		: m_Specification(std::move(specification))
 	{
 		// Set instance if not set. We can only have one instance!
-		EPPO_ASSERT(!s_Instance);
+		EPPO_ASSERT(!s_Instance)
 		s_Instance = this;
 
 		// Set working directory
@@ -34,7 +33,6 @@ namespace Eppo
 
 		// Initialize systems
 		Filesystem::Init();
-		Renderer::Init();
 		ScriptEngine::Init();
 
 		// Add GUI layer
@@ -50,7 +48,7 @@ namespace Eppo
 			layer->OnDetach();
 
 		ScriptEngine::Shutdown();
-		Renderer::Shutdown();
+		// TODO: Remove Renderer::Shutdown();
 		m_Window->Shutdown();
 	}
 
@@ -94,7 +92,7 @@ namespace Eppo
 			layer->RenderGui();
 	}
 
-	void Application::PushLayer(Layer* layer, bool overlay)
+	void Application::PushLayer(Layer* layer, const bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PushLayer");
 
@@ -104,7 +102,7 @@ namespace Eppo
 			m_LayerStack.PushLayer(layer);
 	}
 
-	void Application::PopLayer(Layer* layer, bool overlay)
+	void Application::PopLayer(Layer* layer, const bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PopLayer");
 
@@ -143,7 +141,7 @@ namespace Eppo
 				}
 
 				context->BeginFrame();
-				Renderer::ExecuteRenderCommands();
+				context->GetRenderer()->ExecuteRenderCommands();
 				context->PresentFrame();
 
 				EPPO_PROFILE_FRAME_MARK;

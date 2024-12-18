@@ -27,8 +27,8 @@ namespace Eppo
 
 		uint32_t RT_BeginTimestampQuery();
 		void RT_EndTimestampQuery(uint32_t queryIndex);
-		float GetTimestamp(uint32_t frameIndex, uint32_t queryIndex = 0) const;
-		const PipelineStatistics& GetPipelineStatistics(uint32_t frameIndex) const { return m_PipelineStatistics[frameIndex]; }
+		[[nodiscard]] float GetTimestamp(uint32_t frameIndex, uint32_t queryIndex = 0) const;
+		[[nodiscard]] const PipelineStatistics& GetPipelineStatistics(const uint32_t frameIndex) const { return m_PipelineStatistics[frameIndex]; }
 
 		void ResetCommandBuffer(uint32_t frameIndex);
 		VkCommandBuffer GetCurrentCommandBuffer();
@@ -42,7 +42,7 @@ namespace Eppo
 		std::vector<std::vector<uint64_t>> m_Timestamps;
 		std::vector<std::vector<float>> m_TimestampDeltas;
 		uint32_t m_QueryIndex = 2;
-		uint32_t m_QueryCount = 10;
+		uint32_t m_QueryCount = 12;
 
 		std::vector<VkQueryPool> m_PipelineQueryPools;
 		std::vector<PipelineStatistics> m_PipelineStatistics;

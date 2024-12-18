@@ -19,11 +19,23 @@ namespace Eppo
 
 			stbi_set_flip_vertically_on_load(1);
 
-			m_ImageData = stbi_load(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 4);
+			if (stbi_is_hdr(m_Specification.Filepath.string().c_str()))
+			{
+				m_ImageData = stbi_loadf(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 4);
+				m_IsHDR = true;
+			}
+			else
+				m_ImageData = stbi_load(m_Specification.Filepath.string().c_str(), &width, &height, &channels, 4);
+
+			auto format = ImageFormat::None;
+			if (m_IsHDR)
+				format = ImageFormat::RGB16;
+			else
+				format = ImageFormat::RGBA8;
 
 			m_Specification.Width = width;
 			m_Specification.Height = height;
-			m_Specification.Format = ImageFormat::RGBA8;
+			m_Specification.Format = format;
 			m_Specification.Usage = ImageUsage::Texture;
 		}
 
@@ -131,7 +143,11 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanImage::SetData");
 
-		uint64_t size = m_Specification.Width * m_Specification.Height * channels;
+		uint64_t size = static_cast<uint64_t>(m_Specification.Width) * m_Specification.Height * channels;
+
+		// HDR uses 32 bit instead of 8 bit so we need double the size
+		if (m_IsHDR)
+			size *= 4;
 
 		// Create staging buffer
 		VkBufferCreateInfo stagingBufferInfo{};
@@ -141,13 +157,13 @@ namespace Eppo
 		stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer stagingBuffer;
-		VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		const VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
 		memcpy(memData, data, size);
 		VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
-		VkCommandBuffer commandBuffer = VulkanContext::Get()->GetLogicalDevice()->GetCommandBuffer(true);
+		const VkCommandBuffer commandBuffer = VulkanContext::Get()->GetLogicalDevice()->GetCommandBuffer(true);
 
 		// Transition to layout optimal for transferring
 		TransitionImage(commandBuffer, m_ImageInfo.Image, m_ImageInfo.ImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -176,33 +192,35 @@ namespace Eppo
 
 	void VulkanImage::Release()
 	{
-		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		const VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
 		if (m_ImageInfo.Sampler)
 		{
-			EPPO_MEM_WARN("Releasing sampler {}", (void*)m_ImageInfo.Sampler);
+			EPPO_MEM_WARN("Releasing sampler {}", static_cast<void*>(m_ImageInfo.Sampler));
 			vkDestroySampler(device, m_ImageInfo.Sampler, nullptr);
 			m_ImageInfo.Sampler = nullptr;
 		}
 
 		if (m_ImageInfo.ImageView)
 		{
-			EPPO_MEM_WARN("Releasing image view {}", (void*)m_ImageInfo.ImageView);
+			EPPO_MEM_WARN("Releasing image view {}", static_cast<void*>(m_ImageInfo.ImageView));
 			vkDestroyImageView(device, m_ImageInfo.ImageView, nullptr);
 			m_ImageInfo.ImageView = nullptr;
 		}
 
 		if (m_ImageInfo.Image)
 		{
-			EPPO_MEM_WARN("Releasing image {}", (void*)m_ImageInfo.Image);
+			EPPO_MEM_WARN("Releasing image {}", static_cast<void*>(m_ImageInfo.Image));
 			VulkanAllocator::DestroyImage(m_ImageInfo.Image, m_ImageInfo.Allocation);
 			m_ImageInfo.Image = nullptr;
 			m_ImageInfo.Allocation = nullptr;
 		}
 	}
 
-	void VulkanImage::TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout)
+	void VulkanImage::TransitionImage(const VkCommandBuffer commandBuffer, const VkImage image, const VkImageLayout srcLayout, const VkImageLayout dstLayout)
 	{
+		EPPO_PROFILE_FUNCTION("VulkanImage::TransitionImage");
+
 		VkImageMemoryBarrier2 imageBarrier{};
 		imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
@@ -259,7 +277,7 @@ namespace Eppo
 			}
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return VK_IMAGE_ASPECT_NONE;
 	}
 }

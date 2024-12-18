@@ -10,8 +10,10 @@ namespace Eppo
 		ShaderSpecification spec;
 		spec.Filepath = path;
 
-		Ref<Shader> shader = Shader::Create(spec);
+		const Ref<Shader> shader = Shader::Create(spec);
 		const std::string& name = shader->GetName();
+
+		std::scoped_lock lock(m_Mutex);
 
 		m_Shaders[name] = shader;
 	}

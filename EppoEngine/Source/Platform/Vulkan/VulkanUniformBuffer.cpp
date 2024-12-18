@@ -1,8 +1,7 @@
 #include "pch.h"
 #include "VulkanUniformBuffer.h"
 
-#include "Platform/Vulkan/Vulkan.h"
-#include "Renderer/Renderer.h"
+#include "Platform/Vulkan/VulkanContext.h"
 
 namespace Eppo
 {
@@ -46,7 +45,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("VulkanUniformBuffer::SetData");
 		EPPO_ASSERT(size == m_Size);
 
-		uint32_t imageIndex = Renderer::GetCurrentFrameIndex();
+		uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
 		memcpy(m_MappedMemory[imageIndex], data, size);
 	}
 }

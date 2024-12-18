@@ -2,7 +2,6 @@
 
 #include "Core/LayerStack.h"
 #include "Core/Window.h"
-#include "Debug/Profiler.h"
 #include "Event/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
 #include "Renderer/CommandQueue.h"
@@ -16,16 +15,16 @@ namespace Eppo
 	struct ApplicationCommandLineArgs
 	{
 		ApplicationCommandLineArgs() = default;
-		ApplicationCommandLineArgs(int argc, char** argv)
+		ApplicationCommandLineArgs(const int argc, char** argv)
 			: Count(argc), Args(argv)
 		{}
 
 		int Count = 0;
 		char** Args = nullptr;
 
-		const char* operator[](int index) const
+		const char* operator[](const int index) const
 		{
-			EPPO_ASSERT((index < Count));
+			EPPO_ASSERT(index < Count)
 			if (index >= Count)
 				return "";
 			return Args[index];
@@ -46,7 +45,7 @@ namespace Eppo
 	class Application
 	{
 	public:
-		Application(const ApplicationSpecification& specification);
+		explicit Application(ApplicationSpecification specification);
 		~Application();
 
 		void Close();
@@ -60,8 +59,8 @@ namespace Eppo
 		void PopLayer(Layer* layer, bool overlay = false);
 
 		static Application& Get() { return *s_Instance; }
-		Window& GetWindow() { return *m_Window; }
-		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
+		[[nodiscard]] Window& GetWindow() const { return *m_Window; }
+		[[nodiscard]] ImGuiLayer* GetImGuiLayer() const { return m_ImGuiLayer; }
 
 	private:
 		void Run();

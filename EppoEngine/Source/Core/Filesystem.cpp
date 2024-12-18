@@ -90,14 +90,14 @@ namespace Eppo
 		if (!stream)
 			return {};
 
-		std::streampos end = stream.tellg();
+		const std::streampos end = stream.tellg();
 		stream.seekg(0, std::ios::beg);
-		size_t fileSize = end - stream.tellg();
+		const size_t fileSize = end - stream.tellg();
 
 		if (fileSize == 0)
 			return {};
 
-		Buffer buffer((uint32_t)fileSize);
+		Buffer buffer(static_cast<uint32_t>(fileSize));
 		stream.read(buffer.As<char>(), fileSize);
 		stream.close();
 
@@ -115,19 +115,18 @@ namespace Eppo
 			return text;
 
 		stream.seekg(0, std::ios::end);
-		size_t size = stream.tellg();
 
-		if (size != -1)
+		if (const size_t size = stream.tellg(); size != -1)
 		{
 			text.resize(size);
 			stream.seekg(0, std::ios::beg);
-			stream.read(&text[0], text.size());
+			stream.read(text.data(), text.size());
 		}
 
 		return text;
 	}
 
-	void Filesystem::WriteBytes(const std::filesystem::path& filepath, Buffer buffer, bool overwrite)
+	void Filesystem::WriteBytes(const std::filesystem::path& filepath, Buffer buffer, const bool overwrite)
 	{
 		EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
 
@@ -135,12 +134,12 @@ namespace Eppo
 			return;
 
 		std::ofstream stream(filepath, std::ios::binary);
-		EPPO_ASSERT(stream);
+		EPPO_ASSERT(stream)
 
 		stream.write(buffer.As<char>(), buffer.Size);
 	}
 
-	void Filesystem::WriteBytes(const std::filesystem::path& filepath, const std::vector<uint32_t>& buffer, bool overwrite)
+	void Filesystem::WriteBytes(const std::filesystem::path& filepath, const std::vector<uint32_t>& buffer, const bool overwrite)
 	{
 		EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
 
@@ -148,7 +147,7 @@ namespace Eppo
 			return;
 
 		std::ofstream stream(filepath, std::ios::binary);
-		EPPO_ASSERT(stream);
+		EPPO_ASSERT(stream)
 
 		stream.write((char*)buffer.data(), buffer.size() * sizeof(uint32_t));
 	}
@@ -160,8 +159,13 @@ namespace Eppo
 		if (Exists(filepath) && !overwrite)
 			return;
 
-		std::ofstream stream(filepath);
-		EPPO_ASSERT(stream);
+		std::ofstream stream;
+		if (overwrite)
+			stream.open(filepath, std::ios::out | std::ios::trunc);
+		else
+			stream.open(filepath, std::ios::out);
+
+		EPPO_ASSERT(stream)
 
 		stream.write(text.c_str(), text.size());
 	}

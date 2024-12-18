@@ -7,51 +7,66 @@
 
 namespace Eppo
 {
-	struct ColorAttachment
+	struct RenderAttachment
 	{
-		ImageFormat Format;
-
+		Ref<Image> RenderImage;
 		bool Clear = true;
-		glm::vec4 ClearValue = glm::vec4(0.0f);
 
-		ColorAttachment(ImageFormat format, bool clear = true, const glm::vec4& clearValue = glm::vec4(0.0f))
-			: Format(format), Clear(clear), ClearValue(clearValue)
-		{}
+		union ClearValue
+		{
+			glm::vec4 Color;
+			float Depth = 1.0f;
+		} ClearValue;
+
+		explicit RenderAttachment(Ref<Image> image, const bool clear = true, const glm::vec4& clearValue = glm::vec4(0.0f))
+			: RenderImage(image), Clear(clear)
+		{
+			ClearValue.Color = clearValue;
+		}
+
+		explicit RenderAttachment(Ref<Image> image, const bool clear = true, const float clearValue = 1.0f)
+			: RenderImage(image), Clear(clear)
+		{
+			ClearValue.Depth = clearValue;
+		}
 	};
 
-	enum class PrimitiveTopology
+	enum class PrimitiveTopology : uint8_t
 	{
 		Lines,
 		Triangles
 	};
 
-	enum class PolygonMode
+	enum class PolygonMode : uint8_t
 	{
 		Fill,
 		Line
 	};
 
-	enum class CullMode
+	enum class CullMode : uint8_t
 	{
 		Back,
 		Front,
 		FrontAndBack
 	};
 
-	enum class CullFrontFace
+	enum class CullFrontFace : uint8_t
 	{
 		Clockwise,
 		CounterClockwise
 	};
 
-	enum class DepthCompareOp
+	enum class DepthCompareOp : uint8_t
 	{
 		Less,
 		Equal,
 		LessOrEqual,
 		Greater,
 		NotEqual,
-		GreaterOrEqual
+		GreaterOrEqual,
+
+		Always,
+		Never
 	};
 
 	struct PipelineSpecification
@@ -72,28 +87,28 @@ namespace Eppo
 		CullFrontFace CullFrontFace = CullFrontFace::Clockwise;
 
 		// Depth Stencil
-		bool DepthTesting = false;
-		bool DepthCubeMapImage = false;
+		bool CreateDepthImage = false;
+		bool TestDepth = false;
+		bool WriteDepth = false;
 		bool ClearDepthOnLoad = true;
 		float ClearDepth = 1.0f;
 		DepthCompareOp DepthCompareOp = DepthCompareOp::Less;
-		Ref<Image> DepthImage = nullptr;
 
-		// Color Attachments
-		std::vector<ColorAttachment> ColorAttachments;
-		Ref<Image> ExistingImage;
+		// Render Attachments
+		std::vector<RenderAttachment> RenderAttachments;
+		bool CubeMap = false;
 	};
 
 	class Pipeline
 	{
 	public:
-		virtual ~Pipeline() {};
+		virtual ~Pipeline() = default;
 
-		virtual const PipelineSpecification& GetSpecification() const = 0;
+		[[nodiscard]] virtual const PipelineSpecification& GetSpecification() const = 0;
 		virtual PipelineSpecification& GetSpecification() = 0;
 
-		virtual Ref<Image> GetImage(uint32_t index) const = 0;
-		virtual Ref<Image> GetFinalImage() const = 0;
+		[[nodiscard]] virtual Ref<Image> GetImage(uint32_t index) const = 0;
+		[[nodiscard]] virtual Ref<Image> GetFinalImage() const = 0;
 
 		static Ref<Pipeline> Create(const PipelineSpecification& specification);
 	};

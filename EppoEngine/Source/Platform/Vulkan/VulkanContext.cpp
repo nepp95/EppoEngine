@@ -74,26 +74,38 @@ namespace Eppo
 		// Swapchain
 		m_Swapchain = CreateRef<VulkanSwapchain>(m_LogicalDevice);
 
+		// Renderer
+		m_Renderer = CreateRef<VulkanRenderer>();
+
 		// Create tracy profiler context
 		VkCommandBuffer cmd = m_LogicalDevice->GetCommandBuffer(false);
 
+		#if defined(TRACY_ENABLE)
 		m_TracyContext = TracyVkContext(
 			m_PhysicalDevice->GetNativeDevice(),
 			m_LogicalDevice->GetNativeDevice(),
 			m_LogicalDevice->GetGraphicsQueue(),
 			cmd
-		);
+		)
+		#endif
 
 		m_LogicalDevice->FreeCommandBuffer(cmd);
 	}
 
 	void VulkanContext::Shutdown()
 	{
+		#if defined(TRACY_ENABLE)
+		EPPO_MEM_WARN("Releasing tracy context {}", (void*)m_TracyContext);
+		TracyVkDestroy(m_TracyContext)
+		#endif
+
+		m_Renderer->Shutdown();
 		m_GarbageCollector.Shutdown();
 
 		if (VulkanConfig::EnableValidation)
 			DestroyDebugUtilsMessengerEXT(s_Instance, m_DebugMessenger, nullptr);
 
+		EPPO_MEM_WARN("Releasing vulkan instance {}", (void*)s_Instance);
 		vkDestroyInstance(s_Instance, nullptr);
 	}
 

@@ -19,7 +19,7 @@ namespace Eppo
 		UpdateCameraVectors();
 	}
 
-	void EditorCamera::OnUpdate(float timestep)
+	void EditorCamera::OnUpdate(const float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("EditorCamera::OnUpdate");
 
@@ -70,7 +70,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("EditorCamera::UpdateCameraVectors");
 
-		auto front = glm::vec3(
+		const auto front = glm::vec3(
 			cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch)),
 			sin(glm::radians(m_Pitch)),
 			sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch))
@@ -81,6 +81,6 @@ namespace Eppo
 		m_UpDirection = glm::normalize(glm::cross(m_RightDirection, m_FrontDirection));
 
 		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontDirection, m_UpDirection);
-		m_ProjectionMatrix = glm::perspective(glm::radians(m_Zoom), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 1000.0f);
+		m_ProjectionMatrix = glm::perspective(glm::radians(m_Zoom), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 100.0f);
 	}
 }

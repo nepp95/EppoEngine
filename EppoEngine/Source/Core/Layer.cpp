@@ -3,7 +3,7 @@
 
 namespace Eppo
 {
-	Layer::Layer(const std::string& name)
-		: m_DebugName(name)
+	Layer::Layer(std::string name)
+		: m_DebugName(std::move(name))
 	{}
 }

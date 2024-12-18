@@ -10,19 +10,19 @@ namespace Eppo
 	public:
 		EditorCamera();
 		EditorCamera(const glm::vec3& position, float pitch = 0.0f, float yaw = 0.0f);
-		~EditorCamera() = default;
+		~EditorCamera() override = default;
 
 		void OnUpdate(float timestep);
 		void OnEvent(Event& e);
 
 		void SetViewportSize(const glm::vec2& size);
 
-		glm::vec3 GetPosition() const { return m_Position; }
-		float GetPitch() const { return m_Pitch; }
-		float GetYaw() const { return m_Yaw; }
+		[[nodiscard]] glm::vec3 GetPosition() const { return m_Position; }
+		[[nodiscard]] float GetPitch() const { return m_Pitch; }
+		[[nodiscard]] float GetYaw() const { return m_Yaw; }
 
-		const glm::mat4& GetViewMatrix() const { return m_ViewMatrix; }
-		glm::mat4 GetViewProjectionMatrix() const { return m_ProjectionMatrix * m_ViewMatrix; }
+		[[nodiscard]] const glm::mat4& GetViewMatrix() const { return m_ViewMatrix; }
+		[[nodiscard]] glm::mat4 GetViewProjectionMatrix() const { return m_ProjectionMatrix * m_ViewMatrix; }
 
 	private:
 		// Update matrixes

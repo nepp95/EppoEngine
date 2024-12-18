@@ -1,0 +1,44 @@
+[Header]
+ICOfile = "HDR_040_Field_Thumb.jpg"
+Name = "HDR 040 Field"
+Author = "HDRI Hub"
+Location = "Hamburg, Germany"
+Comment = "field, trees, clear"
+PREVIEWfile = "HDR_040_Field_Prev.jpg"
+GEOlat = 53.4271574020385740
+GEOlong = 8.4912702441215515
+Link = "http://www.hdri-hub.com"
+Date = "2012:06:11"
+Time = "14:13:40"
+
+[Background]
+BGfile = "HDR_040_Field_Bg.jpg"
+BGmap = 1
+BGu = 0.000000
+BGv = 0.000000
+BGheight = 4096
+
+[Enviroment]
+EVfile = "HDR_040_Field_Env.hdr"
+EVmap = 1
+EVu = 0.000000
+EVv = 0.000000
+EVheight = 256
+EVmulti = 1.000000
+EVgamma = 1.000000
+
+[Reflection]
+REFfile = "HDR_040_Field_Ref.hdr"
+REFmap = 1
+REFu = 0.000000
+REFv = 0.000000
+REFheight = 2048
+REFmulti = 1.000000
+REFgamma = 1.000000
+
+[Sun]
+SUNcolor = 255,211,171
+SUNmulti = 0.15
+SUNu = 0.792000
+SUNv = 0.304000
+

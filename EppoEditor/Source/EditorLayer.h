@@ -22,7 +22,7 @@ namespace Eppo
 		void OnEvent(Event& e) override;
 
 	private:
-		bool OnKeyPressed(KeyPressedEvent& e);
+		bool OnKeyPressed(const KeyPressedEvent& e);
 
 		void OnScenePlay();
 		void OnSceneStop();

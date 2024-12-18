@@ -26,7 +26,7 @@ namespace Eppo
 	{
 	public:
 		Mesh(const std::filesystem::path& filepath);
-		~Mesh() = default;
+		virtual ~Mesh() = default;
 
 		const std::vector<Submesh>& GetSubmeshes() const  { return m_Submeshes; }
 		const std::vector<Ref<Image>>& GetImages() const { return m_Images; }

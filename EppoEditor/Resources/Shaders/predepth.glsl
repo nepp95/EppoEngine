@@ -1,14 +1,13 @@
 #stage vert
 #version 450
 
-#include "base.glsl"
+#include "Includes/base.glsl"
 
 #extension GL_EXT_multiview : enable
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
-layout(location = 3) in vec4 inColor;
 
 layout(push_constant) uniform PreDepth
 {

@@ -21,17 +21,20 @@ namespace Eppo
 		std::string error;
 		std::string warning;
 
-		bool result = loader.LoadBinaryFromFile(&model, &error, &warning, m_Filepath.string());
-
-		if (!warning.empty())
-			EPPO_WARN(warning);
-		if (!error.empty())
-			EPPO_ERROR(error);
-
-		if (!result)
 		{
-			EPPO_ERROR("Failed to parse mesh file '{}'!", m_Filepath.string());
-			return;
+			EPPO_PROFILE_FUNCTION("LoadGLB");
+			bool result = loader.LoadBinaryFromFile(&model, &error, &warning, m_Filepath.string());
+			
+			if (!warning.empty())
+				EPPO_WARN(warning);
+			if (!error.empty())
+				EPPO_ERROR(error);
+
+			if (!result)
+			{
+				EPPO_ERROR("Failed to parse mesh file '{}'!", m_Filepath.string());
+				return;
+			}
 		}
 
 		ProcessMaterials(model);
@@ -71,7 +74,7 @@ namespace Eppo
 			}
 
 			MeshData meshData = GetVertexData(model, model.meshes[meshIndex]);
-			Submesh& submesh = m_Submeshes.emplace_back(node.name, meshData.Vertices, meshData.Indices, meshData.Primitives, localTransform);
+			m_Submeshes.emplace_back(node.name, meshData.Vertices, meshData.Indices, meshData.Primitives, localTransform);
 		}
 
 		for (size_t i = 0; i < node.children.size(); i++)
@@ -88,9 +91,9 @@ namespace Eppo
 			const tinygltf::Material& mat = model.materials[i];
 
 			Ref<Material> material = CreateRef<Material>();
-			material->Roughness = mat.pbrMetallicRoughness.roughnessFactor;
-			material->Metallic = mat.pbrMetallicRoughness.metallicFactor;
-			material->NormalMapIntensity = mat.normalTexture.scale;
+			material->Roughness = static_cast<float>(mat.pbrMetallicRoughness.roughnessFactor);
+			material->Metallic = static_cast<float>(mat.pbrMetallicRoughness.metallicFactor);
+			material->NormalMapIntensity = static_cast<float>(mat.normalTexture.scale);
 
 			// Diffuse color
 			if (mat.values.find("baseColorFactor") != mat.values.end())
@@ -190,7 +193,6 @@ namespace Eppo
 				vertex.Position = glm::make_vec3(&positionData[i * 3]);
 				vertex.Normal = glm::make_vec3(&normalData[i * 3]);
 				vertex.TexCoord = glm::make_vec2(&texCoordData[i * 2]);
-				vertex.Color = glm::vec4(vertex.Normal, 1.0f);
 			}
 
 			// Indices

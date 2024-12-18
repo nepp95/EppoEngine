@@ -70,7 +70,7 @@ namespace Eppo
 		CreateDescriptorSetLayouts();
 	}
 
-	std::unordered_map<Eppo::ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source)
+	std::unordered_map<ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source) const
 	{
 		EPPO_PROFILE_FUNCTION("VulkanShader::PreProcess");
 
@@ -98,6 +98,19 @@ namespace Eppo
 			EPPO_ASSERT(nextLinePos != std::string::npos); // "Syntax error: No source after stage token!"
 			pos = source.find(stageToken, nextLinePos);
 			shaderSources[Utils::StringToShaderStage(stage)] = (pos == std::string::npos) ? std::string(source.substr(nextLinePos)) : std::string(source.substr(nextLinePos, pos - nextLinePos));
+		}
+
+		// Process includes
+		shaderc::Compiler compiler;
+		shaderc::CompileOptions options;
+		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+		options.SetIncluder(CreateScope<ShaderIncluder>());
+		options.SetOptimizationLevel(shaderc_optimization_level_zero);
+
+		for (auto& [stage, stageSource] : shaderSources)
+		{
+			auto result = compiler.PreprocessGlsl(stageSource, Utils::ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
+			stageSource = std::string(result.cbegin(), result.cend());
 		}
 
 		return shaderSources;
@@ -163,7 +176,7 @@ namespace Eppo
 				EPPO_INFO("Loading shader cache: {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 
 				// Read shader cache
-				ScopedBuffer buffer = Filesystem::ReadBytes(cacheFile);
+				ScopedBuffer buffer(Filesystem::ReadBytes(cacheFile));
 
 				// Since the buffer size is 1 byte aligned and a uint32_t is 4 byte aligned, we only need a quarter of the size
 				std::vector<uint32_t> vec(buffer.Size() / sizeof(uint32_t));
@@ -329,7 +342,7 @@ namespace Eppo
 			shaderStageCreateInfo.module = shaderModule;
 			shaderStageCreateInfo.pName = "main";
 
-			context->SubmitResourceFree([=]()
+			context->SubmitResourceFree([device, shaderModule]()
 			{
 				EPPO_MEM_WARN("Releasing shader module {}", (void*)shaderModule);
 				vkDestroyShaderModule(device, shaderModule, nullptr);
@@ -341,7 +354,10 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanShader::CreateDescriptorSetLayouts");
 
-		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		Ref<VulkanContext> context = VulkanContext::Get();
+		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+
+		auto& builder = context->GetDescriptorLayoutBuilder();
 
 		m_DescriptorSetLayouts.resize(4);
 		for (const auto& [set, setResources] : m_ShaderResources)
@@ -349,12 +365,10 @@ namespace Eppo
 			if (setResources.empty())
 				continue;
 
-			DescriptorLayoutBuilder builder;
-
 			for (const auto& resource : setResources)
 			{
 				// TODO: This is as dirty as code can get
-				if (resource.Binding == 0 && set == 1)
+				if (resource.Binding == 0 && set == 2)
 				{
 					builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType), 512);
 					continue;
@@ -380,22 +394,10 @@ namespace Eppo
 				descriptorSetLayout = layout;
 		}
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		context->SubmitResourceFree([this, device]()
+		context->SubmitResourceFree([device, layout]()
 		{
-			// Since we ALWAYS have 4 descriptor set layouts per shader AND some of them can be the same if not all descriptor sets are in use
-			// We keep track of which we have freed so we don't free the same layout twice.
-			std::unordered_set<void*> layoutsFreed;
-
-			for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
-			{
-				if (layoutsFreed.find((void*)descriptorSetLayout) == layoutsFreed.end())
-				{
-					layoutsFreed.insert((void*)descriptorSetLayout);
-					EPPO_MEM_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
-					vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-				}
-			}
+			EPPO_MEM_WARN("Releasing descriptor set layout {}", (void*)layout);
+			vkDestroyDescriptorSetLayout(device, layout, nullptr);
 		});
 	}
 }

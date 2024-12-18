@@ -3,7 +3,7 @@
 
 namespace Eppo
 {
-	CommandQueue::CommandQueue(bool isMultiThreaded)
+	CommandQueue::CommandQueue(const bool isMultiThreaded)
 		: m_IsMultiThreaded(isMultiThreaded)
 	{}
 
@@ -11,7 +11,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("RenderCommandQueue::AddCommand");
 
-		m_CommandQueue.push(fn);
+		m_CommandQueue.push(std::move(fn));
 		m_CommandCount++;
 	}
 

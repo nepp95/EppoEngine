@@ -1,10 +1,8 @@
 #include "pch.h"
 #include "ImGuiLayer.h"
 
+#include "ImGui/Image.h"
 #include "Platform/Vulkan/VulkanContext.h"
-#include "Renderer/Renderer.h"
-#include "Renderer/RendererContext.h"
-
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <GLFW/glfw3.h>
@@ -42,7 +40,7 @@ namespace Eppo
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable multi-viewport
 		io.ConfigFlags |= ImGuiConfigFlags_IsSRGB;
 
-		float fontSize = 14.0f;
+		constexpr float fontSize = 14.0f;
 		io.FontDefault = io.Fonts->AddFontFromFileTTF("Resources/Fonts/DroidSans.ttf", fontSize);
 
 		ImGui::StyleColorsDark();
@@ -58,14 +56,14 @@ namespace Eppo
 		}
 
 		// Init
-		Ref<VulkanContext> context = VulkanContext::Get();
+		const auto context = VulkanContext::Get();
 		ImGui_ImplGlfw_InitForVulkan(context->GetWindowHandle(), true);
 
-		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
-		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
+		const auto physicalDevice = context->GetPhysicalDevice();
+		const auto logicalDevice = context->GetLogicalDevice();
 
 		// Create descriptor pool
-		VkDescriptorPoolSize poolSizes[] = {
+		const VkDescriptorPoolSize poolSizes[] = {
 			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
 			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100 },
 			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },
@@ -86,7 +84,7 @@ namespace Eppo
 		descriptorPoolCreateInfo.pPoolSizes = poolSizes;
 		descriptorPoolCreateInfo.maxSets = 100 * IM_ARRAYSIZE(poolSizes);
 
-		VK_CHECK(vkCreateDescriptorPool(logicalDevice->GetNativeDevice(), &descriptorPoolCreateInfo, nullptr, &s_DescriptorPool), "Failed to create descriptor pool!");
+		VK_CHECK(vkCreateDescriptorPool(logicalDevice->GetNativeDevice(), &descriptorPoolCreateInfo, nullptr, &s_DescriptorPool), "Failed to create descriptor pool!")
 
 		// Init
 		ImGui_ImplVulkan_InitInfo initInfo{};
@@ -105,7 +103,7 @@ namespace Eppo
 		initInfo.CheckVkResultFn = CheckVkResult;
 		initInfo.UseDynamicRendering = true;
 
-		VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+		constexpr VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
 
 		VkPipelineRenderingCreateInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
@@ -123,15 +121,21 @@ namespace Eppo
 		s_ImGuiCommandBuffers.resize(VulkanConfig::MaxFramesInFlight);
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 			s_ImGuiCommandBuffers[i] = logicalDevice->GetSecondaryCommandBuffer();
-
 	}
 
 	void ImGuiLayer::OnDetach()
 	{
 		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+
+		// Clear resources which in turn calls the vulkan API to clear all the descriptor sets allocated for ImGui
+		UI::ClearResources();
+
+		// Destroy other vulkan resources
+		ImGui_ImplVulkan_Shutdown();
+
+		// Finally destroy the descriptor pool - this needs to happen after ImGui_ImplVulkan_Shutdown because of the font texture
 		vkDestroyDescriptorPool(device, s_DescriptorPool, nullptr);
 
-		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}
@@ -142,7 +146,7 @@ namespace Eppo
 
 		if (m_BlockEvents)
 		{
-			ImGuiIO& io = ImGui::GetIO();
+			const ImGuiIO& io = ImGui::GetIO();
 			e.Handled |= e.IsInCategory(EventCategoryMouse) & io.WantCaptureMouse;
 			e.Handled |= e.IsInCategory(EventCategoryKeyboard) & io.WantCaptureKeyboard;
 		}

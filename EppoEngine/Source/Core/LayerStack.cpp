@@ -17,9 +17,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("LayerStack::PopLayer");
 
-		auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
-
-		if (it != m_Layers.begin() + m_LayerInsertIndex)
+		if (const auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
+			it != m_Layers.begin() + m_LayerInsertIndex)
 		{
 			layer->OnDetach();
 			m_Layers.erase(it);

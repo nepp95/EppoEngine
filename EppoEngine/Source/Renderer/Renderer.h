@@ -1,34 +1,38 @@
 #pragma once
 
-#include "Renderer/Mesh/Mesh.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/CommandQueue.h"
 #include "Renderer/Shader.h"
-
-using VkDescriptorSet = struct VkDescriptorSet_T*;
-using VkDescriptorSetLayout = struct VkDescriptorSetLayout_T*;
 
 namespace Eppo
 {
 	class Renderer
 	{
 	public:
-		static void Init();
-		static void Shutdown();
+		virtual ~Renderer() = default;
 
-		static uint32_t GetCurrentFrameIndex();
+		struct RenderStatistics
+		{
+			uint32_t DrawCalls = 0;
+			uint32_t Meshes = 0;
+			uint32_t Submeshes = 0;
+		};
+
+		virtual void Shutdown() = 0;
 
 		// Render queue commands
-		static void ExecuteRenderCommands();
-		static void SubmitCommand(RenderCommand command);
+		virtual void ExecuteRenderCommands() = 0;
+		virtual void SubmitCommand(RenderCommand command) = 0;
 
 		// Render passes
-		static void BeginRenderPass(Ref<CommandBuffer> commandBuffer, Ref<Pipeline> pipeline);
-		static void EndRenderPass(Ref<CommandBuffer> commandBuffer);
+		virtual void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline) = 0;
+		virtual void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) = 0;
 
 		// Shaders
-		static Ref<Shader> GetShader(const std::string& name);
-		static VkDescriptorSet AllocateDescriptor(VkDescriptorSetLayout layout);
+		virtual Ref<Shader> GetShader(const std::string& name) = 0;
+		virtual void* AllocateDescriptor(void* layout) = 0;
+
+		static Ref<Renderer> Create();
 	};
 }

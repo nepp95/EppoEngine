@@ -14,11 +14,11 @@ namespace Eppo
 		EPPO_ERROR("GLFW Error: ({}) {}", error, description);
 	}
 
-	Window::Window(const WindowSpecification& specification)
-		: m_Specification(specification)
+	Window::Window(WindowSpecification specification)
+		: m_Specification(std::move(specification))
 	{
-		int success = glfwInit();
-		EPPO_ASSERT(success);
+		const int success = glfwInit();
+		EPPO_ASSERT(success)
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
@@ -41,7 +41,8 @@ namespace Eppo
 		EPPO_INFO("Creating window '{}' ({}x{}@{}Hz)", m_Specification.Title, m_Specification.Width, m_Specification.Height, m_Specification.RefreshRate);
 		glfwWindowHint(GLFW_POSITION_X, 25);
 		glfwWindowHint(GLFW_POSITION_Y, 50);
-		m_Window = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Title.c_str(), nullptr, nullptr);
+		m_Window = glfwCreateWindow(static_cast<int>(m_Specification.Width), static_cast<int>(m_Specification.Height),
+		                            m_Specification.Title.c_str(), nullptr, nullptr);
 	}
 
 	void Window::Init()
@@ -54,41 +55,41 @@ namespace Eppo
 
 		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
 		{
-			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			const EventCallbackFn& callback = *static_cast<EventCallbackFn*>(glfwGetWindowUserPointer(window));
 			WindowCloseEvent e;
 			callback(e);
 		});
 
 		glfwSetWindowSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
 		{
-			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			const EventCallbackFn& callback = *static_cast<EventCallbackFn*>(glfwGetWindowUserPointer(window));
 			WindowResizeEvent e(width, height);
 			callback(e);
 		});
 
 		glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
 		{
-			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			const EventCallbackFn& callback = *static_cast<EventCallbackFn*>(glfwGetWindowUserPointer(window));
 
 			switch (action)
 			{
 				case GLFW_PRESS:
 				{
-					KeyPressedEvent e(key);
+					KeyPressedEvent e(static_cast<uint8_t>(key));
 					callback(e);
 					break;
 				}
 
 				case GLFW_RELEASE:
 				{
-					KeyReleasedEvent e(key);
+					KeyReleasedEvent e(static_cast<uint8_t>(key));
 					callback(e);
 					break;
 				}
 
 				case GLFW_REPEAT:
 				{
-					KeyPressedEvent e(key, true);
+					KeyPressedEvent e(static_cast<uint8_t>(key), true);
 					callback(e);
 					break;
 				}
@@ -97,27 +98,27 @@ namespace Eppo
 
 		glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int keycode)
 		{
-			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
-			KeyTypedEvent e(keycode);
+			const EventCallbackFn& callback = *static_cast<EventCallbackFn*>(glfwGetWindowUserPointer(window));
+			KeyTypedEvent e(static_cast<uint8_t>(keycode));
 			callback(e);
 		});
 
 		glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int mods)
 		{
-			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
+			const EventCallbackFn& callback = *static_cast<EventCallbackFn*>(glfwGetWindowUserPointer(window));
 			
 			switch (action)
 			{
 				case GLFW_PRESS:
 				{
-					MouseButtonPressedEvent e(button);
+					MouseButtonPressedEvent e(static_cast<uint8_t>(button));
 					callback(e);
 					break;
 				}
 
 				case GLFW_RELEASE:
 				{
-					MouseButtonReleasedEvent e(button);
+					MouseButtonReleasedEvent e(static_cast<uint8_t>(button));
 					callback(e);
 					break;
 				}
@@ -126,20 +127,20 @@ namespace Eppo
 		
 		glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
 		{
-			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
-			MouseScrolledEvent e((float)xOffset, (float)yOffset);
+			const EventCallbackFn& callback = *static_cast<EventCallbackFn*>(glfwGetWindowUserPointer(window));
+			MouseScrolledEvent e(static_cast<float>(xOffset), static_cast<float>(yOffset));
 			callback(e);
 		});
 
 		glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double xPos, double yPos)
 		{
-			EventCallbackFn& callback = *(EventCallbackFn*)glfwGetWindowUserPointer(window);
-			MouseMovedEvent e((float)xPos, (float)yPos);
+			const EventCallbackFn& callback = *static_cast<EventCallbackFn*>(glfwGetWindowUserPointer(window));
+			MouseMovedEvent e(static_cast<float>(xPos), static_cast<float>(yPos));
 			callback(e);
 		});
 	}
 
-	void Window::Shutdown()
+	void Window::Shutdown() const
 	{
 		m_Context->Shutdown();
 
@@ -147,12 +148,12 @@ namespace Eppo
 		glfwTerminate();
 	}
 
-	void Window::ProcessEvents()
+	void Window::ProcessEvents() const
 	{
 		glfwPollEvents();
 	}
 
-	void Window::SetWindowTitle(const std::string& name)
+	void Window::SetWindowTitle(const std::string& name) const
 	{
 		glfwSetWindowTitle(m_Window, name.c_str());
 	}

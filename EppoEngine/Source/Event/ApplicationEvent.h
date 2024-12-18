@@ -16,7 +16,7 @@ namespace Eppo
 	class WindowResizeEvent : public Event
 	{
 	public:
-		WindowResizeEvent(uint32_t width, uint32_t height)
+		WindowResizeEvent(const uint32_t width, const uint32_t height)
 			: m_Width(width), m_Height(height)
 		{
 		}

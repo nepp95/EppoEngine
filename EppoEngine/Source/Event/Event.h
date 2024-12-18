@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-	enum class EventType
+	enum class EventType : uint8_t
 	{
 		None = 0,
 		WindowClose,
@@ -24,7 +24,7 @@ namespace Eppo
 		MouseScrolled
 	};
 
-	enum EventCategory
+	enum EventCategory : uint8_t
 	{
 		None = 0,
 		EventCategoryApplication = BIT(0),
@@ -46,12 +46,12 @@ namespace Eppo
 
 		virtual ~Event() = default;
 
-		virtual EventType GetEventType() const = 0;
-		virtual const char* GetName() const = 0;
-		virtual int GetCategoryFlags() const = 0;
-		virtual std::string ToString() const { return GetName(); }
+		[[nodiscard]] virtual EventType GetEventType() const = 0;
+		[[nodiscard]] virtual const char* GetName() const = 0;
+		[[nodiscard]] virtual int GetCategoryFlags() const = 0;
+		[[nodiscard]] virtual std::string ToString() const { return GetName(); }
 
-		bool IsInCategory(EventCategory category)
+		[[nodiscard]] bool IsInCategory(const EventCategory category) const
 		{
 			return GetCategoryFlags() & category;
 		}
@@ -62,7 +62,7 @@ namespace Eppo
 	class EventDispatcher
 	{
 	public:
-		EventDispatcher(Event& e)
+		explicit EventDispatcher(Event& e)
 			: m_Event(e)
 		{}
 

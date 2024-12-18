@@ -7,6 +7,7 @@ namespace Eppo
 		None = 0,
 
 		// Color
+		RGB16,
 		RGBA8,
 
 		// Depth
@@ -24,7 +25,7 @@ namespace Eppo
 		uint32_t Width = 0;
 		uint32_t Height = 0;
 
-		ImageFormat Format;
+		ImageFormat Format = ImageFormat::None;
 		ImageUsage Usage;
 
 		std::filesystem::path Filepath;

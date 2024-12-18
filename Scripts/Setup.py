@@ -23,3 +23,6 @@ if (premakeInstalled):
     print("\nSetup completed!")
 else:
     print("\nEngine requires Premake to generate project files!")
+
+currentDir = os.path.dirname(os.path.abspath(__file__))
+subprocess.run(["setx", "EPPO_ROOT", os.path.dirname(currentDir)])

@@ -13,33 +13,33 @@ namespace Eppo
 		Buffer() = default;
 		Buffer(const Buffer&) = default;
 
-		Buffer(uint32_t size)
+		Buffer(const uint32_t size)
 		{
 			Allocate(size);
 		}
 
-		static Buffer Copy(Buffer other)
+		static Buffer Copy(const Buffer other)
 		{
-			Buffer result(other.Size);
+			const Buffer result(other.Size);
 			memcpy(result.Data, other.Data, other.Size);
 			return result;
 		}
 
-		static Buffer Copy(uint8_t* data, uint32_t size)
+		static Buffer Copy(const uint8_t* data, const uint32_t size)
 		{
-			Buffer result(size);
+			const Buffer result(size);
 			memcpy(result.Data, data, size);
 			return result;
 		}
 
-		static Buffer Copy(void* data, uint32_t size)
+		static Buffer Copy(const void* data, const uint32_t size)
 		{
-			Buffer result(size);
+			const Buffer result(size);
 			memcpy(result.Data, data, size);
 			return result;
 		}
 
-		void Allocate(uint32_t size)
+		void Allocate(const uint32_t size)
 		{
 			Release();
 
@@ -61,19 +61,19 @@ namespace Eppo
 		}
 
 		template<typename T>
-		void SetData(const T& value, uint32_t offset = 0)
+		void SetData(const T& value, const uint32_t offset = 0)
 		{
-			EPPO_ASSERT(sizeof(T) + offset <= Size);
+			EPPO_ASSERT(sizeof(T) + offset <= Size)
 			memcpy(Data + offset, &value, sizeof(T));
 		}
 
-		void SetData(void* data, uint32_t size)
+		void SetData(const void* data, const uint32_t size) const
 		{
-			EPPO_ASSERT(size <= Size);
+			EPPO_ASSERT(size <= Size)
 			memcpy(Data, data, size);
 		}
 
-		operator bool() const { return (bool)Data; }
+		explicit operator bool() const { return static_cast<bool>(Data); }
 	};
 
 	class ScopedBuffer
@@ -81,11 +81,11 @@ namespace Eppo
 	public:
 		ScopedBuffer() = default;
 
-		ScopedBuffer(Buffer buffer)
+		explicit ScopedBuffer(const Buffer buffer)
 			: m_Buffer(buffer)
 		{}
 
-		ScopedBuffer(uint32_t size)
+		ScopedBuffer(const uint32_t size)
 			: m_Buffer(size)
 		{}
 
@@ -94,8 +94,8 @@ namespace Eppo
 			m_Buffer.Release();
 		}
 
-		uint8_t* Data() { return m_Buffer.Data; }
-		uint32_t Size() { return m_Buffer.Size; }
+		[[nodiscard]] uint8_t* Data() const { return m_Buffer.Data; }
+		[[nodiscard]] uint32_t Size() const { return m_Buffer.Size; }
 
 		template<typename T>
 		T* As()

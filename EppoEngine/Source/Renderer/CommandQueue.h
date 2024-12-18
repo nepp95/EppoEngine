@@ -9,7 +9,7 @@ namespace Eppo
 	class CommandQueue
 	{
 	public:
-		CommandQueue(bool isMultiThreaded = false);
+		explicit CommandQueue(const bool isMultiThreaded = false);
 		~CommandQueue() = default;
 
 		void AddCommand(RenderCommand fn);
