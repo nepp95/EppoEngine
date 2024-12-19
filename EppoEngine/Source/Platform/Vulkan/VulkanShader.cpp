@@ -14,15 +14,7 @@ namespace Eppo
 {
 	namespace Utils
 	{
-		inline std::filesystem::path GetCacheDirectory()
-		{
-			if (!Filesystem::Exists("Resources/Shaders/Cache"))
-				std::filesystem::create_directories("Resources/Shaders/Cache");
-
-			return "Resources/Shaders/Cache";
-		}
-
-		inline shaderc_shader_kind ShaderStageToShaderCKind(ShaderStage stage)
+		inline shaderc_shader_kind ShaderStageToShaderCKind(const ShaderStage stage)
 		{
 			switch (stage)
 			{
@@ -31,31 +23,10 @@ namespace Eppo
 			}
 
 			EPPO_ASSERT(false);
-			return (shaderc_shader_kind)-1;
+			return static_cast<shaderc_shader_kind>(-1);
 		}
 
-		inline std::string ShaderStageToString(ShaderStage stage)
-		{
-			switch (stage)
-			{
-				case ShaderStage::Vertex:	return "vert";
-				case ShaderStage::Fragment:	return "frag";
-			}
-
-			EPPO_ASSERT(false);
-			return "Invalid";
-		}
-
-		inline ShaderStage StringToShaderStage(std::string_view stage)
-		{
-			if (stage == "vert")			return ShaderStage::Vertex;
-			if (stage == "frag")			return ShaderStage::Fragment;
-
-			EPPO_ASSERT(false);
-			return ShaderStage::None;
-		}
-
-		inline VkShaderStageFlagBits ShaderStageToVkShaderStage(ShaderStage stage)
+		inline VkShaderStageFlagBits ShaderStageToVkShaderStage(const ShaderStage stage)
 		{
 			if (stage == ShaderStage::Vertex)       return VK_SHADER_STAGE_VERTEX_BIT;
 			if (stage == ShaderStage::Fragment)     return VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -63,7 +34,7 @@ namespace Eppo
 			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 		}
 
-		inline VkDescriptorType ShaderResourceTypeToVkDescriptorType(ShaderResourceType type)
+		inline VkDescriptorType ShaderResourceTypeToVkDescriptorType(const ShaderResourceType type)
 		{
 			if (type == ShaderResourceType::UniformBuffer)      return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			if (type == ShaderResourceType::Sampler)            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -73,15 +44,15 @@ namespace Eppo
 	}
 
 	VulkanShader::VulkanShader(const ShaderSpecification& specification)
-		: m_Specification(specification)
+		: Shader(specification)
 	{
-		m_Name = m_Specification.Filepath.stem().string();
+		EPPO_PROFILE_FUNCTION("VulkanShader::VulkanShader");
 
 		// Read shader source
-		const std::string shaderSource = Filesystem::ReadText(m_Specification.Filepath);
+		const std::string shaderSource = Filesystem::ReadText(GetSpecification().Filepath);
 
 		// Preprocess by shader stage
-		std::unordered_map<ShaderStage, std::string> sources = PreProcess(shaderSource);
+		auto sources = PreProcess(shaderSource);
 
 		// Compile or get cache
 		CompileOrGetCache(sources);
@@ -92,20 +63,17 @@ namespace Eppo
 		m_ShaderResources[3] = {};
 
 		// Reflection
-		for (auto&& [type, data] : m_ShaderBytes)
+		for (const auto& [type, data] : m_ShaderBytes)
 			Reflect(type, data);
 
 		CreatePipelineShaderInfos();
 		CreateDescriptorSetLayouts();
 	}
 
-	VulkanShader::~VulkanShader()
+	std::unordered_map<ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source) const
 	{
+		EPPO_PROFILE_FUNCTION("VulkanShader::PreProcess");
 
-	}
-
-	std::unordered_map<ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source)
-	{
 		std::unordered_map<ShaderStage, std::string> shaderSources;
 
 		// Find stage token
@@ -118,60 +86,77 @@ namespace Eppo
 		{
 			// Make sure we aren't eol after type token
 			const size_t eol = source.find_first_of("\r\n", pos);
-			EPPO_ASSERT(eol != std::string::npos); // "Syntax error: No stage specified!"
+			EPPO_ASSERT(eol != std::string::npos) // "Syntax error: No stage specified!"
 
 			// Extract shader stage
 			const size_t begin = pos + stageTokenLength + 1;
-			const std::string stage = std::string(source.substr(begin, eol - begin));
-			EPPO_ASSERT((bool)Utils::StringToShaderStage(stage)); // "Invalid stage specified!"
+			const auto stage = std::string(source.substr(begin, eol - begin));
+			EPPO_ASSERT(static_cast<bool>(Utils::StringToShaderStage(stage))) // "Invalid stage specified!"
 
 			// If there is no other stage token, take the string till eof. Otherwise till the next stage token
 			const size_t nextLinePos = source.find_first_not_of("\r\n", eol);
-			EPPO_ASSERT(nextLinePos != std::string::npos); // "Syntax error: No source after stage token!"
+			EPPO_ASSERT(nextLinePos != std::string::npos) // "Syntax error: No source after stage token!"
 			pos = source.find(stageToken, nextLinePos);
 			shaderSources[Utils::StringToShaderStage(stage)] = (pos == std::string::npos) ? std::string(source.substr(nextLinePos)) : std::string(source.substr(nextLinePos, pos - nextLinePos));
+		}
+
+		// Process includes
+		for (auto& [stage, stageSource] : shaderSources)
+		{
+			shaderc::Compiler compiler;
+			shaderc::CompileOptions options;
+			options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+			options.SetIncluder(CreateScope<ShaderIncluder>());
+			options.SetOptimizationLevel(shaderc_optimization_level_zero);
+
+			auto result = compiler.PreprocessGlsl(stageSource, Utils::ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
+			stageSource = std::string(result.cbegin(), result.cend());
 		}
 
 		return shaderSources;
 	}
 
-	void VulkanShader::Compile(ShaderStage stage, const std::string& source)
+	void VulkanShader::Compile(const ShaderStage stage, const std::string& source)
 	{
-		shaderc::Compiler compiler;
+		EPPO_PROFILE_FUNCTION("VulkanShader::Compile");
+
+		const shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 		options.SetIncluder(CreateScope<ShaderIncluder>());
 		options.SetOptimizationLevel(shaderc_optimization_level_zero);
 
 		// Compile source
-		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), m_Specification.Filepath.string().c_str(), options);
+		const shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
-			EPPO_ERROR("Failed to compile shader with filename: {}", m_Specification.Filepath);
+			EPPO_ERROR("Failed to compile shader with filename: {}", GetSpecification().Filepath);
 			EPPO_ERROR(result.GetErrorMessage());
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 		}
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
 
 		// TODO:
 		// Write cache
-		std::string cachePath = Utils::GetCacheDirectory().string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
+		const std::string cachePath = Utils::GetOrCreateCacheDirectory().string() + "/" + GetName() + "." + Utils::ShaderStageToString(stage);
 		Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
 
 		// Write cache hash
-		std::string cacheHashPath = cachePath + ".hash";
-		uint64_t hash = Hash::GenerateFnv(source);
+		const std::string cacheHashPath = cachePath + ".hash";
+		const uint64_t hash = Hash::GenerateFnv(source);
 		Filesystem::WriteText(cacheHashPath, std::to_string(hash));
 	}
 
 	void VulkanShader::CompileOrGetCache(const std::unordered_map<ShaderStage, std::string>& sources)
 	{
-		const std::filesystem::path cacheDir = Utils::GetCacheDirectory();
+		EPPO_PROFILE_FUNCTION("VulkanShader::CompileOrGetCache");
+
+		const std::filesystem::path cacheDir = Utils::GetOrCreateCacheDirectory();
 
 		for (const auto& [stage, source] : sources)
 		{
-			std::string cacheFile = cacheDir.string() + "/" + m_Name + "." + Utils::ShaderStageToString(stage);
+			std::string cacheFile = cacheDir.string() + "/" + GetName() + "." + Utils::ShaderStageToString(stage);
 			std::string cacheHashFile = cacheFile + ".hash";
 
 			// Check if cache needs to be busted
@@ -188,10 +173,10 @@ namespace Eppo
 
 			if (cacheVerified)
 			{
-				EPPO_INFO("Loading shader cache: {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
+				EPPO_INFO("Loading shader cache: {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 
 				// Read shader cache
-				ScopedBuffer buffer = Filesystem::ReadBytes(cacheFile);
+				ScopedBuffer buffer(Filesystem::ReadBytes(cacheFile));
 
 				// Since the buffer size is 1 byte aligned and a uint32_t is 4 byte aligned, we only need a quarter of the size
 				std::vector<uint32_t> vec(buffer.Size() / sizeof(uint32_t));
@@ -202,19 +187,21 @@ namespace Eppo
 			}
 			else
 			{
-				EPPO_INFO("Triggering recompilation of shader due to hash mismatch: {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
+				EPPO_INFO("Triggering recompilation of shader due to hash mismatch: {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 
 				Compile(stage, source);
 			}
 		}
 	}
 
-	void VulkanShader::Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytes)
+	void VulkanShader::Reflect(const ShaderStage stage, const std::vector<uint32_t>& shaderBytes)
 	{
-		spirv_cross::Compiler compiler(shaderBytes);
+		EPPO_PROFILE_FUNCTION("VulkanShader::Reflect");
+
+		const spirv_cross::Compiler compiler(shaderBytes);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-		EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", m_Name, Utils::ShaderStageToString(stage));
+		EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
 		EPPO_TRACE("    {} Push constants", resources.push_constant_buffers.size());
 		EPPO_TRACE("    {} Uniform buffers", resources.uniform_buffers.size());
 		EPPO_TRACE("    {} Sampled images", resources.sampled_images.size());
@@ -222,26 +209,19 @@ namespace Eppo
 		if (!resources.push_constant_buffers.empty())
 		{
 			EPPO_TRACE("    Push constants:");
-			EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
+			EPPO_ASSERT(resources.push_constant_buffers.size() == 1) // At the moment, vulkan only supports one push constant buffer
 
 			const auto& resource = resources.push_constant_buffers[0];
 			const auto& bufferType = compiler.get_type(resource.base_type_id);
 			size_t bufferSize = compiler.get_declared_struct_size(bufferType);
 			size_t memberCount = bufferType.member_types.size();
 
-			/*uint32_t offset = 0;
-			if (!m_PushConstantRanges.empty())
-			{
-				for (const auto& pcr : m_PushConstantRanges)
-					offset += pcr.size;
-			}*/
-
 			if (m_PushConstantRanges.empty())
 			{
-				VkPushConstantRange& pcr = m_PushConstantRanges.emplace_back();
-				pcr.size = bufferSize;
-				pcr.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-				pcr.offset = 0;
+				auto& [stageFlags, offset, size] = m_PushConstantRanges.emplace_back();
+				size = static_cast<uint32_t>(bufferSize);
+				stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+				offset = 0;
 			}
 
 			if (!resource.name.empty())
@@ -262,7 +242,7 @@ namespace Eppo
 			for (const auto& resource : resources.uniform_buffers)
 			{
 				const auto& bufferType = compiler.get_type(resource.base_type_id);
-				uint32_t bufferSize = compiler.get_declared_struct_size(bufferType);
+				size_t bufferSize = compiler.get_declared_struct_size(bufferType);
 				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 				size_t memberCount = bufferType.member_types.size();
@@ -284,7 +264,7 @@ namespace Eppo
 					shaderResource.Type = stage;
 					shaderResource.ResourceType = ShaderResourceType::UniformBuffer;
 					shaderResource.Binding = binding;
-					shaderResource.Size = bufferSize;
+					shaderResource.Size = static_cast<uint32_t>(bufferSize);
 					shaderResource.Name = resource.name;
 				}
 
@@ -306,7 +286,6 @@ namespace Eppo
 
 				uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
-				size_t memberCount = bufferType.member_types.size();
 				auto& spirVtype = compiler.get_type(resource.type_id);
 				uint32_t arraySize = 0;
 				if (!spirVtype.array.empty())
@@ -342,7 +321,9 @@ namespace Eppo
 
 	void VulkanShader::CreatePipelineShaderInfos()
 	{
-		Ref<VulkanContext> context = VulkanContext::Get();
+		EPPO_PROFILE_FUNCTION("VulkanShader::CreatePipelineShaderInfos");
+
+		const auto context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (const auto& [type, shaderBytes] : m_ShaderBytes)
@@ -353,7 +334,7 @@ namespace Eppo
 			shaderModuleCreateInfo.pCode = shaderBytes.data();
 
 			VkShaderModule shaderModule;
-			VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule), "Failed to create shader module!");
+			VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule), "Failed to create shader module!")
 
 			VkPipelineShaderStageCreateInfo& shaderStageCreateInfo = m_ShaderInfos.emplace_back();
 			shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -361,9 +342,9 @@ namespace Eppo
 			shaderStageCreateInfo.module = shaderModule;
 			shaderStageCreateInfo.pName = "main";
 
-			context->SubmitResourceFree([=]()
+			context->SubmitResourceFree([device, shaderModule]()
 			{
-				EPPO_WARN("Releasing shader module {}", (void*)shaderModule);
+				EPPO_MEM_WARN("Releasing shader module {}", static_cast<void*>(shaderModule));
 				vkDestroyShaderModule(device, shaderModule, nullptr);
 			}, false);
 		}
@@ -371,7 +352,12 @@ namespace Eppo
 
 	void VulkanShader::CreateDescriptorSetLayouts()
 	{
-		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		EPPO_PROFILE_FUNCTION("VulkanShader::CreateDescriptorSetLayouts");
+
+		const auto context = VulkanContext::Get();
+		const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+
+		auto& builder = context->GetDescriptorLayoutBuilder();
 
 		m_DescriptorSetLayouts.resize(4);
 		for (const auto& [set, setResources] : m_ShaderResources)
@@ -379,12 +365,10 @@ namespace Eppo
 			if (setResources.empty())
 				continue;
 
-			DescriptorLayoutBuilder builder;
-
 			for (const auto& resource : setResources)
 			{
 				// TODO: This is as dirty as code can get
-				if (resource.Binding == 0 && set == 1)
+				if (resource.Binding == 0 && set == 2)
 				{
 					builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType), 512);
 					continue;
@@ -402,7 +386,7 @@ namespace Eppo
 		createInfo.pBindings = nullptr;
 
 		VkDescriptorSetLayout layout;
-		VK_CHECK(vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &layout), "Failed to create descriptor set layout!");
+		VK_CHECK(vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &layout), "Failed to create descriptor set layout!")
 
 		for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
 		{
@@ -410,24 +394,10 @@ namespace Eppo
 				descriptorSetLayout = layout;
 		}
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		context->SubmitResourceFree([this]()
+		context->SubmitResourceFree([device, layout]()
 		{
-			VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
-
-			// Since we ALWAYS have 4 descriptor set layouts per shader AND some of them can be the same if not all descriptor sets are in use
-			// We keep track of which we have freed so we don't free the same layout twice.
-			std::unordered_set<void*> layoutsFreed;
-
-			for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
-			{
-				if (layoutsFreed.find((void*)descriptorSetLayout) == layoutsFreed.end())
-				{
-					layoutsFreed.insert((void*)descriptorSetLayout);
-					EPPO_WARN("Releasing descriptor set layout {}", (void*)descriptorSetLayout);
-					vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-				}
-			}
+			EPPO_MEM_WARN("Releasing descriptor set layout {}", static_cast<void*>(layout));
+			vkDestroyDescriptorSetLayout(device, layout, nullptr);
 		});
 	}
 }

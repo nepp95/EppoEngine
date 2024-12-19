@@ -7,7 +7,7 @@ namespace Eppo
 	class DebugRenderer
 	{
 	public:
-		virtual ~DebugRenderer() {};
+		virtual ~DebugRenderer() = default;
 
 		virtual void StartDebugLabel(Ref<CommandBuffer> commandBuffer, const std::string& label) = 0;
 		virtual void EndDebugLabel(Ref<CommandBuffer> commandBuffer) = 0;

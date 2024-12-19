@@ -22,7 +22,7 @@ namespace Eppo
 		void OnEvent(Event& e) override;
 
 	private:
-		bool OnKeyPressed(KeyPressedEvent& e);
+		bool OnKeyPressed(const KeyPressedEvent& e);
 
 		void OnScenePlay();
 		void OnSceneStop();
@@ -63,7 +63,7 @@ namespace Eppo
 		bool m_ViewportHovered = false;
 
 		// Scene state
-		enum class SceneState
+		enum class SceneState : uint8_t
 		{
 			Edit,
 			Play

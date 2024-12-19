@@ -14,9 +14,9 @@ namespace Eppo
 		template<typename T>
 		static std::string GetComponentString()
 		{
-			std::string fullType = typeid(T).name();
-			size_t pos = fullType.find_last_of(':');
-			size_t stringSize = fullType.size() - (pos + 1);
+			const std::string fullType = typeid(T).name();
+			const size_t pos = fullType.find_last_of(':');
+			const size_t stringSize = fullType.size() - (pos + 1);
 
 			return fullType.substr(pos + 1, stringSize - 9);
 		}
@@ -63,6 +63,7 @@ namespace Eppo
 			DrawAddComponentEntry<ScriptComponent>("Script");
 			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
 			DrawAddComponentEntry<CameraComponent>("Camera");
+			DrawAddComponentEntry<PointLightComponent>("Point Light");
 
 			ImGui::EndPopup();
 		}
@@ -163,7 +164,7 @@ namespace Eppo
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_ASSET"))
 					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
+						auto path = (const wchar_t*)payload->Data;
 						std::filesystem::path texturePath = path;
 
 						//Ref<Texture> texture = AssetManager::GetAsset<Texture>(texturePath);
@@ -191,8 +192,8 @@ namespace Eppo
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MESH_ASSET"))
 					{
-						auto handle = payload->Data;
-						component.MeshHandle = *(AssetHandle*)handle;
+						const auto handle = payload->Data;
+						component.MeshHandle = *static_cast<AssetHandle*>(handle);
 					}
 					ImGui::EndDragDropTarget();
 				}
@@ -230,7 +231,7 @@ namespace Eppo
 			ImGui::ColorEdit4("Albedo Color", glm::value_ptr(component.AlbedoColor));
 			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(component.AmbientColor));
 			ImGui::ColorEdit4("Specular Color", glm::value_ptr(component.SpecularColor));
-		}, std::string("Directional Light"));
+		}, "Directional Light");
 
 		DrawComponent<ScriptComponent>(entity, [entity, scene = GetSceneContext()](auto& component) mutable
 		{
@@ -256,8 +257,7 @@ namespace Eppo
 
 			if (scene->IsRunning())
 			{
-				Ref<ScriptInstance> instance = ScriptEngine::GetEntityInstance(uuid);
-				if (instance)
+				if (Ref<ScriptInstance> instance = ScriptEngine::GetEntityInstance(uuid))
 				{
 					const auto& fields = instance->GetScriptClass()->GetFields();
 					for (const auto& [name, field] : fields)
@@ -362,17 +362,21 @@ namespace Eppo
 
 							case ScriptFieldType::Vector3:
 							{
-								glm::vec3 data = instance->GetFieldValue<glm::vec3>(name);
-								if (ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+								if (auto data = instance->GetFieldValue<glm::vec3>(name);
+									ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+								{
 									instance->SetFieldValue(name, data);
+								}
 								break;
 							}
 
 							case ScriptFieldType::Vector4:
 							{
-								glm::vec4 data = instance->GetFieldValue<glm::vec4>(name);
-								if (ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+								if (auto data = instance->GetFieldValue<glm::vec4>(name);
+									ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+								{
 									instance->SetFieldValue(name, data);
+								}
 								break;
 							}
 						}
@@ -380,16 +384,15 @@ namespace Eppo
 				}
 			} else
 			{
-				Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(name);
-				if (entityClass)
+				if (Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(name))
 				{
 					const auto& fields = entityClass->GetFields();
 					auto& entityFields = ScriptEngine::GetScriptFieldMap(uuid);
 
 					for (const auto& [name, field] : fields)
 					{
-						auto it = entityFields.find(name);
-						if (it != entityFields.end())
+						if (auto it = entityFields.find(name);
+							it != entityFields.end())
 						{
 							ScriptFieldInstance& scriptField = it->second;
 
@@ -485,25 +488,31 @@ namespace Eppo
 
 								case ScriptFieldType::Vector2:
 								{
-									glm::vec2 data = scriptField.GetValue<glm::vec2>();
-									if (ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+									if (auto data = scriptField.GetValue<glm::vec2>();
+										ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+									{
 										scriptField.SetValue(data);
+									}
 									break;
 								}
 
 								case ScriptFieldType::Vector3:
 								{
-									glm::vec3 data = scriptField.GetValue<glm::vec3>();
-									if (ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+									if (auto data = scriptField.GetValue<glm::vec3>();
+										ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+									{
 										scriptField.SetValue(data);
+									}
 									break;
 								}
 
 								case ScriptFieldType::Vector4:
 								{
-									glm::vec4 data = scriptField.GetValue<glm::vec4>();
-									if (ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+									if (auto data = scriptField.GetValue<glm::vec4>();
+										ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+									{
 										scriptField.SetValue(data);
+									}
 									break;
 								}
 							}
@@ -645,8 +654,8 @@ namespace Eppo
 
 								case ScriptFieldType::Vector2:
 								{
-									glm::vec2 data = glm::vec2(0.0f);
-									if (ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+									if (auto data = glm::vec2(0.0f);
+										ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
 									{
 										ScriptFieldInstance& scriptField = entityFields[name];
 										scriptField.Field = field;
@@ -657,8 +666,8 @@ namespace Eppo
 
 								case ScriptFieldType::Vector3:
 								{
-									glm::vec3 data = glm::vec3(0.0f);
-									if (ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+									if (auto data = glm::vec3(0.0f);
+										ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
 									{
 										ScriptFieldInstance& scriptField = entityFields[name];
 										scriptField.Field = field;
@@ -669,8 +678,8 @@ namespace Eppo
 
 								case ScriptFieldType::Vector4:
 								{
-									glm::vec4 data = glm::vec4(0.0f);
-									if (ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+									if (auto data = glm::vec4(0.0f);
+										ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
 									{
 										ScriptFieldInstance& scriptField = entityFields[name];
 										scriptField.Field = field;
@@ -688,18 +697,18 @@ namespace Eppo
 		DrawComponent<RigidBodyComponent>(entity, [](auto& component)
 		{
 			const char* bodyTypes[] = { "Static", "Dynamic", "Kinematic" };
-			const char* currentBodyType = bodyTypes[(int)component.Type];
 
-			if (ImGui::BeginCombo("Body Type", currentBodyType))
+			if (const char* currentBodyType = bodyTypes[static_cast<int>(component.Type)];
+				ImGui::BeginCombo("Body Type", currentBodyType))
 			{
 				for (uint32_t i = 0; i < 2; i++)
 				{
-					bool isSelected = currentBodyType == bodyTypes[i];
+					const bool isSelected = currentBodyType == bodyTypes[i];
 
 					if (ImGui::Selectable(bodyTypes[i], isSelected))
 					{
 						currentBodyType = bodyTypes[i];
-						component.Type = (RigidBodyComponent::BodyType)i;
+						component.Type = static_cast<RigidBodyComponent::BodyType>(i);
 					}
 
 					if (isSelected)
@@ -710,25 +719,25 @@ namespace Eppo
 			}
 
 			ImGui::DragFloat("Mass", &component.Mass, 0.1f);
-		}, std::string("Rigid Body"));
+		}, "Rigid Body");
 
 		DrawComponent<CameraComponent>(entity, [](auto& component)
 		{
 			auto& camera = component.Camera;
 
 			const char* projectionTypes[] = { "Orthographic", "Perspective" };
-			const char* currentProjectionType = projectionTypes[(int)camera.GetProjectionType()];
 
-			if (ImGui::BeginCombo("Projection Type", currentProjectionType))
+			if (const char* currentProjectionType = projectionTypes[static_cast<int>(camera.GetProjectionType())];
+				ImGui::BeginCombo("Projection Type", currentProjectionType))
 			{
 				for (uint32_t i = 0; i < 2; i++)
 				{
-					bool isSelected = currentProjectionType == projectionTypes[i];
+					const bool isSelected = currentProjectionType == projectionTypes[i];
 
 					if (ImGui::Selectable(projectionTypes[i], isSelected))
 					{
 						currentProjectionType = projectionTypes[i];
-						camera.SetProjectionType((ProjectionType)i);
+						camera.SetProjectionType(static_cast<ProjectionType>(i));
 					}
 
 					if (isSelected)
@@ -768,10 +777,15 @@ namespace Eppo
 					camera.SetOrthographicFarClip(farClip);
 			}
 		});
+
+		DrawComponent<PointLightComponent>(entity, [](auto& component)
+		{
+			ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+		}, "Point Light");
 	}
 
 	template<typename T>
-	void PropertyPanel::DrawAddComponentEntry(const std::string& label)
+	void PropertyPanel::DrawAddComponentEntry(const std::string& label) const
 	{
 		if (!GetSelectedEntity().HasComponent<T>())
 		{

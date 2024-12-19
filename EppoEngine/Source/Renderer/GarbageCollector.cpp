@@ -7,11 +7,11 @@ namespace Eppo
 
 	GarbageCollector::GarbageCollector()
 	{
-		EPPO_ASSERT(!s_IsInstantiated);
+		EPPO_ASSERT(!s_IsInstantiated)
 		s_IsInstantiated = true;
 	}
 
-	void GarbageCollector::Update(uint32_t frameNumber)
+	void GarbageCollector::Update(const uint32_t frameNumber)
 	{
 		m_CurrentFrameNumber = frameNumber;
 
@@ -24,7 +24,7 @@ namespace Eppo
 		}
 	}
 
-	void GarbageCollector::SubmitFreeFn(std::function<void()> fn, bool freeOnShutdown)
+	void GarbageCollector::SubmitFreeFn(std::function<void()> fn, const bool freeOnShutdown)
 	{
 		if (freeOnShutdown)
 			m_FreeFnsOnShutdown.emplace_back(fn);

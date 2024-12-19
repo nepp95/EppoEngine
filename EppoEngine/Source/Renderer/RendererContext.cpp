@@ -12,8 +12,6 @@ namespace Eppo
 
 	Ref<RendererContext> RendererContext::Get()
 	{
-		EPPO_PROFILE_FUNCTION("RendererContext::Get");
-
 		return Application::Get().GetWindow().GetRendererContext();
 	}
 
@@ -24,7 +22,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanContext>(windowHandle);
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return nullptr;
 	}
 }

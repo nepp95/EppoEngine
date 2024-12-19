@@ -3,6 +3,7 @@
 #include <array>
 #include <chrono>
 #include <cstring>
+#include <execution>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -19,6 +20,8 @@
 
 #if defined(TRACY_ENABLE)
 	#include <tracy/Tracy.hpp>
+	#include <volk.h>
+	#include <tracy/TracyVulkan.hpp>
 #endif
 
 #include "Core/Base.h"

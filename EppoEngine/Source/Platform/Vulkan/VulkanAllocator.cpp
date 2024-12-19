@@ -12,7 +12,7 @@ namespace Eppo
 		uint64_t MemoryAllocated = 0;
 		uint64_t MemoryFreed = 0;
 
-		uint64_t MemoryUsed() const
+		[[nodiscard]] uint64_t MemoryUsed() const
 		{
 			return MemoryAllocated - MemoryFreed;
 		}
@@ -22,7 +22,7 @@ namespace Eppo
 
 	void VulkanAllocator::Init()
 	{
-		Ref<VulkanContext> context = VulkanContext::Get();
+		const auto context = VulkanContext::Get();
 
 		s_Data = new AllocatorData();
 
@@ -37,12 +37,12 @@ namespace Eppo
 		createInfo.device = context->GetLogicalDevice()->GetNativeDevice();
 		createInfo.pVulkanFunctions = &vulkanFunctions;
 
-		VK_CHECK(vmaCreateAllocator(&createInfo, &s_Data->Allocator), "Failed to create vma allocator!");
+		VK_CHECK(vmaCreateAllocator(&createInfo, &s_Data->Allocator), "Failed to create vma allocator!")
 
 		context->SubmitResourceFree([]()
 		{
 			EPPO_WARN("Allocator::Shutdown");
-			VulkanAllocator::Shutdown();
+			Shutdown();
 		});
 	}
 
@@ -55,7 +55,7 @@ namespace Eppo
 		delete s_Data;
 	}
 
-	VmaAllocation VulkanAllocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, VmaMemoryUsage usage)
+	VmaAllocation VulkanAllocator::AllocateBuffer(VkBuffer& buffer, const VkBufferCreateInfo& createInfo, const VmaMemoryUsage usage)
 	{
 		VmaAllocationCreateInfo allocationCreateInfo{};
 		allocationCreateInfo.usage = usage;
@@ -70,7 +70,7 @@ namespace Eppo
 		return allocation;
 	}
 
-	void VulkanAllocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+	void VulkanAllocator::DestroyBuffer(const VkBuffer buffer, const VmaAllocation allocation)
 	{
 		VmaAllocationInfo allocationInfo{};
 		vmaGetAllocationInfo(s_Data->Allocator, allocation, &allocationInfo);
@@ -95,7 +95,7 @@ namespace Eppo
 		return allocation;
 	}
 
-	void VulkanAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
+	void VulkanAllocator::DestroyImage(const VkImage image, const VmaAllocation allocation)
 	{
 		VmaAllocationInfo  allocationInfo{};
 		vmaGetAllocationInfo(s_Data->Allocator, allocation, &allocationInfo);
@@ -105,14 +105,14 @@ namespace Eppo
 		s_Data->MemoryFreed += allocationInfo.size;
 	}
 
-	void* VulkanAllocator::MapMemory(VmaAllocation allocation)
+	void* VulkanAllocator::MapMemory(const VmaAllocation allocation)
 	{
 		void* data;
 		vmaMapMemory(s_Data->Allocator, allocation, &data);
 		return data;
 	}
 
-	void VulkanAllocator::UnmapMemory(VmaAllocation allocation)
+	void VulkanAllocator::UnmapMemory(const VmaAllocation allocation)
 	{
 		vmaUnmapMemory(s_Data->Allocator, allocation);
 	}

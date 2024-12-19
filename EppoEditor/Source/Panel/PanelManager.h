@@ -21,13 +21,13 @@ namespace Eppo
 		void RenderGui();
 
 		Ref<Scene> GetSceneContext() { return m_SceneContext; }
-		Entity GetSelectedEntity() const { return m_SelectedEntity; }
+		[[nodiscard]] Entity GetSelectedEntity() const { return m_SelectedEntity; }
 
 		void SetSceneContext(const Ref<Scene>& scene) { m_SceneContext = scene; }
-		void SetSelectedEntity(Entity entity) { m_SelectedEntity = entity; }
+		void SetSelectedEntity(const Entity entity) { m_SelectedEntity = entity; }
 
 		template<typename T, typename... Args>
-		void AddPanel(const std::string& name, bool isOpen, Args&&... args)
+		void AddPanel(const std::string& name, const bool isOpen, Args&&... args)
 		{
 			static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
 
@@ -46,7 +46,7 @@ namespace Eppo
 		{
 			static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
 
-			auto it = m_PanelData.find(name);
+			const auto it = m_PanelData.find(name);
 			if (it == m_PanelData.end())
 				return nullptr;
 

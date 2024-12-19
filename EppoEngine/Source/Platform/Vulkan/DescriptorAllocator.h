@@ -17,17 +17,17 @@ namespace Eppo
 		void ClearPools();
 		void DestroyPools();
 
-		VkDescriptorSet Allocate(VkDescriptorSetLayout layout, void* pNext = nullptr);
+		void* Allocate(void* layout, const void* pNext = nullptr);
 
 	private:
 		VkDescriptorPool GetPool();
-		VkDescriptorPool CreatePool(uint32_t setCount);
+		[[nodiscard]] VkDescriptorPool CreatePool(uint32_t setCount) const;
 
 	private:
 		std::vector<PoolSizeRatio> m_PoolSizeRatios;
 		std::vector<VkDescriptorPool> m_FullPools;
 		std::vector<VkDescriptorPool> m_AvailablePools;
 
-		uint32_t m_SetsPerPool;
+		uint32_t m_SetsPerPool = 0;
 	};
 }

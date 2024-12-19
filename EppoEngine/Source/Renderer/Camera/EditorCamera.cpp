@@ -10,20 +10,16 @@ namespace Eppo
 {
 	EditorCamera::EditorCamera()
 	{
-		EPPO_PROFILE_FUNCTION("EditorCamera::EditorCamera");
-
 		UpdateCameraVectors();
 	}
 
 	EditorCamera::EditorCamera(const glm::vec3& position, float pitch, float yaw)
 		: m_Position(position), m_Pitch(pitch), m_Yaw(yaw)
 	{
-		EPPO_PROFILE_FUNCTION("EditorCamera::EditorCamera");
-
 		UpdateCameraVectors();
 	}
 
-	void EditorCamera::OnUpdate(float timestep)
+	void EditorCamera::OnUpdate(const float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("EditorCamera::OnUpdate");
 
@@ -64,8 +60,6 @@ namespace Eppo
 
 	void EditorCamera::SetViewportSize(const glm::vec2& size)
 	{
-		EPPO_PROFILE_FUNCTION("EditorCamera::SetViewportSize");
-
 		if (m_ViewportSize == size)
 			return;
 
@@ -76,7 +70,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("EditorCamera::UpdateCameraVectors");
 
-		glm::vec3 front = glm::vec3(
+		const auto front = glm::vec3(
 			cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch)),
 			sin(glm::radians(m_Pitch)),
 			sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch))
@@ -87,6 +81,6 @@ namespace Eppo
 		m_UpDirection = glm::normalize(glm::cross(m_RightDirection, m_FrontDirection));
 
 		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontDirection, m_UpDirection);
-		m_ProjectionMatrix = glm::perspective(glm::radians(m_Zoom), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 1000.0f);
+		m_ProjectionMatrix = glm::perspective(glm::radians(m_Zoom), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 100.0f);
 	}
 }

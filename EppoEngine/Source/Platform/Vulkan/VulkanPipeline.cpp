@@ -10,7 +10,7 @@ namespace Eppo
 {
 	namespace Utils
 	{
-		static VkPrimitiveTopology TopologyToVkTopology(PrimitiveTopology topology)
+		static VkPrimitiveTopology TopologyToVkTopology(const PrimitiveTopology topology)
 		{
 			switch (topology)
 			{
@@ -18,11 +18,11 @@ namespace Eppo
 				case PrimitiveTopology::Triangles:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 		}
 
-		static VkPolygonMode PolygonModeToVkPolygonMode(PolygonMode mode)
+		static VkPolygonMode PolygonModeToVkPolygonMode(const PolygonMode mode)
 		{
 			switch (mode)
 			{
@@ -30,11 +30,11 @@ namespace Eppo
 				case PolygonMode::Line:	return VK_POLYGON_MODE_LINE;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_POLYGON_MODE_MAX_ENUM;
 		}
 
-		static VkCullModeFlags CullModeToVkCullMode(CullMode mode)
+		static VkCullModeFlags CullModeToVkCullMode(const CullMode mode)
 		{
 			switch (mode)
 			{
@@ -43,11 +43,11 @@ namespace Eppo
 				case CullMode::FrontAndBack:	return VK_CULL_MODE_FRONT_AND_BACK;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
 		}
 
-		static VkFrontFace CullFrontFaceToVkFrontFace(CullFrontFace frontFace)
+		static VkFrontFace CullFrontFaceToVkFrontFace(const CullFrontFace frontFace)
 		{
 			switch (frontFace)
 			{
@@ -55,11 +55,11 @@ namespace Eppo
 				case CullFrontFace::CounterClockwise:	return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_FRONT_FACE_MAX_ENUM;
 		}
 
-		static VkCompareOp DepthCompareOpToVkCompareOp(DepthCompareOp op)
+		static VkCompareOp DepthCompareOpToVkCompareOp(const DepthCompareOp op)
 		{
 			switch (op)
 			{
@@ -69,15 +69,18 @@ namespace Eppo
 				case DepthCompareOp::Greater:		return VK_COMPARE_OP_GREATER;
 				case DepthCompareOp::NotEqual:		return VK_COMPARE_OP_NOT_EQUAL;
 				case DepthCompareOp::GreaterOrEqual:return VK_COMPARE_OP_GREATER_OR_EQUAL;
+
+				case DepthCompareOp::Always:		return VK_COMPARE_OP_ALWAYS;
+				case DepthCompareOp::Never:			return VK_COMPARE_OP_NEVER;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return VK_COMPARE_OP_MAX_ENUM;
 		}
 	}
 
-	VulkanPipeline::VulkanPipeline(const PipelineSpecification& specification)
-		: m_Specification(specification)
+	VulkanPipeline::VulkanPipeline(PipelineSpecification specification)
+		: m_Specification(std::move(specification))
 	{
 		Ref<VulkanContext> context = VulkanContext::Get();
 		Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
@@ -101,8 +104,8 @@ namespace Eppo
 
 		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
 		vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-		vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputStateCreateInfo.vertexBindingDescriptionCount = elements.empty() ? 0 : 1;
+		vertexInputStateCreateInfo.pVertexBindingDescriptions = elements.empty() ? nullptr : &bindingDescription;
 		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 		vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -140,8 +143,8 @@ namespace Eppo
 
 		VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
 		depthStencilStateCreateInfo.stencilTestEnable = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencilStateCreateInfo.depthTestEnable = m_Specification.DepthTesting;
-		depthStencilStateCreateInfo.depthWriteEnable = m_Specification.DepthTesting;
+		depthStencilStateCreateInfo.depthTestEnable = m_Specification.TestDepth;
+		depthStencilStateCreateInfo.depthWriteEnable = m_Specification.WriteDepth;
 		depthStencilStateCreateInfo.depthCompareOp = Utils::DepthCompareOpToVkCompareOp(m_Specification.DepthCompareOp);
 		depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
 		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
@@ -149,8 +152,11 @@ namespace Eppo
 		depthStencilStateCreateInfo.stencilTestEnable = VK_FALSE;
 
 		std::vector<VkPipelineColorBlendAttachmentState> attachmentStates;
-		for (size_t i = 0; i < m_Specification.ColorAttachments.size(); i++)
+		for (const auto& attachment : m_Specification.RenderAttachments)
 		{
+			if (attachment.RenderImage->GetSpecification().Format == ImageFormat::Depth)
+				continue;
+
 			VkPipelineColorBlendAttachmentState& colorBlendAttachmentState = attachmentStates.emplace_back();
 			colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 			colorBlendAttachmentState.blendEnable = VK_FALSE;
@@ -183,43 +189,44 @@ namespace Eppo
 		dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
+		// Allocate descriptor sets
 		Ref<VulkanShader> shader = std::static_pointer_cast<VulkanShader>(m_Specification.Shader);
 		const auto& descriptorSetLayouts = shader->GetDescriptorSetLayouts();
 
-		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
-		{
-			m_DescriptorSets[i].resize(4);
-			for (uint32_t j = 0; j < 4; j++)
-				m_DescriptorSets[i][j] = Renderer::AllocateDescriptor(descriptorSetLayouts[j]);
-		}
-
+		// Create pipeline layout
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
 		pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
-		pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<size_t>(shader->GetPushConstantRanges().size());
+		pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(shader->GetPushConstantRanges().size());
 		pipelineLayoutCreateInfo.pPushConstantRanges = !shader->GetPushConstantRanges().empty() ? shader->GetPushConstantRanges().data() : nullptr;
 	
-		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!");
+		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!")
 
+		// Create pipeline rendering infos
 		const auto& shaderStageInfos = shader->GetPipelineShaderStageInfos();
 	
 		std::vector<VkFormat> formats;
-		for (const auto& colorAttachment : m_Specification.ColorAttachments)
+		for (const auto& colorAttachment : m_Specification.RenderAttachments)
 		{
-			VkFormat& format = formats.emplace_back();
-			format = Utils::ImageFormatToVkFormat(colorAttachment.Format);
+			if (const auto format = colorAttachment.RenderImage->GetSpecification().Format;
+				format != ImageFormat::Depth)
+			{
+				VkFormat& vkFormat = formats.emplace_back();
+				vkFormat = Utils::ImageFormatToVkFormat(format);
+			}
 		}
 
 		VkPipelineRenderingCreateInfo renderingInfo{};
 		renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		renderingInfo.colorAttachmentCount = static_cast<uint32_t>(formats.size());
 		renderingInfo.pColorAttachmentFormats = formats.data();
-		renderingInfo.depthAttachmentFormat = m_Specification.DepthTesting ? Utils::ImageFormatToVkFormat(ImageFormat::Depth) : VK_FORMAT_UNDEFINED;
+		renderingInfo.depthAttachmentFormat = m_Specification.TestDepth ? Utils::ImageFormatToVkFormat(ImageFormat::Depth) : VK_FORMAT_UNDEFINED;
 
-		if (m_Specification.DepthCubeMapImage)
+		if (m_Specification.CubeMap)
 			renderingInfo.viewMask = 0b111111;
 
+		// Create pipeline
 		VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
 		graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		graphicsPipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStageInfos.size());
@@ -239,28 +246,9 @@ namespace Eppo
 		graphicsPipelineCreateInfo.basePipelineIndex = -1;
 		graphicsPipelineCreateInfo.pNext = &renderingInfo;
 
-		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!");
+		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!")
 
-		// Create the images from the attachment info
-		for (const auto& attachment : m_Specification.ColorAttachments)
-		{
-			if (!m_Specification.SwapchainTarget && !m_Specification.ExistingImage)
-			{
-				ImageSpecification imageSpec;
-				imageSpec.Format = attachment.Format;
-				imageSpec.Width = m_Specification.Width;
-				imageSpec.Height = m_Specification.Height;
-				imageSpec.Usage = ImageUsage::Attachment;
-
-				Ref<Image> image = Image::Create(imageSpec);
-				m_Images.emplace_back(image);
-			}
-
-			if (m_Specification.ExistingImage)
-				m_Images.emplace_back(m_Specification.ExistingImage);
-		}
-
-		if (m_Specification.DepthTesting)
+		if (m_Specification.CreateDepthImage)
 		{
 			// We simply want a depth attachment to go with our color attachments
 			ImageSpecification imageSpec;
@@ -268,120 +256,25 @@ namespace Eppo
 			imageSpec.Width = m_Specification.Width;
 			imageSpec.Height = m_Specification.Height;
 			imageSpec.Usage = ImageUsage::Attachment;
-			imageSpec.CubeMap = m_Specification.DepthCubeMapImage;
 
-			m_Specification.DepthImage = Image::Create(imageSpec);
+			Ref<Image> image = Image::Create(imageSpec);
+
+			m_Specification.RenderAttachments.emplace_back(image, true, 1.0f);
 
 			VkCommandBuffer cmd = context->GetLogicalDevice()->GetCommandBuffer(true);
-			VulkanImage::TransitionImage(cmd, std::static_pointer_cast<VulkanImage>(m_Specification.DepthImage)->GetImageInfo().Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+			VulkanImage::TransitionImage(cmd, std::static_pointer_cast<VulkanImage>(image)->GetImageInfo().Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 			context->GetLogicalDevice()->FlushCommandBuffer(cmd);
 		}
 	}
 
 	VulkanPipeline::~VulkanPipeline()
 	{
-		VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+		const VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
-		EPPO_WARN("Releasing pipeline {}", (void*)m_Pipeline);
+		EPPO_MEM_WARN("Releasing pipeline {}", static_cast<void*>(m_Pipeline));
 		vkDestroyPipeline(device, m_Pipeline, nullptr);
 
-		EPPO_WARN("Releasing pipeline layout {}", (void*)m_PipelineLayout);
+		EPPO_MEM_WARN("Releasing pipeline layout {}", static_cast<void*>(m_PipelineLayout));
 		vkDestroyPipelineLayout(device, m_PipelineLayout, nullptr);
-	}
-
-	void VulkanPipeline::RT_Bind(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-			vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
-		});
-	}
-
-	void VulkanPipeline::RT_BindDescriptorSets(Ref<CommandBuffer> commandBuffer, uint32_t start, uint32_t count)
-	{
-		Renderer::SubmitCommand([this, commandBuffer, start, count]()
-		{
-			uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			const auto& descriptorSets = GetDescriptorSets(frameIndex);
-			vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, start, count, descriptorSets.data(), 0, nullptr);
-		});
-	}
-
-	void VulkanPipeline::RT_DrawIndexed(Ref<CommandBuffer> commandBuffer, uint32_t count)
-	{
-		Renderer::SubmitCommand([commandBuffer, count]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			vkCmdDrawIndexed(cb, count, 1, 0, 0, 0);
-		});
-	}
-
-	void VulkanPipeline::RT_DrawIndexed(Ref<CommandBuffer> commandBuffer, const Primitive& primitive) const
-	{
-		Renderer::SubmitCommand([commandBuffer, primitive]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			vkCmdDrawIndexed(cb, primitive.IndexCount, 1, primitive.FirstIndex, primitive.FirstVertex, 0);
-		});
-	}
-
-	void VulkanPipeline::RT_SetViewport(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			const auto& spec = GetSpecification();
-
-			VkViewport viewport{};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(spec.Width);
-			viewport.height = static_cast<float>(spec.Height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			vkCmdSetViewport(cb, 0, 1, &viewport);
-		});
-	}
-
-	void VulkanPipeline::RT_SetScissor(Ref<CommandBuffer> commandBuffer) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer]()
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			const auto& spec = GetSpecification();
-
-			VkRect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = { spec.Width, spec.Height };
-
-			vkCmdSetScissor(cb, 0, 1, &scissor);
-		});
-	}
-
-	void VulkanPipeline::RT_SetPushConstants(Ref<CommandBuffer> commandBuffer, Buffer data) const
-	{
-		Renderer::SubmitCommand([this, commandBuffer, data]() mutable
-		{
-			auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
-			VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
-
-			vkCmdPushConstants(cb, GetPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS, 0, data.Size, data.Data);
-
-			data.Release();
-		});
 	}
 }

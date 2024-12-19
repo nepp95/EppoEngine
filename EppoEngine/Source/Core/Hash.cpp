@@ -25,10 +25,10 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Hash::GenerateFnv");
 
-		Buffer buffer(contents.size());
+		Buffer buffer(static_cast<uint32_t>(contents.size()));
 		memcpy(buffer.Data, contents.c_str(), contents.size());
 
-		uint64_t hash = GenerateFnv(buffer);
+		const uint64_t hash = GenerateFnv(buffer);
 		buffer.Release();
 
 		return hash;
@@ -39,12 +39,12 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Hash::GenerateFnv");
 
 		constexpr uint64_t fnvOffsetBasis = 0xcbf29ce484222325;
-		constexpr uint64_t fnvPrime = 0x100000001b3;
 
 		// Generate hash
 		uint64_t hash = fnvOffsetBasis;
 		for (uint32_t i = 0; i < buffer.Size; i++)
 		{
+			constexpr uint64_t fnvPrime = 0x100000001b3;
 			hash ^= *buffer.Data++;
 			hash *= fnvPrime;
 		}

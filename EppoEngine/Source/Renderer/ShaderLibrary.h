@@ -17,5 +17,6 @@ namespace Eppo
 
 	private:
 		std::unordered_map<std::string, Ref<Shader>> m_Shaders;
+		std::mutex m_Mutex;
 	};
 }

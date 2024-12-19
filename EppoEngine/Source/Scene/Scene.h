@@ -17,7 +17,7 @@ namespace Eppo
 	{
 	public:
 		Scene() = default;
-		~Scene() = default;
+		~Scene() override = default;
 
 		void SetViewportSize(uint32_t width, uint32_t height);
 
@@ -29,7 +29,7 @@ namespace Eppo
 		void OnRuntimeStart();
 		void OnRuntimeStop();
 
-		static Ref<Scene> Copy(Ref<Scene> scene);
+		static Ref<Scene> Copy(const Ref<Scene>& scene);
 
 		template<typename T>
 		static void TryCopyComponent(Entity srcEntity, Entity dstEntity);
@@ -43,15 +43,15 @@ namespace Eppo
 		void DestroyEntity(Entity entity);
 
 		Entity FindEntityByUUID(UUID uuid);
-		Entity FindEntityByName(const std::string& name);
+		Entity FindEntityByName(std::string_view name);
 
-		bool IsRunning() const { return m_IsRunning; }
+		[[nodiscard]] bool IsRunning() const { return m_IsRunning; }
 
 	private:
 		void OnPhysicsStart();
 		void OnPhysicsStop();
 
-		void RenderScene(Ref<SceneRenderer> sceneRenderer);
+		void RenderScene(const Ref<SceneRenderer>& sceneRenderer);
 
 	private:
 		entt::registry m_Registry;

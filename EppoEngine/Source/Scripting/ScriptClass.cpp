@@ -7,8 +7,8 @@
 
 namespace Eppo
 {
-	ScriptClass::ScriptClass(const std::string& nameSpace, const std::string& name, bool isCore)
-		: m_Namespace(nameSpace), m_Name(name)
+	ScriptClass::ScriptClass(std::string nameSpace, std::string name, const bool isCore)
+		: m_Namespace(std::move(nameSpace)), m_Name(std::move(name))
 	{
 		EPPO_PROFILE_FUNCTION("ScriptClass::ScriptClass");
 
@@ -34,11 +34,11 @@ namespace Eppo
 		return ScriptEngine::InstantiateClass(m_MonoClass);
 	}
 
-	MonoMethod* ScriptClass::GetMethod(const std::string& name, uint32_t paramCount)
+	MonoMethod* ScriptClass::GetMethod(const std::string& name, const uint32_t paramCount) const
 	{
 		EPPO_PROFILE_FUNCTION("ScriptClass::GetMethod");
 
-		return mono_class_get_method_from_name(m_MonoClass, name.c_str(), paramCount);
+		return mono_class_get_method_from_name(m_MonoClass, name.c_str(), static_cast<int>(paramCount));
 	}
 
 	MonoObject* ScriptClass::InvokeMethod(MonoObject* instance, MonoMethod* method, void** params)

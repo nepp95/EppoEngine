@@ -25,14 +25,14 @@ namespace Eppo
 	class Mesh : public Asset
 	{
 	public:
-		Mesh(const std::filesystem::path& filepath);
-		~Mesh() = default;
+		explicit Mesh(std::filesystem::path filepath);
+		~Mesh() override = default;
 
-		const std::vector<Submesh>& GetSubmeshes() const  { return m_Submeshes; }
-		const std::vector<Ref<Image>>& GetImages() const { return m_Images; }
-		const std::vector<Ref<Material>>& GetMaterials() const { return m_Materials; }
+		[[nodiscard]] const std::vector<Submesh>& GetSubmeshes() const  { return m_Submeshes; }
+		[[nodiscard]] const std::vector<Ref<Image>>& GetImages() const { return m_Images; }
+		[[nodiscard]] const std::vector<Ref<Material>>& GetMaterials() const { return m_Materials; }
 
-		Ref<Image> GetImage(uint32_t materialIndex) { return m_Images[materialIndex]; }
+		Ref<Image> GetImage(const uint32_t materialIndex) { return m_Images[materialIndex]; }
 
 		// Asset
 		static AssetType GetStaticType() { return AssetType::Mesh; }
@@ -42,7 +42,7 @@ namespace Eppo
 		void ProcessMaterials(const tinygltf::Model& model);
 		void ProcessImages(const tinygltf::Model& model);
 
-		MeshData GetVertexData(const tinygltf::Model& model, const tinygltf::Mesh& mesh);
+		[[nodiscard]] MeshData GetVertexData(const tinygltf::Model& model, const tinygltf::Mesh& mesh) const;
 
 	private:
 		std::filesystem::path m_Filepath;

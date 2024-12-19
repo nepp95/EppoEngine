@@ -8,22 +8,22 @@ namespace Eppo
 		: m_PanelManager(panelManager)
 	{}
 
-	Ref<Scene> Panel::GetSceneContext()
+	Ref<Scene> Panel::GetSceneContext() const
 	{
 		return m_PanelManager.GetSceneContext();
 	}
 
-	Entity Panel::GetSelectedEntity()
+	Entity Panel::GetSelectedEntity() const
 	{
 		return m_PanelManager.GetSelectedEntity();
 	}
 
-	void Panel::SetSceneContext(const Ref<Scene>& scene)
+	void Panel::SetSceneContext(const Ref<Scene>& scene) const
 	{
 		m_PanelManager.SetSceneContext(scene);
 	}
 
-	void Panel::SetSelectedEntity(Entity entity)
+	void Panel::SetSelectedEntity(const Entity entity) const
 	{
 		m_PanelManager.SetSelectedEntity(entity);
 	}

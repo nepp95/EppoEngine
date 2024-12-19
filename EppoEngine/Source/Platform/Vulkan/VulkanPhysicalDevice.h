@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Platform/Vulkan/Vulkan.h"
+#include "Renderer/Image.h"
 
 namespace Eppo
 {
@@ -31,6 +32,7 @@ namespace Eppo
 		const VkPhysicalDeviceMemoryProperties& GetDeviceMemoryProperties() const { return m_MemoryProperties; }
 		const VkPhysicalDeviceFeatures& GetDeviceFeatures() const { return m_Features; }
 
+		VkFormat GetSupportedImageFormat(ImageFormat format) { return m_SupportedImageFormats[format]; }
 		bool IsExtensionSupported(std::string_view extension);
 
 	private:
@@ -43,6 +45,8 @@ namespace Eppo
 		VkPhysicalDeviceFeatures m_Features;
 
 		VkSurfaceKHR m_Surface;
+
+		std::unordered_map<ImageFormat, VkFormat> m_SupportedImageFormats;
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		std::vector<std::string> m_SupportedExtensions;

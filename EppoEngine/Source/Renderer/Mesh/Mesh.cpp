@@ -11,27 +11,31 @@
 
 namespace Eppo
 {
-	Mesh::Mesh(const std::filesystem::path& filepath)
-		: m_Filepath(filepath)
+	Mesh::Mesh(std::filesystem::path filepath)
+		: m_Filepath(std::move(filepath))
 	{
 		EPPO_PROFILE_FUNCTION("Mesh::Mesh");
 
 		tinygltf::Model model;
-		tinygltf::TinyGLTF loader;
 		std::string error;
 		std::string warning;
 
-		bool result = loader.LoadBinaryFromFile(&model, &error, &warning, m_Filepath.string());
-
-		if (!warning.empty())
-			EPPO_WARN(warning);
-		if (!error.empty())
-			EPPO_ERROR(error);
-
-		if (!result)
 		{
-			EPPO_ERROR("Failed to parse mesh file '{}'!", m_Filepath.string());
-			return;
+			EPPO_PROFILE_FUNCTION("LoadGLB");
+
+			tinygltf::TinyGLTF loader;
+			const bool result = loader.LoadBinaryFromFile(&model, &error, &warning, m_Filepath.string());
+			
+			if (!warning.empty())
+				EPPO_WARN(warning);
+			if (!error.empty())
+				EPPO_ERROR(error);
+
+			if (!result)
+			{
+				EPPO_ERROR("Failed to parse mesh file '{}'!", m_Filepath.string());
+				return;
+			}
 		}
 
 		ProcessMaterials(model);
@@ -43,33 +47,34 @@ namespace Eppo
 
 	void Mesh::ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node)
 	{
-		int32_t meshIndex = node.mesh;
+		EPPO_PROFILE_FUNCTION("Mesh::ProcessNode");
 
-		if (meshIndex > -1)
+		if (const int32_t meshIndex = node.mesh;
+			meshIndex > -1)
 		{
 			// Get local mesh transform
-			glm::mat4 localTransform = glm::mat4(1.0f);
+			auto localTransform = glm::mat4(1.0f);
 
 			if (!node.translation.empty())
 			{
-				glm::vec3 translation = glm::make_vec3(node.translation.data());
+				const glm::vec3 translation = glm::make_vec3(node.translation.data());
 				localTransform = glm::translate(localTransform, translation);
 			}
 
 			if (!node.rotation.empty())
 			{
-				glm::quat rotation = glm::make_quat(node.rotation.data());
+				const glm::quat rotation = glm::make_quat(node.rotation.data());
 				localTransform *= glm::mat4(rotation);
 			}
 
 			if (!node.scale.empty())
 			{
-				glm::vec3 scale = glm::make_vec3(node.scale.data());
+				const glm::vec3 scale = glm::make_vec3(node.scale.data());
 				localTransform = glm::scale(localTransform, scale);
 			}
 
-			MeshData meshData = GetVertexData(model, model.meshes[meshIndex]);
-			Submesh& submesh = m_Submeshes.emplace_back(node.name, meshData.Vertices, meshData.Indices, meshData.Primitives, localTransform);
+			auto [vertices, indices, primitives] = GetVertexData(model, model.meshes[meshIndex]);
+			m_Submeshes.emplace_back(node.name, vertices, indices, primitives, localTransform);
 		}
 
 		for (size_t i = 0; i < node.children.size(); i++)
@@ -78,15 +83,17 @@ namespace Eppo
 
 	void Mesh::ProcessMaterials(const tinygltf::Model& model)
 	{
+		EPPO_PROFILE_FUNCTION("Mesh::ProcessMaterials");
+
 		m_Materials.resize(model.materials.size());
 		for (size_t i = 0; i < model.materials.size(); i++)
 		{
 			const tinygltf::Material& mat = model.materials[i];
 
-			Ref<Material> material = CreateRef<Material>();
-			material->Roughness = mat.pbrMetallicRoughness.roughnessFactor;
-			material->Metallic = mat.pbrMetallicRoughness.metallicFactor;
-			material->NormalMapIntensity = mat.normalTexture.scale;
+			const auto material = CreateRef<Material>();
+			material->Roughness = static_cast<float>(mat.pbrMetallicRoughness.roughnessFactor);
+			material->Metallic = static_cast<float>(mat.pbrMetallicRoughness.metallicFactor);
+			material->NormalMapIntensity = static_cast<float>(mat.normalTexture.scale);
 
 			// Diffuse color
 			if (mat.values.find("baseColorFactor") != mat.values.end())
@@ -110,6 +117,8 @@ namespace Eppo
 
 	void Mesh::ProcessImages(const tinygltf::Model& model)
 	{
+		EPPO_PROFILE_FUNCTION("Mesh::ProcessImages");
+
 		for (const auto& image : model.images)
 		{
 			ImageSpecification imageSpec;
@@ -128,13 +137,15 @@ namespace Eppo
 			}
 			else
 			{
-				EPPO_ASSERT(false); // TODO: not supported yet
+				EPPO_ASSERT(false) // TODO: not supported yet
 			}
 		}
 	}
 
-	MeshData Mesh::GetVertexData(const tinygltf::Model& model, const tinygltf::Mesh& mesh)
+	MeshData Mesh::GetVertexData(const tinygltf::Model& model, const tinygltf::Mesh& mesh) const
 	{
+		EPPO_PROFILE_FUNCTION("Mesh::GetVertexData");
+
 		MeshData meshData;
 
 		for (const auto& primitive : mesh.primitives)
@@ -156,7 +167,7 @@ namespace Eppo
 				const auto& accessor = model.accessors[primitive.attributes.find("POSITION")->second];
 				const auto& bufferView = model.bufferViews[accessor.bufferView];
 				positionData = reinterpret_cast<const float*>(&(model.buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
-				vertexCount = accessor.count;
+				vertexCount = static_cast<uint32_t>(accessor.count);
 			}
 
 			if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
@@ -173,7 +184,7 @@ namespace Eppo
 				texCoordData = reinterpret_cast<const float*>(&(model.buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
 			}
 
-			size_t offset = meshData.Vertices.size();
+			const size_t offset = meshData.Vertices.size();
 			meshData.Vertices.resize(offset + vertexCount);
 
 			for (size_t i = 0; i < vertexCount; i++)
@@ -182,7 +193,6 @@ namespace Eppo
 				vertex.Position = glm::make_vec3(&positionData[i * 3]);
 				vertex.Normal = glm::make_vec3(&normalData[i * 3]);
 				vertex.TexCoord = glm::make_vec2(&texCoordData[i * 2]);
-				vertex.Color = glm::vec4(vertex.Normal, 1.0f);
 			}
 
 			// Indices
@@ -212,7 +222,7 @@ namespace Eppo
 			}
 
 			p.VertexCount = vertexCount;
-			p.IndexCount = accessor.count;
+			p.IndexCount = static_cast<uint32_t>(accessor.count);
 
 			// Material
 			if (primitive.material != -1)

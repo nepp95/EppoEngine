@@ -16,14 +16,11 @@ namespace Eppo
 	};
 }
 
-namespace std
+template<>
+struct std::hash<Eppo::UUID>
 {
-	template<>
-	struct hash<Eppo::UUID>
+	std::size_t operator()(const Eppo::UUID& uuid) const noexcept
 	{
-		std::size_t operator()(const Eppo::UUID& uuid) const
-		{
-			return hash<uint64_t>()((uint64_t)uuid);
-		}
-	};
-}
+		return hash<uint64_t>()(uuid);
+	}
+};

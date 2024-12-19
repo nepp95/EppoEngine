@@ -18,6 +18,7 @@ namespace Eppo
 		VkCommandBuffer GetCommandBuffer(bool begin) const;
 		VkCommandBuffer GetSecondaryCommandBuffer() const;
 		void FlushCommandBuffer(VkCommandBuffer commandBuffer) const;
+		void FreeCommandBuffer(VkCommandBuffer commandBuffer) const;
 
 	private:
 		Ref<VulkanPhysicalDevice> m_PhysicalDevice;

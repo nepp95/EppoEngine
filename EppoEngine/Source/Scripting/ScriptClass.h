@@ -12,14 +12,14 @@ namespace Eppo
 	{
 	public:
 		ScriptClass() = default;
-		ScriptClass(const std::string& nameSpace, const std::string& name, bool isCore = false);
-		ScriptClass(MonoClass* monoClass);
+		ScriptClass(std::string nameSpace, std::string name, bool isCore = false);
+		explicit ScriptClass(MonoClass* monoClass);
 
-		MonoObject* Instantiate() const;
-		MonoMethod* GetMethod(const std::string& name, uint32_t paramCount);
+		[[nodiscard]] MonoObject* Instantiate() const;
+		[[nodiscard]] MonoMethod* GetMethod(const std::string& name, uint32_t paramCount) const;
 		MonoObject* InvokeMethod(MonoObject* instance, MonoMethod* method, void** params = nullptr);
 
-		const std::unordered_map<std::string, ScriptField>& GetFields() const { return m_Fields; }
+		[[nodiscard]] const std::unordered_map<std::string, ScriptField>& GetFields() const { return m_Fields; }
 
 	private:
 		std::string m_Namespace;

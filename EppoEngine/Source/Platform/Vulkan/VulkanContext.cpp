@@ -11,13 +11,13 @@ namespace Eppo
 	VulkanContext::VulkanContext(GLFWwindow* windowHandle)
 		: m_WindowHandle(windowHandle)
 	{
-		EPPO_ASSERT(windowHandle);
+		EPPO_ASSERT(windowHandle)
 	}
 
 	void VulkanContext::Init()
 	{
 		// Initialize Volk for loading Vulkan functions
-		VK_CHECK(volkInitialize(), "Failed to initialize volk!");
+		VK_CHECK(volkInitialize(), "Failed to initialize volk!")
 
 		VkApplicationInfo appInfo{};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -27,7 +27,7 @@ namespace Eppo
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.apiVersion = VK_API_VERSION_1_3;
 
-		auto extensions = GetRequiredExtensions();
+		const auto extensions = GetRequiredExtensions();
 
 		VkInstanceCreateInfo instanceInfo{};
 		instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -55,14 +55,14 @@ namespace Eppo
 			instanceInfo.pNext = nullptr;
 		}
 
-		VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &s_Instance), "Failed to create instance!");
+		VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &s_Instance), "Failed to create instance!")
 
 		// After creating vulkan instance, load all required vulkan entrypoints
 		volkLoadInstance(s_Instance);
 
 		// Debug messenger
 		if (VulkanConfig::EnableValidation)
-			VK_CHECK(CreateDebugUtilsMessengerEXT(s_Instance, &debugInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!");
+			VK_CHECK(CreateDebugUtilsMessengerEXT(s_Instance, &debugInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!")
 
 		// Devices
 		m_PhysicalDevice = CreateRef<VulkanPhysicalDevice>();
@@ -73,15 +73,39 @@ namespace Eppo
 
 		// Swapchain
 		m_Swapchain = CreateRef<VulkanSwapchain>(m_LogicalDevice);
+
+		// Renderer
+		m_Renderer = CreateRef<VulkanRenderer>();
+
+		// Create tracy profiler context
+		const VkCommandBuffer cmd = m_LogicalDevice->GetCommandBuffer(false);
+
+		#if defined(TRACY_ENABLE)
+		m_TracyContext = TracyVkContext(
+			m_PhysicalDevice->GetNativeDevice(),
+			m_LogicalDevice->GetNativeDevice(),
+			m_LogicalDevice->GetGraphicsQueue(),
+			cmd
+		)
+		#endif
+
+		m_LogicalDevice->FreeCommandBuffer(cmd);
 	}
 
 	void VulkanContext::Shutdown()
 	{
+		#if defined(TRACY_ENABLE)
+		EPPO_MEM_WARN("Releasing tracy context {}", static_cast<void*>(m_TracyContext));
+		TracyVkDestroy(m_TracyContext)
+		#endif
+
+		m_Renderer->Shutdown();
 		m_GarbageCollector.Shutdown();
 
 		if (VulkanConfig::EnableValidation)
 			DestroyDebugUtilsMessengerEXT(s_Instance, m_DebugMessenger, nullptr);
 
+		EPPO_MEM_WARN("Releasing vulkan instance {}", static_cast<void*>(s_Instance));
 		vkDestroyInstance(s_Instance, nullptr);
 	}
 
@@ -100,12 +124,12 @@ namespace Eppo
 		vkDeviceWaitIdle(m_LogicalDevice->GetNativeDevice());
 	}
 
-	void VulkanContext::SubmitResourceFree(std::function<void()> fn, bool freeOnShutdown)
+	void VulkanContext::SubmitResourceFree(const std::function<void()>& fn, const bool freeOnShutdown)
 	{
 		m_GarbageCollector.SubmitFreeFn(fn, freeOnShutdown);
 	}
 
-	void VulkanContext::RunGC(uint32_t frameNumber)
+	void VulkanContext::RunGC(const uint32_t frameNumber)
 	{
 		m_GarbageCollector.Update(frameNumber);
 	}
@@ -115,7 +139,7 @@ namespace Eppo
 		return std::static_pointer_cast<VulkanContext>(RendererContext::Get());
 	}
 
-	std::vector<const char*> VulkanContext::GetRequiredExtensions()
+	std::vector<const char*> VulkanContext::GetRequiredExtensions() const
 	{
 		uint32_t glfwExtensionCount = 0;
 		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);

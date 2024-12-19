@@ -10,20 +10,20 @@ namespace Eppo
 	class AssetManagerEditor : public AssetManagerBase
 	{
 	public:
+		bool CreateAsset(Ref<Asset> asset, const std::filesystem::path& filepath) override;
 		Ref<Asset> GetAsset(AssetHandle handle) override;
 
-		bool IsAssetHandleValid(AssetHandle handle) const override;
-		bool IsAssetLoaded(AssetHandle handle) const override;
-		AssetType GetAssetType(AssetHandle handle) const override;
+		[[nodiscard]] bool IsAssetHandleValid(AssetHandle handle) const override;
+		[[nodiscard]] bool IsAssetLoaded(AssetHandle handle) const override;
+		[[nodiscard]] AssetType GetAssetType(AssetHandle handle) const override;
 
 		Ref<Asset> ImportAsset(const std::filesystem::path& filepath);
 
-		const AssetMetadata& GetMetadata(AssetHandle handle) const;
-		const std::filesystem::path& GetFilepath(AssetHandle handle) const;
+		[[nodiscard]] const AssetMetadata& GetMetadata(AssetHandle handle) const;
+		[[nodiscard]] const std::filesystem::path& GetFilepath(AssetHandle handle) const;
+		[[nodiscard]] const std::map<AssetHandle, AssetMetadata>& GetAssetRegistry() const { return m_AssetData; }
 
-		const std::map<AssetHandle, AssetMetadata>& GetAssetRegistry() const { return m_AssetData; }
-
-		void SerializeAssetRegistry();
+		void SerializeAssetRegistry() const;
 		bool DeserializeAssetRegistry();
 
 	private:

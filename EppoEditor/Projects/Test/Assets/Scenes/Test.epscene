@@ -1,5 +1,41 @@
 Scene: Test
 Entities:
+  - Entity: 4053877638510577070
+    TagComponent:
+      Tag: Sponza
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshHandle: 17362452449132321929
+  - Entity: 4545082005372352439
+    TagComponent:
+      Tag: Point Light 1
+    TransformComponent:
+      Translation: [-4.94999981, 1, 1.14999998]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    PointLightComponent:
+      Color: [1, 0.352941185, 0, 1]
+  - Entity: 8203999123257290006
+    TagComponent:
+      Tag: Point Light 3
+    TransformComponent:
+      Translation: [3.9000001, 1, 1.14999998]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    PointLightComponent:
+      Color: [1, 0.352941185, 0, 1]
+  - Entity: 8533309991787433210
+    TagComponent:
+      Tag: Point Light 4
+    TransformComponent:
+      Translation: [3.9000001, 1, -1.75]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    PointLightComponent:
+      Color: [1, 0.352941185, 0, 1]
   - Entity: 10124499925899082567
     TagComponent:
       Tag: Camera
@@ -15,12 +51,12 @@ Entities:
       OrthographicSize: 10
       OrthographicNearClip: -1
       OrthographicFarClip: 1
-  - Entity: 4053877638510577070
+  - Entity: 10744061758300817162
     TagComponent:
-      Tag: Floor
+      Tag: Point Light 2
     TransformComponent:
-      Translation: [0, 0, 0]
+      Translation: [-4.94999981, 1, -1.75]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
-    MeshComponent:
-      MeshHandle: 17362452449132321929
+    PointLightComponent:
+      Color: [1, 0.352941185, 0, 1]

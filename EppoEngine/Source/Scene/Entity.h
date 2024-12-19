@@ -17,7 +17,7 @@ namespace Eppo
 		Entity(const Entity& other) = default;
 
 		template<typename T>
-		bool HasComponent()
+		[[nodiscard]] bool HasComponent() const
 		{
 			return m_Scene->m_Registry.all_of<T>(m_EntityHandle);
 		}
@@ -38,7 +38,7 @@ namespace Eppo
 		}
 
 		template<typename T>
-		void RemoveComponent()
+		void RemoveComponent() const
 		{
 			EPPO_ASSERT(HasComponent<T>());
 			m_Scene->m_Registry.remove<T>(m_EntityHandle);
@@ -47,12 +47,12 @@ namespace Eppo
 		template<typename T>
 		T& GetComponent()
 		{
-			EPPO_ASSERT(HasComponent<T>());
+			EPPO_ASSERT(HasComponent<T>())
 			return m_Scene->m_Registry.get<T>(m_EntityHandle);
 		}
 
-		operator bool() const { return m_EntityHandle != entt::null; }
-		operator EntityHandle() const { return m_EntityHandle; }
+		explicit operator bool() const { return m_EntityHandle != entt::null; }
+		explicit operator EntityHandle() const { return m_EntityHandle; }
 
 		bool operator==(const Entity& other) const
 		{
@@ -64,8 +64,8 @@ namespace Eppo
 			return !(*this == other);
 		}
 		
-		const std::string& GetName() { return GetComponent<TagComponent>(); }
-		const UUID& GetUUID() { return GetComponent<IDComponent>(); }
+		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
+		const UUID& GetUUID() { return GetComponent<IDComponent>().ID; }
 
 	private:
 		EntityHandle m_EntityHandle = entt::null;

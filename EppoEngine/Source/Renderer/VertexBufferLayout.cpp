@@ -7,7 +7,7 @@ namespace Eppo
 {
 	namespace Utils
 	{
-		uint32_t ShaderDataTypeSize(ShaderDataType type)
+		uint32_t ShaderDataTypeSize(const ShaderDataType type)
 		{
 			switch (type)
 			{
@@ -28,7 +28,7 @@ namespace Eppo
 			return 0;
 		}
 
-		VkFormat ShaderDataTypeToVkFormat(ShaderDataType type)
+		VkFormat ShaderDataTypeToVkFormat(const ShaderDataType type)
 		{
 			switch (type)
 			{
@@ -50,7 +50,7 @@ namespace Eppo
 		}
 	}
 
-	VertexBufferLayout::VertexBufferLayout(std::initializer_list<BufferElement> elements)
+	VertexBufferLayout::VertexBufferLayout(const std::initializer_list<BufferElement> elements)
 		: m_Elements(elements)
 	{
 		CalculateOffsetsAndStride();

@@ -17,30 +17,30 @@ namespace Eppo
 	class VulkanSwapchain
 	{
 	public:
-		VulkanSwapchain(Ref<VulkanLogicalDevice> logicalDevice);
+		explicit VulkanSwapchain(const Ref<VulkanLogicalDevice>& logicalDevice);
 
 		void Create(bool recreate = false);
 
 		void Cleanup();
-		void Destroy();
+		void Destroy() const;
 
 		void BeginFrame();
 		void PresentFrame();
 
 		void OnResize();
 
-		VkImage GetCurrentImage() const { return m_Images[m_CurrentFrameIndex]; }
-		VkImageView GetCurrentImageView() const { return m_ImageViews[m_CurrentFrameIndex]; }
-		uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
+		[[nodiscard]] VkImage GetCurrentImage() const { return m_Images[m_CurrentFrameIndex]; }
+		[[nodiscard]] VkImageView GetCurrentImageView() const { return m_ImageViews[m_CurrentFrameIndex]; }
+		[[nodiscard]] uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
 
-		uint32_t GetWidth() const { return m_Extent.width; }
-		uint32_t GetHeight() const { return m_Extent.height; }
-		VkExtent2D GetExtent() const { return m_Extent; }
+		[[nodiscard]] uint32_t GetWidth() const { return m_Extent.width; }
+		[[nodiscard]] uint32_t GetHeight() const { return m_Extent.height; }
+		[[nodiscard]] VkExtent2D GetExtent() const { return m_Extent; }
 
-		Ref<VulkanCommandBuffer> GetCommandBuffer() const { return m_CommandBuffer; }
+		[[nodiscard]] Ref<VulkanCommandBuffer> GetCommandBuffer() const { return m_CommandBuffer; }
 
 	private:
-		SwapchainSupportDetails QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice);
+		SwapchainSupportDetails QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice) const;
 
 		VkSurfaceFormatKHR SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats);
 		VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);

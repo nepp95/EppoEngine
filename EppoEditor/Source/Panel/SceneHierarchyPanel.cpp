@@ -12,14 +12,14 @@ namespace Eppo
 
 		GetSceneContext()->m_Registry.each([&](auto entityID)
 		{
-			Entity entity(entityID, GetSceneContext().get());
+			const Entity entity(entityID, GetSceneContext().get());
 			DrawEntityNode(entity);
 		});
 
 		if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
 			SetSelectedEntity({});
 
-		if (ImGui::BeginPopupContextWindow(0, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
+		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
 		{
 			if (ImGui::MenuItem("Create new entity"))
 				GetSceneContext()->CreateEntity("New entity");
@@ -28,15 +28,15 @@ namespace Eppo
 		}
 	}
 
-	void SceneHierarchyPanel::DrawEntityNode(Entity entity)
+	void SceneHierarchyPanel::DrawEntityNode(Entity entity) const
 	{
-		const std::string& tag = entity.GetComponent<TagComponent>();
+		const std::string& tag = entity.GetComponent<TagComponent>().Tag;
 
 		ImGuiTreeNodeFlags flags = (GetSelectedEntity() == entity ? ImGuiTreeNodeFlags_Selected : 0);
 		flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-		ImGui::PushID((void*)(uint64_t)entity);
-		bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
+		ImGui::PushID(reinterpret_cast<void*>(static_cast<uint64_t>(entity.GetUUID())));
+		const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
 		
 		if (ImGui::IsItemClicked())
 			SetSelectedEntity(entity);

@@ -7,18 +7,18 @@
 
 namespace Eppo
 {
-	bool Input::IsKeyPressed(KeyCode key)
+	bool Input::IsKeyPressed(const KeyCode key)
 	{
 		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
-		int keyState = glfwGetKey(window, key);
+		const int keyState = glfwGetKey(window, key);
 
 		return keyState == GLFW_PRESS;
 	}
 
-	bool Input::IsMouseButtonPressed(MouseCode button)
+	bool Input::IsMouseButtonPressed(const MouseCode button)
 	{
 		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
-		int buttonState = glfwGetMouseButton(window, button);
+		const int buttonState = glfwGetMouseButton(window, button);
 
 		return buttonState == GLFW_PRESS;
 	}
@@ -29,7 +29,7 @@ namespace Eppo
 		double xPos, yPos;
 		glfwGetCursorPos(window, &xPos, &yPos);
 
-		return glm::vec2((float)xPos, (float)yPos);
+		return { static_cast<float>(xPos), static_cast<float>(yPos) };
 	}
 
 	float Input::GetMouseX()

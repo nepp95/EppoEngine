@@ -5,9 +5,42 @@
 
 namespace Eppo
 {
-	void DescriptorLayoutBuilder::AddBinding(uint32_t binding, VkDescriptorType type, uint32_t count)
+	bool DescriptorLayoutInfo::operator==(const DescriptorLayoutInfo& other) const
 	{
-		VkDescriptorSetLayoutBinding& newBinding = m_Bindings.emplace_back();
+		if (other.Bindings.size() != Bindings.size())
+			return false;
+
+		for (size_t i = 0; i < Bindings.size(); i++)
+		{
+			if (other.Bindings[i].binding != Bindings[i].binding)
+				return false;
+			if (other.Bindings[i].descriptorType != Bindings[i].descriptorType)
+				return false;
+			if (other.Bindings[i].descriptorCount != Bindings[i].descriptorCount)
+				return false;
+			if (other.Bindings[i].stageFlags != Bindings[i].stageFlags)
+				return false;
+		}
+
+		return true;
+	}
+
+	size_t DescriptorLayoutInfo::hash() const
+	{
+		size_t result = std::hash<size_t>()(Bindings.size());
+
+		for (const auto& b : Bindings)
+		{
+			size_t bindingHash = b.binding | b.descriptorType << 8 | b.descriptorCount << 16 | b.stageFlags << 24;
+			result ^= std::hash<size_t>()(bindingHash);
+		}
+
+		return result;
+	}
+
+	void DescriptorLayoutBuilder::AddBinding(const uint32_t binding, const VkDescriptorType type, const uint32_t count)
+	{
+		VkDescriptorSetLayoutBinding& newBinding = m_CurrentLayoutInfo.Bindings.emplace_back();
 		newBinding.binding = binding;
 		newBinding.descriptorCount = count > 0 ? count : 1;
 		newBinding.descriptorType = type;
@@ -15,26 +48,52 @@ namespace Eppo
 
 	void DescriptorLayoutBuilder::Clear()
 	{
-		m_Bindings.clear();
+		m_CurrentLayoutInfo.Bindings.clear();
 	}
 
-	VkDescriptorSetLayout DescriptorLayoutBuilder::Build(VkShaderStageFlags shaderStageFlags, VkDescriptorSetLayoutCreateFlags createFlags, void* pNext)
+	VkDescriptorSetLayout DescriptorLayoutBuilder::Build(const VkShaderStageFlags shaderStageFlags, const VkDescriptorSetLayoutCreateFlags createFlags, const void* pNext)
 	{
-		for (auto& binding : m_Bindings)
+		EPPO_PROFILE_FUNCTION("DescriptorLayoutBuilder::Build");
+
+		for (auto& binding : m_CurrentLayoutInfo.Bindings)
 			binding.stageFlags |= shaderStageFlags;
 
-		VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
-		descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(m_Bindings.size());
-		descriptorSetLayoutCreateInfo.pBindings = m_Bindings.data();
-		descriptorSetLayoutCreateInfo.flags = createFlags;
-		descriptorSetLayoutCreateInfo.pNext = pNext;
+		// Sort bindings so we always verify the hash correctly
+		std::sort(m_CurrentLayoutInfo.Bindings.begin(), m_CurrentLayoutInfo.Bindings.end(), [](const VkDescriptorSetLayoutBinding& lhs, const VkDescriptorSetLayoutBinding& rhs)
+		{
+			return lhs.binding < rhs.binding;
+		});
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		// Check cache and return layout if we cached it
+		const auto context = VulkanContext::Get();
+		const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorSetLayout layout;
-		VK_CHECK(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &layout), "Failed to create descriptor set layout!");
+		if (const auto it = m_DescriptorLayoutCache.find(m_CurrentLayoutInfo); it != m_DescriptorLayoutCache.end())
+			layout = it->second;
+		else
+		{
+			// Layout not cached, create new layout
+			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
+			descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(m_CurrentLayoutInfo.Bindings.size());
+			descriptorSetLayoutCreateInfo.pBindings = m_CurrentLayoutInfo.Bindings.data();
+			descriptorSetLayoutCreateInfo.flags = createFlags;
+			descriptorSetLayoutCreateInfo.pNext = pNext;
+
+			VK_CHECK(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &layout), "Failed to create descriptor set layout!")
+
+			// Cache layout
+			m_DescriptorLayoutCache[m_CurrentLayoutInfo] = layout;
+
+			context->SubmitResourceFree([device, layout]()
+			{
+				EPPO_MEM_WARN("Releasing descriptor set layout {}", static_cast<void*>(layout));
+				vkDestroyDescriptorSetLayout(device, layout, nullptr);
+			});
+		}
+		
+		Clear();
 
 		return layout;
 	}

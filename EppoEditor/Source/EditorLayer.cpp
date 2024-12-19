@@ -40,7 +40,9 @@ namespace Eppo
 		RenderSpecification renderSpec;
 		renderSpec.Width = 1600;
 		renderSpec.Height = 900;
+#ifdef EPPO_DEBUG
 		renderSpec.DebugRendering = true;
+#endif
 
 		m_ViewportRenderer = SceneRenderer::Create(m_EditorScene, renderSpec);
 	}
@@ -110,7 +112,7 @@ namespace Eppo
 		// ImGui docking example
 		static bool dockspaceOpen = true;
 		static bool optFullscreenPersistence = true;
-		bool optFullscreen = optFullscreenPersistence;
+		const bool optFullscreen = optFullscreenPersistence;
 		static ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
 
 		// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
@@ -146,13 +148,13 @@ namespace Eppo
 			ImGui::PopStyleVar(2); // ImGuiStyleVar_WindowBorderSize, ImGuiStyleVar_WindowRounding
 
 		// Submit the DockSpace
-		ImGuiIO& io = ImGui::GetIO();
+		const ImGuiIO& io = ImGui::GetIO();
 		ImGuiStyle& style = ImGui::GetStyle();
-		float minWinSizeX = style.WindowMinSize.x;
+		const float minWinSizeX = style.WindowMinSize.x;
 		style.WindowMinSize.x = 370.0f;
 		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
 		{
-			ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+			const ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
 			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspaceFlags);
 		}
 
@@ -203,14 +205,14 @@ namespace Eppo
 		// Popups
 		if (s_NewProjectPopup)
 		{
-			ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+			constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
 			ImGui::OpenPopup("New Project", flags);
 			s_NewProjectPopup = false;
 		}
 
 		if (s_PreferencesPopup)
 		{
-			ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+			constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
 			ImGui::OpenPopup("Project settings", flags);
 			s_PreferencesPopup = false;
 		}
@@ -223,11 +225,20 @@ namespace Eppo
 		m_ViewportHovered = ImGui::IsWindowHovered();
 		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
 
-		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-		m_ViewportWidth = viewportSize.x;
-		m_ViewportHeight = viewportSize.y;
+		const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+		m_ViewportWidth = static_cast<uint32_t>(viewportSize.x);
+		m_ViewportHeight = static_cast<uint32_t>(viewportSize.y);
 
-		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(m_ViewportWidth, m_ViewportHeight), ImVec2(0, 1), ImVec2(1, 0));
+		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_ASSET"))
+			{
+				const auto handle = payload->Data;
+				OpenScene(*static_cast<AssetHandle*>(handle));
+			}
+			ImGui::EndDragDropTarget();
+		}
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -255,14 +266,14 @@ namespace Eppo
 		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
 	}
 
-	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
+	bool EditorLayer::OnKeyPressed(const KeyPressedEvent& e)
 	{
 		if (e.IsRepeat())
 			return false;
 
-		bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
-		bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
-		bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
+		const bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
+		const bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
+		const bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
 
 		switch (e.GetKeyCode())
 		{
@@ -414,7 +425,7 @@ namespace Eppo
 
 	bool EditorLayer::OpenProject()
 	{
-		std::filesystem::path filePath = FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0", Project::GetProjectsDirectory());
+		const std::filesystem::path filePath = FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0", Project::GetProjectsDirectory());
 
 		if (filePath.empty())
 		{
@@ -447,13 +458,13 @@ namespace Eppo
 		{
 			const auto& projSpec = Project::GetActive()->GetSpecification();
 
-			std::filesystem::path scriptPath = Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
+			const std::filesystem::path scriptPath = Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
 			ScriptEngine::LoadAppAssembly(scriptPath);
 
-			if (projSpec.StartScene.empty())
+			if (!projSpec.StartScene)
 				NewScene();
 			else
-				OpenScene(Project::GetAssetFilepath(projSpec.StartScene));
+				OpenScene(projSpec.StartScene);
 
 			m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
 			Application::Get().GetWindow().SetWindowTitle("EppoEngine Editor - " + projSpec.Name);
@@ -462,7 +473,10 @@ namespace Eppo
 
 	void EditorLayer::SaveProject()
 	{
-		EPPO_ASSERT(Project::GetActive());
+		EPPO_ASSERT(Project::GetActive())
+
+		SaveScene();
+
 		Project::SaveActive();
 	}
 
@@ -484,10 +498,9 @@ namespace Eppo
 			return;
 		}
 
-		Ref<Scene> newScene = CreateRef<Scene>();
-		SceneSerializer serializer(newScene);
-
-		if (serializer.Deserialize(filepath))
+		const auto newScene = CreateRef<Scene>();
+		if (const SceneSerializer serializer(newScene);
+			serializer.Deserialize(filepath))
 		{
 			m_EditorScene = newScene;
 			m_ActiveScene = m_EditorScene;
@@ -497,18 +510,16 @@ namespace Eppo
 		}
 	}
 
-	void EditorLayer::OpenScene(AssetHandle handle)
+	void EditorLayer::OpenScene(const AssetHandle handle)
 	{
-		EPPO_ASSERT(handle);
+		EPPO_ASSERT(handle)
 
 		if (m_SceneState != SceneState::Edit)
 			OnSceneStop();
 
-		Ref<Scene> sceneAsset = AssetManager::GetAsset<Scene>(handle);
-		Ref<Scene> newScene = Scene::Copy(sceneAsset);
-
-		m_EditorScene = newScene;
+		m_EditorScene = AssetManager::GetAsset<Scene>(handle);
 		m_ActiveScene = m_EditorScene;
+
 		m_ActiveScenePath = Project::GetActive()->GetAssetManagerEditor()->GetFilepath(handle);
 		
 		m_PanelManager.SetSceneContext(m_ActiveScene);
@@ -524,8 +535,8 @@ namespace Eppo
 
 	void EditorLayer::SaveSceneAs()
 	{
-		std::filesystem::path filepath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
-		if (!filepath.empty())
+		if (const std::filesystem::path filepath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
+			!filepath.empty())
 		{
 			m_ActiveScenePath = filepath;
 			AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
@@ -534,9 +545,8 @@ namespace Eppo
 
 	void EditorLayer::ImportAsset()
 	{
-		std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
-
-		if (!filepath.empty())
+		if (const std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
+			!filepath.empty())
 		{
 			Project::GetActive()->GetAssetManagerEditor()->ImportAsset(filepath);
 		}
@@ -544,18 +554,17 @@ namespace Eppo
 
 	void EditorLayer::UI_File_NewProject()
 	{
-		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
-
-		if (ImGui::BeginPopupModal("New Project", (bool*)0, flags))
+		if (constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+			ImGui::BeginPopupModal("New Project", nullptr, flags))
 		{
-			static char nameBuffer[200]{ 0 };
+			static char nameBuffer[200]{};
 			static bool projectExists = false;
 
 			ImGui::Text("Project Name");
 			ImGui::InputText("##ProjectName", nameBuffer, 200);
 
-			std::string projectPath = std::string(nameBuffer);
-			std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
+			const auto projectPath = std::string(nameBuffer);
+			const std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
 
 			projectExists = Filesystem::Exists(fullProjectPath);
 
@@ -595,37 +604,38 @@ namespace Eppo
 
 	void EditorLayer::UI_File_Preferences()
 	{
-		ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
-
-		if (ImGui::BeginPopupModal("Project settings", (bool*)0, flags))
+		if (constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+			ImGui::BeginPopupModal("Project settings", nullptr, flags))
 		{
 			auto& spec = Project::GetActive()->GetSpecification();
 			
 			static std::string nameBuffer = std::string(200, ' ').replace(0, 200, spec.Name);
 
 			ImGui::Text("Project Name");
-			ImGui::InputText("##ProjectName", &nameBuffer[0], 200);
+			ImGui::InputText("##ProjectName", nameBuffer.data(), 200);
 
 			ImGui::Text("Project Directory");
-			ImGui::InputText("##ProjectDirectory", &spec.ProjectDirectory.string()[0], spec.ProjectDirectory.string().length(), ImGuiInputTextFlags_ReadOnly);
+			ImGui::InputText("##ProjectDirectory", spec.ProjectDirectory.string().data(), spec.ProjectDirectory.string().length(), ImGuiInputTextFlags_ReadOnly);
 
 			ImGui::Text("Start Scene");
-			if (ImGui::BeginCombo("##StartScene", spec.StartScene.filename().string().c_str()))
+
+			const auto assetManager = Project::GetActive()->GetAssetManagerEditor();
+			const auto& assetRegistry = assetManager->GetAssetRegistry();
+
+			const AssetHandle startScene = spec.StartScene;
+
+			if (const auto& startSceneMetadata = assetRegistry.at(startScene);
+				ImGui::BeginCombo("##StartScene", startSceneMetadata.GetName().c_str()))
 			{
-				Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
-				const auto& assetRegistry = assetManager->GetAssetRegistry();
-
-				std::string startScene = spec.StartScene.filename().string();
-
 				for (const auto& [handle, metadata] : assetRegistry)
 				{
 					if (metadata.Type != AssetType::Scene)
 						continue;
 
-					bool isSelected = startScene == metadata.GetName();
+					const bool isSelected = startSceneMetadata.GetName() == metadata.GetName();
 
 					if (ImGui::Selectable(metadata.GetName().c_str(), isSelected))
-						startScene == metadata.GetName();
+						spec.StartScene = metadata.Handle;
 
 					if (isSelected)
 						ImGui::SetItemDefaultFocus();
@@ -633,16 +643,8 @@ namespace Eppo
 				ImGui::EndCombo();
 			}
 
-			if (ImGui::Button("Cancel", ImVec2(100, 30)))
+			if (ImGui::Button("OK", ImVec2(100, 30)))
 				ImGui::CloseCurrentPopup();
-
-			ImGui::SameLine();
-
-			if (ImGui::Button("Apply", ImVec2(100, 30)))
-			{
-				// TODO: Save settings
-				ImGui::CloseCurrentPopup();
-			}
 
 			ImGui::EndPopup();
 		}
@@ -654,7 +656,7 @@ namespace Eppo
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
 		ImGui::Begin("Scene Control", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-		float buttonSize = ImGui::GetWindowHeight() - 4.0f;
+		const float buttonSize = ImGui::GetWindowHeight() - 4.0f;
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 		ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (buttonSize * 0.5f));

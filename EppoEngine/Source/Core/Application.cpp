@@ -2,7 +2,6 @@
 #include "Application.h"
 
 #include "Core/Filesystem.h"
-#include "Renderer/Renderer.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <GLFW/glfw3.h>
@@ -11,13 +10,11 @@ namespace Eppo
 {
 	Application* Application::s_Instance = nullptr;
 
-	Application::Application(const ApplicationSpecification& specification)
-		: m_Specification(specification)
+	Application::Application(ApplicationSpecification specification)
+		: m_Specification(std::move(specification))
 	{
-		EPPO_PROFILE_FUNCTION("Application::Application");
-
 		// Set instance if not set. We can only have one instance!
-		EPPO_ASSERT(!s_Instance);
+		EPPO_ASSERT(!s_Instance)
 		s_Instance = this;
 
 		// Set working directory
@@ -36,7 +33,6 @@ namespace Eppo
 
 		// Initialize systems
 		Filesystem::Init();
-		Renderer::Init();
 		ScriptEngine::Init();
 
 		// Add GUI layer
@@ -46,15 +42,13 @@ namespace Eppo
 
 	Application::~Application()
 	{
-		EPPO_PROFILE_FUNCTION("Application::~Application");
-
 		EPPO_INFO("Shutting down...");
 
 		for (Layer* layer : m_LayerStack)
 			layer->OnDetach();
 
 		ScriptEngine::Shutdown();
-		Renderer::Shutdown();
+		// TODO: Remove Renderer::Shutdown();
 		m_Window->Shutdown();
 	}
 
@@ -83,9 +77,11 @@ namespace Eppo
 
 	void Application::SubmitToMainThread(const std::function<void()>& fn)
 	{
+		EPPO_PROFILE_FUNCTION("Application::SubmitToMainThread");
+
 		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
 
-		m_MainThreadQueue.push(fn);
+		m_MainThreadQueue->AddCommand(fn);
 	}
 
 	void Application::RenderGui()
@@ -96,7 +92,7 @@ namespace Eppo
 			layer->RenderGui();
 	}
 
-	void Application::PushLayer(Layer* layer, bool overlay)
+	void Application::PushLayer(Layer* layer, const bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PushLayer");
 
@@ -106,7 +102,7 @@ namespace Eppo
 			m_LayerStack.PushLayer(layer);
 	}
 
-	void Application::PopLayer(Layer* layer, bool overlay)
+	void Application::PopLayer(Layer* layer, const bool overlay)
 	{
 		EPPO_PROFILE_FUNCTION("Application::PopLayer");
 
@@ -145,14 +141,13 @@ namespace Eppo
 				}
 
 				context->BeginFrame();
-				Renderer::ExecuteRenderCommands();
+				context->GetRenderer()->ExecuteRenderCommands();
 				context->PresentFrame();
+
+				EPPO_PROFILE_FRAME_MARK;
 			}
 
 			m_Window->ProcessEvents();
-
-			EPPO_PROFILE_GPU_END;
-			EPPO_PROFILE_FRAME_MARK;
 		}
 
 		context->WaitIdle();
@@ -160,26 +155,24 @@ namespace Eppo
 
 	void Application::ExecuteMainThreadQueue()
 	{
+		EPPO_PROFILE_FUNCTION("Application::ExecuteMainThreadQueue");
+
 		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
 
-		for (size_t i = 0; i < m_MainThreadQueue.size(); i++)
-		{
-			m_MainThreadQueue.front()();
-			m_MainThreadQueue.pop();
-		}
+		m_MainThreadQueue->Execute();
 	}
 
-	bool Application::OnWindowClose(WindowCloseEvent& e)
+	bool Application::OnWindowClose(const WindowCloseEvent& e)
 	{
 		Close();
 
 		return true;
 	}
 
-	bool Application::OnWindowResize(WindowResizeEvent& e)
+	bool Application::OnWindowResize(const WindowResizeEvent& e)
 	{
 		EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
-		
+
 		uint32_t width = e.GetWidth();
 		uint32_t height = e.GetHeight();
 
@@ -188,8 +181,8 @@ namespace Eppo
 			m_IsMinimized = true;
 			return false;
 		}
-		else
-			m_IsMinimized = false;
+			
+		m_IsMinimized = false;
 
 		return true;
 	}
