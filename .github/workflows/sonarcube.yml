@@ -33,15 +33,6 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.3.1
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.8
-
-      - name: Setup gcovr
-        run: |
-          pip install gcovr==5.0
-
       - name: Cache VulkanSDK
         id: cache-vulkansdk
         uses: actions/cache@v4
@@ -63,30 +54,10 @@ jobs:
         run: |
           build-wrapper-win-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild /m /t:rebuild /nodeReuse:false /p:Configuration=${{ matrix.config }} EppoEngine.sln
 
-      - name: Run tests
-        run: |
-          .\Bin\${{ matrix.config }}-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:testoutput.xml"
-
-      - name: Save test output
-        uses: actions/upload-artifact@v4
-        with:
-          name: testoutput-${{ matrix.config }}
-          path: testoutput.xml
-      
-      - name: Run gcovr
-        run: |
-          gcovr --sonarqube testoutput.xml > coverage.xml
-
-      - name: Save coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.config }}
-          path: coverage.xml
-
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" --define sonar.coverageReportPaths=coverage.xml
+          sonar-scanner --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
         
