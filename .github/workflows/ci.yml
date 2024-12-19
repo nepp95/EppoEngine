@@ -53,7 +53,7 @@ jobs:
         run: .\Bin\${{ matrix.config }}-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:${{env.RUNNER_TEMP}}\testoutput.xml"
       
       - name: "Save test output"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: TestOutput-${{ matrix.config }}
           path: ${{env.RUNNER_TEMP}}/testoutput.xml
