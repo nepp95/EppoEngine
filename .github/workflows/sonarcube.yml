@@ -71,6 +71,12 @@ jobs:
         run: |
           gcovr --sonarqube ${{ env.RUNNER_TEMP }}\testoutput.junit.xml > coverage.xml
 
+      - name: Save coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-${{ matrix.config }}
+          path: coverage.xml
+
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
