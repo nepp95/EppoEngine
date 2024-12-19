@@ -13,7 +13,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanCommandBuffer>(manualSubmission, count);
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return nullptr;
 	}
 }

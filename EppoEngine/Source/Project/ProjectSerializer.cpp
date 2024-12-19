@@ -5,13 +5,11 @@
 
 namespace Eppo
 {
-	ProjectSerializer::ProjectSerializer(Ref<Project> project)
+	ProjectSerializer::ProjectSerializer(const Ref<Project>& project)
 		: m_Project(project)
-	{
+	{}
 
-	}
-
-	bool ProjectSerializer::Serialize()
+	bool ProjectSerializer::Serialize() const
 	{
 		EPPO_PROFILE_FUNCTION("ProjectSerializer::Serialize");
 
@@ -36,7 +34,7 @@ namespace Eppo
 		return true;
 	}
 
-	bool ProjectSerializer::Deserialize(const std::filesystem::path& filepath)
+	bool ProjectSerializer::Deserialize(const std::filesystem::path& filepath) const
 	{
 		EPPO_PROFILE_FUNCTION("ProjectSerializer::Deserialize");
 

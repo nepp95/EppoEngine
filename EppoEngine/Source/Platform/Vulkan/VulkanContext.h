@@ -27,7 +27,7 @@ namespace Eppo
 		void PresentFrame() override;
 		void WaitIdle() override;
 
-		void SubmitResourceFree(std::function<void()> fn, bool freeOnShutdown = true);
+		void SubmitResourceFree(const std::function<void()>& fn, bool freeOnShutdown = true);
 		void RunGC(uint32_t frameNumber);
 
 		[[nodiscard]] Ref<VulkanLogicalDevice> GetLogicalDevice() const { return m_LogicalDevice; }
@@ -45,7 +45,7 @@ namespace Eppo
 		static Ref<VulkanContext> Get();
 
 	private:
-		std::vector<const char*> GetRequiredExtensions() const;
+		[[nodiscard]] std::vector<const char*> GetRequiredExtensions() const;
 
 	private:
 		GLFWwindow* m_WindowHandle = nullptr;

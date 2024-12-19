@@ -13,13 +13,13 @@ namespace Eppo
 		EntityHandle Handle;
 	};
 
-	struct MeshCommand : public DrawCommand
+	struct MeshCommand : DrawCommand
 	{
 		Ref<Mesh> Mesh;
 		glm::mat4 Transform;
 	};
 
-	struct PointLightCommand : public DrawCommand
+	struct PointLightCommand : DrawCommand
 	{
 		glm::vec4 Color;
 		glm::vec3 Position;

@@ -201,7 +201,7 @@ namespace Eppo
 		pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(shader->GetPushConstantRanges().size());
 		pipelineLayoutCreateInfo.pPushConstantRanges = !shader->GetPushConstantRanges().empty() ? shader->GetPushConstantRanges().data() : nullptr;
 	
-		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!");
+		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!")
 
 		// Create pipeline rendering infos
 		const auto& shaderStageInfos = shader->GetPipelineShaderStageInfos();
@@ -246,7 +246,7 @@ namespace Eppo
 		graphicsPipelineCreateInfo.basePipelineIndex = -1;
 		graphicsPipelineCreateInfo.pNext = &renderingInfo;
 
-		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!");
+		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!")
 
 		if (m_Specification.CreateDepthImage)
 		{

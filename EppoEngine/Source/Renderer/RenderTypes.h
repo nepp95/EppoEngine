@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-	enum class EntityType
+	enum class EntityType : uint8_t
 	{
 		Mesh,
 		PointLight

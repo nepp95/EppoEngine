@@ -11,13 +11,13 @@ namespace Eppo
 	class ScriptInstance
 	{
 	public:
-		ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity);
+		ScriptInstance(const Ref<ScriptClass>& scriptClass, Entity entity);
 
-		void InvokeOnCreate();
-		void InvokeOnUpdate(float timestep);
+		void InvokeOnCreate() const;
+		void InvokeOnUpdate(float timestep) const;
 
 		Ref<ScriptClass> GetScriptClass() { return m_ScriptClass; }
-		MonoObject* GetManagedObject() { return m_Instance; }
+		[[nodiscard]] MonoObject* GetManagedObject() const { return m_Instance; }
 
 		template<typename T>
 		T GetFieldValue(const std::string& name)
@@ -38,8 +38,8 @@ namespace Eppo
 		}
 
 	private:
-		bool GetFieldValueInternal(const std::string& name, void* buffer);
-		bool SetFieldValueInternal(const std::string& name, const void* value);
+		bool GetFieldValueInternal(const std::string& name, void* buffer) const;
+		bool SetFieldValueInternal(const std::string& name, const void* value) const;
 
 	private:
 		Ref<ScriptClass> m_ScriptClass;

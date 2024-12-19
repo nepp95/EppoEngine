@@ -9,7 +9,7 @@
 
 namespace Eppo
 {
-	VulkanSwapchain::VulkanSwapchain(Ref<VulkanLogicalDevice> logicalDevice)
+	VulkanSwapchain::VulkanSwapchain(const Ref<VulkanLogicalDevice>& logicalDevice)
 		: m_LogicalDevice(logicalDevice)
 	{
 		Create();
@@ -57,10 +57,10 @@ namespace Eppo
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-		QueueFamilyIndices indices = physicalDevice->GetQueueFamilyIndices();
-		std::array<uint32_t, 2> queueFamilies = { static_cast<uint32_t>(indices.Graphics), static_cast<uint32_t>(indices.Present) };
+		auto& [graphicsIndex, presentIndex] = physicalDevice->GetQueueFamilyIndices();
+		std::array<uint32_t, 2> queueFamilies = { static_cast<uint32_t>(graphicsIndex), static_cast<uint32_t>(presentIndex) };
 
-		if (indices.Graphics != indices.Present)
+		if (graphicsIndex != presentIndex)
 		{
 			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamilies.size());
@@ -74,7 +74,7 @@ namespace Eppo
 		}
 
 		VkDevice device = m_LogicalDevice->GetNativeDevice();
-		VK_CHECK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_Swapchain), "Failed to create swapchain!");
+		VK_CHECK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_Swapchain), "Failed to create swapchain!")
 
 		if (recreate)
 			vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
@@ -105,7 +105,7 @@ namespace Eppo
 			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 			imageViewCreateInfo.subresourceRange.layerCount = 1;
 
-			VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageViews[i]), "Failed to create image view!");
+			VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageViews[i]), "Failed to create image view!")
 
 			// Transition images to present layout
 			VulkanImage::TransitionImage(cmd, m_Images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -140,7 +140,7 @@ namespace Eppo
 
 		context->SubmitResourceFree([this]()
 		{
-			EPPO_WARN("Releasing swapchain {}", (void*)this);
+			EPPO_WARN("Releasing swapchain {}", static_cast<void*>(this));
 			Destroy();
 		});
 	}
@@ -150,22 +150,22 @@ namespace Eppo
 
 	}
 
-	void VulkanSwapchain::Destroy()
+	void VulkanSwapchain::Destroy() const
 	{
-		VkDevice device = m_LogicalDevice->GetNativeDevice();
+		const VkDevice device = m_LogicalDevice->GetNativeDevice();
 
 		for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 		{
-			EPPO_MEM_WARN("Releasing semaphore {}", (void*)m_PresentSemaphores[i]);
+			EPPO_MEM_WARN("Releasing semaphore {}", static_cast<void*>(m_PresentSemaphores[i]));
 			vkDestroySemaphore(device, m_PresentSemaphores[i], nullptr);
 
-			EPPO_MEM_WARN("Releasing semaphore {}", (void*)m_RenderSemaphores[i]);
+			EPPO_MEM_WARN("Releasing semaphore {}", static_cast<void*>(m_RenderSemaphores[i]));
 			vkDestroySemaphore(device, m_RenderSemaphores[i], nullptr);
 
-			EPPO_MEM_WARN("Releasing fence {}", (void*)m_Fences[i]);
+			EPPO_MEM_WARN("Releasing fence {}", static_cast<void*>(m_Fences[i]));
 			vkDestroyFence(device, m_Fences[i], nullptr);
 
-			EPPO_MEM_WARN("Releasing image view {}", (void*)m_ImageViews[i]);
+			EPPO_MEM_WARN("Releasing image view {}", static_cast<void*>(m_ImageViews[i]));
 			vkDestroyImageView(device, m_ImageViews[i], nullptr);
 		}
 
@@ -176,7 +176,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanSwapchain::BeginFrame");
 
-		VkDevice device = m_LogicalDevice->GetNativeDevice();
+		const VkDevice device = m_LogicalDevice->GetNativeDevice();
 
 		vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, m_PresentSemaphores[m_CurrentFrameIndex], VK_NULL_HANDLE, &m_CurrentImageIndex);
 		m_CommandBuffer->ResetCommandBuffer(m_CurrentFrameIndex);
@@ -186,10 +186,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanSwapchain::PresentFrame");
 
-		VkResult result;
-		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-		VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
+		constexpr VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		const VkCommandBuffer commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -201,8 +199,8 @@ namespace Eppo
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &m_RenderSemaphores[m_CurrentFrameIndex];
 
-		VK_CHECK(vkResetFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex]), "Failed to reset fence!");
-		VK_CHECK(vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[m_CurrentFrameIndex]), "Failed to submit work to queue!");
+		VK_CHECK(vkResetFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex]), "Failed to reset fence!")
+		VK_CHECK(vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[m_CurrentFrameIndex]), "Failed to submit work to queue!")
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -213,10 +211,11 @@ namespace Eppo
 		presentInfo.pImageIndices = &m_CurrentImageIndex;
 		presentInfo.pResults = nullptr;
 
-		result = vkQueuePresentKHR(m_LogicalDevice->GetGraphicsQueue(), &presentInfo);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		if (const VkResult result = vkQueuePresentKHR(m_LogicalDevice->GetGraphicsQueue(), &presentInfo);
+			result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		{
 			OnResize();
+		}
 
 		m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % VulkanConfig::MaxFramesInFlight;
 
@@ -230,13 +229,13 @@ namespace Eppo
 	void VulkanSwapchain::OnResize()
 	{
 		// TODO: Swapchain::OnResize
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 	}
 
-	SwapchainSupportDetails VulkanSwapchain::QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice)
+	SwapchainSupportDetails VulkanSwapchain::QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice) const
 	{
 		SwapchainSupportDetails details;
-		VkPhysicalDevice device = physicalDevice->GetNativeDevice();
+		const VkPhysicalDevice device = physicalDevice->GetNativeDevice();
 
 		auto* surface = m_LogicalDevice->GetPhysicalDevice()->GetSurface();
 

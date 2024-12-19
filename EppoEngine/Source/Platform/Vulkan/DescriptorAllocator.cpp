@@ -5,7 +5,7 @@
 
 namespace Eppo
 {
-	void DescriptorAllocator::Init(uint32_t initialSets, const std::vector<PoolSizeRatio>& poolSizeRatios)
+	void DescriptorAllocator::Init(const uint32_t initialSets, const std::vector<PoolSizeRatio>& poolSizeRatios)
 	{
 		m_PoolSizeRatios = poolSizeRatios;
 
@@ -19,10 +19,10 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorAllocator::ClearPools");
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		const auto context = VulkanContext::Get();
+		const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
-		for (auto& pool : m_AvailablePools)
+		for (const auto& pool : m_AvailablePools)
 			vkResetDescriptorPool(device, pool, 0);
 
 		for (auto& pool : m_FullPools)
@@ -38,8 +38,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorAllocator::DestroyPools");
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		const auto context = VulkanContext::Get();
+		const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		for (const auto& pool : m_AvailablePools)
 			vkDestroyDescriptorPool(device, pool, nullptr);
@@ -50,17 +50,17 @@ namespace Eppo
 		m_FullPools.clear();
 	}
 
-	void* DescriptorAllocator::Allocate(void* layout, void* pNext)
+	void* DescriptorAllocator::Allocate(void* layout, const void* pNext)
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorAllocator::Allocate");
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		const auto context = VulkanContext::Get();
+		const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorPool pool = GetPool();
 		const auto vkLayout = static_cast<VkDescriptorSetLayout>(layout);
 
-		VkDescriptorSetAllocateInfo allocateInfo{};
+		VkDescriptorSetAllocateInfo allocateInfo;
 		allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocateInfo.descriptorPool = pool;
 		allocateInfo.descriptorSetCount = 1;
@@ -68,9 +68,9 @@ namespace Eppo
 		allocateInfo.pNext = pNext;
 
 		VkDescriptorSet descriptorSet;
-		VkResult result = vkAllocateDescriptorSets(device, &allocateInfo, &descriptorSet);
 
-		if (result == VK_ERROR_OUT_OF_POOL_MEMORY || result == VK_ERROR_FRAGMENTED_POOL)
+		if (const VkResult result = vkAllocateDescriptorSets(device, &allocateInfo, &descriptorSet);
+			result == VK_ERROR_OUT_OF_POOL_MEMORY || result == VK_ERROR_FRAGMENTED_POOL)
 		{
 			EPPO_WARN("Descriptor pool is full, trying again with next available pool!");
 
@@ -79,7 +79,7 @@ namespace Eppo
 			pool = GetPool();
 			allocateInfo.descriptorPool = pool;
 
-			VK_CHECK(vkAllocateDescriptorSets(device, &allocateInfo, &descriptorSet), "Failed to allocate descriptor set!");
+			VK_CHECK(vkAllocateDescriptorSets(device, &allocateInfo, &descriptorSet), "Failed to allocate descriptor set!")
 		}
 
 		m_AvailablePools.emplace_back(pool);
@@ -110,7 +110,7 @@ namespace Eppo
 		return newPool;
 	}
 
-	VkDescriptorPool DescriptorAllocator::CreatePool(uint32_t setCount) const
+	VkDescriptorPool DescriptorAllocator::CreatePool(const uint32_t setCount) const
 	{
 		EPPO_PROFILE_FUNCTION("DescriptorAllocator::CreatePool");
 
@@ -129,11 +129,11 @@ namespace Eppo
 		poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		poolCreateInfo.pPoolSizes = poolSizes.data();
 
-		Ref<VulkanContext> context = VulkanContext::Get();
-		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
+		const auto context = VulkanContext::Get();
+		const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
 		VkDescriptorPool newPool;
-		VK_CHECK(vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &newPool), "Failed to create descriptor pool!");
+		VK_CHECK(vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &newPool), "Failed to create descriptor pool!")
 
 		return newPool;
 	}

@@ -5,7 +5,7 @@ namespace Eppo
 	class CommandBuffer
 	{
 	public:
-		virtual ~CommandBuffer() {}
+		virtual ~CommandBuffer() = default;
 
 		virtual void RT_Begin() = 0;
 		virtual void RT_End() = 0;

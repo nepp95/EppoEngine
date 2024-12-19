@@ -2,7 +2,6 @@
 
 #include "Renderer/Mesh/Material.h"
 #include "Renderer/IndexBuffer.h"
-#include "Renderer/CommandBuffer.h"
 #include "Renderer/Vertex.h"
 #include "Renderer/VertexBuffer.h"
 
@@ -21,15 +20,15 @@ namespace Eppo
 	class Submesh
 	{
 	public:
-		Submesh(const std::string& name, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<Primitive>& primitives, const glm::mat4& transform);
+		Submesh(std::string name, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<Primitive>& primitives, const glm::mat4& transform);
 
-		Ref<VertexBuffer> GetVertexBuffer() const { return m_VertexBuffer; }
-		Ref<IndexBuffer> GetIndexBuffer() const { return m_IndexBuffer; }
+		[[nodiscard]] Ref<VertexBuffer> GetVertexBuffer() const { return m_VertexBuffer; }
+		[[nodiscard]] Ref<IndexBuffer> GetIndexBuffer() const { return m_IndexBuffer; }
 
-		const std::vector<Primitive>& GetPrimitives() const { return m_Primitives; }
+		[[nodiscard]] const std::vector<Primitive>& GetPrimitives() const { return m_Primitives; }
 
-		const std::string& GetName() const { return m_Name; }
-		const glm::mat4& GetLocalTransform() const { return m_LocalTransform; }
+		[[nodiscard]] const std::string& GetName() const { return m_Name; }
+		[[nodiscard]] const glm::mat4& GetLocalTransform() const { return m_LocalTransform; }
 
 	private:
 		Ref<VertexBuffer> m_VertexBuffer;

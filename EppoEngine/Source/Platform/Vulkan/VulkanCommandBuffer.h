@@ -26,12 +26,12 @@ namespace Eppo
 		void RT_Submit() const override;
 
 		uint32_t RT_BeginTimestampQuery();
-		void RT_EndTimestampQuery(uint32_t queryIndex);
+		void RT_EndTimestampQuery(uint32_t queryIndex) const;
 		[[nodiscard]] float GetTimestamp(uint32_t frameIndex, uint32_t queryIndex = 0) const;
 		[[nodiscard]] const PipelineStatistics& GetPipelineStatistics(const uint32_t frameIndex) const { return m_PipelineStatistics[frameIndex]; }
 
-		void ResetCommandBuffer(uint32_t frameIndex);
-		VkCommandBuffer GetCurrentCommandBuffer();
+		void ResetCommandBuffer(uint32_t frameIndex) const;
+		[[nodiscard]] VkCommandBuffer GetCurrentCommandBuffer() const;
 
 	private:
 		VkCommandPool m_CommandPool;

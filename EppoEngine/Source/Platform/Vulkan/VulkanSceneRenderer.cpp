@@ -978,14 +978,14 @@ namespace Eppo
 				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 3, descriptorSets.data(), 0, nullptr);
 		
 				// Bind vertex buffer
-				Ref<VulkanVertexBuffer> vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(m_DebugLineVertexBuffer);
-				VkBuffer vb = { vertexBuffer->GetBuffer() };
-				VkDeviceSize offsets[] = { 0 };
+				const auto vertexBuffer = std::static_pointer_cast<VulkanVertexBuffer>(m_DebugLineVertexBuffer);
+				const VkBuffer vb = { vertexBuffer->GetBuffer() };
+				constexpr VkDeviceSize offsets[] = { 0 };
 
 				vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
 				// Bind index buffer
-				Ref<VulkanIndexBuffer> indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(m_DebugLineIndexBuffer);
+				const auto indexBuffer = std::static_pointer_cast<VulkanIndexBuffer>(m_DebugLineIndexBuffer);
 				vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 		
 				// Draw call

@@ -10,7 +10,7 @@ namespace Eppo
 
 	VulkanRenderer::VulkanRenderer()
 	{
-		EPPO_ASSERT(!s_IsInstantiated);
+		EPPO_ASSERT(!s_IsInstantiated)
 		s_IsInstantiated = true;
 
 		const Ref<VulkanContext> context = VulkanContext::Get();
@@ -19,7 +19,7 @@ namespace Eppo
 
 		// Create descriptor allocators
 		const std::vector<DescriptorAllocator::PoolSizeRatio> ratios = {
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				3.0f },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,			3.0f },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,			3.0f },
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,			3.0f },
 			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,	4.0f }

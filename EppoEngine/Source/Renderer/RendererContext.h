@@ -6,7 +6,7 @@ struct GLFWwindow;
 
 namespace Eppo
 {
-	enum class RendererAPI
+	enum class RendererAPI : uint8_t
 	{
 		Vulkan = 1
 	};
@@ -19,12 +19,12 @@ namespace Eppo
 		virtual void Init() = 0;
 		virtual void Shutdown() = 0;
 
-		virtual uint32_t GetCurrentFrameIndex() const = 0;
+		[[nodiscard]] virtual uint32_t GetCurrentFrameIndex() const = 0;
 		virtual void BeginFrame() = 0;
 		virtual void PresentFrame() = 0;
 		virtual void WaitIdle() = 0;
 
-		virtual Ref<Renderer> GetRenderer() const = 0;
+		[[nodiscard]] virtual Ref<Renderer> GetRenderer() const = 0;
 
 		virtual GLFWwindow* GetWindowHandle() = 0;
 

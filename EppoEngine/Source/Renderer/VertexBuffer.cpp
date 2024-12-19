@@ -13,13 +13,13 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanVertexBuffer>(size);
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return nullptr;
 	}
 
-	Ref<VertexBuffer> VertexBuffer::Create(void* data, uint32_t size)
+	Ref<VertexBuffer> VertexBuffer::Create(const void* data, const uint32_t size)
 	{
-		Buffer buffer = Buffer::Copy(data, size);
+		const Buffer buffer = Buffer::Copy(data, size);
 
 		return Create(buffer);
 	}
@@ -31,7 +31,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanVertexBuffer>(buffer);
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return nullptr;
 	}
 }

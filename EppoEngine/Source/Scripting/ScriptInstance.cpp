@@ -7,7 +7,7 @@
 
 namespace Eppo
 {
-	ScriptInstance::ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity)
+	ScriptInstance::ScriptInstance(const Ref<ScriptClass>& scriptClass, Entity entity)
 		: m_ScriptClass(scriptClass)
 	{
 		EPPO_PROFILE_FUNCTION("ScriptInstance::ScriptInstance");
@@ -23,7 +23,7 @@ namespace Eppo
 		m_ScriptClass->InvokeMethod(m_Instance, m_Constructor, &param);
 	}
 
-	void ScriptInstance::InvokeOnCreate()
+	void ScriptInstance::InvokeOnCreate() const
 	{
 		EPPO_PROFILE_FUNCTION("ScriptInstance::InvokeOnCreate");
 
@@ -31,7 +31,7 @@ namespace Eppo
 			m_ScriptClass->InvokeMethod(m_Instance, m_OnCreate);
 	}
 
-	void ScriptInstance::InvokeOnUpdate(float timestep)
+	void ScriptInstance::InvokeOnUpdate(float timestep) const
 	{
 		EPPO_PROFILE_FUNCTION("ScriptInstance::InvokeOnUpdate");
 
@@ -42,12 +42,12 @@ namespace Eppo
 		}
 	}
 
-	bool ScriptInstance::GetFieldValueInternal(const std::string& name, void* buffer)
+	bool ScriptInstance::GetFieldValueInternal(const std::string& name, void* buffer) const
 	{
 		EPPO_PROFILE_FUNCTION("ScriptInstance::GetFieldValueInternal");
 
 		const auto& fields = m_ScriptClass->GetFields();
-		auto it = fields.find(name);
+		const auto it = fields.find(name);
 		if (it == fields.end())
 			return false;
 
@@ -57,17 +57,17 @@ namespace Eppo
 		return true;
 	}
 
-	bool ScriptInstance::SetFieldValueInternal(const std::string& name, const void* value)
+	bool ScriptInstance::SetFieldValueInternal(const std::string& name, const void* value) const
 	{
 		EPPO_PROFILE_FUNCTION("ScriptInstance::SetFieldValueInternal");
 
 		const auto& fields = m_ScriptClass->GetFields();
-		auto it = fields.find(name);
+		const auto it = fields.find(name);
 		if (it == fields.end())
 			return false;
 
 		const ScriptField& field = it->second;
-		mono_field_set_value(m_Instance, field.ClassField, (void*)value);
+		mono_field_set_value(m_Instance, field.ClassField, const_cast<void*>(value));
 
 		return true;
 	}

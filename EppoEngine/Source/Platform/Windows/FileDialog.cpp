@@ -19,15 +19,17 @@ namespace Eppo
 		CHAR szFile[260]{ 0 };
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
-		ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)RendererContext::Get()->GetWindowHandle());
+		ofn.hwndOwner = glfwGetWin32Window(RendererContext::Get()->GetWindowHandle());
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 
 		if (initialDir.empty())
 		{
-			CHAR currentDir[256]{ 0 };
-			if (GetCurrentDirectoryA(256, currentDir))
+			if (CHAR currentDir[256]{};
+				GetCurrentDirectoryA(256, currentDir))
+			{
 				ofn.lpstrInitialDir = currentDir;
+			}
 		} else
 		{
 			ofn.lpstrInitialDir = initialDir.string().c_str();		
@@ -48,11 +50,11 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("FileDialog::SaveFile");
 
 		OPENFILENAMEA ofn;
-		CHAR szFile[260] = { 0 };
-		CHAR currentDir[256] = { 0 };
+		CHAR szFile[260]{};
+		CHAR currentDir[256]{};
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
-		ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)RendererContext::Get()->GetWindowHandle());
+		ofn.hwndOwner = glfwGetWin32Window(RendererContext::Get()->GetWindowHandle());
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 

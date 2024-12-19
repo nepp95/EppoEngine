@@ -11,56 +11,56 @@
 
 namespace Eppo
 {
-	static btDefaultCollisionConfiguration* s_collisionConfig = new btDefaultCollisionConfiguration();
-	static btCollisionDispatcher* s_collisionDispatcher = new btCollisionDispatcher(s_collisionConfig);
+	static auto* s_collisionConfig = new btDefaultCollisionConfiguration();
+	static auto* s_collisionDispatcher = new btCollisionDispatcher(s_collisionConfig);
 	static btBroadphaseInterface* s_broadPhaseInterface = new btDbvtBroadphase();
-	static btSequentialImpulseConstraintSolver* s_Solver = new btSequentialImpulseConstraintSolver();
+	static auto* s_Solver = new btSequentialImpulseConstraintSolver();
 
 	namespace Utils
 	{
 		static glm::vec3 BulletToGlm(const btVector3& v)
 		{
-			return glm::vec3(v.getX(), v.getY(), v.getZ());
+			return { v.getX(), v.getY(), v.getZ() };
 		}
 
 		static glm::quat BulletToGlm(const btQuaternion& q)
 		{
-			return glm::quat(q.getW(), q.getX(), q.getY(), q.getZ());
+			return { q.getW(), q.getX(), q.getY(), q.getZ() };
 		}
 
 		static btVector3 GlmToBullet(const glm::vec3& v)
 		{
-			return btVector3(v.x, v.y, v.z);
+			return { v.x, v.y, v.z };
 		}
 
 		static btQuaternion GlmToBullet(const glm::quat& q)
 		{
-			return btQuaternion(q.x, q.y, q.z, q.w);
+			return { q.x, q.y, q.z, q.w };
 		}
 	}
 
-	void Scene::SetViewportSize(uint32_t width, uint32_t height)
+	void Scene::SetViewportSize(const uint32_t width, const uint32_t height)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::SetViewportSize");
 
-		auto view = m_Registry.view<CameraComponent>();
-		for (auto e : view)
+		const auto view = m_Registry.view<CameraComponent>();
+		for (const auto e : view)
 		{
 			auto& component = m_Registry.get<CameraComponent>(e);
 			component.Camera.SetViewportSize(width, height);
 		}
 	}
 
-	void Scene::OnUpdateRuntime(float timestep)
+	void Scene::OnUpdateRuntime(const float timestep)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::OnUpdateRuntime");
 
 		// Scripts
 		{
-			auto view = m_Registry.view<ScriptComponent>();
-			for (auto e : view)
+			const auto view = m_Registry.view<ScriptComponent>();
+			for (const auto e : view)
 			{
-				Entity entity(e, this);
+				const Entity entity(e, this);
 				ScriptEngine::OnUpdateEntity(entity, timestep);
 			}
 		}
@@ -68,8 +68,8 @@ namespace Eppo
 		// Physics
 		m_PhysicsWorld->stepSimulation(timestep, 10);
 
-		auto view = m_Registry.view<RigidBodyComponent>();
-		for (auto e : view)
+		const auto view = m_Registry.view<RigidBodyComponent>();
+		for (const auto e : view)
 		{
 			Entity entity(e, this);
 			auto& transform = entity.GetComponent<TransformComponent>();
@@ -103,12 +103,12 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Scene::OnRenderRuntime");
 
-		SceneCamera* sceneCamera = nullptr;
+		const SceneCamera* sceneCamera = nullptr;
 		glm::mat4 cameraTransform;
 
 		{
-			auto view = m_Registry.view<TransformComponent, CameraComponent>();
-			for (auto e : view)
+			const auto view = m_Registry.view<TransformComponent, CameraComponent>();
+			for (const auto e : view)
 			{
 				auto [transform, camera] = view.get<TransformComponent, CameraComponent>(e);
 				sceneCamera = &camera.Camera;
@@ -137,10 +137,10 @@ namespace Eppo
 		OnPhysicsStart();
 		ScriptEngine::OnRuntimeStart();
 
-		auto view = m_Registry.view<ScriptComponent>();
-		for (auto e : view)
+		const auto view = m_Registry.view<ScriptComponent>();
+		for (const auto e : view)
 		{
-			Entity entity(e, this);
+			const Entity entity(e, this);
 			ScriptEngine::OnCreateEntity(entity);
 		}
 	}
@@ -155,7 +155,7 @@ namespace Eppo
 		ScriptEngine::OnRuntimeStop();
 	}
 
-	Ref<Scene> Scene::Copy(Ref<Scene> scene)
+	Ref<Scene> Scene::Copy(const Ref<Scene>& scene)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::Copy");
 
@@ -167,14 +167,14 @@ namespace Eppo
 
 		// Every entity in the scene has an ID component
 		std::unordered_map<UUID, entt::entity> entityMap;
-		auto idView = srcRegistry.view<IDComponent>();
+		const auto idView = srcRegistry.view<IDComponent>();
 
-		for (auto entity : idView)
+		for (const auto entity : idView)
 		{
-			UUID uuid = srcRegistry.get<IDComponent>(entity);
-			const auto& name = srcRegistry.get<TagComponent>(entity);
+			auto uuid = srcRegistry.get<IDComponent>(entity).ID;
+			const auto& name = srcRegistry.get<TagComponent>(entity).Tag;
 			Entity newEntity = newScene->CreateEntityWithUUID(uuid, name);
-			entityMap[uuid] = newEntity;
+			entityMap[uuid] = static_cast<EntityHandle>(newEntity);
 		}
 
 		CopyComponent<TransformComponent>(srcRegistry, dstRegistry, entityMap);
@@ -229,9 +229,9 @@ namespace Eppo
 		entity.AddComponent<TransformComponent>();
 
 		auto& tag = entity.AddComponent<TagComponent>();
-		tag = name.empty() ? "Entity" : name;
+		tag.Tag = name.empty() ? "Entity" : name;
 
-		m_EntityMap[uuid] = entity;
+		m_EntityMap[uuid] = static_cast<EntityHandle>(entity);
 
 		return entity;
 	}
@@ -240,8 +240,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Scene::DuplicateEntity");
 
-		std::string name = entity.GetName();
-		Entity newEntity = CreateEntity(name);
+		const std::string name = entity.GetName();
+		const Entity newEntity = CreateEntity(name);
 
 		TryCopyComponent<TransformComponent>(entity, newEntity);
 		TryCopyComponent<SpriteComponent>(entity, newEntity);
@@ -259,25 +259,27 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("Scene::DestroyEntity");
 
 		m_EntityMap.erase(entity.GetUUID());
-		m_Registry.destroy(entity);
+		m_Registry.destroy(static_cast<EntityHandle>(entity));
 	}
 
-	Entity Scene::FindEntityByUUID(UUID uuid)
+	Entity Scene::FindEntityByUUID(const UUID uuid)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::FindEntityByUUID");
 
-		auto it = m_EntityMap.find(uuid);
-		if (it != m_EntityMap.end())
+		if (const auto it = m_EntityMap.find(uuid);
+			it != m_EntityMap.end())
+		{
 			return { it->second, this };
+		}
 
 		return {};
 	}
 
-	Entity Scene::FindEntityByName(std::string_view name)
+	Entity Scene::FindEntityByName(const std::string_view name)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::FindEntityByName");
 
-		auto view = m_Registry.view<TagComponent>();
+		const auto view = m_Registry.view<TagComponent>();
 		for (auto e : view)
 		{
 			const auto& tc = view.get<TagComponent>(e);
@@ -295,8 +297,8 @@ namespace Eppo
 		m_PhysicsWorld = new btDiscreteDynamicsWorld(s_collisionDispatcher, s_broadPhaseInterface, s_Solver, s_collisionConfig);
 		m_PhysicsWorld->setGravity(btVector3(0.0f, -9.81f, 0.0f));
 
-		auto view = m_Registry.view<RigidBodyComponent>();
-		for (auto e : view)
+		const auto view = m_Registry.view<RigidBodyComponent>();
+		for (const auto e : view)
 		{
 			Entity entity(e, this);
 			const auto& transform = entity.GetComponent<TransformComponent>();
@@ -309,12 +311,12 @@ namespace Eppo
 			bTransform.setOrigin(btVector3(transform.Translation.x, transform.Translation.y, transform.Translation.z));
 			bTransform.setRotation(Utils::GlmToBullet(glm::quat(transform.Rotation)));
 
-			bool isDynamic = rigidbody.Type == RigidBodyComponent::BodyType::Dynamic;
+			const bool isDynamic = rigidbody.Type == RigidBodyComponent::BodyType::Dynamic;
 			btScalar mass(0.0f);
 			if (isDynamic)
 				mass = rigidbody.Mass;
 
-			btVector3 localInertia(btVector3(0.0f, 0.0f, 0.0f));
+			auto localInertia(btVector3(0.0f, 0.0f, 0.0f));
 			if (isDynamic)
 				shape->calculateLocalInertia(mass, localInertia);
 
@@ -346,8 +348,8 @@ namespace Eppo
 			delete obj;
 		}
 
-		auto view = m_Registry.view<RigidBodyComponent>();
-		for (auto e : view)
+		const auto view = m_Registry.view<RigidBodyComponent>();
+		for (const auto e : view)
 		{
 			Entity entity(e, this);
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
@@ -359,21 +361,19 @@ namespace Eppo
 		m_PhysicsWorld = nullptr;
 	}
 
-	void Scene::RenderScene(Ref<SceneRenderer> sceneRenderer)
+	void Scene::RenderScene(const Ref<SceneRenderer>& sceneRenderer)
 	{
 		EPPO_PROFILE_FUNCTION("Scene::RenderScene");
 
 		{
-			auto view = m_Registry.view<MeshComponent, TransformComponent>();
+			const auto view = m_Registry.view<MeshComponent, TransformComponent>();
 
 			for (const EntityHandle entity : view)
 			{
-				auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
-				if (meshC.MeshHandle)
+				if (auto [meshC, transform] = view.get<MeshComponent, TransformComponent>(entity);
+					meshC.MeshHandle)
 				{
-					Ref<Mesh> mesh = AssetManager::GetAsset<Mesh>(meshC.MeshHandle);
-
-					if (mesh)
+					if (const Ref<Mesh> mesh = AssetManager::GetAsset<Mesh>(meshC.MeshHandle))
 					{
 						Ref<MeshCommand> meshCommand = CreateRef<MeshCommand>();
 						meshCommand->Handle = entity;
@@ -387,7 +387,7 @@ namespace Eppo
 		}
 
 		{
-			auto view = m_Registry.view<PointLightComponent, TransformComponent>();
+			const auto view = m_Registry.view<PointLightComponent, TransformComponent>();
 
 			for (const EntityHandle entity : view)
 			{

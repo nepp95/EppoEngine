@@ -30,13 +30,13 @@ namespace Eppo
 
 	void SceneHierarchyPanel::DrawEntityNode(Entity entity)
 	{
-		const std::string& tag = entity.GetComponent<TagComponent>();
+		const std::string& tag = entity.GetComponent<TagComponent>().Tag;
 
 		ImGuiTreeNodeFlags flags = (GetSelectedEntity() == entity ? ImGuiTreeNodeFlags_Selected : 0);
 		flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-		ImGui::PushID((void*)(uint64_t)entity);
-		bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
+		ImGui::PushID(reinterpret_cast<void*>(static_cast<uint64_t>(entity.GetUUID())));
+		const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
 		
 		if (ImGui::IsItemClicked())
 			SetSelectedEntity(entity);
