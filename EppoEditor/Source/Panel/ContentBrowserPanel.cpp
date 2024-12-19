@@ -48,7 +48,7 @@ namespace Eppo
 
 		ImGui::BeginGroup();
 
-		Ref<AssetManagerEditor> assetManager = Project::GetActive()->GetAssetManagerEditor();
+		const auto assetManager = Project::GetActive()->GetAssetManagerEditor();
 		const auto& assetRegistry = assetManager->GetAssetRegistry();
 		const AssetType currentAssetType = Utils::AssetTypeFromString(items[currentItem]);
 

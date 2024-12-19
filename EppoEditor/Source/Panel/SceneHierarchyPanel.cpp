@@ -12,14 +12,14 @@ namespace Eppo
 
 		GetSceneContext()->m_Registry.each([&](auto entityID)
 		{
-			Entity entity(entityID, GetSceneContext().get());
+			const Entity entity(entityID, GetSceneContext().get());
 			DrawEntityNode(entity);
 		});
 
 		if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
 			SetSelectedEntity({});
 
-		if (ImGui::BeginPopupContextWindow(0, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
+		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
 		{
 			if (ImGui::MenuItem("Create new entity"))
 				GetSceneContext()->CreateEntity("New entity");
@@ -28,7 +28,7 @@ namespace Eppo
 		}
 	}
 
-	void SceneHierarchyPanel::DrawEntityNode(Entity entity)
+	void SceneHierarchyPanel::DrawEntityNode(Entity entity) const
 	{
 		const std::string& tag = entity.GetComponent<TagComponent>().Tag;
 

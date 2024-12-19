@@ -63,7 +63,7 @@ namespace Eppo
 		bool m_ViewportHovered = false;
 
 		// Scene state
-		enum class SceneState
+		enum class SceneState : uint8_t
 		{
 			Edit,
 			Play

@@ -13,7 +13,7 @@ namespace Eppo
 	class Editor : public Application
 	{
 	public:
-		Editor(const Eppo::ApplicationSpecification& specification)
+		explicit Editor(const ApplicationSpecification& specification)
 			: Application(specification)
 		{
 			PushLayer(new EditorLayer());
@@ -22,7 +22,7 @@ namespace Eppo
 		~Editor() = default;
 	};
 	
-	Application* CreateApplication(ApplicationCommandLineArgs args)
+	Application* CreateApplication(const ApplicationCommandLineArgs args)
 	{
 		ApplicationSpecification spec;
 		spec.Name = "EppoEditor";

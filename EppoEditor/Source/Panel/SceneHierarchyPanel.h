@@ -8,11 +8,11 @@ namespace Eppo
 	class SceneHierarchyPanel : public Panel
 	{
 	public:
-		SceneHierarchyPanel(PanelManager& panelManager);
+		explicit SceneHierarchyPanel(PanelManager& panelManager);
 
 		void RenderGui() override;
 
 	private:
-		void DrawEntityNode(Entity entity);
+		void DrawEntityNode(Entity entity) const;
 	};
 }

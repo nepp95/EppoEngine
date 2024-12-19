@@ -8,7 +8,7 @@ namespace Eppo
 	class ContentBrowserPanel : public Panel
 	{
 	public:
-		ContentBrowserPanel(PanelManager& panelManager);
+		explicit ContentBrowserPanel(PanelManager& panelManager);
 
 		void RenderGui() override;
 
