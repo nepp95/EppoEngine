@@ -2,7 +2,7 @@ name: Test Report
 
 on:
   workflow_run:
-    workflows: [ develop, master ]
+    workflows: [ CI ]
     types:
       - completed
 
