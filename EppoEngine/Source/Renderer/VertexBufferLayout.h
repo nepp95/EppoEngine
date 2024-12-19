@@ -4,7 +4,7 @@ enum VkFormat;
 
 namespace Eppo
 {
-	enum class ShaderDataType
+	enum class ShaderDataType : uint8_t
 	{
 		None = 0, Float, Float2, Float3, Float4, Mat3, Mat4, Int, Int2, Int3, Int4, Bool
 	};
@@ -24,11 +24,11 @@ namespace Eppo
 		bool Normalized;
 
 		BufferElement() = default;
-		BufferElement(ShaderDataType type, const std::string& name, bool normalized = false)
-			: Type(type), Name(name), Size(Utils::ShaderDataTypeSize(Type)), Offset(0), Normalized(normalized)
+		BufferElement(const ShaderDataType type, std::string name, const bool normalized = false)
+			: Type(type), Name(std::move(name)), Size(Utils::ShaderDataTypeSize(Type)), Offset(0), Normalized(normalized)
 		{}
 
-		uint32_t GetComponentCount() const
+		[[nodiscard]] uint32_t GetComponentCount() const
 		{
 			switch (Type)
 			{
@@ -45,7 +45,7 @@ namespace Eppo
 				case ShaderDataType::Bool:			return 1;
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return 0;
 		}
 	};

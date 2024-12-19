@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Platform/Vulkan/VulkanAllocator.h"
-#include "Platform/Vulkan/VulkanCommandBuffer.h"
 #include "Renderer/VertexBuffer.h"
 
 namespace Eppo
@@ -14,7 +13,7 @@ namespace Eppo
 		~VulkanVertexBuffer() override;
 
 		void SetData(Buffer buffer) override;
-		VkBuffer GetBuffer() const { return m_Buffer; }
+		[[nodiscard]] VkBuffer GetBuffer() const { return m_Buffer; }
 
 	private:
 		void CopyWithStagingBuffer(Buffer buffer) const;

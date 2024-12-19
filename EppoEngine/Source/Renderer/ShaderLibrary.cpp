@@ -3,7 +3,7 @@
 
 namespace Eppo
 {
-	void ShaderLibrary::Load(std::string_view path)
+	void ShaderLibrary::Load(const std::string_view path)
 	{
 		EPPO_PROFILE_FUNCTION("ShaderLibrary::Load");
 
@@ -22,7 +22,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ShaderLibrary::Get");
 
-		EPPO_ASSERT(m_Shaders.find(name) != m_Shaders.end());
+		EPPO_ASSERT(m_Shaders.find(name) != m_Shaders.end())
 		return m_Shaders.at(name);
 	}
 }

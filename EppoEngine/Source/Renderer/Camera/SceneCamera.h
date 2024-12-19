@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-	enum class ProjectionType
+	enum class ProjectionType : uint8_t
 	{
 		Orthographic,
 		Perspective
@@ -14,7 +14,7 @@ namespace Eppo
 	{
 	public:
 		SceneCamera();
-		virtual ~SceneCamera() = default;
+		~SceneCamera() override = default;
 
 		void SetPerspective(float fov, float nearClip, float farClip);
 		void SetOrthographic(float size, float nearClip, float farClip);
@@ -22,25 +22,25 @@ namespace Eppo
 		void SetViewportSize(uint32_t width, uint32_t height);
 		void SetViewportSize(float width, float height);
 
-		float GetPerspectiveFov() const { return m_PerspectiveFov; }
+		[[nodiscard]] float GetPerspectiveFov() const { return m_PerspectiveFov; }
 		void SetPerspectiveFov(float fov);
 
-		float GetPerspectiveNearClip() const { return m_PerspectiveNearClip; }
+		[[nodiscard]] float GetPerspectiveNearClip() const { return m_PerspectiveNearClip; }
 		void SetPerspectiveNearClip(float nearClip);
 
-		float GetPerspectiveFarClip() const { return m_PerspectiveFarClip; }
+		[[nodiscard]] float GetPerspectiveFarClip() const { return m_PerspectiveFarClip; }
 		void SetPerspectiveFarClip(float farClip);
 
-		float GetOrthographicSize() const { return m_OrthographicSize; }
+		[[nodiscard]] float GetOrthographicSize() const { return m_OrthographicSize; }
 		void SetOrthographicSize(float size);
 
-		float GetOrthographicNearClip() const { return m_OrthographicNearClip; }
+		[[nodiscard]] float GetOrthographicNearClip() const { return m_OrthographicNearClip; }
 		void SetOrthographicNearClip(float nearClip);
 
-		float GetOrthographicFarClip() const { return m_OrthographicFarClip; }
+		[[nodiscard]] float GetOrthographicFarClip() const { return m_OrthographicFarClip; }
 		void SetOrthographicFarClip(float farClip);
 
-		ProjectionType GetProjectionType() const { return m_ProjectionType; }
+		[[nodiscard]] ProjectionType GetProjectionType() const { return m_ProjectionType; }
 		void SetProjectionType(ProjectionType type);
 
 	private:

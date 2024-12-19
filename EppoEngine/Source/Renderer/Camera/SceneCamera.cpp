@@ -8,7 +8,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetPerspective(float fov, float nearClip, float farClip)
+	void SceneCamera::SetPerspective(const float fov, const float nearClip, const float farClip)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetPerspective");
 
@@ -21,7 +21,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetOrthographic(float size, float nearClip, float farClip)
+	void SceneCamera::SetOrthographic(const float size, const float nearClip, const float farClip)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetOrthographic");
 
@@ -34,23 +34,23 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetViewportSize(uint32_t width, uint32_t height)
+	void SceneCamera::SetViewportSize(const uint32_t width, const uint32_t height)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetViewportSize");
 
-		SetViewportSize((float)width, (float)height);
+		SetViewportSize(static_cast<float>(width), static_cast<float>(height));
 	}
 
-	void SceneCamera::SetViewportSize(float width, float height)
+	void SceneCamera::SetViewportSize(const float width, const float height)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetViewportSize");
-		EPPO_ASSERT(width > 0 && height > 0);
+		EPPO_ASSERT(width > 0 && height > 0)
 
 		m_AspectRatio = width / height;
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetPerspectiveFov(float fov)
+	void SceneCamera::SetPerspectiveFov(const float fov)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetPerspectiveFov");
 
@@ -58,7 +58,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetPerspectiveNearClip(float nearClip)
+	void SceneCamera::SetPerspectiveNearClip(const float nearClip)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetPerspectiveNearClip");
 
@@ -66,7 +66,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetPerspectiveFarClip(float farClip)
+	void SceneCamera::SetPerspectiveFarClip(const float farClip)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetPerspectiveFarClip");
 
@@ -74,7 +74,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetOrthographicSize(float size)
+	void SceneCamera::SetOrthographicSize(const float size)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetOrthographicSize");
 
@@ -82,7 +82,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetOrthographicNearClip(float nearClip)
+	void SceneCamera::SetOrthographicNearClip(const float nearClip)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetOrthographicNearClip");
 
@@ -90,7 +90,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetOrthographicFarClip(float farClip)
+	void SceneCamera::SetOrthographicFarClip(const float farClip)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetOrthographicFarClip");
 
@@ -98,7 +98,7 @@ namespace Eppo
 		RecalculateProjection();
 	}
 
-	void SceneCamera::SetProjectionType(ProjectionType type)
+	void SceneCamera::SetProjectionType(const ProjectionType type)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetProjectionType");
 
@@ -115,10 +115,10 @@ namespace Eppo
 			m_ProjectionMatrix = glm::perspective(m_PerspectiveFov, m_AspectRatio, m_PerspectiveNearClip, m_PerspectiveFarClip);
 		} else if (m_ProjectionType == ProjectionType::Orthographic)
 		{
-			float left = -m_OrthographicSize * m_AspectRatio * 0.5f;
-			float right = m_OrthographicSize * m_AspectRatio * 0.5f;
-			float bottom = -m_OrthographicSize * 0.5f;
-			float top = m_OrthographicSize * 0.5f;
+			const float left = -m_OrthographicSize * m_AspectRatio * 0.5f;
+			const float right = m_OrthographicSize * m_AspectRatio * 0.5f;
+			const float bottom = -m_OrthographicSize * 0.5f;
+			const float top = m_OrthographicSize * 0.5f;
 
 			m_ProjectionMatrix = glm::ortho(left, right, bottom, top, m_OrthographicNearClip, m_OrthographicFarClip);
 		}

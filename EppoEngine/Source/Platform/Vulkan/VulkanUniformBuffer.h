@@ -13,10 +13,10 @@ namespace Eppo
 
 		void SetData(void* data, uint32_t size) override;
 
-		const std::vector<VkBuffer>& GetBuffers() const { return m_Buffers; }
-		uint32_t GetBinding() const override { return m_Binding; }
+		[[nodiscard]] const std::vector<VkBuffer>& GetBuffers() const { return m_Buffers; }
+		[[nodiscard]] uint32_t GetBinding() const override { return m_Binding; }
 
-		const std::vector<VkDescriptorBufferInfo>& GetDescriptorBufferInfos() const { return m_DescriptorBufferInfos; }
+		[[nodiscard]] const std::vector<VkDescriptorBufferInfo>& GetDescriptorBufferInfos() const { return m_DescriptorBufferInfos; }
 
 	private:
 		uint32_t m_Size;

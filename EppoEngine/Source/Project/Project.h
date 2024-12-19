@@ -16,8 +16,8 @@ namespace Eppo
 	{
 	public:
 		ProjectSpecification& GetSpecification() { return m_Specification; }
-		Ref<AssetManagerBase> GetAssetManager() { return m_AssetManager; }
-		Ref<AssetManagerEditor> GetAssetManagerEditor() { return std::static_pointer_cast<AssetManagerEditor>(m_AssetManager); }
+		[[nodiscard]] Ref<AssetManagerBase> GetAssetManager() const { return m_AssetManager; }
+		[[nodiscard]] Ref<AssetManagerEditor> GetAssetManagerEditor() const { return std::static_pointer_cast<AssetManagerEditor>(m_AssetManager); }
 
 		static const std::filesystem::path& GetProjectDirectory();
 		static std::filesystem::path GetProjectsDirectory();
@@ -27,7 +27,7 @@ namespace Eppo
 		static std::filesystem::path GetAssetRelativeFilepath(const std::filesystem::path& filepath);
 
 		static Ref<Project> GetActive() { return s_ActiveProject; }
-		static void SetActive(Ref<Project> project) { s_ActiveProject = project; }
+		static void SetActive(const Ref<Project>& project) { s_ActiveProject = project; }
 
 		static Ref<Project> New();
 		static Ref<Project> New(const ProjectSpecification& specification);

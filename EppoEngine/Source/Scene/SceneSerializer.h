@@ -13,10 +13,10 @@ namespace Eppo
 	class SceneSerializer
 	{
 	public:
-		SceneSerializer(const Ref<Scene>& scene);
+		explicit SceneSerializer(const Ref<Scene>& scene);
 
 		bool Serialize(const std::filesystem::path& filepath);
-		bool Deserialize(const std::filesystem::path& filepath);
+		[[nodiscard]] bool Deserialize(const std::filesystem::path& filepath) const;
 
 	private:
 		void SerializeEntity(YAML::Emitter& out, Entity entity);

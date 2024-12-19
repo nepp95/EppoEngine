@@ -126,10 +126,10 @@ namespace Eppo
 		out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
 		
 		m_SceneContext->m_Registry.sort<IDComponent>([](const auto& lhs, const auto& rhs) { return lhs.ID < rhs.ID; });
-		auto view = m_SceneContext->m_Registry.view<IDComponent>();
-		for (auto entity : view)
+		const auto view = m_SceneContext->m_Registry.view<IDComponent>();
+		for (const auto e : view)
 		{
-			Entity entity(entity, m_SceneContext.get());
+			const Entity entity(e, m_SceneContext.get());
 			if (!entity)
 				continue;
 
@@ -143,7 +143,7 @@ namespace Eppo
 		return true;
 	}
 
-	bool SceneSerializer::Deserialize(const std::filesystem::path& filepath)
+	bool SceneSerializer::Deserialize(const std::filesystem::path& filepath) const
 	{
 		EPPO_PROFILE_FUNCTION("SceneSerializer:Deserialize");
 
@@ -166,14 +166,14 @@ namespace Eppo
 			return false;
 		}
 
-		std::string name = data["Scene"].as<std::string>();
-		EPPO_INFO("Deserializing scene '{}'", name);
+		auto sceneName = data["Scene"].as<std::string>();
+		EPPO_INFO("Deserializing scene '{}'", sceneName);
 
 		auto entities = data["Entities"];
 
 		if (!entities)
 		{
-			EPPO_WARN("Scene '{}' has no entities, are you sure this is correct?", name);
+			EPPO_WARN("Scene '{}' has no entities, are you sure this is correct?", sceneName);
 			return true;
 		}
 
@@ -188,135 +188,110 @@ namespace Eppo
 			Entity newEntity = m_SceneContext->CreateEntityWithUUID(uuid, tag);
 			EPPO_INFO("Deserializing entity '{}' ({})", tag, uuid);
 
+			if (auto c = entity["TransformComponent"])
 			{
-				auto c = entity["TransformComponent"];
-				if (c)
-				{
-					auto& nc = newEntity.GetComponent<TransformComponent>();
-					nc.Translation = c["Translation"].as<glm::vec3>();
-					nc.Rotation = c["Rotation"].as<glm::vec3>();
-					nc.Scale = c["Scale"].as<glm::vec3>();
-				}
+				auto& nc = newEntity.GetComponent<TransformComponent>();
+				nc.Translation = c["Translation"].as<glm::vec3>();
+				nc.Rotation = c["Rotation"].as<glm::vec3>();
+				nc.Scale = c["Scale"].as<glm::vec3>();
 			}
 
+			if (auto c = entity["SpriteComponent"])
 			{
-				auto c = entity["SpriteComponent"];
-				if (c)
-				{
-					auto& nc = newEntity.AddComponent<SpriteComponent>();
-					nc.Color = c["Color"].as<glm::vec4>();
-					nc.TextureHandle = c["TextureHandle"].as<uint64_t>();
-				}
+				auto& nc = newEntity.AddComponent<SpriteComponent>();
+				nc.Color = c["Color"].as<glm::vec4>();
+				nc.TextureHandle = c["TextureHandle"].as<uint64_t>();
 			}
 
+			if (auto c = entity["MeshComponent"])
 			{
-				auto c = entity["MeshComponent"];
-				if (c)
-				{
-					auto& nc = newEntity.AddComponent<MeshComponent>();
-					nc.MeshHandle = c["MeshHandle"].as<uint64_t>();
-				}
+				auto& [meshHandle] = newEntity.AddComponent<MeshComponent>();
+				meshHandle = c["MeshHandle"].as<uint64_t>();
 			}
 
+			if (auto c = entity["DirectionalLightComponent"])
 			{
-				auto c = entity["DirectionalLightComponent"];
-				if (c)
-				{
-					auto& dlc = newEntity.AddComponent<DirectionalLightComponent>();
-					dlc.Direction = c["Direction"].as<glm::vec3>();
-					dlc.AlbedoColor = c["Albedo"].as<glm::vec4>();
-					dlc.AmbientColor = c["Ambient"].as<glm::vec4>();
-					dlc.SpecularColor = c["Specular"].as<glm::vec4>();
-				}
+				auto& [direction, albedoColor, ambientColor, specularColor] = newEntity.AddComponent<DirectionalLightComponent>();
+				direction = c["Direction"].as<glm::vec3>();
+				albedoColor = c["Albedo"].as<glm::vec4>();
+				ambientColor = c["Ambient"].as<glm::vec4>();
+				specularColor = c["Specular"].as<glm::vec4>();
 			}
 
+			if (auto c = entity["ScriptComponent"])
 			{
-				auto c = entity["ScriptComponent"];
-				if (c)
-				{
-					auto& sc = newEntity.AddComponent<ScriptComponent>();
-					sc.ClassName = c["ClassName"].as<std::string>();
+				auto& [className] = newEntity.AddComponent<ScriptComponent>();
+				className = c["ClassName"].as<std::string>();
 
-					auto scriptFields = c["Fields"];
-					if (scriptFields)
+				if (auto scriptFields = c["Fields"])
+				{
+					Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(className);
+					EPPO_ASSERT(entityClass)
+
+					const auto& fields = entityClass->GetFields();
+					auto& entityFields = ScriptEngine::GetScriptFieldMap(uuid);
+
+					for (auto scriptField : scriptFields)
 					{
-						Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(sc.ClassName);
-						EPPO_ASSERT(entityClass);
+						auto name = scriptField["Name"].as<std::string>();
+						auto typeString = scriptField["Type"].as<std::string>();
+						ScriptFieldType type = Utils::ScriptFieldTypeFromString(typeString);
 
-						const auto& fields = entityClass->GetFields();
-						auto& entityFields = ScriptEngine::GetScriptFieldMap(uuid);
+						ScriptFieldInstance& fieldInstance = entityFields[name];
 
-						for (auto scriptField : scriptFields)
+						if (fields.find(name) == fields.end())
 						{
-							std::string name = scriptField["Name"].as<std::string>();
-							std::string typeString = scriptField["Type"].as<std::string>();
-							ScriptFieldType type = Utils::ScriptFieldTypeFromString(typeString);
+							EPPO_ERROR("Mono field not found!");
+							continue;
+						}
 
-							ScriptFieldInstance& fieldInstance = entityFields[name];
+						fieldInstance.Field = fields.at(name);
 
-							if (fields.find(name) == fields.end())
-							{
-								EPPO_ERROR("Mono field not found!");
-								continue;
-							}
-
-							fieldInstance.Field = fields.at(name);
-
-							switch (type)
-							{
-								READ_SCRIPT_FIELD(Float, float);
-								READ_SCRIPT_FIELD(Double, double);
-								READ_SCRIPT_FIELD(Bool, bool);
-								READ_SCRIPT_FIELD(Char, int8_t);
-								READ_SCRIPT_FIELD(Int16, int16_t);
-								READ_SCRIPT_FIELD(Int32, int32_t);
-								READ_SCRIPT_FIELD(Int64, int64_t);
-								READ_SCRIPT_FIELD(Byte, uint8_t);
-								READ_SCRIPT_FIELD(UInt16, uint16_t);
-								READ_SCRIPT_FIELD(UInt32, uint32_t);
-								READ_SCRIPT_FIELD(UInt64, uint64_t);
-								READ_SCRIPT_FIELD(Vector2, glm::vec2);
-								READ_SCRIPT_FIELD(Vector3, glm::vec3);
-								READ_SCRIPT_FIELD(Vector4, glm::vec4);
-								READ_SCRIPT_FIELD(Entity, UUID);
-							}
+						switch (type)
+						{
+							READ_SCRIPT_FIELD(Float, float)
+							READ_SCRIPT_FIELD(Double, double)
+							READ_SCRIPT_FIELD(Bool, bool)
+							READ_SCRIPT_FIELD(Char, int8_t)
+							READ_SCRIPT_FIELD(Int16, int16_t)
+							READ_SCRIPT_FIELD(Int32, int32_t)
+							READ_SCRIPT_FIELD(Int64, int64_t)
+							READ_SCRIPT_FIELD(Byte, uint8_t)
+							READ_SCRIPT_FIELD(UInt16, uint16_t)
+							READ_SCRIPT_FIELD(UInt32, uint32_t)
+							READ_SCRIPT_FIELD(UInt64, uint64_t)
+							READ_SCRIPT_FIELD(Vector2, glm::vec2)
+							READ_SCRIPT_FIELD(Vector3, glm::vec3)
+							READ_SCRIPT_FIELD(Vector4, glm::vec4)
+							READ_SCRIPT_FIELD(Entity, UUID)
 						}
 					}
 				}
 			}
 			
+			if (auto c = entity["RigidBodyComponent"])
 			{
-				auto c = entity["RigidBodyComponent"];
-				if (c)
-				{
-					auto& rbc = newEntity.AddComponent<RigidBodyComponent>();
-					rbc.Type = (RigidBodyComponent::BodyType)c["BodyType"].as<int>();
-					rbc.Mass = c["Mass"].as<float>();
-				}
+				auto& rbc = newEntity.AddComponent<RigidBodyComponent>();
+				rbc.Type = static_cast<RigidBodyComponent::BodyType>(c["BodyType"].as<int>());
+				rbc.Mass = c["Mass"].as<float>();
 			}
 
+			if (auto c = entity["CameraComponent"])
 			{
-				auto c = entity["CameraComponent"];
-				if (c)
-				{
-					auto& cc = newEntity.AddComponent<CameraComponent>();
-					cc.Camera.SetProjectionType((ProjectionType)c["ProjectionType"].as<int>());
-					cc.Camera.SetPerspectiveFov(c["PerspectiveFov"].as<float>());
-					cc.Camera.SetPerspectiveNearClip(c["PerspectiveNearClip"].as<float>());
-					cc.Camera.SetPerspectiveFarClip(c["PerspectiveFarClip"].as<float>());
-					cc.Camera.SetOrthographicSize(c["OrthographicSize"].as<float>());
-					cc.Camera.SetOrthographicNearClip(c["OrthographicNearClip"].as<float>());
-					cc.Camera.SetOrthographicFarClip(c["OrthographicFarClip"].as<float>());
-				}
+				auto& [camera] = newEntity.AddComponent<CameraComponent>();
+				camera.SetProjectionType(static_cast<ProjectionType>(c["ProjectionType"].as<int>()));
+				camera.SetPerspectiveFov(c["PerspectiveFov"].as<float>());
+				camera.SetPerspectiveNearClip(c["PerspectiveNearClip"].as<float>());
+				camera.SetPerspectiveFarClip(c["PerspectiveFarClip"].as<float>());
+				camera.SetOrthographicSize(c["OrthographicSize"].as<float>());
+				camera.SetOrthographicNearClip(c["OrthographicNearClip"].as<float>());
+				camera.SetOrthographicFarClip(c["OrthographicFarClip"].as<float>());
 			}
 
+			if (auto c = entity["PointLightComponent"])
 			{
-				auto c = entity["PointLightComponent"];
-				if (c)
-				{
-					auto& pl = newEntity.AddComponent<PointLightComponent>();
-					pl.Color = c["Color"].as<glm::vec4>();
-				}
+				auto& [color] = newEntity.AddComponent<PointLightComponent>();
+				color = c["Color"].as<glm::vec4>();
 			}
 		}
 
@@ -384,11 +359,11 @@ namespace Eppo
 			out << YAML::Key << "DirectionalLightComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			const auto& c = entity.GetComponent<DirectionalLightComponent>();
-			out << YAML::Key << "Direction" << YAML::Value << c.Direction;
-			out << YAML::Key << "Albedo" << YAML::Value << c.AlbedoColor;
-			out << YAML::Key << "Ambient" << YAML::Value << c.AmbientColor;
-			out << YAML::Key << "Specular" << YAML::Value << c.SpecularColor;
+			const auto& [direction, albedoColor, ambientColor, specularColor] = entity.GetComponent<DirectionalLightComponent>();
+			out << YAML::Key << "Direction" << YAML::Value << direction;
+			out << YAML::Key << "Albedo" << YAML::Value << albedoColor;
+			out << YAML::Key << "Ambient" << YAML::Value << ambientColor;
+			out << YAML::Key << "Specular" << YAML::Value << specularColor;
 
 			out << YAML::EndMap;
 		}
@@ -398,17 +373,14 @@ namespace Eppo
 			out << YAML::Key << "ScriptComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			const auto& c = entity.GetComponent<ScriptComponent>();
-			out << YAML::Key << "ClassName" << YAML::Value << c.ClassName;
+			const auto& [className] = entity.GetComponent<ScriptComponent>();
+			out << YAML::Key << "ClassName" << YAML::Value << className;
 
 			// Fields
-			Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(c.ClassName);
-
-			if (entityClass)
+			if (const auto entityClass = ScriptEngine::GetEntityClass(className))
 			{
-				const auto& fields = entityClass->GetFields();
-
-				if (!fields.empty())
+				if (const auto& fields = entityClass->GetFields();
+					!fields.empty())
 				{
 					out << YAML::Key << "Fields" << YAML::Value;
 					out << YAML::BeginSeq;
@@ -458,7 +430,7 @@ namespace Eppo
 			out << YAML::BeginMap;
 
 			const auto& c = entity.GetComponent<RigidBodyComponent>();
-			out << YAML::Key << "BodyType" << YAML::Value << (int)c.Type;
+			out << YAML::Key << "BodyType" << YAML::Value << static_cast<int>(c.Type);
 			out << YAML::Key << "Mass" << YAML::Value << c.Mass;
 
 			out << YAML::EndMap;
@@ -469,10 +441,10 @@ namespace Eppo
 			out << YAML::Key << "CameraComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			const auto& c = entity.GetComponent<CameraComponent>();
-			const auto& cc = c.Camera;
+			const auto& [camera] = entity.GetComponent<CameraComponent>();
+			const auto& cc = camera;
 
-			out << YAML::Key << "ProjectionType" << YAML::Value << (int)cc.GetProjectionType();
+			out << YAML::Key << "ProjectionType" << YAML::Value << static_cast<int>(cc.GetProjectionType());
 			out << YAML::Key << "PerspectiveFov" << YAML::Value << cc.GetPerspectiveFov();
 			out << YAML::Key << "PerspectiveNearClip" << YAML::Value << cc.GetPerspectiveNearClip();
 			out << YAML::Key << "PerspectiveFarClip" << YAML::Value << cc.GetPerspectiveFarClip();

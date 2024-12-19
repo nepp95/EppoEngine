@@ -7,11 +7,11 @@ namespace Eppo
 
 	GarbageCollector::GarbageCollector()
 	{
-		EPPO_ASSERT(!s_IsInstantiated);
+		EPPO_ASSERT(!s_IsInstantiated)
 		s_IsInstantiated = true;
 	}
 
-	void GarbageCollector::Update(uint32_t frameNumber)
+	void GarbageCollector::Update(const uint32_t frameNumber)
 	{
 		m_CurrentFrameNumber = frameNumber;
 

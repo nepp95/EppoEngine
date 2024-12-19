@@ -9,7 +9,7 @@ namespace Eppo
 	// Set 2 = Per frame material data
 	// Set 3 = Per frame object data
 
-	enum class ShaderStage
+	enum class ShaderStage : uint8_t
 	{
 		None = 0,
 		Vertex,
@@ -17,7 +17,7 @@ namespace Eppo
 		All
 	};
 
-	enum class ShaderResourceType
+	enum class ShaderResourceType : uint8_t
 	{
 		Sampler,
 		UniformBuffer
@@ -41,11 +41,11 @@ namespace Eppo
 	class Shader
 	{
 	public:
-		explicit Shader(const ShaderSpecification& specification);
+		explicit Shader(ShaderSpecification specification);
 		virtual ~Shader() = default;
 
-		const ShaderSpecification& GetSpecification() const { return m_Specification; }
-		const std::string& GetName() const { return m_Name; }
+		[[nodiscard]] const ShaderSpecification& GetSpecification() const { return m_Specification; }
+		[[nodiscard]] const std::string& GetName() const { return m_Name; }
 
 		static Ref<Shader> Create(const ShaderSpecification& specification);
 

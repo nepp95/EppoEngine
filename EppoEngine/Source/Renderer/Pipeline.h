@@ -18,13 +18,13 @@ namespace Eppo
 			float Depth = 1.0f;
 		} ClearValue;
 
-		explicit RenderAttachment(Ref<Image> image, const bool clear = true, const glm::vec4& clearValue = glm::vec4(0.0f))
+		explicit RenderAttachment(const Ref<Image>& image, const bool clear = true, const glm::vec4& clearValue = glm::vec4(0.0f))
 			: RenderImage(image), Clear(clear)
 		{
 			ClearValue.Color = clearValue;
 		}
 
-		explicit RenderAttachment(Ref<Image> image, const bool clear = true, const float clearValue = 1.0f)
+		explicit RenderAttachment(const Ref<Image>& image, const bool clear = true, const float clearValue = 1.0f)
 			: RenderImage(image), Clear(clear)
 		{
 			ClearValue.Depth = clearValue;

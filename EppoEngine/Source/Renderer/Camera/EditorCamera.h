@@ -9,7 +9,7 @@ namespace Eppo
 	{
 	public:
 		EditorCamera();
-		EditorCamera(const glm::vec3& position, float pitch = 0.0f, float yaw = 0.0f);
+		explicit EditorCamera(const glm::vec3& position, float pitch = 0.0f, float yaw = 0.0f);
 		~EditorCamera() override = default;
 
 		void OnUpdate(float timestep);

@@ -13,13 +13,13 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanIndexBuffer>(size);
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return nullptr;
 	}
 
-	Ref<IndexBuffer> IndexBuffer::Create(void* data, uint32_t size)
+	Ref<IndexBuffer> IndexBuffer::Create(const void* data, const uint32_t size)
 	{
-		Buffer buffer = Buffer::Copy(data, size);
+		const Buffer buffer = Buffer::Copy(data, size);
 
 		return Create(buffer);
 	}
@@ -31,7 +31,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanIndexBuffer>(buffer);
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return nullptr;
 	}
 }

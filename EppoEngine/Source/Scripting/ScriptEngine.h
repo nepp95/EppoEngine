@@ -44,7 +44,7 @@ namespace Eppo
 		static MonoDomain* GetAppDomain();
 		static MonoImage* GetCoreAssemblyImage();
 		static MonoImage* GetAppAssemblyImage();
-		static void SetSceneContext(Ref<Scene> scene);
+		static void SetSceneContext(const Ref<Scene>& scene);
 		static Ref<Scene> GetSceneContext();
 
 		static Ref<ScriptClass> GetEntityClass();

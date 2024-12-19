@@ -17,7 +17,7 @@ namespace Eppo
 			return "Resources/Shaders/Cache";
 		}
 
-		std::string ShaderStageToString(ShaderStage stage)
+		std::string ShaderStageToString(const ShaderStage stage)
 		{
 			switch (stage)
 			{
@@ -25,22 +25,22 @@ namespace Eppo
 				case ShaderStage::Fragment:	return "frag";
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return "Invalid";
 		}
 
-		ShaderStage StringToShaderStage(std::string_view stage)
+		ShaderStage StringToShaderStage(const std::string_view stage)
 		{
 			if (stage == "vert")			return ShaderStage::Vertex;
 			if (stage == "frag")			return ShaderStage::Fragment;
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return ShaderStage::None;
 		}
 	}
 
-	Shader::Shader(const ShaderSpecification& specification)
-		: m_Specification(specification)
+	Shader::Shader(ShaderSpecification specification)
+		: m_Specification(std::move(specification))
 	{
 		m_Name = m_Specification.Filepath.stem().string();
 	}
@@ -52,7 +52,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanShader>(specification);
 		}
 
-		EPPO_ASSERT(false);
+		EPPO_ASSERT(false)
 		return nullptr;
 	}
 }

@@ -19,10 +19,6 @@ namespace Eppo
 		UUID ID;
 
 		IDComponent() = default;
-		IDComponent(const IDComponent& other) = default;
-
-		operator UUID&() { return ID; }
-		operator const UUID&() const { return ID; }
 	};
 
 	struct TagComponent
@@ -30,13 +26,10 @@ namespace Eppo
 		std::string Tag;
 
 		TagComponent() = default;
-		TagComponent(const TagComponent& other) = default;
-		TagComponent(const std::string& tag)
-			: Tag(tag)
-		{}
-
-		operator std::string&() { return Tag; }
-		operator const std::string&() const { return Tag; }
+		explicit TagComponent(std::string tag)
+			: Tag(std::move(tag))
+		{
+		}
 	};
 
 	struct TransformComponent
@@ -46,12 +39,11 @@ namespace Eppo
 		glm::vec3 Scale = glm::vec3(1.0f);
 
 		TransformComponent() = default;
-		TransformComponent(const TransformComponent&) = default;
-		TransformComponent(const glm::vec3& translation)
+		explicit TransformComponent(const glm::vec3& translation)
 			: Translation(translation)
 		{}
 
-		glm::mat4 GetTransform() const
+		[[nodiscard]] glm::mat4 GetTransform() const
 		{
 			return glm::translate(glm::mat4(1.0f), Translation)
 				* glm::toMat4(glm::quat(Rotation))
@@ -65,8 +57,7 @@ namespace Eppo
 		glm::vec4 Color = glm::vec4(1.0f);
 
 		SpriteComponent() = default;
-		SpriteComponent(const SpriteComponent&) = default;
-		SpriteComponent(const glm::vec4& color)
+		explicit SpriteComponent(const glm::vec4& color)
 			: Color(color)
 		{}
 	};
@@ -76,7 +67,6 @@ namespace Eppo
 		AssetHandle MeshHandle = 0;
 
 		MeshComponent() = default;
-		MeshComponent(const MeshComponent&) = default;
 	};
 
 	struct DirectionalLightComponent
@@ -87,7 +77,6 @@ namespace Eppo
 		glm::vec4 SpecularColor = glm::vec4(1.0f);
 
 		DirectionalLightComponent() = default;
-		DirectionalLightComponent(const DirectionalLightComponent&) = default;
 	};
 
 	struct ScriptComponent
@@ -95,12 +84,11 @@ namespace Eppo
 		std::string ClassName;
 
 		ScriptComponent() = default;
-		ScriptComponent(const ScriptComponent&) = default;
 	};
 	
 	struct RigidBodyComponent
 	{
-		enum class BodyType { Static, Dynamic, Kinematic };
+		enum class BodyType : uint8_t { Static, Dynamic, Kinematic };
 		BodyType Type = BodyType::Static;
 
 		float Mass = 1.0f;
@@ -108,7 +96,6 @@ namespace Eppo
 		RigidBody RuntimeBody;
 
 		RigidBodyComponent() = default;
-		RigidBodyComponent(const RigidBodyComponent&) = default;
 	};
 
 	struct CameraComponent
@@ -116,7 +103,6 @@ namespace Eppo
 		SceneCamera Camera;
 
 		CameraComponent() = default;
-		CameraComponent(const CameraComponent&) = default;
 	};
 
 	struct PointLightComponent
@@ -124,6 +110,5 @@ namespace Eppo
 		glm::vec4 Color = glm::vec4(1.0f);
 
 		PointLightComponent() = default;
-		PointLightComponent(const PointLightComponent&) = default;
 	};
 }

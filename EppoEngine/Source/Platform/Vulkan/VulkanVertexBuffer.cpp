@@ -6,7 +6,7 @@
 
 namespace Eppo
 {
-	VulkanVertexBuffer::VulkanVertexBuffer(uint32_t size)
+	VulkanVertexBuffer::VulkanVertexBuffer(const uint32_t size)
 		: m_Size(size), m_IsMemoryMapped(true)
 	{
 		VkBufferCreateInfo vertexBufferInfo{};
@@ -19,7 +19,7 @@ namespace Eppo
 		m_MappedMemory = VulkanAllocator::MapMemory(m_Allocation);
 	}
 
-	VulkanVertexBuffer::VulkanVertexBuffer(Buffer buffer)
+	VulkanVertexBuffer::VulkanVertexBuffer(const Buffer buffer)
 		: m_Size(buffer.Size), m_IsMemoryMapped(false)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanVertexBuffer::VulkanVertexBuffer");
@@ -37,14 +37,14 @@ namespace Eppo
 
 	VulkanVertexBuffer::~VulkanVertexBuffer()
 	{
-		EPPO_MEM_WARN("Releasing vertex buffer {}", (void*)this);
+		EPPO_MEM_WARN("Releasing vertex buffer {}", static_cast<void*>(this));
 
 		if (m_IsMemoryMapped)
 			VulkanAllocator::UnmapMemory(m_Allocation);
 		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
 	}
 
-	void VulkanVertexBuffer::SetData(Buffer buffer)
+	void VulkanVertexBuffer::SetData(const Buffer buffer)
 	{
 		// If buffer is bigger than our GPU buffer, recreate buffer
 		if (buffer.Size > m_Size)
@@ -85,7 +85,7 @@ namespace Eppo
 		stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer stagingBuffer;
-		VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		const VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		// Copy data to staging buffer
 		void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
@@ -93,11 +93,11 @@ namespace Eppo
 		VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
 		// Copy data from staging buffer to GPU local buffer
-		Ref<VulkanContext> context = VulkanContext::Get();
-		Ref<VulkanLogicalDevice> logicalDevice = context->GetLogicalDevice();
-		VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
+		const auto context = VulkanContext::Get();
+		const auto logicalDevice = context->GetLogicalDevice();
+		const VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 
-		VkBufferCopy copyRegion{};
+		VkBufferCopy copyRegion;
 		copyRegion.srcOffset = 0;
 		copyRegion.dstOffset = 0;
 		copyRegion.size = buffer.Size;
