@@ -4,7 +4,7 @@ typedef struct _MonoClassField MonoClassField;
 
 namespace Eppo
 {
-	enum class ScriptFieldType
+	enum class ScriptFieldType : uint8_t
 	{
 		None = 0,
 		Float, Double,

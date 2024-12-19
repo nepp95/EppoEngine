@@ -60,12 +60,12 @@ namespace Eppo
 		static bool LoadCoreAssembly(const std::filesystem::path& filepath);
 		static void LoadAssemblyClasses();
 
-		static void OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, const filewatch::Event changeType);
+		static void OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, filewatch::Event changeType);
 	};
 
 	namespace Utils
 	{
-		inline ScriptFieldType ScriptFieldTypeFromString(std::string_view typeString)
+		inline ScriptFieldType ScriptFieldTypeFromString(const std::string_view typeString)
 		{
 			if (typeString == "Float")			return ScriptFieldType::Float;
 			if (typeString == "Double")			return ScriptFieldType::Double;
@@ -83,11 +83,11 @@ namespace Eppo
 			if (typeString == "Vector4")		return ScriptFieldType::Vector4;
 			if (typeString == "Entity")			return ScriptFieldType::Entity;
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return ScriptFieldType::None;
 		}
 
-		inline std::string ScriptFieldTypeToString(ScriptFieldType type)
+		inline std::string ScriptFieldTypeToString(const ScriptFieldType type)
 		{
 			switch (type)
 			{
@@ -108,7 +108,7 @@ namespace Eppo
 				case ScriptFieldType::Entity:	return "Entity";
 			}
 
-			EPPO_ASSERT(false);
+			EPPO_ASSERT(false)
 			return "None";
 		}
 	}
