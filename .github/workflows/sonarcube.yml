@@ -68,17 +68,17 @@ jobs:
           .\Bin\${{ matrix.config }}-windows-x86_64\EppoTesting\EppoTesting.exe --gtest_output="xml:testoutput.xml"
 
       - name: Save test output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: testoutput-${{ matrix.config }}
           path: testoutput.xml
       
       - name: Run gcovr
         run: |
-          gcovr --sonarqube ${{ env.RUNNER_TEMP }}\testoutput.junit.xml > coverage.xml
+          gcovr --sonarqube testoutput.xml > coverage.xml
 
       - name: Save coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.config }}
           path: coverage.xml
