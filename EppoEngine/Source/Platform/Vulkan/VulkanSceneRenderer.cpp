@@ -442,11 +442,11 @@ namespace Eppo
 
 		if (!lineVertices.empty() && !lineIndices.empty())
 		{
-			Buffer ib = Buffer::Copy(lineIndices.data(), sizeof(uint32_t) * lineIndices.size());
+			Buffer ib = Buffer::Copy(lineIndices.data(), static_cast<uint32_t>(sizeof(uint32_t)) * static_cast<uint32_t>(lineIndices.size()));
 			m_DebugLineIndexBuffer->SetData(ib);
 			ib.Release();
 
-			Buffer vb = Buffer::Copy(lineVertices.data(), lineVertices.size() * sizeof(LineVertex));
+			Buffer vb = Buffer::Copy(lineVertices.data(), static_cast<uint32_t>(sizeof(LineVertex)) * static_cast<uint32_t>(lineVertices.size()));
 			m_DebugLineVertexBuffer->SetData(vb);
 			vb.Release();
 
@@ -710,8 +710,15 @@ namespace Eppo
 			const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
 			const auto& spec = pipeline->GetSpecification();
 
-			// Update descriptor sets
-			uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
+			// Profiling
+			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "EnvPass")
+
+			// Insert debug label
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "EnvPass");
+
+			// Get descriptor sets
+			const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
 			const auto& descriptorSets = m_DescriptorSets[frameIndex];
 
 			// Begin rendering
@@ -947,7 +954,7 @@ namespace Eppo
 				if (m_RenderSpecification.DebugRendering)
 					m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "DebugLinePass");
 		
-				// Update descriptors
+				// Get descriptor sets
 				const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
 				const auto& descriptorSets = m_DescriptorSets[frameIndex];
 		
@@ -1022,11 +1029,13 @@ namespace Eppo
 			// Profiling
 			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "CompositePass")
 
+			// Insert debug label
 			if (m_RenderSpecification.DebugRendering)
 				m_DebugRenderer->StartDebugLabel(cmd, "CompositePass");
 
 			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
+			// Begin rendering
 			renderer->BeginRenderPass(cmd, pipeline);
 
 			ImDrawData* data = ImGui::GetDrawData();
@@ -1041,6 +1050,7 @@ namespace Eppo
 				glfwMakeContextCurrent(backupContext);
 			}
 
+			// End rendering
 			renderer->EndRenderPass(cmd);
 
 			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
