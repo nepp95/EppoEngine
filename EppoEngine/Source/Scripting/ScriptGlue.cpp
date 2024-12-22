@@ -13,7 +13,7 @@ namespace Eppo
 {
 	static std::unordered_map<MonoType*, std::function<bool(Entity)>> s_EntityHasComponentFns;
 
-	#define EPPO_ADD_INTERNAL_CALL(fn) mono_add_internal_call("Eppo.InternalCalls::"#fn, fn);
+	#define EPPO_ADD_INTERNAL_CALL(fn) mono_add_internal_call("Eppo.InternalCalls::"#fn, reinterpret_cast<const void*>(fn));
 
 	static void Log(const uint32_t logLevel, MonoString* message)
 	{

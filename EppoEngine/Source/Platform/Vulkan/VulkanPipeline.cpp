@@ -98,7 +98,7 @@ namespace Eppo
 			VkVertexInputAttributeDescription& attributeDescription = attributeDescriptions.emplace_back();
 			attributeDescription.binding = 0;
 			attributeDescription.location = static_cast<uint32_t>(i);
-			attributeDescription.format = Utils::ShaderDataTypeToVkFormat(elements[i].Type);
+			attributeDescription.format = static_cast<VkFormat>(Utils::ShaderDataTypeToVkFormat(elements[i].Type));
 			attributeDescription.offset = static_cast<uint32_t>(elements[i].Offset);
 		}
 

@@ -5,7 +5,7 @@
 #include "Panel/PropertyPanel.h"
 #include "Panel/SceneHierarchyPanel.h"
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 #include <fstream>
 

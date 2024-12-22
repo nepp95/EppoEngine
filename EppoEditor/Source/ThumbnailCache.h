@@ -7,7 +7,7 @@ namespace Eppo
 	struct Thumbnail
 	{
 		uint64_t Timestamp;
-		Ref<Image> Image;
+		Ref<Eppo::Image> Image;
 	};
 
 	class ThumbnailCache

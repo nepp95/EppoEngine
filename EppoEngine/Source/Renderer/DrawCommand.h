@@ -15,7 +15,7 @@ namespace Eppo
 
 	struct MeshCommand : DrawCommand
 	{
-		Ref<Mesh> Mesh;
+		Ref<Eppo::Mesh> Mesh;
 		glm::mat4 Transform;
 	};
 

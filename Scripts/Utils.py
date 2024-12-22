@@ -1,33 +1,19 @@
 import sys
 import os
-import winreg
 
 import requests
 import time
 import urllib
 
 from zipfile import ZipFile
-
-def GetSystemEnvironmentVariable(name):
-    key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, r"System\CurrentControlSet\Control\Session Manager\Environment")
-    try:
-        return winreg.QueryValueEx(key, name)[0]
-    except:
-        return None
-
-def GetUserEnvironmentVariable(name):
-    key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Environment")
-    try:
-        return winreg.QueryValueEx(key, name)[0]
-    except:
-        return None
+from tarfile import TarFile
 
 def DownloadFile(url, filepath):
     path = filepath
     filepath = os.path.abspath(filepath)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
             
-    if (type(url) is list):
+    if type(url) is list:
         for url_option in url:
             print("Downloading", url_option)
             try:
@@ -75,7 +61,7 @@ def DownloadFile(url, filepath):
                 except ZeroDivisionError:
                     avgKBPerSecond = 0.0
                 avgSpeedString = '{:.2f} KB/s'.format(avgKBPerSecond)
-                if (avgKBPerSecond > 1024):
+                if avgKBPerSecond > 1024:
                     avgMBPerSecond = avgKBPerSecond / 1024
                     avgSpeedString = '{:.2f} MB/s'.format(avgMBPerSecond)
                 sys.stdout.write('\r[{}{}] {:.2f}% ({})     '.format('█' * done, '.' * (50-done), percentage, avgSpeedString))
@@ -83,43 +69,68 @@ def DownloadFile(url, filepath):
     sys.stdout.write('\n')
 
 def UnzipFile(filepath, deleteZipFile=True):
-    zipFilePath = os.path.abspath(filepath) # get full path of files
-    zipFileLocation = os.path.dirname(zipFilePath)
+    filePath = os.path.abspath(filepath)  # Get full path of the file
+    fileLocation = os.path.dirname(filePath)
 
-    zipFileContent = dict()
-    zipFileContentSize = 0
-    with ZipFile(zipFilePath, 'r') as zipFileFolder:
-        for name in zipFileFolder.namelist():
-            zipFileContent[name] = zipFileFolder.getinfo(name).file_size
-        zipFileContentSize = sum(zipFileContent.values())
-        extractedContentSize = 0
-        startTime = time.time()
-        for zippedFileName, zippedFileSize in zipFileContent.items():
-            UnzippedFilePath = os.path.abspath(f"{zipFileLocation}/{zippedFileName}")
-            os.makedirs(os.path.dirname(UnzippedFilePath), exist_ok=True)
-            if os.path.isfile(UnzippedFilePath):
-                zipFileContentSize -= zippedFileSize
-            else:
-                zipFileFolder.extract(zippedFileName, path=zipFileLocation, pwd=None)
-                extractedContentSize += zippedFileSize
-            try:
-                done = int(50*extractedContentSize/zipFileContentSize)
-                percentage = (extractedContentSize / zipFileContentSize) * 100
-            except ZeroDivisionError:
-                done = 50
-                percentage = 100
-            elapsedTime = time.time() - startTime
-            try:
-                avgKBPerSecond = (extractedContentSize / 1024) / elapsedTime
-            except ZeroDivisionError:
-                avgKBPerSecond = 0.0
-            avgSpeedString = '{:.2f} KB/s'.format(avgKBPerSecond)
-            if (avgKBPerSecond > 1024):
-                avgMBPerSecond = avgKBPerSecond / 1024
-                avgSpeedString = '{:.2f} MB/s'.format(avgMBPerSecond)
-            sys.stdout.write('\r[{}{}] {:.2f}% ({})     '.format('█' * done, '.' * (50-done), percentage, avgSpeedString))
-            sys.stdout.flush()
+    fileContent = dict()
+    fileContentSize = 0
+    extractedContentSize = 0
+    startTime = time.time()
+
+    def UpdateProgress():
+        try:
+            done = int(50 * extractedContentSize / fileContentSize)
+            percentage = (extractedContentSize / fileContentSize) * 100
+        except ZeroDivisionError:
+            done = 50
+            percentage = 100
+
+        elapsedTime = time.time() - startTime
+        try:
+            avgKBPerSecond = (extractedContentSize / 1024) / elapsedTime
+        except ZeroDivisionError:
+            avgKBPerSecond = 0.0
+
+        avgSpeedString = '{:.2f} KB/s'.format(avgKBPerSecond)
+        if avgKBPerSecond > 1024:
+            avgMBPerSecond = avgKBPerSecond / 1024
+            avgSpeedString = '{:.2f} MB/s'.format(avgMBPerSecond)
+
+        sys.stdout.write('\r[{}{}] {:.2f}% ({})     '.format('█' * done, '.' * (50 - done), percentage, avgSpeedString))
+        sys.stdout.flush()
+
+    if filePath.endswith(".zip"):
+        with ZipFile(filePath, 'r') as archive:
+            for name in archive.namelist():
+                fileContent[name] = archive.getinfo(name).file_size
+            fileContentSize = sum(fileContent.values())
+            for name, size in fileContent.items():
+                extractedFilePath = os.path.abspath(f"{fileLocation}/{name}")
+                os.makedirs(os.path.dirname(extractedFilePath), exist_ok=True)
+                if os.path.isfile(extractedFilePath):
+                    fileContentSize -= size
+                else:
+                    archive.extract(name, path=fileLocation, pwd=None)
+                    extractedContentSize += size
+                UpdateProgress()
+    elif filePath.endswith(".tar.gz") or filePath.endswith(".tgz"):
+        with TarFile.open(filePath, 'r:gz') as archive:
+            for member in archive.getmembers():
+                fileContent[member.name] = member.size
+            fileContentSize = sum(fileContent.values())
+            for member in archive.getmembers():
+                extractedFilePath = os.path.abspath(f"{fileLocation}/{member.name}")
+                os.makedirs(os.path.dirname(extractedFilePath), exist_ok=True)
+                if os.path.isfile(extractedFilePath):
+                    fileContentSize -= member.size
+                else:
+                    archive.extract(member, path=fileLocation)
+                    extractedContentSize += member.size
+                UpdateProgress()
+    else:
+        raise ValueError("Unsupported file type: {}".format(filePath))
+
     sys.stdout.write('\n')
 
     if deleteZipFile:
-        os.remove(zipFilePath) # delete zip file
+        os.remove(filePath) # delete archive

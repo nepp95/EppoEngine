@@ -71,7 +71,7 @@ namespace Eppo
 
 	struct PipelineSpecification
 	{
-		Ref<Shader> Shader;
+		Ref<Eppo::Shader> Shader;
 		VertexBufferLayout Layout;
 		bool SwapchainTarget = false;
 
@@ -82,9 +82,9 @@ namespace Eppo
 		PrimitiveTopology Topology = PrimitiveTopology::Triangles;
 
 		// Rasterization
-		PolygonMode PolygonMode = PolygonMode::Fill;
-		CullMode CullMode = CullMode::Back;
-		CullFrontFace CullFrontFace = CullFrontFace::Clockwise;
+		Eppo::PolygonMode PolygonMode = PolygonMode::Fill;
+		Eppo::CullMode CullMode = CullMode::Back;
+		Eppo::CullFrontFace CullFrontFace = CullFrontFace::Clockwise;
 
 		// Depth Stencil
 		bool CreateDepthImage = false;
@@ -92,7 +92,7 @@ namespace Eppo
 		bool WriteDepth = false;
 		bool ClearDepthOnLoad = true;
 		float ClearDepth = 1.0f;
-		DepthCompareOp DepthCompareOp = DepthCompareOp::Less;
+		Eppo::DepthCompareOp DepthCompareOp = DepthCompareOp::Less;
 
 		// Render Attachments
 		std::vector<RenderAttachment> RenderAttachments;

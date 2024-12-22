@@ -8,7 +8,7 @@ namespace Eppo
 {
 	struct PanelData
 	{
-		Ref<Panel> Panel;
+		Ref<Eppo::Panel> Panel;
 		bool IsOpen = false;
 	};
 

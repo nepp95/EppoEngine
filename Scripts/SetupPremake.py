@@ -1,18 +1,23 @@
-import sys
 import os
+import stat
+import platform
 from pathlib import Path
 
 import Utils
 
 class PremakeConfiguration:
-    premakeVersion = "5.0.0-beta2"
-    premakeZipUrls = f"https://github.com/premake/premake-core/releases/download/v{premakeVersion}/premake-{premakeVersion}-windows.zip"
+    premakeVersion = "5.0.0-beta3"
     premakeLicenseUrl = "https://raw.githubusercontent.com/premake/premake-core/master/LICENSE.txt"
     premakeDirectory = "./Vendor/Premake/Bin"
 
+    if platform.system() == "Windows":
+        premakeExe = Path(f"{premakeDirectory}/premake5.exe")
+    elif platform.system() == "Linux":
+        premakeExe = Path(f"{premakeDirectory}/premake5")
+
     @classmethod
     def Validate(cls):
-        if (not cls.CheckIfPremakeInstalled()):
+        if not cls.CheckIfPremakeInstalled():
             print("Premake is not installed.")
             return False
 
@@ -21,14 +26,20 @@ class PremakeConfiguration:
 
     @classmethod
     def CheckIfPremakeInstalled(cls):
-        premakeExe = Path(f"{cls.premakeDirectory}/premake5.exe");
-        if (not premakeExe.exists()):
+        if not cls.premakeExe.exists():
             return cls.InstallPremake()
 
         return True
 
     @classmethod
     def InstallPremake(cls):
+        if platform.system() == "Windows":
+            premakeZipUrl = f"https://github.com/premake/premake-core/releases/download/v{cls.premakeVersion}/premake-{cls.premakeVersion}-windows.zip"
+            premakePath = f"{cls.premakeDirectory}/premake-{cls.premakeVersion}-windows.zip"
+        elif platform.system() == "Linux":
+            premakeZipUrl = f"https://github.com/premake/premake-core/releases/download/v{cls.premakeVersion}/premake-{cls.premakeVersion}-linux.tar.gz"
+            premakePath = f"{cls.premakeDirectory}/premake-{cls.premakeVersion}-linux.tar.gz"
+
         permissionGranted = False
         while not permissionGranted:
             reply = str(input("Premake not found. Would you like to download Premake {0:s}? [Y/N]: ".format(cls.premakeVersion))).lower().strip()[:1]
@@ -36,12 +47,15 @@ class PremakeConfiguration:
                 return False
             permissionGranted = (reply == 'y')
 
-        premakePath = f"{cls.premakeDirectory}/premake-{cls.premakeVersion}-windows.zip"
-        print("Downloading {0:s} to {1:s}".format(cls.premakeZipUrls, premakePath))
-        Utils.DownloadFile(cls.premakeZipUrls, premakePath)
+        print("Downloading {0:s} to {1:s}".format(premakeZipUrl, premakePath))
+        Utils.DownloadFile(premakeZipUrl, premakePath)
         print("Extracting", premakePath)
         Utils.UnzipFile(premakePath, deleteZipFile=True)
         print(f"Premake {cls.premakeVersion} has been downloaded to '{cls.premakeDirectory}'")
+
+        if platform.system() == "Linux":
+            st = os.stat(cls.premakeExe)
+            os.chmod(cls.premakeExe, st.st_mode | stat.S_IEXEC)
 
         premakeLicensePath = f"{cls.premakeDirectory}/LICENSE.txt"
         print("Downloading {0:s} to {1:s}".format(cls.premakeLicenseUrl, premakeLicensePath))
