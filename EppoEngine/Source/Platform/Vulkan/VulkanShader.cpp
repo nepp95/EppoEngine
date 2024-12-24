@@ -125,6 +125,7 @@ namespace Eppo
 		options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 		options.SetIncluder(CreateScope<ShaderIncluder>());
 		options.SetOptimizationLevel(shaderc_optimization_level_zero);
+		options.SetGenerateDebugInfo();
 
 		// Compile source
 		const shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);

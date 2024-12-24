@@ -752,6 +752,10 @@ namespace Eppo
 			vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 
 			renderer->EndRenderPass(m_CommandBuffer);
+
+			// End debug label
+			if (m_RenderSpecification.DebugRendering)
+				m_DebugRenderer->EndDebugLabel(m_CommandBuffer);
 		});
 	}
 
