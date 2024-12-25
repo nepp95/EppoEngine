@@ -4,7 +4,7 @@
 namespace Eppo
 {
     // TODO: Yep... Gtk/Zenity/Own makings?
-    /*std::filesystem::path FileDialog::OpenFile(const char* filter)
+    std::filesystem::path FileDialog::OpenFile(const char* filter, const std::filesystem::path& initialDir)
     {
 		EPPO_PROFILE_FUNCTION("FileDialog::OpenFile");
 
@@ -16,5 +16,5 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("FileDialog::SaveFile");
 
         return {};
-    }*/
+    }
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.24)
 
 project(EppoEng VERSION 1.0 LANGUAGES CXX)
 
@@ -46,11 +46,11 @@ set(INCLUDE_DIRS
 )
 
 # Externals
+include(FindPkgConfig)
+set(ENV{PKG_CONFIG_PATH} "/usr/local/bin/lib/pkgconfig")
+pkg_search_module(mono REQUIRED mono-2)
+find_package(Bullet REQUIRED)
 find_package(Vulkan REQUIRED)
-
-if(UNIX)
-    find_package(Bullet REQUIRED)
-endif()
 
 add_library(EppoEng STATIC ${SOURCES})
 

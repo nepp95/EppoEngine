@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.24)
 project(EppoEngine)
 
 if(WIN32)
@@ -14,6 +14,12 @@ else()
 endif()
 
 # Dependencies
+if(DEFINED ENV{VULKAN_SDK})
+    link_directories(AFTER $ENV{VULKAN_SDK}/lib)
+else()
+    message(FATAL_ERROR "'VULKAN_SDK' not found in environment variables!")
+endif()
+
 add_subdirectory(EppoEngine/Vendor/bullet)
 add_subdirectory(EppoEngine/Vendor/glfw)
 add_subdirectory(EppoEngine/Vendor/imgui)
