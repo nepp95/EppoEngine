@@ -14,7 +14,7 @@ namespace Eppo
 		uint32_t VertexCount = 0;
 		uint32_t IndexCount = 0;
 
-		Ref<Material> Material = nullptr;
+		Ref<Eppo::Material> Material = nullptr;
 	};
 
 	class Submesh

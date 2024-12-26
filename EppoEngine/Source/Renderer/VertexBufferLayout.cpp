@@ -28,7 +28,7 @@ namespace Eppo
 			return 0;
 		}
 
-		VkFormat ShaderDataTypeToVkFormat(const ShaderDataType type)
+		uint32_t ShaderDataTypeToVkFormat(const ShaderDataType type)
 		{
 			switch (type)
 			{

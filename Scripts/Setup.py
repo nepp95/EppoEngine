@@ -14,7 +14,7 @@ premakeInstalled = PremakeRequirements.Validate()
 print("\nUpdating submodules...")
 subprocess.call(["git", "submodule", "update", "--init", "--recursive"])
 
-if (premakeInstalled):
+if premakeInstalled:
     print("\nRunning premake...")
     if platform.system() == "Windows":
         subprocess.call([os.path.abspath("./Scripts/GenerateProjects-Win.bat"), "nopause"])
@@ -25,4 +25,10 @@ else:
     print("\nEngine requires Premake to generate project files!")
 
 currentDir = os.path.dirname(os.path.abspath(__file__))
-subprocess.run(["setx", "EPPO_ROOT", os.path.dirname(currentDir)])
+rootDir = os.path.dirname(currentDir)
+
+if platform.system() == "Windows":
+    subprocess.run(["setx", "EPPO_ROOT", os.path.dirname(currentDir)])
+elif platform.system() == "Linux":
+    with open(os.path.expanduser("~/.bashrc"), "a") as bashrc:
+        bashrc.write(f'\nexport EPPO_ROOT="{rootDir}"\n')

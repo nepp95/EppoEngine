@@ -2,7 +2,7 @@
 
 #include "Core/Base.h"
 
-#include <signal.h>
+#include <csignal>
 
 #ifdef EPPO_ENABLE_ASSERTS
 	#if defined(EPPO_PLATFORM_WINDOWS)

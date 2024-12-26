@@ -1,7 +1,5 @@
 #pragma once
 
-enum VkFormat;
-
 namespace Eppo
 {
 	enum class ShaderDataType : uint8_t
@@ -12,7 +10,7 @@ namespace Eppo
 	namespace Utils
 	{
 		uint32_t ShaderDataTypeSize(ShaderDataType type);
-		VkFormat ShaderDataTypeToVkFormat(ShaderDataType type);
+		uint32_t ShaderDataTypeToVkFormat(ShaderDataType type);
 	}
 
 	struct BufferElement
