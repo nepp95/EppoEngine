@@ -52,12 +52,12 @@ pkg_search_module(mono REQUIRED mono-2)
 find_package(Bullet REQUIRED)
 find_package(Vulkan REQUIRED)
 
-add_library(EppoEng STATIC ${SOURCES})
+add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(EppoEng PRIVATE TRACY_ENABLE TRACY_ONLY_LOCALHOST)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TRACY_ENABLE TRACY_ONLY_LOCALHOST)
 endif()
 
-target_compile_definitions(EppoEng PRIVATE VK_NO_PROTOTYPES)
-target_include_directories(EppoEng PUBLIC ${INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${BULLET_INCLUDE_DIR})
-target_precompile_headers(EppoEng PRIVATE Source/pch.h)
+target_compile_definitions(${PROJECT_NAME} PRIVATE VK_NO_PROTOTYPES)
+target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${BULLET_INCLUDE_DIR})
+target_precompile_headers(${PROJECT_NAME} PRIVATE Source/pch.h)

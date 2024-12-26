@@ -32,5 +32,5 @@ add_subdirectory(EppoEngine/Vendor/googletest)
 
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)
-#add_subdirectory(EppoScripting)
+add_subdirectory(EppoScripting)
 add_subdirectory(EppoTesting)
