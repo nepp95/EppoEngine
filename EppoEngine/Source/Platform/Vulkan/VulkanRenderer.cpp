@@ -3,6 +3,7 @@
 
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Platform/Vulkan/VulkanImage.h"
+#include "Platform/Vulkan/VulkanPipeline.h"
 
 namespace Eppo
 {
@@ -78,7 +79,9 @@ namespace Eppo
 
 		const Ref<VulkanContext> context = VulkanContext::Get();
 		const Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
+		const Ref<VulkanPipeline> vkPipeline = std::static_pointer_cast<VulkanPipeline>(pipeline);
 
+		// Setup render attachments
 		const auto& spec = pipeline->GetSpecification();
 
 		VkRenderingInfo renderingInfo{};
@@ -141,9 +144,31 @@ namespace Eppo
 				renderingInfo.viewMask = 0b111111;
 		}
 
+		// Begin dynamic rendering
 		const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
 		const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
 		vkCmdBeginRendering(cb, &renderingInfo);
+
+		// Bind pipeline
+		vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline->GetPipeline());
+
+		// Set viewport
+		VkViewport viewport;
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = static_cast<float>(spec.Width);
+		viewport.height = static_cast<float>(spec.Height);
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(cb, 0, 1, &viewport);
+
+		// Set scissor
+		VkRect2D scissor;
+		scissor.offset = { 0, 0 };
+		scissor.extent = { spec.Width, spec.Height };
+
+		vkCmdSetScissor(cb, 0, 1, &scissor);
 	}
 
 	void VulkanRenderer::EndRenderPass(const Ref<CommandBuffer>& commandBuffer)

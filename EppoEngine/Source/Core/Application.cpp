@@ -157,7 +157,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Application::ExecuteMainThreadQueue");
 
-		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+		std::scoped_lock lock(m_MainThreadMutex);
 
 		m_MainThreadQueue->Execute();
 	}
@@ -173,8 +173,8 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
 
-		uint32_t width = e.GetWidth();
-		uint32_t height = e.GetHeight();
+		const uint32_t width = e.GetWidth();
+		const uint32_t height = e.GetHeight();
 
 		if (width == 0 || height == 0)
 		{

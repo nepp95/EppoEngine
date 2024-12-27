@@ -624,26 +624,6 @@ namespace Eppo
 				// Begin rendering
 				renderer->BeginRenderPass(m_CommandBuffer, m_PreDepthPipeline);
 
-				// Bind pipeline
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
-
-				// Set viewport and scissor
-				VkViewport viewport{};
-				viewport.x = 0.0f;
-				viewport.y = 0.0f;
-				viewport.width = static_cast<float>(spec.Width);
-				viewport.height = static_cast<float>(spec.Height);
-				viewport.minDepth = 0.0f;
-				viewport.maxDepth = 1.0f;
-
-				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-				VkRect2D scissor{};
-				scissor.offset = { 0, 0 };
-				scissor.extent = { spec.Width, spec.Height };
-
-				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
 				// Bind descriptor sets
 				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 3, descriptorSets.data(), 0, nullptr);
 
@@ -708,7 +688,6 @@ namespace Eppo
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::EnvPass");
 
 			const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-			const auto& spec = pipeline->GetSpecification();
 
 			// Profiling
 			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "EnvPass")
@@ -717,34 +696,12 @@ namespace Eppo
 			if (m_RenderSpecification.DebugRendering)
 				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "EnvPass");
 
-			// Get descriptor sets
-			const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
-			const auto& descriptorSets = m_DescriptorSets[frameIndex];
-
 			// Begin rendering
 			renderer->BeginRenderPass(m_CommandBuffer, pipeline);
 
-			// Bind pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
-		
-			// Set viewport and scissor
-			VkViewport viewport;
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(spec.Width);
-			viewport.height = static_cast<float>(spec.Height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor;
-			scissor.offset = { 0, 0 };
-			scissor.extent = { spec.Width, spec.Height };
-
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
 			// Bind descriptor sets
+			const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
+			const auto& descriptorSets = m_DescriptorSets[frameIndex];
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 3, descriptorSets.data(), 0, nullptr);
 			
 			// Draw call
@@ -772,7 +729,6 @@ namespace Eppo
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::SkyboxPass");
 
 			const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-			const auto& spec = pipeline->GetSpecification();
 
 			// Profiling
 			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "SkyboxPass")
@@ -781,34 +737,12 @@ namespace Eppo
 			if (m_RenderSpecification.DebugRendering)
 				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "SkyboxPass");
 
-			// Get descriptor sets
-			const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
-			const auto& descriptorSets = m_DescriptorSets[frameIndex];
-
 			// Begin rendering
 			renderer->BeginRenderPass(m_CommandBuffer, pipeline);
 
-			// Bind pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
-
-			// Set viewport and scissor
-			VkViewport viewport;
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(spec.Width);
-			viewport.height = static_cast<float>(spec.Height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor;
-			scissor.offset = { 0, 0 };
-			scissor.extent = { spec.Width, spec.Height };
-
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
 			// Bind descriptor sets
+			const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
+			const auto& descriptorSets = m_DescriptorSets[frameIndex];
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 3, descriptorSets.data(), 0, nullptr);
 
 			// Draw call
@@ -838,7 +772,6 @@ namespace Eppo
 			EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::GeometryPass");
 
 			const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-			const auto& spec = pipeline->GetSpecification();
 
 			// Profiling
 			EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "GeometryPass")
@@ -847,34 +780,13 @@ namespace Eppo
 			if (m_RenderSpecification.DebugRendering)
 				m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "GeometryPass");
 
-			// Get descriptor sets
-			const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
-			const auto& descriptorSets = m_DescriptorSets[frameIndex];
-
 			// Begin rendering
 			renderer->BeginRenderPass(m_CommandBuffer, pipeline);
 
-			// Bind pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
-
-			// Set viewport and scissor
-			VkViewport viewport;
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(spec.Width);
-			viewport.height = static_cast<float>(spec.Height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor;
-			scissor.offset = { 0, 0 };
-			scissor.extent = { spec.Width, spec.Height };
-
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
 			// Bind descriptor sets
+			const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
+			const auto& descriptorSets = m_DescriptorSets[frameIndex];
+
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 3, descriptorSets.data(), 0, nullptr);
 		
 			// Render geometry
@@ -949,7 +861,6 @@ namespace Eppo
 				EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::DebugLinePass");
 
 				const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-				const auto& spec = pipeline->GetSpecification();
 		
 				// Profiling
 				EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd->GetCurrentCommandBuffer(), "DebugLinePass")
@@ -958,34 +869,12 @@ namespace Eppo
 				if (m_RenderSpecification.DebugRendering)
 					m_DebugRenderer->StartDebugLabel(m_CommandBuffer, "DebugLinePass");
 		
-				// Get descriptor sets
-				const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
-				const auto& descriptorSets = m_DescriptorSets[frameIndex];
-		
 				// Begin rendering
 				renderer->BeginRenderPass(m_CommandBuffer, m_DebugLinePipeline);
 
-				// Bind pipeline
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
-
-				// Set viewport and scissor
-				VkViewport viewport;
-				viewport.x = 0.0f;
-				viewport.y = 0.0f;
-				viewport.width = static_cast<float>(spec.Width);
-				viewport.height = static_cast<float>(spec.Height);
-				viewport.minDepth = 0.0f;
-				viewport.maxDepth = 1.0f;
-
-				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-				VkRect2D scissor;
-				scissor.offset = { 0, 0 };
-				scissor.extent = { spec.Width, spec.Height };
-
-				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
 				// Bind descriptor sets
+				const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
+				const auto& descriptorSets = m_DescriptorSets[frameIndex];
 				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 3, descriptorSets.data(), 0, nullptr);
 		
 				// Bind vertex buffer

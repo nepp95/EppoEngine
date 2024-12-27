@@ -32,8 +32,6 @@ namespace Eppo
 
 		std::array<DescriptorAllocator, VulkanConfig::MaxFramesInFlight> m_DescriptorAllocators;
 
-		RenderStatistics m_RenderStatistics;
-
 		static bool s_IsInstantiated;
 	};
 }

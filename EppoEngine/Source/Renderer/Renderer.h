@@ -12,13 +12,6 @@ namespace Eppo
 	public:
 		virtual ~Renderer() = default;
 
-		struct RenderStatistics
-		{
-			uint32_t DrawCalls = 0;
-			uint32_t Meshes = 0;
-			uint32_t Submeshes = 0;
-		};
-
 		virtual void Shutdown() = 0;
 
 		// Render queue commands
