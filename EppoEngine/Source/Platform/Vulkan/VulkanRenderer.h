@@ -19,7 +19,7 @@ namespace Eppo
 		void SubmitCommand(RenderCommand command) override;
 
 		// Render passes
-		void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline) override;
+		void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) override;
 		void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) override;
 
 		// Shaders

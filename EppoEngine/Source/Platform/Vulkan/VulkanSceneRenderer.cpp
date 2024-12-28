@@ -929,7 +929,7 @@ namespace Eppo
 			VulkanImage::TransitionImage(commandBuffer, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 			// Begin rendering
-			renderer->BeginRenderPass(cmd, pipeline);
+			renderer->BeginRenderPass(cmd, pipeline, false);
 
 			ImDrawData* data = ImGui::GetDrawData();
 			ImGui_ImplVulkan_RenderDrawData(data, commandBuffer);

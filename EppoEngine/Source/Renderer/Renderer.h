@@ -19,7 +19,7 @@ namespace Eppo
 		virtual void SubmitCommand(RenderCommand command) = 0;
 
 		// Render passes
-		virtual void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline) = 0;
+		virtual void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) = 0;
 		virtual void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) = 0;
 
 		// Shaders
