@@ -168,7 +168,7 @@ namespace Eppo
 		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
 	}
 
-	void VulkanLogicalDevice::FreeCommandBuffer(VkCommandBuffer commandBuffer) const
+	void VulkanLogicalDevice::FreeCommandBuffer(const VkCommandBuffer commandBuffer) const
 	{
 		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
 	}

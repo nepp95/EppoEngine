@@ -31,7 +31,7 @@ namespace Eppo
 
 		ImageInfo& GetImageInfo() { return m_ImageInfo; }
 
-		static void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout);
+		static void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout, VkPipelineStageFlags2 srcStageMask = VK_PIPELINE_STAGE_2_NONE, VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE);
 		static VkImageAspectFlags GetImageAspectFlags(VkImageLayout layout);
 
 	private:

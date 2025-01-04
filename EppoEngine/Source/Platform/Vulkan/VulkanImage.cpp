@@ -217,14 +217,19 @@ namespace Eppo
 		}
 	}
 
-	void VulkanImage::TransitionImage(const VkCommandBuffer commandBuffer, const VkImage image, const VkImageLayout srcLayout, const VkImageLayout dstLayout)
+	void VulkanImage::TransitionImage(const VkCommandBuffer commandBuffer, const VkImage image, const VkImageLayout srcLayout, const VkImageLayout dstLayout, VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanImage::TransitionImage");
 
+		if (!srcStageMask)
+			srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		if (!dstStageMask)
+			dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
 		VkImageMemoryBarrier2 imageBarrier{};
 		imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		imageBarrier.srcStageMask = srcStageMask;
+		imageBarrier.dstStageMask = dstStageMask;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 		imageBarrier.oldLayout = srcLayout;

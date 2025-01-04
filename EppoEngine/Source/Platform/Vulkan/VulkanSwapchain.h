@@ -40,7 +40,7 @@ namespace Eppo
 		[[nodiscard]] Ref<VulkanCommandBuffer> GetCommandBuffer() const { return m_CommandBuffer; }
 
 	private:
-		SwapchainSupportDetails QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice) const;
+		[[nodiscard]] SwapchainSupportDetails QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice) const;
 
 		static VkSurfaceFormatKHR SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats);
 		static VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);

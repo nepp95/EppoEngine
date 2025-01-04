@@ -469,7 +469,14 @@ namespace Eppo
 
 			// Transition depth images for writing
 			for (uint32_t i = 0; i < s_MaxLights; i++)
-				VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+				VulkanImage::TransitionImage(
+					commandBuffer, 
+					std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image,
+					VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+					VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+					VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+				);
 		});
 	}
 
@@ -668,7 +675,12 @@ namespace Eppo
 
 			// Transition image for reading
 			for (uint32_t i = 0; i < s_MaxLights; i++)
-				VulkanImage::TransitionImage(commandBuffer, std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+				VulkanImage::TransitionImage(
+					commandBuffer,
+					std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo().Image,
+					VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+				);
 
 			if (m_RenderSpecification.DebugRendering)
 				m_DebugRenderer->EndDebugLabel(m_CommandBuffer);

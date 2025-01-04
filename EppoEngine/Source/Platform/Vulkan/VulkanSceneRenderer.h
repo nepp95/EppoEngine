@@ -35,7 +35,7 @@ namespace Eppo
 		void PrepareImages() const;
 		void UpdateDescriptors();
 
-		void GuiPass();
+		static void GuiPass();
 		void PreDepthPass();
 		void EnvPass();
 		void SkyboxPass();
