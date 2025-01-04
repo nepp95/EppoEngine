@@ -18,7 +18,7 @@ namespace Eppo
 	class VulkanImage : public Image
 	{
 	public:
-		explicit VulkanImage(const ImageSpecification& specification);
+		explicit VulkanImage(ImageSpecification specification);
 		~VulkanImage() final;
 
 		void SetData(void* data, uint32_t channels = 4) override;

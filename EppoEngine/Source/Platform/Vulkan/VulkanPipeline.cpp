@@ -8,9 +8,9 @@
 
 namespace Eppo
 {
-	namespace Utils
+	namespace
 	{
-		static VkPrimitiveTopology TopologyToVkTopology(const PrimitiveTopology topology)
+		VkPrimitiveTopology TopologyToVkTopology(const PrimitiveTopology topology)
 		{
 			switch (topology)
 			{
@@ -22,7 +22,7 @@ namespace Eppo
 			return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 		}
 
-		static VkPolygonMode PolygonModeToVkPolygonMode(const PolygonMode mode)
+		VkPolygonMode PolygonModeToVkPolygonMode(const PolygonMode mode)
 		{
 			switch (mode)
 			{
@@ -34,7 +34,7 @@ namespace Eppo
 			return VK_POLYGON_MODE_MAX_ENUM;
 		}
 
-		static VkCullModeFlags CullModeToVkCullMode(const CullMode mode)
+		VkCullModeFlags CullModeToVkCullMode(const CullMode mode)
 		{
 			switch (mode)
 			{
@@ -47,7 +47,7 @@ namespace Eppo
 			return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
 		}
 
-		static VkFrontFace CullFrontFaceToVkFrontFace(const CullFrontFace frontFace)
+		VkFrontFace CullFrontFaceToVkFrontFace(const CullFrontFace frontFace)
 		{
 			switch (frontFace)
 			{
@@ -59,7 +59,7 @@ namespace Eppo
 			return VK_FRONT_FACE_MAX_ENUM;
 		}
 
-		static VkCompareOp DepthCompareOpToVkCompareOp(const DepthCompareOp op)
+		VkCompareOp DepthCompareOpToVkCompareOp(const DepthCompareOp op)
 		{
 			switch (op)
 			{
@@ -111,7 +111,7 @@ namespace Eppo
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
 		inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssemblyStateCreateInfo.topology = Utils::TopologyToVkTopology(m_Specification.Topology);
+		inputAssemblyStateCreateInfo.topology = TopologyToVkTopology(m_Specification.Topology);
 		inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 
 		VkPipelineViewportStateCreateInfo viewportStateCreateInfo{};
@@ -123,10 +123,10 @@ namespace Eppo
 		rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
 		rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-		rasterizationStateCreateInfo.polygonMode = Utils::PolygonModeToVkPolygonMode(m_Specification.PolygonMode);
+		rasterizationStateCreateInfo.polygonMode = PolygonModeToVkPolygonMode(m_Specification.PolygonMode);
 		rasterizationStateCreateInfo.lineWidth = 1.0f;
-		rasterizationStateCreateInfo.cullMode = Utils::CullModeToVkCullMode(m_Specification.CullMode);
-		rasterizationStateCreateInfo.frontFace = Utils::CullFrontFaceToVkFrontFace(m_Specification.CullFrontFace);
+		rasterizationStateCreateInfo.cullMode = CullModeToVkCullMode(m_Specification.CullMode);
+		rasterizationStateCreateInfo.frontFace = CullFrontFaceToVkFrontFace(m_Specification.CullFrontFace);
 		rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
 		rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
 		rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
@@ -145,7 +145,7 @@ namespace Eppo
 		depthStencilStateCreateInfo.stencilTestEnable = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 		depthStencilStateCreateInfo.depthTestEnable = m_Specification.TestDepth;
 		depthStencilStateCreateInfo.depthWriteEnable = m_Specification.WriteDepth;
-		depthStencilStateCreateInfo.depthCompareOp = Utils::DepthCompareOpToVkCompareOp(m_Specification.DepthCompareOp);
+		depthStencilStateCreateInfo.depthCompareOp = DepthCompareOpToVkCompareOp(m_Specification.DepthCompareOp);
 		depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
 		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
 		depthStencilStateCreateInfo.maxDepthBounds = 1.0f;

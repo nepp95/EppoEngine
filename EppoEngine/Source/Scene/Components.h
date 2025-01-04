@@ -19,6 +19,9 @@ namespace Eppo
 		UUID ID;
 
 		IDComponent() = default;
+		explicit IDComponent(const UUID uuid)
+			: ID(uuid)
+		{}
 	};
 
 	struct TagComponent
@@ -28,8 +31,7 @@ namespace Eppo
 		TagComponent() = default;
 		explicit TagComponent(std::string tag)
 			: Tag(std::move(tag))
-		{
-		}
+		{}
 	};
 
 	struct TransformComponent

@@ -8,19 +8,19 @@
 
 namespace Eppo
 {
-	static std::map<std::filesystem::path, AssetType> s_AssetExtensionMap =
+	namespace
 	{
-		{ ".epscene", AssetType::Scene },
-		{ ".glb", AssetType::Mesh },
-		{ ".gltf", AssetType::Mesh },
-		{ ".jpeg", AssetType::Texture },
-		{ ".jpg", AssetType::Texture },
-		{ ".png", AssetType::Texture },
-	};
+		std::map<std::filesystem::path, AssetType> s_AssetExtensionMap =
+		{
+			{ ".epscene", AssetType::Scene },
+			{ ".glb", AssetType::Mesh },
+			{ ".gltf", AssetType::Mesh },
+			{ ".jpeg", AssetType::Texture },
+			{ ".jpg", AssetType::Texture },
+			{ ".png", AssetType::Texture },
+		};
 
-	namespace Utils
-	{
-		static AssetType GetAssetTypeFromFileExtension(const std::filesystem::path& extension)
+		AssetType GetAssetTypeFromFileExtension(const std::filesystem::path& extension)
 		{
 			if (s_AssetExtensionMap.find(extension) == s_AssetExtensionMap.end())
 			{
@@ -31,7 +31,7 @@ namespace Eppo
 			return s_AssetExtensionMap.at(extension);
 		}
 
-		static std::filesystem::path CopyAssetToAssetsDirectory(const std::filesystem::path& filepath)
+		std::filesystem::path CopyAssetToAssetsDirectory(const std::filesystem::path& filepath)
 		{
 			const AssetType type = GetAssetTypeFromFileExtension(filepath.extension());
 			std::filesystem::path destPath;
@@ -82,7 +82,7 @@ namespace Eppo
 		if (IsAssetLoaded(handle))
 			return false;
 
-		const AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
+		const AssetType type = GetAssetTypeFromFileExtension(filepath.extension());
 		EPPO_ASSERT(type != AssetType::None)
 
 		AssetMetadata metadata;
@@ -151,12 +151,12 @@ namespace Eppo
 		std::filesystem::path baseCanonical = std::filesystem::canonical(Project::GetAssetsDirectory());
 		std::filesystem::path targetCanonical = std::filesystem::canonical(Project::GetAssetFilepath(filepath));
 
-		const AssetType type = Utils::GetAssetTypeFromFileExtension(filepath.extension());
+		const AssetType type = GetAssetTypeFromFileExtension(filepath.extension());
 		EPPO_ASSERT(type != AssetType::None)
 
 		std::filesystem::path newPath;
 		if (std::mismatch(baseCanonical.begin(), baseCanonical.end(), targetCanonical.begin()).first != baseCanonical.end())
-			newPath = Utils::CopyAssetToAssetsDirectory(targetCanonical);
+			newPath = CopyAssetToAssetsDirectory(targetCanonical);
 
 		AssetMetadata metadata;
 		metadata.Filepath = Project::GetAssetRelativeFilepath(newPath.empty() ? filepath : newPath);
@@ -175,16 +175,16 @@ namespace Eppo
 		return asset;
 	}
 
-	const AssetMetadata& AssetManagerEditor::GetMetadata(AssetHandle handle) const
+	const AssetMetadata& AssetManagerEditor::GetMetadata(const AssetHandle handle) const
 	{
-		auto it = m_AssetData.find(handle);
+		const auto it = m_AssetData.find(handle);
 		if (it == m_AssetData.end())
 			return s_NullMetadata;
 
 		return it->second;
 	}
 
-	const std::filesystem::path& AssetManagerEditor::GetFilepath(AssetHandle handle) const
+	const std::filesystem::path& AssetManagerEditor::GetFilepath(const AssetHandle handle) const
 	{
 		return GetMetadata(handle).Filepath;
 	}

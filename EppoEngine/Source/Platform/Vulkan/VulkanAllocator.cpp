@@ -18,7 +18,10 @@ namespace Eppo
 		}
 	};
 
-	static AllocatorData* s_Data;
+	namespace
+	{
+		AllocatorData* s_Data;
+	}
 
 	void VulkanAllocator::Init()
 	{

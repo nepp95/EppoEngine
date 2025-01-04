@@ -10,7 +10,7 @@ namespace Eppo
 	public:
 		[[nodiscard]] KeyCode GetKeyCode() const { return m_KeyCode; }
 
-		EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard);
+		EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard)
 
 	protected:
 		explicit KeyEvent(const KeyCode keyCode)

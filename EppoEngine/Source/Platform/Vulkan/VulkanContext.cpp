@@ -139,12 +139,12 @@ namespace Eppo
 		return std::static_pointer_cast<VulkanContext>(RendererContext::Get());
 	}
 
-	std::vector<const char*> VulkanContext::GetRequiredExtensions() const
+	std::vector<const char*> VulkanContext::GetRequiredExtensions()
 	{
 		uint32_t glfwExtensionCount = 0;
 		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+		std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 		if (VulkanConfig::EnableValidation)
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

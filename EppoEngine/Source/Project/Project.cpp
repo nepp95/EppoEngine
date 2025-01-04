@@ -97,7 +97,7 @@ namespace Eppo
 
 		s_ActiveProject->GetAssetManagerEditor()->SerializeAssetRegistry();
 
-		ProjectSerializer serializer(s_ActiveProject);
+		const ProjectSerializer serializer(s_ActiveProject);
 		return serializer.Serialize();
 	}
 }

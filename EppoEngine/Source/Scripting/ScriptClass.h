@@ -17,7 +17,7 @@ namespace Eppo
 
 		[[nodiscard]] MonoObject* Instantiate() const;
 		[[nodiscard]] MonoMethod* GetMethod(const std::string& name, uint32_t paramCount) const;
-		MonoObject* InvokeMethod(MonoObject* instance, MonoMethod* method, void** params = nullptr);
+		static MonoObject* InvokeMethod(MonoObject* instance, MonoMethod* method, void** params = nullptr);
 
 		[[nodiscard]] const std::unordered_map<std::string, ScriptField>& GetFields() const { return m_Fields; }
 

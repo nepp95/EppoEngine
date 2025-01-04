@@ -27,7 +27,7 @@ namespace Eppo
 
 		ImGui::BeginGroup();
 
-		constexpr char* items[] = { "Meshes", "Scenes", "Scripts", "Textures" };
+		const char* items[] = { "Meshes", "Scenes", "Scripts", "Textures" };
 		static int currentItem = 0;
 		if (ImGui::BeginListBox("##Assets", ImVec2(100.0f, -FLT_MIN)))
 		{

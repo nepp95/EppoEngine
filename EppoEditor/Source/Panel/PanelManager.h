@@ -53,9 +53,9 @@ namespace Eppo
 			return it->second.Panel; // TODO: Might not work? dynamic cast to derived class
 		}
 
-		bool HasPanel(const std::string& name)
+		bool HasPanel(const std::string& name) const
 		{
-			return m_PanelData.find(name) != m_PanelData.end();
+			return m_PanelData.contains(name);
 		}
 
 		static PanelManager& Get();

@@ -109,7 +109,7 @@ namespace Eppo
 			m_Buffer.SetData(value, offset);
 		}
 
-		void SetData(void* data, uint32_t size)
+		void SetData(void* data, const uint32_t size)
 		{
 			m_Buffer.SetData(data, size);
 		}

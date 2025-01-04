@@ -15,7 +15,7 @@ namespace Eppo
 		void ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& worldPosition) const;
 		void ApplyLinearImpulse(const glm::vec3& impulse) const;
 
-		btRigidBody* GetBody() const { return m_Body; }
+		[[nodiscard]] btRigidBody* GetBody() const { return m_Body; }
 		void SetBody(btRigidBody* body) { m_Body = body; }
 		void ClearBody();
 

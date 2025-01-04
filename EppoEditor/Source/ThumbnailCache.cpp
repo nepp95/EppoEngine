@@ -24,7 +24,7 @@ namespace Eppo
 
 	Ref<Image> ThumbnailCache::GetOrCreateThumbnail(const AssetType type)
 	{
-		if (m_AssetTypeThumbnails.find(type) == m_AssetTypeThumbnails.end())
+		if (!m_AssetTypeThumbnails.contains(type))
 			return m_AssetTypeThumbnails.at(AssetType::None);
 
 		return m_AssetTypeThumbnails.at(type);

@@ -16,29 +16,61 @@
 
 namespace Eppo
 {
-	static std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap {
-		{ "System.Single",		ScriptFieldType::Float },
-		{ "System.Double",		ScriptFieldType::Double },
-		{ "System.Boolean",		ScriptFieldType::Bool },
-		{ "System.Char",			ScriptFieldType::Char },
-		{ "System.Int16",			ScriptFieldType::Int16 },
-		{ "System.Int32",			ScriptFieldType::Int32 },
-		{ "System.Int64",			ScriptFieldType::Int64 },
-		{ "System.Byte",			ScriptFieldType::Byte },
-		{ "System.UInt16",		ScriptFieldType::UInt16 },
-		{ "System.UInt32",		ScriptFieldType::UInt32 },
-		{ "System.UInt64",		ScriptFieldType::UInt64 },
+	struct ScriptEngineData
+	{
+		MonoDomain* RootDomain = nullptr;
+		MonoDomain* AppDomain = nullptr;
 
-		{ "Eppo.Vector2",			ScriptFieldType::Vector2 },
-		{ "Eppo.Vector3",			ScriptFieldType::Vector3 },
-		{ "Eppo.Vector4",			ScriptFieldType::Vector4 },
+		MonoAssembly* CoreAssembly = nullptr;
+		MonoImage* CoreAssemblyImage = nullptr;
+		std::filesystem::path CoreAssemblyFilepath;
 
-		{ "Eppo.Entity",			ScriptFieldType::Entity },
+		MonoAssembly* AppAssembly = nullptr;
+		MonoImage* AppAssemblyImage = nullptr;
+		std::filesystem::path AppAssemblyFilepath;
+		Scope<filewatch::FileWatch<std::filesystem::path>> AppAssemblyFileWatcher;
+		bool AppAssemblyReloadPending = false;
+
+		Ref<ScriptClass> EntityClass;
+
+		std::unordered_map<std::string, Ref<ScriptClass>> EntityScriptClasses;
+		std::unordered_map<UUID, Ref<ScriptInstance>> EntityScriptInstances;
+		std::unordered_map<UUID, ScriptFieldMap> EntityScriptFields;
+
+		Ref<Scene> SceneContext;
+
+#if defined(EPPO_DEBUG)
+		bool EnableDebugging = true;
+#else
+		bool EnableDebugging = false;
+#endif
 	};
 
-	namespace Utils
+	namespace
 	{
-		static MonoAssembly* LoadMonoAssembly(const std::filesystem::path& filepath, const bool loadPDB = false)
+		std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap {
+			{ "System.Single",		ScriptFieldType::Float },
+			{ "System.Double",		ScriptFieldType::Double },
+			{ "System.Boolean",		ScriptFieldType::Bool },
+			{ "System.Char",			ScriptFieldType::Char },
+			{ "System.Int16",			ScriptFieldType::Int16 },
+			{ "System.Int32",			ScriptFieldType::Int32 },
+			{ "System.Int64",			ScriptFieldType::Int64 },
+			{ "System.Byte",			ScriptFieldType::Byte },
+			{ "System.UInt16",		ScriptFieldType::UInt16 },
+			{ "System.UInt32",		ScriptFieldType::UInt32 },
+			{ "System.UInt64",		ScriptFieldType::UInt64 },
+
+			{ "Eppo.Vector2",			ScriptFieldType::Vector2 },
+			{ "Eppo.Vector3",			ScriptFieldType::Vector3 },
+			{ "Eppo.Vector4",			ScriptFieldType::Vector4 },
+
+			{ "Eppo.Entity",			ScriptFieldType::Entity },
+		};
+
+		ScriptEngineData* s_Data;
+
+		MonoAssembly* LoadMonoAssembly(const std::filesystem::path& filepath, const bool loadPDB = false)
 		{
 			ScopedBuffer buffer(Filesystem::ReadBytes(filepath));
 
@@ -71,7 +103,7 @@ namespace Eppo
 			return assembly;
 		}
 
-		static ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)
+		ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)
 		{
 			const std::string type = mono_type_get_name(monoType);
 
@@ -84,38 +116,6 @@ namespace Eppo
 			return ScriptFieldType::None;
 		}
 	}
-
-	struct ScriptEngineData
-	{
-		MonoDomain* RootDomain = nullptr;
-		MonoDomain* AppDomain = nullptr;
-
-		MonoAssembly* CoreAssembly = nullptr;
-		MonoImage* CoreAssemblyImage = nullptr;
-		std::filesystem::path CoreAssemblyFilepath;
-
-		MonoAssembly* AppAssembly = nullptr;
-		MonoImage* AppAssemblyImage = nullptr;
-		std::filesystem::path AppAssemblyFilepath;
-		Scope<filewatch::FileWatch<std::filesystem::path>> AppAssemblyFileWatcher;
-		bool AppAssemblyReloadPending = false;
-
-		Ref<ScriptClass> EntityClass;
-
-		std::unordered_map<std::string, Ref<ScriptClass>> EntityScriptClasses;
-		std::unordered_map<UUID, Ref<ScriptInstance>> EntityScriptInstances;
-		std::unordered_map<UUID, ScriptFieldMap> EntityScriptFields;
-
-		Ref<Scene> SceneContext;
-
-		#if defined(EPPO_DEBUG)
-			bool EnableDebugging = true;
-		#else
-			bool EnableDebugging = false;
-		#endif
-	};
-
-	static ScriptEngineData* s_Data;
 
 	void ScriptEngine::Init()
 	{
@@ -186,7 +186,7 @@ namespace Eppo
 
 		// Load assembly
 		s_Data->AppAssemblyFilepath = filepath;
-		s_Data->AppAssembly = Utils::LoadMonoAssembly(filepath, s_Data->EnableDebugging);
+		s_Data->AppAssembly = LoadMonoAssembly(filepath, s_Data->EnableDebugging);
 		if (s_Data->AppAssembly == nullptr)
 			return false;
 
@@ -366,12 +366,12 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadCoreAssembly");
 
 		// Setup appdomain
-		s_Data->AppDomain = mono_domain_create_appdomain("EppoScriptRuntime", nullptr);
+		s_Data->AppDomain = mono_domain_create_appdomain(const_cast<char*>("EppoScriptRuntime"), nullptr);
 		mono_domain_set(s_Data->AppDomain, true);
 
 		// Setup core assembly
 		s_Data->CoreAssemblyFilepath = filepath;
-		s_Data->CoreAssembly = Utils::LoadMonoAssembly(filepath, s_Data->EnableDebugging);
+		s_Data->CoreAssembly = LoadMonoAssembly(filepath, s_Data->EnableDebugging);
 		if (s_Data->CoreAssembly == nullptr)
 			return false;
 
@@ -436,7 +436,7 @@ namespace Eppo
 					MonoType* fieldType = mono_field_get_type(field);
 					std::string fieldName = mono_field_get_name(field);
 
-					const ScriptFieldType scriptFieldType = Utils::MonoTypeToScriptFieldType(fieldType);
+					const ScriptFieldType scriptFieldType = MonoTypeToScriptFieldType(fieldType);
 					if (scriptFieldType == ScriptFieldType::None)
 						continue;
 

@@ -20,7 +20,7 @@ namespace Eppo
 
 		UUID uuid = entity.GetUUID();
 		void* param = &uuid;
-		m_ScriptClass->InvokeMethod(m_Instance, m_Constructor, &param);
+		ScriptClass::InvokeMethod(m_Instance, m_Constructor, &param);
 	}
 
 	void ScriptInstance::InvokeOnCreate() const
@@ -28,7 +28,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptInstance::InvokeOnCreate");
 
 		if (m_OnCreate)
-			m_ScriptClass->InvokeMethod(m_Instance, m_OnCreate);
+			ScriptClass::InvokeMethod(m_Instance, m_OnCreate);
 	}
 
 	void ScriptInstance::InvokeOnUpdate(float timestep) const
@@ -38,7 +38,7 @@ namespace Eppo
 		if (m_OnUpdate)
 		{
 			void* params = &timestep;
-			m_ScriptClass->InvokeMethod(m_Instance, m_OnUpdate, &params);
+			ScriptClass::InvokeMethod(m_Instance, m_OnUpdate, &params);
 		}
 	}
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Platform/Vulkan/VulkanAllocator.h"
-#include "Platform/Vulkan/VulkanCommandBuffer.h"
 #include "Renderer/IndexBuffer.h"
 
 namespace Eppo
@@ -15,8 +14,8 @@ namespace Eppo
 
 		void SetData(Buffer buffer) override;
 
-		VkBuffer GetBuffer() const { return m_Buffer; }
-		uint32_t GetIndexCount() const override { return m_Size / sizeof(uint32_t); }
+		[[nodiscard]] VkBuffer GetBuffer() const { return m_Buffer; }
+		[[nodiscard]] uint32_t GetIndexCount() const override { return m_Size / sizeof(uint32_t); }
 
 	private:
 		void CopyWithStagingBuffer(Buffer buffer) const;

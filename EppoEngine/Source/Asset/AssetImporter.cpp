@@ -41,8 +41,12 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("AssetImporter::ImportScene");
 
 		Ref<Scene> scene = CreateRef<Scene>();
-		SceneSerializer serializer(scene);
-		serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath));
+
+		if (const SceneSerializer serializer(scene);
+			!serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath)))
+		{
+			EPPO_ERROR("Failed to import scene '{}'", metadata.Filepath);
+		}
 
 		return scene;
 	}

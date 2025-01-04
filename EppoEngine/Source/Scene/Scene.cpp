@@ -11,29 +11,29 @@
 
 namespace Eppo
 {
-	static auto* s_collisionConfig = new btDefaultCollisionConfiguration();
-	static auto* s_collisionDispatcher = new btCollisionDispatcher(s_collisionConfig);
-	static btBroadphaseInterface* s_broadPhaseInterface = new btDbvtBroadphase();
-	static auto* s_Solver = new btSequentialImpulseConstraintSolver();
-
-	namespace Utils
+	namespace
 	{
-		static glm::vec3 BulletToGlm(const btVector3& v)
+		auto* s_collisionConfig = new btDefaultCollisionConfiguration();
+		auto* s_collisionDispatcher = new btCollisionDispatcher(s_collisionConfig);
+		btBroadphaseInterface* s_broadPhaseInterface = new btDbvtBroadphase();
+		auto* s_Solver = new btSequentialImpulseConstraintSolver();
+
+		glm::vec3 BulletToGlm(const btVector3& v)
 		{
 			return { v.getX(), v.getY(), v.getZ() };
 		}
 
-		static glm::quat BulletToGlm(const btQuaternion& q)
+		glm::quat BulletToGlm(const btQuaternion& q)
 		{
 			return { q.getW(), q.getX(), q.getY(), q.getZ() };
 		}
 
-		static btVector3 GlmToBullet(const glm::vec3& v)
+		btVector3 GlmToBullet(const glm::vec3& v)
 		{
 			return { v.x, v.y, v.z };
 		}
 
-		static btQuaternion GlmToBullet(const glm::quat& q)
+		btQuaternion GlmToBullet(const glm::quat& q)
 		{
 			return { q.x, q.y, q.z, q.w };
 		}
@@ -82,7 +82,7 @@ namespace Eppo
 				body->getMotionState()->getWorldTransform(trans);
 
 			const auto& position = trans.getOrigin();
-			transform.Translation = Utils::BulletToGlm(position);
+			transform.Translation = BulletToGlm(position);
 
 			trans.getRotation().getEulerZYX(transform.Rotation.z, transform.Rotation.y, transform.Rotation.x);
 		}
@@ -106,16 +106,14 @@ namespace Eppo
 		const SceneCamera* sceneCamera = nullptr;
 		glm::mat4 cameraTransform;
 
+		const auto view = m_Registry.view<TransformComponent, CameraComponent>();
+		for (const auto e : view)
 		{
-			const auto view = m_Registry.view<TransformComponent, CameraComponent>();
-			for (const auto e : view)
-			{
-				auto [transform, camera] = view.get<TransformComponent, CameraComponent>(e);
-				sceneCamera = &camera.Camera;
-				cameraTransform = transform.GetTransform();
+			auto [transform, camera] = view.get<TransformComponent, CameraComponent>(e);
+			sceneCamera = &camera.Camera;
+			cameraTransform = transform.GetTransform();
 
-				break;
-			}
+			break;
 		}
 
 		if (sceneCamera)
@@ -309,7 +307,7 @@ namespace Eppo
 			btTransform bTransform;
 			bTransform.setIdentity();
 			bTransform.setOrigin(btVector3(transform.Translation.x, transform.Translation.y, transform.Translation.z));
-			bTransform.setRotation(Utils::GlmToBullet(glm::quat(transform.Rotation)));
+			bTransform.setRotation(GlmToBullet(glm::quat(transform.Rotation)));
 
 			const bool isDynamic = rigidbody.Type == RigidBodyComponent::BodyType::Dynamic;
 			btScalar mass(0.0f);

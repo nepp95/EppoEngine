@@ -5,8 +5,8 @@
 
 namespace Eppo
 {
-	VulkanImage::VulkanImage(const ImageSpecification& specification)
-		: m_Specification(specification)
+	VulkanImage::VulkanImage(ImageSpecification specification)
+		: m_Specification(std::move(specification))
 	{
 		EPPO_PROFILE_FUNCTION("VulkanImage::VulkanImage");
 
@@ -87,7 +87,7 @@ namespace Eppo
 
 		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-		VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageInfo.ImageView), "Failed to create image view!");
+		VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageInfo.ImageView), "Failed to create image view!")
 
 		// Sampler
 		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
@@ -110,7 +110,7 @@ namespace Eppo
 		samplerCreateInfo.minLod = 0.0f;
 		samplerCreateInfo.maxLod = 0.0f;
 
-		VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &m_ImageInfo.Sampler), "Failed to create sampler!");
+		VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &m_ImageInfo.Sampler), "Failed to create sampler!")
 
 		VkCommandBuffer commandBuffer = context->GetLogicalDevice()->GetCommandBuffer(true);
 
@@ -139,7 +139,7 @@ namespace Eppo
 		Release();
 	}
 
-	void VulkanImage::SetData(void* data, uint32_t channels)
+	void VulkanImage::SetData(void* data, const uint32_t channels)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanImage::SetData");
 
@@ -246,7 +246,7 @@ namespace Eppo
 		vkCmdPipelineBarrier2(commandBuffer, &depInfo);
 	}
 
-	VkImageAspectFlags VulkanImage::GetImageAspectFlags(VkImageLayout layout)
+	VkImageAspectFlags VulkanImage::GetImageAspectFlags(const VkImageLayout layout)
 	{
 		switch (layout)
 		{

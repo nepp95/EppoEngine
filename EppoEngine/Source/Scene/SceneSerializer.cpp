@@ -348,8 +348,8 @@ namespace Eppo
 			out << YAML::Key << "MeshComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			const auto& c = entity.GetComponent<MeshComponent>();
-			out << YAML::Key << "MeshHandle" << YAML::Value << c.MeshHandle;
+			const auto& [meshHandle] = entity.GetComponent<MeshComponent>();
+			out << YAML::Key << "MeshHandle" << YAML::Value << meshHandle;
 
 			out << YAML::EndMap;
 		}
@@ -460,9 +460,9 @@ namespace Eppo
 			out << YAML::Key << "PointLightComponent" << YAML::Value;
 			out << YAML::BeginMap;
 
-			const auto& c = entity.GetComponent<PointLightComponent>();
+			const auto& [color] = entity.GetComponent<PointLightComponent>();
 
-			out << YAML::Key << "Color" << YAML::Value << c.Color;
+			out << YAML::Key << "Color" << YAML::Value << color;
 
 			out << YAML::EndMap;
 		}

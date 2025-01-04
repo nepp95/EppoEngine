@@ -9,8 +9,8 @@ namespace Eppo
 	public:
 		virtual ~DebugRenderer() = default;
 
-		virtual void StartDebugLabel(Ref<CommandBuffer> commandBuffer, const std::string& label) = 0;
-		virtual void EndDebugLabel(Ref<CommandBuffer> commandBuffer) = 0;
+		virtual void StartDebugLabel(const Ref<CommandBuffer>& commandBuffer, const std::string& label) = 0;
+		virtual void EndDebugLabel(const Ref<CommandBuffer>& commandBuffer) = 0;
 
 		static Ref<DebugRenderer> Create();
 	};

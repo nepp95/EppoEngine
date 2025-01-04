@@ -305,7 +305,7 @@ namespace Eppo
 		Flush();
 	}
 
-	void VulkanSceneRenderer::SubmitDrawCommand(EntityType type, Ref<DrawCommand> drawCommand)
+	void VulkanSceneRenderer::SubmitDrawCommand(const EntityType type, Ref<DrawCommand> drawCommand)
 	{
 		EPPO_PROFILE_FUNCTION("VulkanSceneRenderer::SubmitDrawCommand");
 

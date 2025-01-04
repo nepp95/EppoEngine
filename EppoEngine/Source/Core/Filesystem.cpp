@@ -98,7 +98,7 @@ namespace Eppo
 			return {};
 
 		Buffer buffer(static_cast<uint32_t>(fileSize));
-		stream.read(buffer.As<char>(), fileSize);
+		stream.read(buffer.As<char>(), static_cast<int32_t>(fileSize));
 		stream.close();
 
 		return buffer;
@@ -120,7 +120,7 @@ namespace Eppo
 		{
 			text.resize(size);
 			stream.seekg(0, std::ios::beg);
-			stream.read(text.data(), text.size());
+			stream.read(text.data(), static_cast<int32_t>(text.size()));
 		}
 
 		return text;
@@ -149,10 +149,10 @@ namespace Eppo
 		std::ofstream stream(filepath, std::ios::binary);
 		EPPO_ASSERT(stream)
 
-		stream.write((char*)buffer.data(), buffer.size() * sizeof(uint32_t));
+		stream.write((char*)buffer.data(), static_cast<int32_t>(buffer.size()) * sizeof(uint32_t));
 	}
 
-	void Filesystem::WriteText(const std::filesystem::path& filepath, const std::string& text, bool overwrite)
+	void Filesystem::WriteText(const std::filesystem::path& filepath, const std::string& text, const bool overwrite)
 	{
 		EPPO_PROFILE_FUNCTION("Filesystem::WriteText");
 
@@ -167,6 +167,6 @@ namespace Eppo
 
 		EPPO_ASSERT(stream)
 
-		stream.write(text.c_str(), text.size());
+		stream.write(text.c_str(), static_cast<int32_t>(text.size()));
 	}
 }

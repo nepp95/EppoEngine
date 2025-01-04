@@ -9,9 +9,12 @@
 
 namespace Eppo
 {
-	static void GLFWErrorCallback(int error, const char* description)
+	namespace
 	{
-		EPPO_ERROR("GLFW Error: ({}) {}", error, description);
+		void GLFWErrorCallback(int error, const char* description)
+		{
+			EPPO_ERROR("GLFW Error: ({}) {}", error, description);
+		}
 	}
 
 	Window::Window(WindowSpecification specification)
@@ -148,7 +151,7 @@ namespace Eppo
 		glfwTerminate();
 	}
 
-	void Window::ProcessEvents() const
+	void Window::ProcessEvents()
 	{
 		glfwPollEvents();
 	}

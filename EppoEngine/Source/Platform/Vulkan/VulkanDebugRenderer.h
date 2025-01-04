@@ -9,7 +9,7 @@ namespace Eppo
 	public:
 		VulkanDebugRenderer() = default;
 
-		void StartDebugLabel(Ref<CommandBuffer> commandBuffer, const std::string& label) override;
-		void EndDebugLabel(Ref<CommandBuffer> commandBuffer) override;
+		void StartDebugLabel(const Ref<CommandBuffer>& commandBuffer, const std::string& label) override;
+		void EndDebugLabel(const Ref<CommandBuffer>& commandBuffer) override;
 	};
 }

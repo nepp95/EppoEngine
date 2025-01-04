@@ -7,16 +7,16 @@ namespace Eppo
 	class VulkanLogicalDevice
 	{
 	public:
-		VulkanLogicalDevice(Ref<VulkanPhysicalDevice> physicalDevice);
+		explicit VulkanLogicalDevice(const Ref<VulkanPhysicalDevice>& physicalDevice);
 		virtual ~VulkanLogicalDevice() = default;
 
-		VkDevice GetNativeDevice() const { return m_Device; }
+		[[nodiscard]] VkDevice GetNativeDevice() const { return m_Device; }
 
-		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
-		VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
+		[[nodiscard]] Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
+		[[nodiscard]] VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
 
-		VkCommandBuffer GetCommandBuffer(bool begin) const;
-		VkCommandBuffer GetSecondaryCommandBuffer() const;
+		[[nodiscard]] VkCommandBuffer GetCommandBuffer(bool begin) const;
+		[[nodiscard]] VkCommandBuffer GetSecondaryCommandBuffer() const;
 		void FlushCommandBuffer(VkCommandBuffer commandBuffer) const;
 		void FreeCommandBuffer(VkCommandBuffer commandBuffer) const;
 

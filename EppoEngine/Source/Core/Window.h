@@ -32,7 +32,7 @@ namespace Eppo
 		void Init();
 		void Shutdown() const;
 
-		void ProcessEvents() const;
+		static void ProcessEvents();
 		void SetEventCallback(const EventCallbackFn& callback) { m_Callback = callback; }
 
 		void SetWindowTitle(const std::string& name) const;

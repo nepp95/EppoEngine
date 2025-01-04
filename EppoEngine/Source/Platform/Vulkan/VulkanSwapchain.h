@@ -42,9 +42,9 @@ namespace Eppo
 	private:
 		SwapchainSupportDetails QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice) const;
 
-		VkSurfaceFormatKHR SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats);
-		VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
-		VkExtent2D SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+		static VkSurfaceFormatKHR SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats);
+		static VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
+		static VkExtent2D SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
 	private:
 		Ref<VulkanLogicalDevice> m_LogicalDevice;

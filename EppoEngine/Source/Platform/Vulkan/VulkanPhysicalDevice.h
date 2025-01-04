@@ -10,7 +10,7 @@ namespace Eppo
 		int32_t Graphics = -1;
 		int32_t Present = -1;
 
-		bool IsComplete() const
+		[[nodiscard]] bool IsComplete() const
 		{
 			return Graphics > -1 && Present > -1;
 		}
@@ -22,21 +22,21 @@ namespace Eppo
 		VulkanPhysicalDevice();
 		~VulkanPhysicalDevice() = default;
 
-		VkPhysicalDevice GetNativeDevice() const { return m_PhysicalDevice; }
-		VkSurfaceKHR GetSurface() const { return m_Surface; }
+		[[nodiscard]] VkPhysicalDevice GetNativeDevice() const { return m_PhysicalDevice; }
+		[[nodiscard]] VkSurfaceKHR GetSurface() const { return m_Surface; }
 
-		QueueFamilyIndices& GetQueueFamilyIndices() { return m_QueueFamilyIndices; }
-		const QueueFamilyIndices& GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
+		[[nodiscard]] QueueFamilyIndices& GetQueueFamilyIndices() { return m_QueueFamilyIndices; }
+		[[nodiscard]] const QueueFamilyIndices& GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
 
-		const VkPhysicalDeviceProperties& GetDeviceProperties() const { return m_Properties; }
-		const VkPhysicalDeviceMemoryProperties& GetDeviceMemoryProperties() const { return m_MemoryProperties; }
-		const VkPhysicalDeviceFeatures& GetDeviceFeatures() const { return m_Features; }
+		[[nodiscard]] const VkPhysicalDeviceProperties& GetDeviceProperties() const { return m_Properties; }
+		[[nodiscard]] const VkPhysicalDeviceMemoryProperties& GetDeviceMemoryProperties() const { return m_MemoryProperties; }
+		[[nodiscard]] const VkPhysicalDeviceFeatures& GetDeviceFeatures() const { return m_Features; }
 
-		VkFormat GetSupportedImageFormat(ImageFormat format) { return m_SupportedImageFormats[format]; }
+		[[nodiscard]] VkFormat GetSupportedImageFormat(const ImageFormat format) { return m_SupportedImageFormats[format]; }
 		bool IsExtensionSupported(std::string_view extension);
 
 	private:
-		QueueFamilyIndices FindQueueFamilyIndices() const;
+		[[nodiscard]] QueueFamilyIndices FindQueueFamilyIndices() const;
 
 	private:
 		VkPhysicalDevice m_PhysicalDevice;

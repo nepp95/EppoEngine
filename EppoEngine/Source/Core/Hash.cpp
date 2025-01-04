@@ -3,9 +3,9 @@
 
 namespace Eppo
 {
-	namespace Utils
+	namespace
 	{
-		static void byteswap64(uint64_t value, void* ptr)
+		void byteswap64(uint64_t value, void* ptr)
 		{
 			value =
 				((value & 0xFF00000000000000u) >> 56u) |
@@ -50,7 +50,7 @@ namespace Eppo
 		}
 
 		// Reverse byte order
-		Utils::byteswap64(hash, &hash);
+		byteswap64(hash, &hash);
 
 		return hash;
 	}

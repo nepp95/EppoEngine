@@ -45,11 +45,11 @@ namespace Eppo
 		static Ref<VulkanContext> Get();
 
 	private:
-		[[nodiscard]] std::vector<const char*> GetRequiredExtensions() const;
+		[[nodiscard]] static std::vector<const char*> GetRequiredExtensions();
 
 	private:
 		GLFWwindow* m_WindowHandle = nullptr;
-		VkDebugUtilsMessengerEXT m_DebugMessenger;
+		VkDebugUtilsMessengerEXT m_DebugMessenger = nullptr;
 
 		Ref<VulkanLogicalDevice> m_LogicalDevice;
 		Ref<VulkanPhysicalDevice> m_PhysicalDevice;
@@ -59,7 +59,7 @@ namespace Eppo
 		DescriptorLayoutBuilder m_DescriptorLayoutBuilder;
 		GarbageCollector m_GarbageCollector;
 
-		TracyVkCtx m_TracyContext;
+		TracyVkCtx m_TracyContext = nullptr;
 
 		inline static VkInstance s_Instance;
 	};

@@ -15,7 +15,10 @@ namespace Eppo::UI
 		VkDescriptorSet DescriptorSet;
 	};
 
-	static std::unordered_map<void*, ImageInfo> s_ImageCache;
+	namespace
+	{
+		std::unordered_map<void*, ImageInfo> s_ImageCache;
+	}
 
 	void ClearResources()
 	{

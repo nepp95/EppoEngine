@@ -12,9 +12,9 @@
 
 namespace Eppo
 {
-	namespace Utils
+	namespace
 	{
-		inline shaderc_shader_kind ShaderStageToShaderCKind(const ShaderStage stage)
+		shaderc_shader_kind ShaderStageToShaderCKind(const ShaderStage stage)
 		{
 			switch (stage)
 			{
@@ -26,7 +26,7 @@ namespace Eppo
 			return static_cast<shaderc_shader_kind>(-1);
 		}
 
-		inline VkShaderStageFlagBits ShaderStageToVkShaderStage(const ShaderStage stage)
+		VkShaderStageFlagBits ShaderStageToVkShaderStage(const ShaderStage stage)
 		{
 			if (stage == ShaderStage::Vertex)       return VK_SHADER_STAGE_VERTEX_BIT;
 			if (stage == ShaderStage::Fragment)     return VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -34,7 +34,7 @@ namespace Eppo
 			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 		}
 
-		inline VkDescriptorType ShaderResourceTypeToVkDescriptorType(const ShaderResourceType type)
+		VkDescriptorType ShaderResourceTypeToVkDescriptorType(const ShaderResourceType type)
 		{
 			if (type == ShaderResourceType::UniformBuffer)      return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			if (type == ShaderResourceType::Sampler)            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -52,7 +52,7 @@ namespace Eppo
 		const std::string shaderSource = Filesystem::ReadText(GetSpecification().Filepath);
 
 		// Preprocess by shader stage
-		auto sources = PreProcess(shaderSource);
+		const auto sources = PreProcess(shaderSource);
 
 		// Compile or get cache
 		CompileOrGetCache(sources);
@@ -77,7 +77,7 @@ namespace Eppo
 		std::unordered_map<ShaderStage, std::string> shaderSources;
 
 		// Find stage token
-		constexpr char* stageToken = "#stage";
+		const auto stageToken = "#stage";
 		const size_t stageTokenLength = strlen(stageToken);
 		size_t pos = source.find(stageToken, 0);
 
@@ -109,7 +109,7 @@ namespace Eppo
 			options.SetIncluder(CreateScope<ShaderIncluder>());
 			options.SetOptimizationLevel(shaderc_optimization_level_zero);
 
-			auto result = compiler.PreprocessGlsl(stageSource, Utils::ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
+			auto result = compiler.PreprocessGlsl(stageSource, ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
 			stageSource = std::string(result.cbegin(), result.cend());
 		}
 
@@ -128,7 +128,7 @@ namespace Eppo
 		options.SetGenerateDebugInfo();
 
 		// Compile source
-		const shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, Utils::ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
+		const shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(source, ShaderStageToShaderCKind(stage), GetSpecification().Filepath.string().c_str(), options);
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
 			EPPO_ERROR("Failed to compile shader with filename: {}", GetSpecification().Filepath);
@@ -138,7 +138,6 @@ namespace Eppo
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
 
-		// TODO:
 		// Write cache
 		const std::string cachePath = Utils::GetOrCreateCacheDirectory().string() + "/" + GetName() + "." + Utils::ShaderStageToString(stage);
 		Filesystem::WriteBytes(cachePath, m_ShaderBytes.at(stage));
@@ -165,11 +164,13 @@ namespace Eppo
 			if (Filesystem::Exists(cacheFile) && Filesystem::Exists(cacheHashFile))
 			{
 				std::string hash = std::to_string(Hash::GenerateFnv(source));
-				std::string cacheHash = Filesystem::ReadText(cacheHashFile);
-
+				
 				// Check if cache needs to be busted
-				if (cacheHash == hash)
+				if (std::string cacheHash = Filesystem::ReadText(cacheHashFile);
+					cacheHash == hash)
+				{
 					cacheVerified = true;
+				}
 			}
 
 			if (cacheVerified)
@@ -339,7 +340,7 @@ namespace Eppo
 
 			VkPipelineShaderStageCreateInfo& shaderStageCreateInfo = m_ShaderInfos.emplace_back();
 			shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			shaderStageCreateInfo.stage = Utils::ShaderStageToVkShaderStage(type);
+			shaderStageCreateInfo.stage = ShaderStageToVkShaderStage(type);
 			shaderStageCreateInfo.module = shaderModule;
 			shaderStageCreateInfo.pName = "main";
 
@@ -371,11 +372,11 @@ namespace Eppo
 				// TODO: This is as dirty as code can get
 				if (resource.Binding == 0 && set == 2)
 				{
-					builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType), 512);
+					builder.AddBinding(resource.Binding, ShaderResourceTypeToVkDescriptorType(resource.ResourceType), 512);
 					continue;
 				}
 
-				builder.AddBinding(resource.Binding, Utils::ShaderResourceTypeToVkDescriptorType(resource.ResourceType), resource.ArraySize);
+				builder.AddBinding(resource.Binding, ShaderResourceTypeToVkDescriptorType(resource.ResourceType), resource.ArraySize);
 			}
 
 			m_DescriptorSetLayouts[set] = builder.Build(VK_SHADER_STAGE_ALL);

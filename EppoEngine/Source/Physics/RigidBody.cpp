@@ -5,19 +5,19 @@
 
 namespace Eppo
 {
-	namespace Utils
+	namespace
 	{
-		static glm::vec3 BulletToGlm(const btVector3& v)
+		glm::vec3 BulletToGlm(const btVector3& v)
 		{
 			return { v.getX(), v.getY(), v.getZ() };
 		}
 
-		static glm::quat BulletToGlm(const btQuaternion& q)
+		glm::quat BulletToGlm(const btQuaternion& q)
 		{
 			return { q.getW(), q.getX(), q.getY(), q.getZ() };
 		}
 
-		static btVector3 GlmToBullet(const glm::vec3& v)
+		btVector3 GlmToBullet(const glm::vec3& v)
 		{
 			return { v.x, v.y, v.z };
 		}
@@ -37,7 +37,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
 		EPPO_ASSERT(m_Body)
 
-		m_Body->applyImpulse(Utils::GlmToBullet(impulse), Utils::GlmToBullet(worldPosition));
+		m_Body->applyImpulse(GlmToBullet(impulse), GlmToBullet(worldPosition));
 	}
 
 	void RigidBody::ApplyLinearImpulse(const glm::vec3& impulse) const
@@ -45,7 +45,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
 		EPPO_ASSERT(m_Body)
 
-		m_Body->applyCentralImpulse(Utils::GlmToBullet(impulse));
+		m_Body->applyCentralImpulse(GlmToBullet(impulse));
 	}
 
 	void RigidBody::ClearBody()

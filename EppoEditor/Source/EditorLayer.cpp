@@ -15,8 +15,21 @@ namespace Eppo
 	static const std::string PROPERTY_PANEL = "PropertyPanel";
 	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
-	static bool s_NewProjectPopup = false;
-	static bool s_PreferencesPopup = false;
+	namespace
+	{
+		bool s_NewProjectPopup = false;
+		bool s_PreferencesPopup = false;
+
+		void ReplaceToken(std::string& input, const char* token, const std::string& value)
+		{
+			size_t pos = 0;
+			while ((pos = input.find(token, pos)) != std::string::npos)
+			{
+				input.replace(pos, strlen(token), value);
+				pos += strlen(token);
+			}
+		}
+	}
 
 	EditorLayer::EditorLayer()
 		: Layer("EditorLayer"), m_PanelManager(PanelManager::Get())
@@ -335,16 +348,6 @@ namespace Eppo
 
 		m_EditorScene = nullptr;
 		m_ActiveScene = nullptr;
-	}
-
-	static void ReplaceToken(std::string& input, const char* token, const std::string& value)
-	{
-		size_t pos = 0;
-		while ((pos = input.find(token, pos)) != std::string::npos)
-		{
-			input.replace(pos, strlen(token), value);
-			pos += strlen(token);
-		}
 	}
 
 	void EditorLayer::NewProject(const std::string& name)

@@ -20,13 +20,13 @@ namespace Eppo
 		ScriptFieldType Type;
 		std::string Name;
 
-		MonoClassField* ClassField;
+		MonoClassField* ClassField = nullptr;
 	};
 
 	class ScriptFieldInstance
 	{
 	public:
-		ScriptField Field;
+		ScriptField Field{};
 
 		ScriptFieldInstance()
 		{
