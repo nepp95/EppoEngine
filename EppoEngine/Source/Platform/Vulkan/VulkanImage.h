@@ -15,11 +15,11 @@ namespace Eppo
 		VmaAllocation Allocation = nullptr;
 	};
 
-	class VulkanImage : public Image
+	class VulkanImage final : public Image
 	{
 	public:
 		explicit VulkanImage(ImageSpecification specification);
-		~VulkanImage() final;
+		~VulkanImage();
 
 		void SetData(void* data, uint32_t channels = 4) override;
 		void Release() override;
