@@ -186,9 +186,9 @@ namespace Eppo
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
 			submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
 
-			VK_CHECK(vkResetFences(device, 1, &m_Fences[frameIndex]), "Failed to reset fence!")
-			VK_CHECK(vkQueueSubmit2(logicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[frameIndex]), "Failed to submit work to queue!")
-			VK_CHECK(vkWaitForFences(device, 1, &m_Fences[frameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence!")
+			VK_CHECK(vkResetFences(device, 1, &m_Fences[frameIndex]), "Failed to reset fence!");
+            VK_CHECK(vkQueueSubmit2(logicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[frameIndex]), "Failed to submit work to queue!");
+            VK_CHECK(vkWaitForFences(device, 1, &m_Fences[frameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence!");
 		});
 	}
 

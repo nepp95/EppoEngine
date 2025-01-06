@@ -6,10 +6,14 @@
 
 namespace Eppo
 {
-	class VulkanRenderer : public Renderer
+	class VulkanRenderer final : public Renderer
 	{
 	public:
 		VulkanRenderer();
+		VulkanRenderer(const VulkanRenderer&) = delete;
+		VulkanRenderer(const VulkanRenderer&&) = delete;
+		VulkanRenderer& operator=(const VulkanRenderer&) = delete;
+		VulkanRenderer& operator=(const VulkanRenderer&&) = delete;
 		~VulkanRenderer() override = default;
 
 		void Shutdown() override;

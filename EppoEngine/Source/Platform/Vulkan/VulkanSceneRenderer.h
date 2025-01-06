@@ -13,10 +13,14 @@
 
 namespace Eppo
 {
-	class VulkanSceneRenderer : public SceneRenderer
+	class VulkanSceneRenderer final : public SceneRenderer
 	{
 	public:
-		VulkanSceneRenderer(Ref<Scene> scene, const RenderSpecification& renderSpec);
+		VulkanSceneRenderer(const Ref<Scene>& scene, const RenderSpecification& renderSpec);
+		VulkanSceneRenderer(const VulkanSceneRenderer&) = delete;
+		VulkanSceneRenderer(const VulkanSceneRenderer&&) = delete;
+		VulkanSceneRenderer& operator=(const VulkanSceneRenderer&) = delete;
+		VulkanSceneRenderer& operator=(const VulkanSceneRenderer&&) = delete;
 		~VulkanSceneRenderer() override = default;
 
 		void RenderGui() override;
