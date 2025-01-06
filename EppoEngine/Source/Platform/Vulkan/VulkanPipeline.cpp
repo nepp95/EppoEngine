@@ -18,7 +18,7 @@ namespace Eppo
 				case PrimitiveTopology::Triangles:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 		}
 
@@ -30,7 +30,7 @@ namespace Eppo
 				case PolygonMode::Line:	return VK_POLYGON_MODE_LINE;
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return VK_POLYGON_MODE_MAX_ENUM;
 		}
 
@@ -43,7 +43,7 @@ namespace Eppo
 				case CullMode::FrontAndBack:	return VK_CULL_MODE_FRONT_AND_BACK;
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
 		}
 
@@ -55,7 +55,7 @@ namespace Eppo
 				case CullFrontFace::CounterClockwise:	return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return VK_FRONT_FACE_MAX_ENUM;
 		}
 
@@ -74,7 +74,7 @@ namespace Eppo
 				case DepthCompareOp::Never:			return VK_COMPARE_OP_NEVER;
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return VK_COMPARE_OP_MAX_ENUM;
 		}
 	}
@@ -201,7 +201,7 @@ namespace Eppo
 		pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(shader->GetPushConstantRanges().size());
 		pipelineLayoutCreateInfo.pPushConstantRanges = !shader->GetPushConstantRanges().empty() ? shader->GetPushConstantRanges().data() : nullptr;
 	
-		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!")
+		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!");
 
 		// Create pipeline rendering infos
 		const auto& shaderStageInfos = shader->GetPipelineShaderStageInfos();
@@ -246,7 +246,7 @@ namespace Eppo
 		graphicsPipelineCreateInfo.basePipelineIndex = -1;
 		graphicsPipelineCreateInfo.pNext = &renderingInfo;
 
-		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!")
+		VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_Pipeline), "Failed to create graphics pipeline!");
 
 		if (m_Specification.CreateDepthImage)
 		{

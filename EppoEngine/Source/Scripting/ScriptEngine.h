@@ -83,7 +83,7 @@ namespace Eppo
 			if (typeString == "Vector4")		return ScriptFieldType::Vector4;
 			if (typeString == "Entity")			return ScriptFieldType::Entity;
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return ScriptFieldType::None;
 		}
 
@@ -108,7 +108,7 @@ namespace Eppo
 				case ScriptFieldType::Entity:	return "Entity";
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return "None";
 		}
 	}

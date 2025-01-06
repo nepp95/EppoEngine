@@ -7,38 +7,38 @@
 
 namespace Eppo
 {
-	bool Input::IsKeyPressed(const KeyCode key)
-	{
-		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
-		const int keyState = glfwGetKey(window, key);
+    bool Input::IsKeyPressed(const KeyCode key)
+    {
+        GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
+        const int keyState = glfwGetKey(window, key);
 
-		return keyState == GLFW_PRESS;
-	}
+        return keyState == GLFW_PRESS;
+    }
 
-	bool Input::IsMouseButtonPressed(const MouseCode button)
-	{
-		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
-		const int buttonState = glfwGetMouseButton(window, button);
+    bool Input::IsMouseButtonPressed(const MouseCode button)
+    {
+        GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
+        const int buttonState = glfwGetMouseButton(window, button);
 
-		return buttonState == GLFW_PRESS;
-	}
+        return buttonState == GLFW_PRESS;
+    }
 
-	glm::vec2 Input::GetMousePosition()
-	{
-		GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
-		double xPos, yPos;
-		glfwGetCursorPos(window, &xPos, &yPos);
+    glm::vec2 Input::GetMousePosition()
+    {
+        GLFWwindow* window = RendererContext::Get()->GetWindowHandle();
+        double xPos, yPos;
+        glfwGetCursorPos(window, &xPos, &yPos);
 
-		return { static_cast<float>(xPos), static_cast<float>(yPos) };
-	}
+        return { static_cast<float>(xPos), static_cast<float>(yPos) };
+    }
 
-	float Input::GetMouseX()
-	{
-		return GetMousePosition().x;
-	}
+    float Input::GetMouseX()
+    {
+        return GetMousePosition().x;
+    }
 
-	float Input::GetMouseY()
-	{
-		return GetMousePosition().y;
-	}
+    float Input::GetMouseY()
+    {
+        return GetMousePosition().y;
+    }
 }

@@ -67,7 +67,7 @@ namespace Eppo
 		// Get physical devices available
 		uint32_t deviceCount = 0;
 		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-		EPPO_ASSERT(deviceCount > 0)
+        EPPO_ASSERT(deviceCount > 0);
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
 		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
@@ -88,7 +88,7 @@ namespace Eppo
 		{
 			EPPO_WARN("No discrete GPU found!");
 			m_PhysicalDevice = devices.back();
-			EPPO_ASSERT(m_PhysicalDevice)
+            EPPO_ASSERT(m_PhysicalDevice);
 		}
 
 		// Get properties and features from selected device
@@ -105,7 +105,7 @@ namespace Eppo
 
 		// Create surface
 		Ref<VulkanContext> context = VulkanContext::Get();
-		VK_CHECK(glfwCreateWindowSurface(VulkanContext::GetVulkanInstance(), context->GetWindowHandle(), nullptr, &m_Surface), "Failed to create surface!")
+        VK_CHECK(glfwCreateWindowSurface(VulkanContext::GetVulkanInstance(), context->GetWindowHandle(), nullptr, &m_Surface), "Failed to create surface!");
 
 		context->SubmitResourceFree([this]()
 		{

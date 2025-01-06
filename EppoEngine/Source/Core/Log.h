@@ -8,28 +8,35 @@
 
 namespace Eppo
 {
-	// TODO: Refactor because this can be done with single loggers. Refer to docs.
-	class Log
-	{
-	public:
-		static void Init();
+    // TODO: Refactor because this can be done with single loggers. Refer to docs.
+    class Log
+    {
+    public:
+        static void Init();
 
-		static Ref<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
-		static Ref<spdlog::logger>& GetScriptLogger() { return s_ScriptLogger; }
+        static Ref<spdlog::logger>& GetCoreLogger()
+        {
+            return s_CoreLogger;
+        }
 
-	private:
-		static Ref<spdlog::logger> s_CoreLogger;
-		static Ref<spdlog::logger> s_ScriptLogger;
-	};
+        static Ref<spdlog::logger>& GetScriptLogger()
+        {
+            return s_ScriptLogger;
+        }
+
+    private:
+        static Ref<spdlog::logger> s_CoreLogger;
+        static Ref<spdlog::logger> s_ScriptLogger;
+    };
 }
 
 template<glm::length_t L, typename T, glm::qualifier Q>
 struct fmt::formatter<glm::vec<L, T, Q>> : fmt::formatter<std::string>
 {
-	auto format(glm::vec<L, T, Q> vector, format_context& ctx) -> decltype(ctx.out())
-	{
-		return format_to(ctx.out(), glm::to_string(vector));
-	}
+    auto format(glm::vec<L, T, Q> vector, format_context& ctx) -> decltype(ctx.out())
+    {
+        return format_to(ctx.out(), glm::to_string(vector));
+    }
 };
 
 #define EPPO_TRACE(...)			::Eppo::Log::GetCoreLogger()->trace(__VA_ARGS__)
@@ -38,9 +45,9 @@ struct fmt::formatter<glm::vec<L, T, Q>> : fmt::formatter<std::string>
 #define EPPO_ERROR(...)			::Eppo::Log::GetCoreLogger()->error(__VA_ARGS__)
 
 #if defined(EPPO_TRACK_MEMORY)
-	#define EPPO_MEM_WARN(...)		::Eppo::Log::GetCoreLogger()->warn(__VA_ARGS__)
+    #define EPPO_MEM_WARN(...)		::Eppo::Log::GetCoreLogger()->trace(__VA_ARGS__)
 #else
-	#define EPPO_MEM_WARN(...)
+    #define EPPO_MEM_WARN(...)
 #endif
 
 #define EPPO_SCRIPT_TRACE(...)	::Eppo::Log::GetScriptLogger()->trace(__VA_ARGS__)

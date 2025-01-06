@@ -22,7 +22,7 @@
 
 // 		template<typename T>
 // 		friend class Ref2;
-		
+        
 // 	private:
 // 		uint32_t m_RefCount = 0;
 // 	};
@@ -41,7 +41,7 @@
 // 			if (m_Object)
 // 				DecRef();
 // 		}
-		
+        
 // 		// Construct from raw pointer
 // 		Ref2(T* object)
 // 		{
@@ -124,7 +124,7 @@
 // 			EPPO_ASSERT(m_Object);
 // 			T2* ptr = dynamic_cast<T2*>(m_Object);
 // 			EPPO_ASSERT(ptr);
-			
+            
 // 			return Ref2<T2>(ptr);
 // 		}
 

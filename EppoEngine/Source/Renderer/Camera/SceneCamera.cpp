@@ -44,7 +44,7 @@ namespace Eppo
 	void SceneCamera::SetViewportSize(const float width, const float height)
 	{
 		EPPO_PROFILE_FUNCTION("SceneCamera::SetViewportSize");
-		EPPO_ASSERT(width > 0 && height > 0)
+        EPPO_ASSERT(width > 0 && height > 0);
 
 		m_AspectRatio = width / height;
 		RecalculateProjection();

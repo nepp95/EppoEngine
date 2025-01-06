@@ -3,47 +3,46 @@
 
 namespace Eppo
 {
-	void LayerStack::PushLayer(Layer* layer)
-	{
-		EPPO_PROFILE_FUNCTION("LayerStack::PushLayer");
+    void LayerStack::PushLayer(Layer* layer)
+    {
+        EPPO_PROFILE_FUNCTION("LayerStack::PushLayer");
 
-		m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
-		m_LayerInsertIndex++;
+        m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
+        m_LayerInsertIndex++;
 
-		layer->OnAttach();
-	}
+        layer->OnAttach();
+    }
 
-	void LayerStack::PopLayer(Layer* layer)
-	{
-		EPPO_PROFILE_FUNCTION("LayerStack::PopLayer");
+    void LayerStack::PopLayer(Layer* layer)
+    {
+        EPPO_PROFILE_FUNCTION("LayerStack::PopLayer");
 
-		if (const auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
-			it != m_Layers.begin() + m_LayerInsertIndex)
-		{
-			layer->OnDetach();
-			m_Layers.erase(it);
-			m_LayerInsertIndex--;
-		}
-	}
+        if (const auto it = std::find(m_Layers.begin(), m_Layers.end(), layer); it != m_Layers.begin() + m_LayerInsertIndex)
+        {
+            layer->OnDetach();
+            m_Layers.erase(it);
+            m_LayerInsertIndex--;
+        }
+    }
 
-	void LayerStack::PushOverlay(Layer* layer)
-	{
-		EPPO_PROFILE_FUNCTION("LayerStack::PushOverlay");
+    void LayerStack::PushOverlay(Layer* layer)
+    {
+        EPPO_PROFILE_FUNCTION("LayerStack::PushOverlay");
 
-		m_Layers.emplace_back(layer);
-		layer->OnAttach();
-	}
+        m_Layers.emplace_back(layer);
+        layer->OnAttach();
+    }
 
-	void LayerStack::PopOverlay(Layer* layer)
-	{
-		EPPO_PROFILE_FUNCTION("LayerStack::PopOverlay");
+    void LayerStack::PopOverlay(Layer* layer)
+    {
+        EPPO_PROFILE_FUNCTION("LayerStack::PopOverlay");
 
-		auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
+        auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
 
-		if (it != m_Layers.end())
-		{
-			layer->OnDetach();
-			m_Layers.erase(it);
-		}
-	}
+        if (it != m_Layers.end())
+        {
+            layer->OnDetach();
+            m_Layers.erase(it);
+        }
+    }
 }

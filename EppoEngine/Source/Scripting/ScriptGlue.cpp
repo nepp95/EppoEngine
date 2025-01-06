@@ -47,9 +47,9 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_AddComponent");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		char* cStr = mono_string_to_utf8(componentType);
 		const std::string componentTypeStr(cStr);
@@ -74,14 +74,14 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_CreateNewEntity");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 
 		char* cStr = mono_string_to_utf8(name);
 		const std::string nameStr(cStr);
 		mono_free(cStr);
 
 		Entity entity = scene->CreateEntity(nameStr);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		return entity.GetUUID();
 	}
@@ -91,7 +91,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_FindEntityByName");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 
 		char* cStr = mono_string_to_utf8(name);
 		const std::string nameStr(cStr);
@@ -109,9 +109,9 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_GetName");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		MonoString* monoStr = mono_string_new(ScriptEngine::GetAppDomain(), entity.GetName().c_str());
 
@@ -123,13 +123,13 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::Entity_HasComponent");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 		const Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		MonoType* managedType = mono_reflection_type_get_type(componentType);
 		const auto it = s_EntityHasComponentFns.find(managedType);
-		EPPO_ASSERT(it != s_EntityHasComponentFns.end())
+        EPPO_ASSERT(it != s_EntityHasComponentFns.end());
 		return it->second(entity);
 	}
 
@@ -138,9 +138,9 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_GetTranslation");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		*outTranslation = entity.GetComponent<TransformComponent>().Translation;
 	}
@@ -150,9 +150,9 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::TransformComponent_SetTranslation");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		entity.GetComponent<TransformComponent>().Translation = *translation;
 	}
@@ -162,9 +162,9 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulse");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		const auto& rb = entity.GetComponent<RigidBodyComponent>();
 		rb.RuntimeBody.ApplyLinearImpulse(*impulse, *worldPosition);
@@ -175,9 +175,9 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptGlue::RigidBodyComponent_ApplyLinearImpulseToCenter");
 
 		const Ref<Scene> scene = ScriptEngine::GetSceneContext();
-		EPPO_ASSERT(scene)
+        EPPO_ASSERT(scene);
 		Entity entity = scene->FindEntityByUUID(uuid);
-		EPPO_ASSERT(entity)
+        EPPO_ASSERT(entity);
 
 		const auto& rb = entity.GetComponent<RigidBodyComponent>();
 		rb.RuntimeBody.ApplyLinearImpulse(*impulse);

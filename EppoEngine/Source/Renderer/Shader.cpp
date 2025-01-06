@@ -25,7 +25,7 @@ namespace Eppo
 				case ShaderStage::Fragment:	return "frag";
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return "Invalid";
 		}
 
@@ -34,7 +34,7 @@ namespace Eppo
 			if (stage == "vert")			return ShaderStage::Vertex;
 			if (stage == "frag")			return ShaderStage::Fragment;
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return ShaderStage::None;
 		}
 	}
@@ -52,7 +52,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanShader>(specification);
 		}
 
-		EPPO_ASSERT(false)
+		EPPO_ASSERT(false);
 		return nullptr;
 	}
 }

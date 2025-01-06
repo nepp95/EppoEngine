@@ -137,7 +137,7 @@ namespace Eppo
 			}
 			else
 			{
-				EPPO_ASSERT(false) // TODO: not supported yet
+                EPPO_ASSERT(false); // TODO: not supported yet
 			}
 		}
 	}

@@ -47,7 +47,7 @@ namespace Eppo
 		template<typename T>
 		T& GetComponent()
 		{
-			EPPO_ASSERT(HasComponent<T>())
+            EPPO_ASSERT(HasComponent<T>());
 			return m_Scene->m_Registry.get<T>(m_EntityHandle);
 		}
 

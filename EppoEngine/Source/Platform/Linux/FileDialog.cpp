@@ -6,14 +6,14 @@ namespace Eppo
     // TODO: Yep... Gtk/Zenity/Own makings?
     std::filesystem::path FileDialog::OpenFile(const char* filter, const std::filesystem::path& initialDir)
     {
-		EPPO_PROFILE_FUNCTION("FileDialog::OpenFile");
+        EPPO_PROFILE_FUNCTION("FileDialog::OpenFile");
 
         return {};
     }
 
     std::filesystem::path FileDialog::SaveFile(const char* filter)
     {
-		EPPO_PROFILE_FUNCTION("FileDialog::SaveFile");
+        EPPO_PROFILE_FUNCTION("FileDialog::SaveFile");
 
         return {};
     }

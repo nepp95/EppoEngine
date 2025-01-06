@@ -476,7 +476,7 @@ namespace Eppo
 
 	void EditorLayer::SaveProject()
 	{
-		EPPO_ASSERT(Project::GetActive())
+        EPPO_ASSERT(Project::GetActive());
 
 		SaveScene();
 
@@ -515,7 +515,7 @@ namespace Eppo
 
 	void EditorLayer::OpenScene(const AssetHandle handle)
 	{
-		EPPO_ASSERT(handle)
+        EPPO_ASSERT(handle);
 
 		if (m_SceneState != SceneState::Edit)
 			OnSceneStop();

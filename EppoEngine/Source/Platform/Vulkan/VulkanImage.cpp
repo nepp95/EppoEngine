@@ -87,7 +87,7 @@ namespace Eppo
 
 		Ref<VulkanContext> context = VulkanContext::Get();
 		VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
-		VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageInfo.ImageView), "Failed to create image view!")
+        VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageInfo.ImageView), "Failed to create image view!");
 
 		// Sampler
 		Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
@@ -110,7 +110,7 @@ namespace Eppo
 		samplerCreateInfo.minLod = 0.0f;
 		samplerCreateInfo.maxLod = 0.0f;
 
-		VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &m_ImageInfo.Sampler), "Failed to create sampler!")
+		VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &m_ImageInfo.Sampler), "Failed to create sampler!");
 
 		VkCommandBuffer commandBuffer = context->GetLogicalDevice()->GetCommandBuffer(true);
 
@@ -282,7 +282,7 @@ namespace Eppo
 			}
 		}
 
-		EPPO_ASSERT(false)
+		EPPO_ASSERT(false);
 		return VK_IMAGE_ASPECT_NONE;
 	}
 }

@@ -15,7 +15,7 @@ namespace Eppo
 			if (!m_PhysicalDevice->IsExtensionSupported(extension))
 				extensionsSupported = false;
 		}
-		EPPO_ASSERT(extensionsSupported)
+        EPPO_ASSERT(extensionsSupported);
 
 		// Create device queue
 		QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
@@ -73,7 +73,7 @@ namespace Eppo
 			deviceCreateInfo.ppEnabledLayerNames = nullptr;
 		}
 
-		VK_CHECK(vkCreateDevice(physicalDevice->GetNativeDevice(), &deviceCreateInfo, nullptr, &m_Device), "Failed to create logical device!")
+		VK_CHECK(vkCreateDevice(physicalDevice->GetNativeDevice(), &deviceCreateInfo, nullptr, &m_Device), "Failed to create logical device!");
 
 		// Device queue
 		vkGetDeviceQueue(m_Device, indices.Graphics, 0, &m_GraphicsQueue);
@@ -84,7 +84,7 @@ namespace Eppo
 		commandPoolCreateInfo.queueFamilyIndex = indices.Graphics;
 		commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-		VK_CHECK(vkCreateCommandPool(m_Device, &commandPoolCreateInfo, nullptr, &m_CommandPool), "Failed to create command pool!")
+		VK_CHECK(vkCreateCommandPool(m_Device, &commandPoolCreateInfo, nullptr, &m_CommandPool), "Failed to create command pool!");
 
 		// Clean up
 		Ref<VulkanContext> context = VulkanContext::Get();
@@ -110,7 +110,7 @@ namespace Eppo
 		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocateInfo.commandBufferCount = 1;
 
-		VK_CHECK(vkAllocateCommandBuffers(m_Device, &allocateInfo, &commandBuffer), "Failed to allocate command buffer!")
+		VK_CHECK(vkAllocateCommandBuffers(m_Device, &allocateInfo, &commandBuffer), "Failed to allocate command buffer!");
 
 		if (begin)
 		{
@@ -118,7 +118,7 @@ namespace Eppo
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-			VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "Failed to begin command buffer!")
+			VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "Failed to begin command buffer!");
 		}
 
 		return commandBuffer;
@@ -136,7 +136,7 @@ namespace Eppo
 		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 		allocateInfo.commandBufferCount = 1;
 
-		VK_CHECK(vkAllocateCommandBuffers(m_Device, &allocateInfo, &commandBuffer), "Failed to allocate command buffer!")
+		VK_CHECK(vkAllocateCommandBuffers(m_Device, &allocateInfo, &commandBuffer), "Failed to allocate command buffer!");
 
 		return commandBuffer;
 	}
@@ -145,7 +145,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("VulkanLogicalDevice::FlushCommandBuffer");
 
-		VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!")
+		VK_CHECK(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer!");
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -158,9 +158,9 @@ namespace Eppo
 		fenceInfo.flags = 0;
 
 		VkFence fence;
-		VK_CHECK(vkCreateFence(m_Device, &fenceInfo, nullptr, &fence), "Failed to create fence!")
+        VK_CHECK(vkCreateFence(m_Device, &fenceInfo, nullptr, &fence), "Failed to create fence!");
 
-		VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, fence), "Failed to submit work to queue!")
+		VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, fence), "Failed to submit work to queue!");
 		vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX);
 
 		// Clean up

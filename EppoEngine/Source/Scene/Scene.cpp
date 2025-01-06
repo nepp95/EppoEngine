@@ -75,7 +75,7 @@ namespace Eppo
 			auto& transform = entity.GetComponent<TransformComponent>();
 			const auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
-			btRigidBody* body = rigidbody.RuntimeBody.GetBody();
+			btRigidBody* body = rigidbody.RuntimeBody.Body;
 			btTransform trans;
 
 			if (body && body->getMotionState())
@@ -352,7 +352,7 @@ namespace Eppo
 			Entity entity(e, this);
 			auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
-			rigidbody.RuntimeBody.ClearBody();
+			rigidbody.RuntimeBody.Body = nullptr;
 		}
 
 		delete m_PhysicsWorld;

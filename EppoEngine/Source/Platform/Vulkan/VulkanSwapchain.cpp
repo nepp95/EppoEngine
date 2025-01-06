@@ -74,7 +74,7 @@ namespace Eppo
 		}
 
 		VkDevice device = m_LogicalDevice->GetNativeDevice();
-		VK_CHECK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_Swapchain), "Failed to create swapchain!")
+        VK_CHECK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_Swapchain), "Failed to create swapchain!");
 
 		if (recreate)
 			vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
@@ -105,7 +105,7 @@ namespace Eppo
 			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 			imageViewCreateInfo.subresourceRange.layerCount = 1;
 
-			VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageViews[i]), "Failed to create image view!")
+			VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageViews[i]), "Failed to create image view!");
 
 			// Transition images to present layout
 			VulkanImage::TransitionImage(cmd, m_Images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -132,9 +132,9 @@ namespace Eppo
 
 			for (uint32_t i = 0; i < VulkanConfig::MaxFramesInFlight; i++)
 			{
-				VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_RenderSemaphores[i]), "Failed to create semaphore!")
-				VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]), "Failed to create semaphore!")
-				VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fence!")
+                VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_RenderSemaphores[i]), "Failed to create semaphore!");
+                VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]), "Failed to create semaphore!");
+                VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &m_Fences[i]), "Failed to create fence!");
 			}
 		}
 
@@ -199,8 +199,8 @@ namespace Eppo
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &m_RenderSemaphores[m_CurrentFrameIndex];
 
-		VK_CHECK(vkResetFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex]), "Failed to reset fence!")
-		VK_CHECK(vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[m_CurrentFrameIndex]), "Failed to submit work to queue!")
+		VK_CHECK(vkResetFences(m_LogicalDevice->GetNativeDevice(), 1, &m_Fences[m_CurrentFrameIndex]), "Failed to reset fence!");
+        VK_CHECK(vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, m_Fences[m_CurrentFrameIndex]), "Failed to submit work to queue!");
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -229,7 +229,7 @@ namespace Eppo
 	void VulkanSwapchain::OnResize()
 	{
 		// TODO: Swapchain::OnResize
-		EPPO_ASSERT(false)
+        EPPO_ASSERT(false);
 	}
 
 	SwapchainSupportDetails VulkanSwapchain::QuerySwapchainSupportDetails(const Ref<VulkanPhysicalDevice>& physicalDevice) const

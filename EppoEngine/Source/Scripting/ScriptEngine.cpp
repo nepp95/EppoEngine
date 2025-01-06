@@ -211,7 +211,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStart");
 
-		EPPO_ASSERT(s_Data->SceneContext)
+		EPPO_ASSERT(s_Data->SceneContext);
 	}
 
 	void ScriptEngine::OnRuntimeStop()
@@ -252,7 +252,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptEngine::OnUpdateEntity");
 
 		const UUID uuid = entity.GetUUID();
-		EPPO_ASSERT(s_Data->EntityScriptInstances.find(uuid) != s_Data->EntityScriptInstances.end())
+        EPPO_ASSERT(s_Data->EntityScriptInstances.find(uuid) != s_Data->EntityScriptInstances.end());
 
 		const auto instance = s_Data->EntityScriptInstances.at(uuid);
 		instance->InvokeOnUpdate(timestep);
@@ -321,7 +321,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptEngine::GetEntityInstance");
 
 		const auto it = s_Data->EntityScriptInstances.find(uuid);
-		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end())
+        EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
 
 		return it->second;
 	}
@@ -341,7 +341,7 @@ namespace Eppo
 		EPPO_PROFILE_FUNCTION("ScriptEngine::GetManagedInstance");
 
 		const auto it = s_Data->EntityScriptInstances.find(uuid);
-		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end())
+        EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
 
 		return it->second->GetManagedObject();
 	}
@@ -353,7 +353,7 @@ namespace Eppo
 		mono_set_assemblies_path("Mono/lib");
 
 		s_Data->RootDomain = mono_jit_init("EppoJITRuntime");
-		EPPO_ASSERT(s_Data->RootDomain)
+        EPPO_ASSERT(s_Data->RootDomain);
 
 		if (s_Data->EnableDebugging)
 			mono_debug_domain_create(s_Data->RootDomain);

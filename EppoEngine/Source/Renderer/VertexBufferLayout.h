@@ -43,7 +43,7 @@ namespace Eppo
 				case ShaderDataType::Bool:			return 1;
 			}
 
-			EPPO_ASSERT(false)
+			EPPO_ASSERT(false);
 			return 0;
 		}
 	};

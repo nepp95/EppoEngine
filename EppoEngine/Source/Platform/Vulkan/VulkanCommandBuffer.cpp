@@ -19,7 +19,7 @@ namespace Eppo
 		commandPoolCreateInfo.queueFamilyIndex = context->GetPhysicalDevice()->GetQueueFamilyIndices().Graphics;
 		commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-		VK_CHECK(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &m_CommandPool), "Failed to create command pool!")
+		VK_CHECK(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &m_CommandPool), "Failed to create command pool!");
 
 		// Allocate command buffers
 		if (count == 0)
@@ -33,7 +33,7 @@ namespace Eppo
 		commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		commandBufferAllocateInfo.commandBufferCount = count;
 
-		VK_CHECK(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, m_CommandBuffers.data()), "Failed to allocate command buffers!")
+		VK_CHECK(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, m_CommandBuffers.data()), "Failed to allocate command buffers!");
 
 		// Create fences
 		m_Fences.resize(count);
@@ -43,7 +43,7 @@ namespace Eppo
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		for (auto& fence : m_Fences)
-			VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence), "Failed to create fences!")
+            VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence), "Failed to create fences!");
 
 		// Queries
 		const VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
@@ -56,7 +56,7 @@ namespace Eppo
 
 		for (auto& queryPool : m_QueryPools)
 		{
-			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &queryPool), "Failed to create query pool!")
+            VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &queryPool), "Failed to create query pool!");
 			vkCmdResetQueryPool(commandBuffer, queryPool, 0, m_QueryCount);
 		}
 
@@ -81,7 +81,7 @@ namespace Eppo
 
 		for (auto& pipelineQueryPool : m_PipelineQueryPools)
 		{
-			VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &pipelineQueryPool), "Failed to create query pool!")
+            VK_CHECK(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &pipelineQueryPool), "Failed to create query pool!");
 			vkCmdResetQueryPool(commandBuffer, pipelineQueryPool, 0, m_PipelineQueryCount);
 		}
 
@@ -118,10 +118,10 @@ namespace Eppo
 			commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			commandBufferBeginInfo.pNext = nullptr;
 
-			VK_CHECK(vkBeginCommandBuffer(m_CommandBuffers[frameIndex], &commandBufferBeginInfo), "Failed to begin command buffer!")
+			VK_CHECK(vkBeginCommandBuffer(m_CommandBuffers[frameIndex], &commandBufferBeginInfo), "Failed to begin command buffer!");
 
 			vkCmdResetQueryPool(m_CommandBuffers[frameIndex], m_QueryPools[frameIndex], 0, m_QueryCount);
-			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[frameIndex], 0);
+			vkCmdWriteTimestamp2(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[frameIndex], 0);
 
 			vkCmdResetQueryPool(m_CommandBuffers[frameIndex], m_PipelineQueryPools[frameIndex], 0, m_PipelineQueryCount);
 			vkCmdBeginQuery(m_CommandBuffers[frameIndex], m_PipelineQueryPools[frameIndex], 0, 0);
@@ -139,7 +139,7 @@ namespace Eppo
 			vkCmdWriteTimestamp(m_CommandBuffers[frameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[frameIndex], 1);
 			vkCmdEndQuery(m_CommandBuffers[frameIndex], m_PipelineQueryPools[frameIndex], 0);
 
-			VK_CHECK(vkEndCommandBuffer(m_CommandBuffers[frameIndex]), "Failed to end command buffer!")
+			VK_CHECK(vkEndCommandBuffer(m_CommandBuffers[frameIndex]), "Failed to end command buffer!");
 
 			// Statistics
 			const auto physicalDevice = context->GetPhysicalDevice();

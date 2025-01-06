@@ -13,7 +13,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanVertexBuffer>(size);
 		}
 
-		EPPO_ASSERT(false)
+		EPPO_ASSERT(false);
 		return nullptr;
 	}
 
@@ -31,7 +31,7 @@ namespace Eppo
 			case RendererAPI::Vulkan:	return CreateRef<VulkanVertexBuffer>(buffer);
 		}
 
-		EPPO_ASSERT(false)
+		EPPO_ASSERT(false);
 		return nullptr;
 	}
 }

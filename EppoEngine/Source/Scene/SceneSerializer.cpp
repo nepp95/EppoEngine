@@ -226,7 +226,7 @@ namespace Eppo
 				if (auto scriptFields = c["Fields"])
 				{
 					Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(className);
-					EPPO_ASSERT(entityClass)
+                    EPPO_ASSERT(entityClass);
 
 					const auto& fields = entityClass->GetFields();
 					auto& entityFields = ScriptEngine::GetScriptFieldMap(uuid);

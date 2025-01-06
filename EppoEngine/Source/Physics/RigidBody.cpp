@@ -5,51 +5,46 @@
 
 namespace Eppo
 {
-	namespace
-	{
-		glm::vec3 BulletToGlm(const btVector3& v)
-		{
-			return { v.getX(), v.getY(), v.getZ() };
-		}
+    namespace
+    {
+        glm::vec3 BulletToGlm(const btVector3& v)
+        {
+            return { v.getX(), v.getY(), v.getZ() };
+        }
 
-		glm::quat BulletToGlm(const btQuaternion& q)
-		{
-			return { q.getW(), q.getX(), q.getY(), q.getZ() };
-		}
+        glm::quat BulletToGlm(const btQuaternion& q)
+        {
+            return { q.getW(), q.getX(), q.getY(), q.getZ() };
+        }
 
-		btVector3 GlmToBullet(const glm::vec3& v)
-		{
-			return { v.x, v.y, v.z };
-		}
+        btVector3 GlmToBullet(const glm::vec3& v)
+        {
+            return { v.x, v.y, v.z };
+        }
 
-		btQuaternion GlmToBullet(const glm::quat& q)
-		{
-			return { q.x, q.y, q.z, q.w };
-		}
-	}
+        btQuaternion GlmToBullet(const glm::quat& q)
+        {
+            return { q.x, q.y, q.z, q.w };
+        }
+    }
 
-	RigidBody::RigidBody(btRigidBody* body)
-		: m_Body(body)
-	{}
+    RigidBody::RigidBody(btRigidBody* body)
+        : Body(body)
+    {}
 
-	void RigidBody::ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& worldPosition) const
-	{
-		EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
-		EPPO_ASSERT(m_Body)
+    void RigidBody::ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& worldPosition) const
+    {
+        EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
+        EPPO_ASSERT(Body);
 
-		m_Body->applyImpulse(GlmToBullet(impulse), GlmToBullet(worldPosition));
-	}
+        Body->applyImpulse(GlmToBullet(impulse), GlmToBullet(worldPosition));
+    }
 
-	void RigidBody::ApplyLinearImpulse(const glm::vec3& impulse) const
-	{
-		EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
-		EPPO_ASSERT(m_Body)
+    void RigidBody::ApplyLinearImpulse(const glm::vec3& impulse) const
+    {
+        EPPO_PROFILE_FUNCTION("RigidBody::ApplyLinearImpulse");
+        EPPO_ASSERT(Body);
 
-		m_Body->applyCentralImpulse(GlmToBullet(impulse));
-	}
-
-	void RigidBody::ClearBody()
-	{
-		SetBody(nullptr);
-	}
+        Body->applyCentralImpulse(GlmToBullet(impulse));
+    }
 }

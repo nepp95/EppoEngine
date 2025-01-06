@@ -21,7 +21,7 @@ namespace Eppo
 		: m_Specification(std::move(specification))
 	{
 		const int success = glfwInit();
-		EPPO_ASSERT(success)
+        EPPO_ASSERT(success);
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 

@@ -4,13 +4,13 @@
 
 int main(int argc, char** argv)
 {
-	Eppo::Log::Init();
+    Eppo::Log::Init();
 
-	const Eppo::ApplicationCommandLineArgs args(argc, argv);
+    const Eppo::ApplicationCommandLineArgs args(argc, argv);
 
-	Eppo::Application* app = CreateApplication(args);
-	app->Run();
+    Eppo::Application* app = CreateApplication(args);
+    app->Run();
 
-	delete app;
+    delete app;
     return 0;
 }
