@@ -4,19 +4,20 @@
 
 namespace Eppo
 {
-	class Camera
-	{
-	public:
-		Camera() = default;
-		explicit Camera(const glm::mat4& projectionMatrix)
-			: m_ProjectionMatrix(projectionMatrix)
-		{}
+    class Camera
+    {
+    public:
+        Camera() = default;
 
-		virtual ~Camera() = default;
+        explicit Camera(const glm::mat4& projectionMatrix)
+            : m_ProjectionMatrix(projectionMatrix)
+        {}
 
-		[[nodiscard]] const glm::mat4& GetProjectionMatrix() const { return m_ProjectionMatrix; }
+        virtual ~Camera() = default;
 
-	protected:
-		glm::mat4 m_ProjectionMatrix;
-	};
+        [[nodiscard]] const glm::mat4& GetProjectionMatrix() const { return m_ProjectionMatrix; }
+
+    protected:
+        glm::mat4 m_ProjectionMatrix;
+    };
 }

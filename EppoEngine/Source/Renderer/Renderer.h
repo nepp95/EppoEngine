@@ -7,25 +7,25 @@
 
 namespace Eppo
 {
-	class Renderer
-	{
-	public:
-		virtual ~Renderer() = default;
+    class Renderer
+    {
+    public:
+        virtual ~Renderer() = default;
 
-		virtual void Shutdown() = 0;
+        virtual void Shutdown() = 0;
 
-		// Render queue commands
-		virtual void ExecuteRenderCommands() = 0;
-		virtual void SubmitCommand(RenderCommand command) = 0;
+        // Render queue commands
+        virtual void ExecuteRenderCommands() = 0;
+        virtual void SubmitCommand(RenderCommand command) = 0;
 
-		// Render passes
-		virtual void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) = 0;
-		virtual void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) = 0;
+        // Render passes
+        virtual void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) = 0;
+        virtual void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) = 0;
 
-		// Shaders
-		virtual Ref<Shader> GetShader(const std::string& name) = 0;
-		virtual void* AllocateDescriptor(void* layout) = 0;
+        // Shaders
+        virtual Ref<Shader> GetShader(const std::string& name) = 0;
+        virtual void* AllocateDescriptor(void* layout) = 0;
 
-		static Ref<Renderer> Create();
-	};
+        static Ref<Renderer> Create();
+    };
 }

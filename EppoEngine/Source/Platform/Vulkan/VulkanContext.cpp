@@ -8,147 +8,147 @@
 
 namespace Eppo
 {
-	VulkanContext::VulkanContext(GLFWwindow* windowHandle)
-		: m_WindowHandle(windowHandle)
-	{
+    VulkanContext::VulkanContext(GLFWwindow* windowHandle)
+        : m_WindowHandle(windowHandle)
+    {
         EPPO_ASSERT(windowHandle);
-	}
+    }
 
-	void VulkanContext::Init()
-	{
-		// Initialize Volk for loading Vulkan functions
+    void VulkanContext::Init()
+    {
+        // Initialize Volk for loading Vulkan functions
         VK_CHECK(volkInitialize(), "Failed to initialize volk!");
 
-		VkApplicationInfo appInfo{};
-		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "EppoEngine";
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.pEngineName = "EppoEngine";
-		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion = VK_API_VERSION_1_3;
+        VkApplicationInfo appInfo{};
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pApplicationName = "EppoEngine";
+        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.pEngineName = "EppoEngine";
+        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.apiVersion = VK_API_VERSION_1_3;
 
-		const auto extensions = GetRequiredExtensions();
+        const auto extensions = GetRequiredExtensions();
 
-		VkInstanceCreateInfo instanceInfo{};
-		instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		instanceInfo.pApplicationInfo = &appInfo;
-		instanceInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-		instanceInfo.ppEnabledExtensionNames = extensions.data();
+        VkInstanceCreateInfo instanceInfo{};
+        instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        instanceInfo.pApplicationInfo = &appInfo;
+        instanceInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        instanceInfo.ppEnabledExtensionNames = extensions.data();
 
-		VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
-		if (VulkanConfig::EnableValidation)
-		{
-			instanceInfo.enabledLayerCount = static_cast<uint32_t>(VulkanConfig::ValidationLayers.size());
-			instanceInfo.ppEnabledLayerNames = VulkanConfig::ValidationLayers.data();
+        VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
+        if (VulkanConfig::EnableValidation)
+        {
+            instanceInfo.enabledLayerCount = static_cast<uint32_t>(VulkanConfig::ValidationLayers.size());
+            instanceInfo.ppEnabledLayerNames = VulkanConfig::ValidationLayers.data();
 
-			debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			debugInfo.pfnUserCallback = DebugCallback;
-			debugInfo.pUserData = nullptr;
+            debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            debugInfo.pfnUserCallback = DebugCallback;
+            debugInfo.pUserData = nullptr;
 
-			instanceInfo.pNext = &debugInfo;
-		}
-		else
-		{
-			instanceInfo.enabledLayerCount = 0;
-			instanceInfo.pNext = nullptr;
-		}
+            instanceInfo.pNext = &debugInfo;
+        }
+        else
+        {
+            instanceInfo.enabledLayerCount = 0;
+            instanceInfo.pNext = nullptr;
+        }
 
-		VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &s_Instance), "Failed to create instance!");
+        VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &s_Instance), "Failed to create instance!");
 
-		// After creating vulkan instance, load all required vulkan entrypoints
-		volkLoadInstance(s_Instance);
+        // After creating vulkan instance, load all required vulkan entrypoints
+        volkLoadInstance(s_Instance);
 
-		// Debug messenger
+        // Debug messenger
         if (VulkanConfig::EnableValidation)
             VK_CHECK(CreateDebugUtilsMessengerEXT(s_Instance, &debugInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!");
 
-		// Devices
-		m_PhysicalDevice = CreateRef<VulkanPhysicalDevice>();
-		m_LogicalDevice = CreateRef<VulkanLogicalDevice>(m_PhysicalDevice);
-	
-		// Allocator
-		VulkanAllocator::Init();
+        // Devices
+        m_PhysicalDevice = CreateRef<VulkanPhysicalDevice>();
+        m_LogicalDevice = CreateRef<VulkanLogicalDevice>(m_PhysicalDevice);
 
-		// Swapchain
-		m_Swapchain = CreateRef<VulkanSwapchain>(m_LogicalDevice);
+        // Allocator
+        VulkanAllocator::Init();
 
-		// Renderer
-		m_Renderer = CreateRef<VulkanRenderer>();
+        // Swapchain
+        m_Swapchain = CreateRef<VulkanSwapchain>(m_LogicalDevice);
 
-		// Create tracy profiler context
-		const VkCommandBuffer cmd = m_LogicalDevice->GetCommandBuffer(false);
+        // Renderer
+        m_Renderer = CreateRef<VulkanRenderer>();
 
-		#if defined(TRACY_ENABLE)
-		m_TracyContext = TracyVkContext(
-			m_PhysicalDevice->GetNativeDevice(),
-			m_LogicalDevice->GetNativeDevice(),
-			m_LogicalDevice->GetGraphicsQueue(),
-			cmd
-		)
-		#endif
+        // Create tracy profiler context
+        const VkCommandBuffer cmd = m_LogicalDevice->GetCommandBuffer(false);
 
-		m_LogicalDevice->FreeCommandBuffer(cmd);
-	}
+        #if defined(TRACY_ENABLE)
+        m_TracyContext = TracyVkContext(
+            m_PhysicalDevice->GetNativeDevice(),
+            m_LogicalDevice->GetNativeDevice(),
+            m_LogicalDevice->GetGraphicsQueue(),
+            cmd
+        )
+        #endif
 
-	void VulkanContext::Shutdown()
-	{
-		#if defined(TRACY_ENABLE)
-		EPPO_MEM_WARN("Releasing tracy context {}", static_cast<void*>(m_TracyContext));
-		TracyVkDestroy(m_TracyContext)
-		#endif
+        m_LogicalDevice->FreeCommandBuffer(cmd);
+    }
 
-		m_Renderer->Shutdown();
-		m_GarbageCollector.Shutdown();
+    void VulkanContext::Shutdown()
+    {
+        #if defined(TRACY_ENABLE)
+        EPPO_MEM_WARN("Releasing tracy context {}", static_cast<void*>(m_TracyContext));
+        TracyVkDestroy(m_TracyContext)
+        #endif
 
-		if (VulkanConfig::EnableValidation)
-			DestroyDebugUtilsMessengerEXT(s_Instance, m_DebugMessenger, nullptr);
+        m_Renderer->Shutdown();
+        m_GarbageCollector.Shutdown();
 
-		EPPO_MEM_WARN("Releasing vulkan instance {}", static_cast<void*>(s_Instance));
-		vkDestroyInstance(s_Instance, nullptr);
-	}
+        if (VulkanConfig::EnableValidation)
+            DestroyDebugUtilsMessengerEXT(s_Instance, m_DebugMessenger, nullptr);
 
-	void VulkanContext::BeginFrame()
-	{
-		m_Swapchain->BeginFrame();
-	}
+        EPPO_MEM_WARN("Releasing vulkan instance {}", static_cast<void*>(s_Instance));
+        vkDestroyInstance(s_Instance, nullptr);
+    }
 
-	void VulkanContext::PresentFrame()
-	{
-		m_Swapchain->PresentFrame();
-	}
+    void VulkanContext::BeginFrame()
+    {
+        m_Swapchain->BeginFrame();
+    }
 
-	void VulkanContext::WaitIdle()
-	{
-		vkDeviceWaitIdle(m_LogicalDevice->GetNativeDevice());
-	}
+    void VulkanContext::PresentFrame()
+    {
+        m_Swapchain->PresentFrame();
+    }
 
-	void VulkanContext::SubmitResourceFree(const std::function<void()>& fn, const bool freeOnShutdown)
-	{
-		m_GarbageCollector.SubmitFreeFn(fn, freeOnShutdown);
-	}
+    void VulkanContext::WaitIdle()
+    {
+        vkDeviceWaitIdle(m_LogicalDevice->GetNativeDevice());
+    }
 
-	void VulkanContext::RunGC(const uint32_t frameNumber)
-	{
-		m_GarbageCollector.Update(frameNumber);
-	}
+    void VulkanContext::SubmitResourceFree(const std::function<void()>& fn, const bool freeOnShutdown)
+    {
+        m_GarbageCollector.SubmitFreeFn(fn, freeOnShutdown);
+    }
 
-	Ref<VulkanContext> VulkanContext::Get()
-	{
-		return std::static_pointer_cast<VulkanContext>(RendererContext::Get());
-	}
+    void VulkanContext::RunGC(const uint32_t frameNumber)
+    {
+        m_GarbageCollector.Update(frameNumber);
+    }
 
-	std::vector<const char*> VulkanContext::GetRequiredExtensions()
-	{
-		uint32_t glfwExtensionCount = 0;
-		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    Ref<VulkanContext> VulkanContext::Get()
+    {
+        return std::static_pointer_cast<VulkanContext>(RendererContext::Get());
+    }
 
-		std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> VulkanContext::GetRequiredExtensions()
+    {
+        uint32_t glfwExtensionCount = 0;
+        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-		if (VulkanConfig::EnableValidation)
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-		return extensions;
-	}
+        if (VulkanConfig::EnableValidation)
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+        return extensions;
+    }
 }

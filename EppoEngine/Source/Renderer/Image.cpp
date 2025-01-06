@@ -6,14 +6,15 @@
 
 namespace Eppo
 {
-	Ref<Image> Image::Create(const ImageSpecification& specification)
-	{
-		switch (RendererContext::GetAPI())
-		{
-			case RendererAPI::Vulkan:	return CreateRef<VulkanImage>(specification);
-		}
+    Ref<Image> Image::Create(const ImageSpecification& specification)
+    {
+        switch (RendererContext::GetAPI())
+        {
+            case RendererAPI::Vulkan:
+                return CreateRef<VulkanImage>(specification);
+        }
 
-		EPPO_ASSERT(false)
-		return nullptr;
-	}
+        EPPO_ASSERT(false);
+        return nullptr;
+    }
 }

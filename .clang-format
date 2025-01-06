@@ -7,7 +7,7 @@ AlignConsecutiveDeclarations: false
 AlignOperands: false
 AlignTrailingComments: false
 AllowShortBlocksOnASingleLine: false
-AllowShortFunctionsOnASingleLine: None
+AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: false
 AlwaysBreakTemplateDeclarations: Yes
@@ -31,8 +31,8 @@ BraceWrapping:
   SplitEmptyNamespace: false
   AfterObjCDeclaration: false
 BreakBeforeBraces: Custom
-ColumnLimit: 200
-ContinuationIndentWidth: 0
+ColumnLimit: 140
+ContinuationIndentWidth: 4
 Cpp11BracedListStyle: false
 IncludeBlocks: Regroup
 IncludeCategories: 

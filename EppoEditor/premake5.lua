@@ -7,9 +7,9 @@ project "EppoEditor"
     targetdir ("%{wks.location}/Bin/" .. OutputDir .. "/%{prj.name}")
     objdir ("%{wks.location}/Bin-Int/" .. OutputDir .. "/%{prj.name}")
 
-	dependson {
-		"EppoScripting"
-	}
+    dependson {
+        "EppoScripting"
+    }
 
     files {
         "Source/**.h",
@@ -21,12 +21,12 @@ project "EppoEditor"
         "%{wks.location}/EppoEngine/Source",
         "%{wks.location}/EppoEngine/Vendor",
 
-		"%{IncludeDir.entt}",
-		"%{IncludeDir.glm}",
-		"%{IncludeDir.imgui}",
+        "%{IncludeDir.entt}",
+        "%{IncludeDir.glm}",
+        "%{IncludeDir.imgui}",
         "%{IncludeDir.spdlog}",
         "%{IncludeDir.tracy}",
-		"%{IncludeDir.yaml_cpp}"
+        "%{IncludeDir.yaml_cpp}"
     }
 
     links {
@@ -34,7 +34,7 @@ project "EppoEditor"
     }
 
     filter "system:windows"
-		systemversion "latest"
+        systemversion "latest"
 
         defines {
             "EPPO_PLATFORM_WINDOWS"
@@ -64,30 +64,30 @@ project "EppoEditor"
         runtime "Debug"
         symbols "On"
 
-		defines {
-			"TRACY_ENABLE",
+        defines {
+            "TRACY_ENABLE",
             "TRACY_ONLY_LOCALHOST"
-		}
+        }
 
     filter {"system:windows", "configurations:Debug"}
-		postbuildcommands {
+        postbuildcommands {
             '{COPY} "%{DynamicLibrary.mono_debug}" "%{cfg.targetdir}"'
-		}
+        }
 
     filter "configurations:Release"
         defines "EPPO_RELEASE"
         runtime "Release"
         optimize "On"
 
-		defines {
-			"TRACY_ENABLE",
+        defines {
+            "TRACY_ENABLE",
             "TRACY_ONLY_LOCALHOST"
-		}
+        }
 
     filter {"system:windows", "configurations:Release"}
-		postbuildcommands {
+        postbuildcommands {
             '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
-		}
+        }
 
     filter "configurations:Dist"
         defines "EPPO_DIST"
@@ -95,6 +95,6 @@ project "EppoEditor"
         optimize "On"
 
     filter {"system:windows", "configurations:Dist"}
-		postbuildcommands {
+        postbuildcommands {
             '{COPY} "%{DynamicLibrary.mono_release}" "%{cfg.targetdir}"'
-		}
+        }

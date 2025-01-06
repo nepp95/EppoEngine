@@ -6,14 +6,15 @@
 
 namespace Eppo
 {
-	Ref<DebugRenderer> DebugRenderer::Create()
-	{
-		switch (RendererContext::GetAPI())
-		{
-			case RendererAPI::Vulkan:	return CreateRef<VulkanDebugRenderer>();
-		}
+    Ref<DebugRenderer> DebugRenderer::Create()
+    {
+        switch (RendererContext::GetAPI())
+        {
+            case RendererAPI::Vulkan:
+                return CreateRef<VulkanDebugRenderer>();
+        }
 
-		EPPO_ASSERT(false);
-		return nullptr;
-	}
+        EPPO_ASSERT(false);
+        return nullptr;
+    }
 }
