@@ -5,25 +5,25 @@
 
 namespace Eppo
 {
-	class ContentBrowserPanel : public Panel
-	{
-	public:
-		explicit ContentBrowserPanel(PanelManager& panelManager);
+    class ContentBrowserPanel : public Panel
+    {
+    public:
+        explicit ContentBrowserPanel(PanelManager& panelManager);
 
-		void RenderGui() override;
+        void RenderGui() override;
 
-	private:
-		ThumbnailCache m_ThumbnailCache;
+    private:
+        ThumbnailCache m_ThumbnailCache;
 
-		struct FileTreeNode
-		{
-			std::string Name;
-			std::string Type;
-			size_t Size;
-			bool IsFolder = false;
-			bool IsOpen = false;
-		};
+        struct FileTreeNode
+        {
+            std::string Name;
+            std::string Type;
+            size_t Size;
+            bool IsFolder = false;
+            bool IsOpen = false;
+        };
 
-		std::vector<FileTreeNode> m_FileTreeNodes;
-	};
+        std::vector<FileTreeNode> m_FileTreeNodes;
+    };
 }

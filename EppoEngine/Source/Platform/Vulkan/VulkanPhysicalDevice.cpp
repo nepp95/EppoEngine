@@ -7,175 +7,175 @@
 
 namespace Eppo
 {
-	namespace
-	{
-		std::string DecodeDriverVersion(const uint32_t driverVersion, const uint32_t vendorId)
-		{
-			std::string versionStr = "Unknown version";
+    namespace
+    {
+        std::string DecodeDriverVersion(const uint32_t driverVersion, const uint32_t vendorId)
+        {
+            std::string versionStr = "Unknown version";
 
-			switch (vendorId)
-			{
-				// Nvidia
-			case 0x10DE:
-			{
-				const uint32_t d1 = (driverVersion >> 22) & 0x3ff;
-				const uint32_t d2 = (driverVersion >> 14) & 0x0ff;
-				const uint32_t d3 = (driverVersion >> 6) & 0x0ff;
-				const uint32_t d4 = driverVersion & 0x003f;
+            switch (vendorId)
+            {
+                // Nvidia
+                case 0x10DE:
+                {
+                    const uint32_t d1 = (driverVersion >> 22) & 0x3ff;
+                    const uint32_t d2 = (driverVersion >> 14) & 0x0ff;
+                    const uint32_t d3 = (driverVersion >> 6) & 0x0ff;
+                    const uint32_t d4 = driverVersion & 0x003f;
 
-				versionStr = std::to_string(d1) + "." + std::to_string(d2) + "." + std::to_string(d3) + "." + std::to_string(d4);
-				break;
-			}
+                    versionStr = std::to_string(d1) + "." + std::to_string(d2) + "." + std::to_string(d3) + "." + std::to_string(d4);
+                    break;
+                }
 
-			// Intel
-			case 0x8086:
-			{
-				const uint32_t d1 = driverVersion >> 14;
-				const uint32_t d2 = driverVersion & 0x3ff;
+                // Intel
+                case 0x8086:
+                {
+                    const uint32_t d1 = driverVersion >> 14;
+                    const uint32_t d2 = driverVersion & 0x3ff;
 
-				versionStr = std::to_string(d1) + "." + std::to_string(d2);
-				break;
-			}
+                    versionStr = std::to_string(d1) + "." + std::to_string(d2);
+                    break;
+                }
 
-			default:
-			{
-				const uint32_t d1 = driverVersion >> 22;
-				const uint32_t d2 = (driverVersion >> 12) & 0x3ff;
-				const uint32_t d3 = driverVersion & 0xfff;
+                default:
+                {
+                    const uint32_t d1 = driverVersion >> 22;
+                    const uint32_t d2 = (driverVersion >> 12) & 0x3ff;
+                    const uint32_t d3 = driverVersion & 0xfff;
 
-				versionStr = std::to_string(d1) + "." + std::to_string(d2) + "." + std::to_string(d3);
-			}
-			}
+                    versionStr = std::to_string(d1) + "." + std::to_string(d2) + "." + std::to_string(d3);
+                }
+            }
 
-			return versionStr;
-		}
+            return versionStr;
+        }
 
-		const std::unordered_map<uint32_t, std::string> s_GpuVendors = {
-			{ 0x1002, "AMD" },
-			{ 0x1010, "ImgTec" },
-			{ 0x10DE, "NVIDIA" },
-			{ 0x13B5, "ARM" },
-			{ 0x5143, "Qualcomm" },
-			{ 0x8086, "Intel" }
-		};
-	}
+        const std::unordered_map<uint32_t, std::string> s_GpuVendors = {
+            { 0x1002, "AMD" },
+            { 0x1010, "ImgTec" },
+            { 0x10DE, "NVIDIA" },
+            { 0x13B5, "ARM" },
+            { 0x5143, "Qualcomm" },
+            { 0x8086, "Intel" }
+        };
+    }
 
-	VulkanPhysicalDevice::VulkanPhysicalDevice()
-	{
-		const auto instance = VulkanContext::GetVulkanInstance();
+    VulkanPhysicalDevice::VulkanPhysicalDevice()
+    {
+        const auto instance = VulkanContext::GetVulkanInstance();
 
-		// Get physical devices available
-		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+        // Get physical devices available
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
         EPPO_ASSERT(deviceCount > 0);
 
-		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-		// Select physical device, we prefer a discrete GPU
-		for (const auto& device : devices)
-		{
-			vkGetPhysicalDeviceProperties(device, &m_Properties);
-			if (m_Properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-			{
-				m_PhysicalDevice = device;
-				break;
-			}
-		}
+        // Select physical device, we prefer a discrete GPU
+        for (const auto& device : devices)
+        {
+            vkGetPhysicalDeviceProperties(device, &m_Properties);
+            if (m_Properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+            {
+                m_PhysicalDevice = device;
+                break;
+            }
+        }
 
-		// No discrete GPU available, select first GPU possible
-		if (!m_PhysicalDevice)
-		{
-			EPPO_WARN("No discrete GPU found!");
-			m_PhysicalDevice = devices.back();
+        // No discrete GPU available, select first GPU possible
+        if (!m_PhysicalDevice)
+        {
+            EPPO_WARN("No discrete GPU found!");
+            m_PhysicalDevice = devices.back();
             EPPO_ASSERT(m_PhysicalDevice);
-		}
+        }
 
-		// Get properties and features from selected device
-		vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &m_Features);
-		vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &m_MemoryProperties);
+        // Get properties and features from selected device
+        vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &m_Features);
+        vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &m_MemoryProperties);
 
-		EPPO_INFO("GPU Info:\n"
-			"\t\t\tVendor: {}\n"
-			"\t\t\tModel: {}\n"
-			"\t\t\tDriver version: {}",
-			s_GpuVendors.find(m_Properties.vendorID) != s_GpuVendors.end() ? s_GpuVendors.at(m_Properties.vendorID) : "Unknown",
-			m_Properties.deviceName,
-			DecodeDriverVersion(m_Properties.driverVersion, m_Properties.vendorID));
+        EPPO_INFO("GPU Info:\n"
+                  "\t\t\tVendor: {}\n"
+                  "\t\t\tModel: {}\n"
+                  "\t\t\tDriver version: {}",
+                  s_GpuVendors.contains(m_Properties.vendorID) ? s_GpuVendors.at(m_Properties.vendorID) : "Unknown",
+                  m_Properties.deviceName,
+                  DecodeDriverVersion(m_Properties.driverVersion, m_Properties.vendorID));
 
-		// Create surface
-		Ref<VulkanContext> context = VulkanContext::Get();
+        // Create surface
+        const Ref<VulkanContext> context = VulkanContext::Get();
         VK_CHECK(glfwCreateWindowSurface(VulkanContext::GetVulkanInstance(), context->GetWindowHandle(), nullptr, &m_Surface), "Failed to create surface!");
 
-		context->SubmitResourceFree([this]()
-		{
-			EPPO_WARN("Releasing surface {}", static_cast<void*>(this));
-			vkDestroySurfaceKHR(VulkanContext::GetVulkanInstance(), m_Surface, nullptr);
-		});
+        context->SubmitResourceFree([this]()
+        {
+            EPPO_WARN("Releasing surface {}", static_cast<void*>(this));
+            vkDestroySurfaceKHR(VulkanContext::GetVulkanInstance(), m_Surface, nullptr);
+        });
 
-		// Queue family indices
-		m_QueueFamilyIndices = FindQueueFamilyIndices();
+        // Queue family indices
+        m_QueueFamilyIndices = FindQueueFamilyIndices();
 
-		// Device extensions
-		uint32_t extensionCount = 0;
-		vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, nullptr);
+        // Device extensions
+        uint32_t extensionCount = 0;
+        vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, nullptr);
 
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, availableExtensions.data());
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, availableExtensions.data());
 
-		EPPO_INFO("Selected device has {} extensions", availableExtensions.size());
-		for (const auto& [extensionName, specVersion] : availableExtensions)
-			m_SupportedExtensions.emplace_back(extensionName);
+        EPPO_INFO("Selected device has {} extensions", availableExtensions.size());
+        for (const auto& [extensionName, specVersion] : availableExtensions)
+            m_SupportedExtensions.emplace_back(extensionName);
 
-		// Device image formats
-		// These formats are mandatory to be supported
-		m_SupportedImageFormats[ImageFormat::RGBA8] = VK_FORMAT_R8G8B8A8_SRGB;
-		m_SupportedImageFormats[ImageFormat::RGB16] = VK_FORMAT_R32G32B32A32_SFLOAT;
+        // Device image formats
+        // These formats are mandatory to be supported
+        m_SupportedImageFormats[ImageFormat::RGBA8] = VK_FORMAT_R8G8B8A8_SRGB;
+        m_SupportedImageFormats[ImageFormat::RGB16] = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-		// Depth
-		constexpr std::array<VkFormat, 2> formats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
-		for (const auto& format : formats)
-		{
-			VkFormatProperties properties;
-			vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, format, &properties);
-			if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-			{
-				m_SupportedImageFormats[ImageFormat::Depth] = format;
-				break;
-			}
-		}
-	}
+        // Depth
+        constexpr std::array<VkFormat, 2> formats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
+        for (const auto& format : formats)
+        {
+            VkFormatProperties properties;
+            vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, format, &properties);
+            if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+            {
+                m_SupportedImageFormats[ImageFormat::Depth] = format;
+                break;
+            }
+        }
+    }
 
-	bool VulkanPhysicalDevice::IsExtensionSupported(const std::string_view extension)
-	{
-		return std::find(m_SupportedExtensions.begin(), m_SupportedExtensions.end(), extension) != m_SupportedExtensions.end();
-	}
+    bool VulkanPhysicalDevice::IsExtensionSupported(const std::string_view extension)
+    {
+        return std::ranges::find(m_SupportedExtensions, extension) != m_SupportedExtensions.end();
+    }
 
-	QueueFamilyIndices VulkanPhysicalDevice::FindQueueFamilyIndices() const
-	{
-		QueueFamilyIndices indices;
+    QueueFamilyIndices VulkanPhysicalDevice::FindQueueFamilyIndices() const
+    {
+        QueueFamilyIndices indices;
 
-		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueFamilyCount, nullptr);
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueFamilyCount, nullptr);
 
-		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueFamilyCount, queueFamilies.data());
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueFamilyCount, queueFamilies.data());
 
-		for (size_t i = 0; i < queueFamilies.size(); i++)
-		{
-			if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-				indices.Graphics = static_cast<int32_t>(i);
+        for (size_t i = 0; i < queueFamilies.size(); i++)
+        {
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                indices.Graphics = static_cast<int32_t>(i);
 
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(m_PhysicalDevice, i, m_Surface, &presentSupport);
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(m_PhysicalDevice, static_cast<uint32_t>(i), m_Surface, &presentSupport);
 
-			if (presentSupport)
-				indices.Present = static_cast<int32_t>(i);
+            if (presentSupport)
+                indices.Present = static_cast<int32_t>(i);
 
-			if (indices.IsComplete())
-				break;
-		}
+            if (indices.IsComplete())
+                break;
+        }
 
-		return indices;
-	}
+        return indices;
+    }
 }

@@ -6,107 +6,108 @@
 
 namespace Eppo
 {
-	VulkanVertexBuffer::VulkanVertexBuffer(const uint32_t size)
-		: m_Size(size), m_IsMemoryMapped(true)
-	{
-		VkBufferCreateInfo vertexBufferInfo{};
-		vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		vertexBufferInfo.size = size;
-		vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		vertexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VulkanVertexBuffer::VulkanVertexBuffer(const uint32_t size)
+        : m_Size(size), m_IsMemoryMapped(true)
+    {
+        VkBufferCreateInfo vertexBufferInfo{};
+        vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        vertexBufferInfo.size = size;
+        vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        vertexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
-		m_MappedMemory = VulkanAllocator::MapMemory(m_Allocation);
-	}
+        m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_MappedMemory = VulkanAllocator::MapMemory(m_Allocation);
+    }
 
-	VulkanVertexBuffer::VulkanVertexBuffer(const Buffer buffer)
-		: m_Size(buffer.Size), m_IsMemoryMapped(false)
-	{
-		EPPO_PROFILE_FUNCTION("VulkanVertexBuffer::VulkanVertexBuffer");
+    VulkanVertexBuffer::VulkanVertexBuffer(const Buffer buffer)
+        : m_Size(buffer.Size), m_IsMemoryMapped(false)
+    {
+        EPPO_PROFILE_FUNCTION("VulkanVertexBuffer::VulkanVertexBuffer");
 
-		// Create GPU local buffer
-		VkBufferCreateInfo vertexBufferInfo{};
-		vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		vertexBufferInfo.size = buffer.Size;
-		vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        // Create GPU local buffer
+        VkBufferCreateInfo vertexBufferInfo{};
+        vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        vertexBufferInfo.size = buffer.Size;
+        vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-		m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
-	
-		CopyWithStagingBuffer(buffer);
-	}
+        m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
 
-	VulkanVertexBuffer::~VulkanVertexBuffer()
-	{
-		EPPO_MEM_WARN("Releasing vertex buffer {}", static_cast<void*>(this));
+        CopyWithStagingBuffer(buffer);
+    }
 
-		if (m_IsMemoryMapped)
-			VulkanAllocator::UnmapMemory(m_Allocation);
-		VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
-	}
+    VulkanVertexBuffer::~VulkanVertexBuffer()
+    {
+        EPPO_MEM_WARN("Releasing vertex buffer {}", static_cast<void*>(this));
 
-	void VulkanVertexBuffer::SetData(const Buffer buffer)
-	{
-		// If buffer is bigger than our GPU buffer, recreate buffer
-		if (buffer.Size > m_Size)
-		{
-			// Create GPU local buffer
-			VkBufferCreateInfo vertexBufferInfo{};
-			vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			vertexBufferInfo.size = buffer.Size;
-			vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        if (m_IsMemoryMapped)
+            VulkanAllocator::UnmapMemory(m_Allocation);
+        VulkanAllocator::DestroyBuffer(m_Buffer, m_Allocation);
+    }
 
-			if (m_IsMemoryMapped)
-			{
-				VulkanAllocator::UnmapMemory(m_Allocation);
-				m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
-				m_MappedMemory = VulkanAllocator::MapMemory(m_Allocation);
-			} else
-			{
-				m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
-			}
+    void VulkanVertexBuffer::SetData(const Buffer buffer)
+    {
+        // If buffer is bigger than our GPU buffer, recreate buffer
+        if (buffer.Size > m_Size)
+        {
+            // Create GPU local buffer
+            VkBufferCreateInfo vertexBufferInfo{};
+            vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            vertexBufferInfo.size = buffer.Size;
+            vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-			m_Size = buffer.Size;
-		}
+            if (m_IsMemoryMapped)
+            {
+                VulkanAllocator::UnmapMemory(m_Allocation);
+                m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+                m_MappedMemory = VulkanAllocator::MapMemory(m_Allocation);
+            }
+            else
+            {
+                m_Allocation = VulkanAllocator::AllocateBuffer(m_Buffer, vertexBufferInfo, VMA_MEMORY_USAGE_GPU_ONLY);
+            }
 
-		// Now we have a GPU buffer of the correct size, copy data using either staging buffer or mapped memory
-		if (m_IsMemoryMapped)
-			memcpy(m_MappedMemory, buffer.Data, buffer.Size);
-		else
-			CopyWithStagingBuffer(buffer);
-	}
+            m_Size = buffer.Size;
+        }
 
-	void VulkanVertexBuffer::CopyWithStagingBuffer(Buffer buffer) const
-	{
-		// Create staging buffer
-		VkBufferCreateInfo stagingBufferInfo{};
-		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		stagingBufferInfo.size = buffer.Size;
-		stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        // Now we have a GPU buffer of the correct size, copy data using either staging buffer or mapped memory
+        if (m_IsMemoryMapped)
+            memcpy(m_MappedMemory, buffer.Data, buffer.Size);
+        else
+            CopyWithStagingBuffer(buffer);
+    }
 
-		VkBuffer stagingBuffer;
-		const VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    void VulkanVertexBuffer::CopyWithStagingBuffer(Buffer buffer) const
+    {
+        // Create staging buffer
+        VkBufferCreateInfo stagingBufferInfo{};
+        stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        stagingBufferInfo.size = buffer.Size;
+        stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		// Copy data to staging buffer
-		void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
-		memcpy(memData, buffer.Data, buffer.Size);
-		VulkanAllocator::UnmapMemory(stagingBufferAlloc);
+        VkBuffer stagingBuffer;
+        const VmaAllocation stagingBufferAlloc = VulkanAllocator::AllocateBuffer(stagingBuffer, stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-		// Copy data from staging buffer to GPU local buffer
-		const auto context = VulkanContext::Get();
-		const auto logicalDevice = context->GetLogicalDevice();
-		const VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
+        // Copy data to staging buffer
+        void* memData = VulkanAllocator::MapMemory(stagingBufferAlloc);
+        memcpy(memData, buffer.Data, buffer.Size);
+        VulkanAllocator::UnmapMemory(stagingBufferAlloc);
 
-		VkBufferCopy copyRegion;
-		copyRegion.srcOffset = 0;
-		copyRegion.dstOffset = 0;
-		copyRegion.size = buffer.Size;
+        // Copy data from staging buffer to GPU local buffer
+        const auto context = VulkanContext::Get();
+        const auto logicalDevice = context->GetLogicalDevice();
+        const VkCommandBuffer commandBuffer = logicalDevice->GetCommandBuffer(true);
 
-		vkCmdCopyBuffer(commandBuffer, stagingBuffer, m_Buffer, 1, &copyRegion);
-		logicalDevice->FlushCommandBuffer(commandBuffer);
+        VkBufferCopy copyRegion;
+        copyRegion.srcOffset = 0;
+        copyRegion.dstOffset = 0;
+        copyRegion.size = buffer.Size;
 
-		// Clean up
-		VulkanAllocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
-		buffer.Release();
-	}
+        vkCmdCopyBuffer(commandBuffer, stagingBuffer, m_Buffer, 1, &copyRegion);
+        logicalDevice->FlushCommandBuffer(commandBuffer);
+
+        // Clean up
+        VulkanAllocator::DestroyBuffer(stagingBuffer, stagingBufferAlloc);
+        buffer.Release();
+    }
 }

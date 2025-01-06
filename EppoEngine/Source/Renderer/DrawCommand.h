@@ -8,20 +8,20 @@
 
 namespace Eppo
 {
-	struct DrawCommand
-	{
-		EntityHandle Handle;
-	};
+    struct DrawCommand
+    {
+        EntityHandle Handle;
+    };
 
-	struct MeshCommand : DrawCommand
-	{
-		Ref<Eppo::Mesh> Mesh;
-		glm::mat4 Transform;
-	};
+    struct MeshCommand : DrawCommand
+    {
+        Ref<Eppo::Mesh> Mesh;
+        glm::mat4 Transform;
+    };
 
-	struct PointLightCommand : DrawCommand
-	{
-		glm::vec4 Color;
-		glm::vec3 Position;
-	};
+    struct PointLightCommand : DrawCommand
+    {
+        glm::vec4 Color;
+        glm::vec3 Position;
+    };
 }

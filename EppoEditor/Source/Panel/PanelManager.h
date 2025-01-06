@@ -6,67 +6,67 @@
 
 namespace Eppo
 {
-	struct PanelData
-	{
-		Ref<Eppo::Panel> Panel;
-		bool IsOpen = false;
-	};
+    struct PanelData
+    {
+        Ref<Eppo::Panel> Panel;
+        bool IsOpen = false;
+    };
 
-	class PanelManager
-	{
-	public:
-		~PanelManager() = default;
+    class PanelManager
+    {
+    public:
+        ~PanelManager() = default;
 
-		void Shutdown();
-		void RenderGui();
+        void Shutdown();
+        void RenderGui();
 
-		Ref<Scene> GetSceneContext() { return m_SceneContext; }
-		[[nodiscard]] Entity GetSelectedEntity() const { return m_SelectedEntity; }
+        Ref<Scene> GetSceneContext() { return m_SceneContext; }
+        [[nodiscard]] Entity GetSelectedEntity() const { return m_SelectedEntity; }
 
-		void SetSceneContext(const Ref<Scene>& scene) { m_SceneContext = scene; }
-		void SetSelectedEntity(const Entity entity) { m_SelectedEntity = entity; }
+        void SetSceneContext(const Ref<Scene>& scene) { m_SceneContext = scene; }
+        void SetSelectedEntity(const Entity entity) { m_SelectedEntity = entity; }
 
-		template<typename T, typename... Args>
-		void AddPanel(const std::string& name, const bool isOpen, Args&&... args)
-		{
-			static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
+        template<typename T, typename... Args>
+        void AddPanel(const std::string& name, const bool isOpen, Args&&... args)
+        {
+            static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
 
-			if (HasPanel(name))
-				return;
+            if (HasPanel(name))
+                return;
 
-			PanelData panelData;
-			panelData.Panel = CreateRef<T>(std::forward<Args>(args)...);
-			panelData.IsOpen = isOpen;
+            PanelData panelData;
+            panelData.Panel = CreateRef<T>(std::forward<Args>(args)...);
+            panelData.IsOpen = isOpen;
 
-			m_PanelData.insert({ name, panelData });
-		}
+            m_PanelData.insert({ name, panelData });
+        }
 
-		template<typename T>
-		Ref<T> GetPanel(const std::string& name)
-		{
-			static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
+        template<typename T>
+        Ref<T> GetPanel(const std::string& name)
+        {
+            static_assert(std::is_base_of_v<Panel, T>, "Class is not based on Panel!");
 
-			const auto it = m_PanelData.find(name);
-			if (it == m_PanelData.end())
-				return nullptr;
+            const auto it = m_PanelData.find(name);
+            if (it == m_PanelData.end())
+                return nullptr;
 
-			return it->second.Panel; // TODO: Might not work? dynamic cast to derived class
-		}
+            return it->second.Panel; // TODO: Might not work? dynamic cast to derived class
+        }
 
-		bool HasPanel(const std::string& name) const
-		{
-			return m_PanelData.contains(name);
-		}
+        bool HasPanel(const std::string& name) const
+        {
+            return m_PanelData.contains(name);
+        }
 
-		static PanelManager& Get();
+        static PanelManager& Get();
 
-	private:
-		PanelManager() = default;
+    private:
+        PanelManager() = default;
 
-	private:
-		std::unordered_map<std::string, PanelData> m_PanelData;
+    private:
+        std::unordered_map<std::string, PanelData> m_PanelData;
 
-		Ref<Scene> m_SceneContext;
-		Entity m_SelectedEntity;
-	};
+        Ref<Scene> m_SceneContext;
+        Entity m_SelectedEntity;
+    };
 }

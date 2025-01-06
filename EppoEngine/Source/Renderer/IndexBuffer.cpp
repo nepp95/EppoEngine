@@ -6,32 +6,34 @@
 
 namespace Eppo
 {
-	Ref<IndexBuffer> IndexBuffer::Create(uint32_t size)
-	{
-		switch (RendererContext::GetAPI())
-		{
-			case RendererAPI::Vulkan:	return CreateRef<VulkanIndexBuffer>(size);
-		}
+    Ref<IndexBuffer> IndexBuffer::Create(uint32_t size)
+    {
+        switch (RendererContext::GetAPI())
+        {
+            case RendererAPI::Vulkan:
+                return CreateRef<VulkanIndexBuffer>(size);
+        }
 
-		EPPO_ASSERT(false);
-		return nullptr;
-	}
+        EPPO_ASSERT(false);
+        return nullptr;
+    }
 
-	Ref<IndexBuffer> IndexBuffer::Create(const void* data, const uint32_t size)
-	{
-		const Buffer buffer = Buffer::Copy(data, size);
+    Ref<IndexBuffer> IndexBuffer::Create(const void* data, const uint32_t size)
+    {
+        const Buffer buffer = Buffer::Copy(data, size);
 
-		return Create(buffer);
-	}
+        return Create(buffer);
+    }
 
-	Ref<IndexBuffer> IndexBuffer::Create(Buffer buffer)
-	{
-		switch (RendererContext::GetAPI())
-		{
-			case RendererAPI::Vulkan:	return CreateRef<VulkanIndexBuffer>(buffer);
-		}
+    Ref<IndexBuffer> IndexBuffer::Create(Buffer buffer)
+    {
+        switch (RendererContext::GetAPI())
+        {
+            case RendererAPI::Vulkan:
+                return CreateRef<VulkanIndexBuffer>(buffer);
+        }
 
-		EPPO_ASSERT(false);
-		return nullptr;
-	}
+        EPPO_ASSERT(false);
+        return nullptr;
+    }
 }

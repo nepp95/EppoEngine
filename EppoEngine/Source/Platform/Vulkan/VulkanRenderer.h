@@ -6,36 +6,36 @@
 
 namespace Eppo
 {
-	class VulkanRenderer final : public Renderer
-	{
-	public:
-		VulkanRenderer();
-		VulkanRenderer(const VulkanRenderer&) = delete;
-		VulkanRenderer(const VulkanRenderer&&) = delete;
-		VulkanRenderer& operator=(const VulkanRenderer&) = delete;
-		VulkanRenderer& operator=(const VulkanRenderer&&) = delete;
-		~VulkanRenderer() override = default;
+    class VulkanRenderer final : public Renderer
+    {
+    public:
+        VulkanRenderer();
+        VulkanRenderer(const VulkanRenderer&) = delete;
+        VulkanRenderer(const VulkanRenderer&&) = delete;
+        VulkanRenderer& operator=(const VulkanRenderer&) = delete;
+        VulkanRenderer& operator=(const VulkanRenderer&&) = delete;
+        ~VulkanRenderer() override = default;
 
-		void Shutdown() override;
+        void Shutdown() override;
 
-		// Render queue commands
-		void ExecuteRenderCommands() override;
-		void SubmitCommand(RenderCommand command) override;
+        // Render queue commands
+        void ExecuteRenderCommands() override;
+        void SubmitCommand(RenderCommand command) override;
 
-		// Render passes
-		void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) override;
-		void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) override;
+        // Render passes
+        void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) override;
+        void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) override;
 
-		// Shaders
-		Ref<Shader> GetShader(const std::string& name) override { return m_ShaderLibrary.Get(name); }
-		void* AllocateDescriptor(void* layout) override;
+        // Shaders
+        Ref<Shader> GetShader(const std::string& name) override { return m_ShaderLibrary.Get(name); }
+        void* AllocateDescriptor(void* layout) override;
 
-	private:
-		CommandQueue m_CommandQueue;
-		ShaderLibrary m_ShaderLibrary;
+    private:
+        CommandQueue m_CommandQueue;
+        ShaderLibrary m_ShaderLibrary;
 
-		std::array<DescriptorAllocator, VulkanConfig::MaxFramesInFlight> m_DescriptorAllocators;
+        std::array<DescriptorAllocator, VulkanConfig::MaxFramesInFlight> m_DescriptorAllocators;
 
-		static bool s_IsInstantiated;
-	};
+        static bool s_IsInstantiated;
+    };
 }

@@ -39,18 +39,18 @@ struct fmt::formatter<glm::vec<L, T, Q>> : fmt::formatter<std::string>
     }
 };
 
-#define EPPO_TRACE(...)			::Eppo::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define EPPO_INFO(...)			::Eppo::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define EPPO_WARN(...)			::Eppo::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define EPPO_ERROR(...)			::Eppo::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define EPPO_TRACE(...)            ::Eppo::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define EPPO_INFO(...)            ::Eppo::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define EPPO_WARN(...)            ::Eppo::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define EPPO_ERROR(...)            ::Eppo::Log::GetCoreLogger()->error(__VA_ARGS__)
 
 #if defined(EPPO_TRACK_MEMORY)
-    #define EPPO_MEM_WARN(...)		::Eppo::Log::GetCoreLogger()->trace(__VA_ARGS__)
+    #define EPPO_MEM_WARN(...)        ::Eppo::Log::GetCoreLogger()->trace(__VA_ARGS__)
 #else
     #define EPPO_MEM_WARN(...)
 #endif
 
-#define EPPO_SCRIPT_TRACE(...)	::Eppo::Log::GetScriptLogger()->trace(__VA_ARGS__)
-#define EPPO_SCRIPT_INFO(...)	::Eppo::Log::GetScriptLogger()->info(__VA_ARGS__)
-#define EPPO_SCRIPT_WARN(...)	::Eppo::Log::GetScriptLogger()->warn(__VA_ARGS__)
-#define EPPO_SCRIPT_ERROR(...)	::Eppo::Log::GetScriptLogger()->error(__VA_ARGS__)
+#define EPPO_SCRIPT_TRACE(...)    ::Eppo::Log::GetScriptLogger()->trace(__VA_ARGS__)
+#define EPPO_SCRIPT_INFO(...)    ::Eppo::Log::GetScriptLogger()->info(__VA_ARGS__)
+#define EPPO_SCRIPT_WARN(...)    ::Eppo::Log::GetScriptLogger()->warn(__VA_ARGS__)
+#define EPPO_SCRIPT_ERROR(...)    ::Eppo::Log::GetScriptLogger()->error(__VA_ARGS__)

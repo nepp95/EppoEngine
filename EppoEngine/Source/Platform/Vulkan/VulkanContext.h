@@ -13,54 +13,58 @@
 
 namespace Eppo
 {
-	class VulkanContext : public RendererContext
-	{
-	public:
-		explicit VulkanContext(GLFWwindow* windowHandle);
-		~VulkanContext() override = default;
+    class VulkanContext final : public RendererContext
+    {
+    public:
+        explicit VulkanContext(GLFWwindow* windowHandle);
+        VulkanContext(const VulkanContext&) = delete;
+        VulkanContext(const VulkanContext&&) = delete;
+        VulkanContext& operator=(const VulkanContext&) = delete;
+        VulkanContext& operator=(const VulkanContext&&) = delete;
+        ~VulkanContext() override = default;
 
-		void Init() override;
-		void Shutdown() override;
+        void Init() override;
+        void Shutdown() override;
 
-		[[nodiscard]] uint32_t GetCurrentFrameIndex() const override { return m_Swapchain->GetCurrentImageIndex(); }
-		void BeginFrame() override;
-		void PresentFrame() override;
-		void WaitIdle() override;
+        [[nodiscard]] uint32_t GetCurrentFrameIndex() const override { return m_Swapchain->GetCurrentImageIndex(); }
+        void BeginFrame() override;
+        void PresentFrame() override;
+        void WaitIdle() override;
 
-		void SubmitResourceFree(const std::function<void()>& fn, bool freeOnShutdown = true);
-		void RunGC(uint32_t frameNumber);
+        void SubmitResourceFree(const std::function<void()>& fn, bool freeOnShutdown = true);
+        void RunGC(uint32_t frameNumber);
 
-		[[nodiscard]] Ref<VulkanLogicalDevice> GetLogicalDevice() const { return m_LogicalDevice; }
-		[[nodiscard]] Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
-		[[nodiscard]] Ref<VulkanSwapchain> GetSwapchain() const { return m_Swapchain; }
+        [[nodiscard]] Ref<VulkanLogicalDevice> GetLogicalDevice() const { return m_LogicalDevice; }
+        [[nodiscard]] Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
+        [[nodiscard]] Ref<VulkanSwapchain> GetSwapchain() const { return m_Swapchain; }
 
-		[[nodiscard]] Ref<Renderer> GetRenderer() const override { return m_Renderer; }
+        [[nodiscard]] Ref<Renderer> GetRenderer() const override { return m_Renderer; }
 
-		DescriptorLayoutBuilder& GetDescriptorLayoutBuilder() { return m_DescriptorLayoutBuilder; }
+        DescriptorLayoutBuilder& GetDescriptorLayoutBuilder() { return m_DescriptorLayoutBuilder; }
 
-		static VkInstance GetVulkanInstance() { return s_Instance; }
-		GLFWwindow* GetWindowHandle() override { return m_WindowHandle; }
-		[[nodiscard]] TracyVkCtx GetTracyContext() const { return m_TracyContext; }
+        static VkInstance GetVulkanInstance() { return s_Instance; }
+        GLFWwindow* GetWindowHandle() override { return m_WindowHandle; }
+        [[nodiscard]] TracyVkCtx GetTracyContext() const { return m_TracyContext; }
 
-		static Ref<VulkanContext> Get();
+        static Ref<VulkanContext> Get();
 
-	private:
-		[[nodiscard]] static std::vector<const char*> GetRequiredExtensions();
+    private:
+        [[nodiscard]] static std::vector<const char*> GetRequiredExtensions();
 
-	private:
-		GLFWwindow* m_WindowHandle = nullptr;
-		VkDebugUtilsMessengerEXT m_DebugMessenger = nullptr;
+    private:
+        GLFWwindow* m_WindowHandle = nullptr;
+        VkDebugUtilsMessengerEXT m_DebugMessenger = nullptr;
 
-		Ref<VulkanLogicalDevice> m_LogicalDevice;
-		Ref<VulkanPhysicalDevice> m_PhysicalDevice;
-		Ref<VulkanRenderer> m_Renderer;
-		Ref<VulkanSwapchain> m_Swapchain;
+        Ref<VulkanLogicalDevice> m_LogicalDevice;
+        Ref<VulkanPhysicalDevice> m_PhysicalDevice;
+        Ref<VulkanRenderer> m_Renderer;
+        Ref<VulkanSwapchain> m_Swapchain;
 
-		DescriptorLayoutBuilder m_DescriptorLayoutBuilder;
-		GarbageCollector m_GarbageCollector;
+        DescriptorLayoutBuilder m_DescriptorLayoutBuilder;
+        GarbageCollector m_GarbageCollector;
 
-		TracyVkCtx m_TracyContext = nullptr;
+        TracyVkCtx m_TracyContext = nullptr;
 
-		inline static VkInstance s_Instance;
-	};
+        inline static VkInstance s_Instance;
+    };
 }

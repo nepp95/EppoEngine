@@ -6,53 +6,59 @@
 
 namespace Eppo
 {
-	struct ImageInfo
-	{
-		VkImage Image = nullptr;
-		VkImageView ImageView = nullptr;
-		VkImageLayout ImageLayout;
-		VkSampler Sampler = nullptr;
-		VmaAllocation Allocation = nullptr;
-	};
+    struct ImageInfo
+    {
+        VkImage Image = nullptr;
+        VkImageView ImageView = nullptr;
+        VkImageLayout ImageLayout;
+        VkSampler Sampler = nullptr;
+        VmaAllocation Allocation = nullptr;
+    };
 
-	class VulkanImage final : public Image
-	{
-	public:
-		explicit VulkanImage(ImageSpecification specification);
-		~VulkanImage();
+    class VulkanImage final : public Image
+    {
+    public:
+        explicit VulkanImage(ImageSpecification specification);
+        VulkanImage(const VulkanImage&) = delete;
+        VulkanImage(const VulkanImage&&) = delete;
+        VulkanImage& operator=(const VulkanImage&) = delete;
+        VulkanImage& operator=(const VulkanImage&&) = delete;
+        ~VulkanImage() override;
 
-		void SetData(void* data, uint32_t channels = 4) override;
-		void Release() override;
+        void SetData(void* data, uint32_t channels = 4) override;
+        void Release() override;
 
-		[[nodiscard]] const ImageSpecification& GetSpecification() const override { return m_Specification; }
+        [[nodiscard]] const ImageSpecification& GetSpecification() const override { return m_Specification; }
 
-		[[nodiscard]] uint32_t GetWidth() const override { return m_Specification.Width; }
-		[[nodiscard]] uint32_t GetHeight() const override { return m_Specification.Height; }
+        [[nodiscard]] uint32_t GetWidth() const override { return m_Specification.Width; }
+        [[nodiscard]] uint32_t GetHeight() const override { return m_Specification.Height; }
 
-		ImageInfo& GetImageInfo() { return m_ImageInfo; }
+        ImageInfo& GetImageInfo() { return m_ImageInfo; }
 
-		static void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout, VkPipelineStageFlags2 srcStageMask = VK_PIPELINE_STAGE_2_NONE, VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE);
-		static VkImageAspectFlags GetImageAspectFlags(VkImageLayout layout);
+        static void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout,
+                                    VkPipelineStageFlags2 srcStageMask = VK_PIPELINE_STAGE_2_NONE,
+                                    VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE);
+        static VkImageAspectFlags GetImageAspectFlags(VkImageLayout layout);
 
-	private:
-		ImageSpecification m_Specification;
-		ImageInfo m_ImageInfo;
+    private:
+        ImageSpecification m_Specification;
+        ImageInfo m_ImageInfo;
 
-		bool m_IsHDR = false;
+        bool m_IsHDR = false;
 
-		void* m_ImageData = nullptr;
-	};
+        void* m_ImageData = nullptr;
+    };
 
-	namespace Utils
-	{
-		inline VkFormat ImageFormatToVkFormat(ImageFormat format)
-		{
-			EPPO_ASSERT(format != ImageFormat::None);
+    namespace Utils
+    {
+        inline VkFormat ImageFormatToVkFormat(ImageFormat format)
+        {
+            EPPO_ASSERT(format != ImageFormat::None);
 
-			Ref<VulkanContext> context = VulkanContext::Get();
-			Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+            Ref<VulkanContext> context = VulkanContext::Get();
+            Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 
-			return physicalDevice->GetSupportedImageFormat(format);
-		}
-	}
+            return physicalDevice->GetSupportedImageFormat(format);
+        }
+    }
 }
