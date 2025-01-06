@@ -23,7 +23,7 @@ namespace Eppo
 
         void RT_Begin() override;
         void RT_End() override;
-        void RT_Submit() const override;
+        void RT_Submit() const;
 
         uint32_t RT_BeginTimestampQuery();
         void RT_EndTimestampQuery(uint32_t queryIndex) const;
