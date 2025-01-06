@@ -4,22 +4,31 @@
 
 namespace Eppo
 {
-	class Layer
-	{
-	public:
-		Layer(std::string name = "Layer");
-		virtual ~Layer() = default;
+    class Layer
+    {
+    public:
+        Layer(std::string name = "Layer");
+        virtual ~Layer() = default;
 
-		virtual void OnAttach() {}
-		virtual void OnDetach() {}
+        virtual void OnAttach()
+        {}
 
-		virtual void Update(float timestep) {}
-		virtual void Render() {}
-		virtual void RenderGui() {}
+        virtual void OnDetach()
+        {}
 
-		virtual void OnEvent(Event& e) {}
+        virtual void Update(float timestep)
+        {}
 
-	private:
-		std::string m_DebugName;
-	};
+        virtual void Render()
+        {}
+
+        virtual void RenderGui()
+        {}
+
+        virtual void OnEvent(Event& e)
+        {}
+
+    private:
+        std::string m_DebugName;
+    };
 }

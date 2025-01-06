@@ -11,7 +11,7 @@ namespace Eppo
 
 	VulkanRenderer::VulkanRenderer()
 	{
-		EPPO_ASSERT(!s_IsInstantiated)
+		EPPO_ASSERT(!s_IsInstantiated);
 		s_IsInstantiated = true;
 
 		const Ref<VulkanContext> context = VulkanContext::Get();

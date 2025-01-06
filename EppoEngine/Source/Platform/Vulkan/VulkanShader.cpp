@@ -86,16 +86,16 @@ namespace Eppo
 		{
 			// Make sure we aren't eol after type token
 			const size_t eol = source.find_first_of("\r\n", pos);
-			EPPO_ASSERT(eol != std::string::npos) // "Syntax error: No stage specified!"
+            EPPO_ASSERT(eol != std::string::npos); // "Syntax error: No stage specified!"
 
 			// Extract shader stage
 			const size_t begin = pos + stageTokenLength + 1;
 			const auto stage = std::string(source.substr(begin, eol - begin));
-			EPPO_ASSERT(static_cast<bool>(Utils::StringToShaderStage(stage))) // "Invalid stage specified!"
+            EPPO_ASSERT(static_cast<bool>(Utils::StringToShaderStage(stage))); // "Invalid stage specified!"
 
 			// If there is no other stage token, take the string till eof. Otherwise till the next stage token
 			const size_t nextLinePos = source.find_first_not_of("\r\n", eol);
-			EPPO_ASSERT(nextLinePos != std::string::npos) // "Syntax error: No source after stage token!"
+            EPPO_ASSERT(nextLinePos != std::string::npos); // "Syntax error: No source after stage token!"
 			pos = source.find(stageToken, nextLinePos);
 			shaderSources[Utils::StringToShaderStage(stage)] = (pos == std::string::npos) ? std::string(source.substr(nextLinePos)) : std::string(source.substr(nextLinePos, pos - nextLinePos));
 		}
@@ -133,7 +133,7 @@ namespace Eppo
 		{
 			EPPO_ERROR("Failed to compile shader with filename: {}", GetSpecification().Filepath);
 			EPPO_ERROR(result.GetErrorMessage());
-			EPPO_ASSERT(false)
+            EPPO_ASSERT(false);
 		}
 
 		m_ShaderBytes[stage] = std::vector(result.cbegin(), result.cend());
@@ -211,7 +211,7 @@ namespace Eppo
 		if (!resources.push_constant_buffers.empty())
 		{
 			EPPO_TRACE("    Push constants:");
-			EPPO_ASSERT(resources.push_constant_buffers.size() == 1) // At the moment, vulkan only supports one push constant buffer
+            EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
 
 			const auto& resource = resources.push_constant_buffers[0];
 			const auto& bufferType = compiler.get_type(resource.base_type_id);
@@ -336,7 +336,7 @@ namespace Eppo
 			shaderModuleCreateInfo.pCode = shaderBytes.data();
 
 			VkShaderModule shaderModule;
-			VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule), "Failed to create shader module!")
+            VK_CHECK(vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule), "Failed to create shader module!");
 
 			VkPipelineShaderStageCreateInfo& shaderStageCreateInfo = m_ShaderInfos.emplace_back();
 			shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -388,7 +388,7 @@ namespace Eppo
 		createInfo.pBindings = nullptr;
 
 		VkDescriptorSetLayout layout;
-		VK_CHECK(vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &layout), "Failed to create descriptor set layout!")
+        VK_CHECK(vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &layout), "Failed to create descriptor set layout!");
 
 		for (auto& descriptorSetLayout : m_DescriptorSetLayouts)
 		{

@@ -22,7 +22,7 @@ namespace Eppo
 	{
 		EPPO_PROFILE_FUNCTION("ShaderLibrary::Get");
 
-		EPPO_ASSERT(m_Shaders.find(name) != m_Shaders.end())
+		EPPO_ASSERT(m_Shaders.find(name) != m_Shaders.end());
 		return m_Shaders.at(name);
 	}
 }

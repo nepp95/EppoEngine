@@ -3,170 +3,170 @@
 
 namespace Eppo
 {
-	struct FilesystemData
-	{
-		std::filesystem::path RootPath;
-		std::filesystem::path AssetPath;
-	};
+    struct FilesystemData
+    {
+        std::filesystem::path RootPath;
+        std::filesystem::path AssetPath;
+    };
 
-	FilesystemData* s_Data;
-	
-	void Filesystem::Init()
-	{
-		s_Data = new FilesystemData();
+    FilesystemData* s_Data;
 
-		s_Data->RootPath = std::filesystem::current_path();
-		s_Data->AssetPath = s_Data->RootPath / "Resources";
-	}
+    void Filesystem::Init()
+    {
+        s_Data = new FilesystemData();
 
-	void Filesystem::Shutdown()
-	{
-		delete s_Data;
-	}
+        s_Data->RootPath = std::filesystem::current_path();
+        s_Data->AssetPath = s_Data->RootPath / "Resources";
+    }
 
-	const std::filesystem::path& Filesystem::GetAppRootDirectory()
-	{
-		return s_Data->RootPath;
-	}
+    void Filesystem::Shutdown()
+    {
+        delete s_Data;
+    }
 
-	const std::filesystem::path& Filesystem::GetAssetsDirectory()
-	{
-		return s_Data->AssetPath;
-	}
+    const std::filesystem::path& Filesystem::GetAppRootDirectory()
+    {
+        return s_Data->RootPath;
+    }
 
-	bool Filesystem::CreateDirectory(const std::filesystem::path& path)
-	{
-		return std::filesystem::create_directories(path);
-	}
+    const std::filesystem::path& Filesystem::GetAssetsDirectory()
+    {
+        return s_Data->AssetPath;
+    }
 
-	bool Filesystem::Copy(const std::filesystem::path& from, const std::filesystem::path& to)
-	{
-		// Nothing to copy
-		if (!Exists(from))
-		{
-			EPPO_ERROR("Cannot copy from '{}' because the path does not exist!", from);
-			return false;
-		}
+    bool Filesystem::CreateDirectory(const std::filesystem::path& path)
+    {
+        return std::filesystem::create_directories(path);
+    }
 
-		// Copy
-		std::filesystem::copy(from, to);
+    bool Filesystem::Copy(const std::filesystem::path& from, const std::filesystem::path& to)
+    {
+        // Nothing to copy
+        if (!Exists(from))
+        {
+            EPPO_ERROR("Cannot copy from '{}' because the path does not exist!", from);
+            return false;
+        }
 
-		return true;
-	}
+        // Copy
+        std::filesystem::copy(from, to);
 
-	bool Filesystem::Move(const std::filesystem::path& from, const std::filesystem::path& to)
-	{
-		std::filesystem::rename(from, to);
+        return true;
+    }
 
-		return true;
-	}
+    bool Filesystem::Move(const std::filesystem::path& from, const std::filesystem::path& to)
+    {
+        std::filesystem::rename(from, to);
 
-	bool Filesystem::Rename(const std::filesystem::path& basePath, const std::string& from, const std::string& to)
-	{
-		std::filesystem::path fromPath = basePath / from;
+        return true;
+    }
 
-		if (!Exists(fromPath))
-		{
-			EPPO_ERROR("Cannot rename '{}' because the path does not exist!", fromPath);
-			return false;
-		}
+    bool Filesystem::Rename(const std::filesystem::path& basePath, const std::string& from, const std::string& to)
+    {
+        std::filesystem::path fromPath = basePath / from;
 
-		std::filesystem::path toPath = basePath / to;
-		std::filesystem::rename(fromPath, toPath);
+        if (!Exists(fromPath))
+        {
+            EPPO_ERROR("Cannot rename '{}' because the path does not exist!", fromPath);
+            return false;
+        }
 
-		return true;
-	}
+        std::filesystem::path toPath = basePath / to;
+        std::filesystem::rename(fromPath, toPath);
 
-	bool Filesystem::Exists(const std::filesystem::path& path)
-	{
-		return std::filesystem::exists(path);
-	}
+        return true;
+    }
 
-	Buffer Filesystem::ReadBytes(const std::filesystem::path& filepath)
-	{
-		EPPO_PROFILE_FUNCTION("Filesystem::ReadBytes");
+    bool Filesystem::Exists(const std::filesystem::path& path)
+    {
+        return std::filesystem::exists(path);
+    }
 
-		std::ifstream stream(filepath, std::ios::binary | std::ios::ate);
-		if (!stream)
-			return {};
+    Buffer Filesystem::ReadBytes(const std::filesystem::path& filepath)
+    {
+        EPPO_PROFILE_FUNCTION("Filesystem::ReadBytes");
 
-		const std::streampos end = stream.tellg();
-		stream.seekg(0, std::ios::beg);
-		const size_t fileSize = end - stream.tellg();
+        std::ifstream stream(filepath, std::ios::binary | std::ios::ate);
+        if (!stream)
+            return {};
 
-		if (fileSize == 0)
-			return {};
+        const std::streampos end = stream.tellg();
+        stream.seekg(0, std::ios::beg);
+        const size_t fileSize = end - stream.tellg();
 
-		Buffer buffer(static_cast<uint32_t>(fileSize));
-		stream.read(buffer.As<char>(), static_cast<int32_t>(fileSize));
-		stream.close();
+        if (fileSize == 0)
+            return {};
 
-		return buffer;
-	}
+        Buffer buffer(static_cast<uint32_t>(fileSize));
+        stream.read(buffer.As<char>(), static_cast<int32_t>(fileSize));
+        stream.close();
 
-	std::string Filesystem::ReadText(const std::filesystem::path& filepath)
-	{
-		EPPO_PROFILE_FUNCTION("Filesystem::ReadText");
+        return buffer;
+    }
 
-		std::string text;
+    std::string Filesystem::ReadText(const std::filesystem::path& filepath)
+    {
+        EPPO_PROFILE_FUNCTION("Filesystem::ReadText");
 
-		std::ifstream stream(filepath, std::ios::binary | std::ios::in);
-		if (!stream)
-			return text;
+        std::string text;
 
-		stream.seekg(0, std::ios::end);
+        std::ifstream stream(filepath, std::ios::binary | std::ios::in);
+        if (!stream)
+            return text;
 
-		if (const size_t size = stream.tellg(); size != -1)
-		{
-			text.resize(size);
-			stream.seekg(0, std::ios::beg);
-			stream.read(text.data(), static_cast<int32_t>(text.size()));
-		}
+        stream.seekg(0, std::ios::end);
 
-		return text;
-	}
+        if (const size_t size = stream.tellg(); size != -1)
+        {
+            text.resize(size);
+            stream.seekg(0, std::ios::beg);
+            stream.read(text.data(), static_cast<int32_t>(text.size()));
+        }
 
-	void Filesystem::WriteBytes(const std::filesystem::path& filepath, Buffer buffer, const bool overwrite)
-	{
-		EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
+        return text;
+    }
 
-		if (Exists(filepath) && !overwrite)
-			return;
+    void Filesystem::WriteBytes(const std::filesystem::path& filepath, Buffer buffer, const bool overwrite)
+    {
+        EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
 
-		std::ofstream stream(filepath, std::ios::binary);
-		EPPO_ASSERT(stream)
+        if (Exists(filepath) && !overwrite)
+            return;
 
-		stream.write(buffer.As<char>(), buffer.Size);
-	}
+        std::ofstream stream(filepath, std::ios::binary);
+        EPPO_ASSERT(stream);
 
-	void Filesystem::WriteBytes(const std::filesystem::path& filepath, const std::vector<uint32_t>& buffer, const bool overwrite)
-	{
-		EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
+        stream.write(buffer.As<char>(), buffer.Size);
+    }
 
-		if (Exists(filepath) && !overwrite)
-			return;
+    void Filesystem::WriteBytes(const std::filesystem::path& filepath, const std::vector<uint32_t>& buffer, const bool overwrite)
+    {
+        EPPO_PROFILE_FUNCTION("Filesystem::WriteBytes");
 
-		std::ofstream stream(filepath, std::ios::binary);
-		EPPO_ASSERT(stream)
+        if (Exists(filepath) && !overwrite)
+            return;
 
-		stream.write((char*)buffer.data(), static_cast<int32_t>(buffer.size()) * sizeof(uint32_t));
-	}
+        std::ofstream stream(filepath, std::ios::binary);
+        EPPO_ASSERT(stream);
 
-	void Filesystem::WriteText(const std::filesystem::path& filepath, const std::string& text, const bool overwrite)
-	{
-		EPPO_PROFILE_FUNCTION("Filesystem::WriteText");
+        stream.write((char*)buffer.data(), static_cast<int32_t>(buffer.size()) * sizeof(uint32_t));
+    }
 
-		if (Exists(filepath) && !overwrite)
-			return;
+    void Filesystem::WriteText(const std::filesystem::path& filepath, const std::string& text, const bool overwrite)
+    {
+        EPPO_PROFILE_FUNCTION("Filesystem::WriteText");
 
-		std::ofstream stream;
-		if (overwrite)
-			stream.open(filepath, std::ios::out | std::ios::trunc);
-		else
-			stream.open(filepath, std::ios::out);
+        if (Exists(filepath) && !overwrite)
+            return;
 
-		EPPO_ASSERT(stream)
+        std::ofstream stream;
+        if (overwrite)
+            stream.open(filepath, std::ios::out | std::ios::trunc);
+        else
+            stream.open(filepath, std::ios::out);
 
-		stream.write(text.c_str(), static_cast<int32_t>(text.size()));
-	}
+        EPPO_ASSERT(stream);
+
+        stream.write(text.c_str(), static_cast<int32_t>(text.size()));
+    }
 }

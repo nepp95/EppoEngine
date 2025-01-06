@@ -11,13 +11,13 @@ namespace Eppo
 	VulkanContext::VulkanContext(GLFWwindow* windowHandle)
 		: m_WindowHandle(windowHandle)
 	{
-		EPPO_ASSERT(windowHandle)
+        EPPO_ASSERT(windowHandle);
 	}
 
 	void VulkanContext::Init()
 	{
 		// Initialize Volk for loading Vulkan functions
-		VK_CHECK(volkInitialize(), "Failed to initialize volk!")
+        VK_CHECK(volkInitialize(), "Failed to initialize volk!");
 
 		VkApplicationInfo appInfo{};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -55,14 +55,14 @@ namespace Eppo
 			instanceInfo.pNext = nullptr;
 		}
 
-		VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &s_Instance), "Failed to create instance!")
+		VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &s_Instance), "Failed to create instance!");
 
 		// After creating vulkan instance, load all required vulkan entrypoints
 		volkLoadInstance(s_Instance);
 
 		// Debug messenger
-		if (VulkanConfig::EnableValidation)
-			VK_CHECK(CreateDebugUtilsMessengerEXT(s_Instance, &debugInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!")
+        if (VulkanConfig::EnableValidation)
+            VK_CHECK(CreateDebugUtilsMessengerEXT(s_Instance, &debugInfo, nullptr, &m_DebugMessenger), "Failed to create debug messenger!");
 
 		// Devices
 		m_PhysicalDevice = CreateRef<VulkanPhysicalDevice>();

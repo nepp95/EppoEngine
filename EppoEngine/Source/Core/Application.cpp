@@ -8,182 +8,185 @@
 
 namespace Eppo
 {
-	Application* Application::s_Instance = nullptr;
+    Application* Application::s_Instance = nullptr;
 
-	Application::Application(ApplicationSpecification specification)
-		: m_Specification(std::move(specification))
-	{
-		// Set instance if not set. We can only have one instance!
-		EPPO_ASSERT(!s_Instance)
-		s_Instance = this;
+    Application::Application(ApplicationSpecification specification)
+        : m_Specification(std::move(specification))
+    {
+        // Set instance if not set. We can only have one instance!
+        EPPO_ASSERT(!s_Instance);
+        s_Instance = this;
 
-		// Set working directory
-		if (!m_Specification.WorkingDirectory.empty())
-			std::filesystem::current_path(m_Specification.WorkingDirectory);
+        // Set working directory
+        if (!m_Specification.WorkingDirectory.empty())
+            std::filesystem::current_path(m_Specification.WorkingDirectory);
 
-		// Create window
-		WindowSpecification windowSpec;
-		windowSpec.Width = m_Specification.WindowWidth;
-		windowSpec.Height = m_Specification.WindowHeight;
-		windowSpec.Title = m_Specification.Name;
+        // Create window
+        WindowSpecification windowSpec;
+        windowSpec.Width = m_Specification.WindowWidth;
+        windowSpec.Height = m_Specification.WindowHeight;
+        windowSpec.Title = m_Specification.Name;
 
-		m_Window = CreateScope<Window>(windowSpec);
-		m_Window->Init();
-		m_Window->SetEventCallback([this](Event& e) { Application::OnEvent(e);  });
+        m_Window = CreateScope<Window>(windowSpec);
+        m_Window->Init();
+        m_Window->SetEventCallback([this](Event& e)
+        {
+            Application::OnEvent(e);
+        });
 
-		// Initialize systems
-		Filesystem::Init();
-		ScriptEngine::Init();
+        // Initialize systems
+        Filesystem::Init();
+        ScriptEngine::Init();
 
-		// Add GUI layer
-		m_ImGuiLayer = new ImGuiLayer();
-		PushLayer(m_ImGuiLayer, true);
-	}
+        // Add GUI layer
+        m_ImGuiLayer = new ImGuiLayer();
+        PushLayer(m_ImGuiLayer, true);
+    }
 
-	Application::~Application()
-	{
-		EPPO_INFO("Shutting down...");
+    Application::~Application()
+    {
+        EPPO_INFO("Shutting down...");
 
-		for (Layer* layer : m_LayerStack)
-			layer->OnDetach();
+        for (Layer* layer : m_LayerStack)
+            layer->OnDetach();
 
-		ScriptEngine::Shutdown();
-		// TODO: Remove Renderer::Shutdown();
-		m_Window->Shutdown();
-	}
+        ScriptEngine::Shutdown();
+        // TODO: Remove Renderer::Shutdown();
+        m_Window->Shutdown();
+    }
 
-	void Application::Close()
-	{
-		m_IsRunning = false;
-	}
+    void Application::Close()
+    {
+        m_IsRunning = false;
+    }
 
-	void Application::OnEvent(Event& e)
-	{
-		EPPO_PROFILE_FUNCTION("Application::OnEvent");
+    void Application::OnEvent(Event& e)
+    {
+        EPPO_PROFILE_FUNCTION("Application::OnEvent");
 
-		EventDispatcher dispatcher(e);
+        EventDispatcher dispatcher(e);
 
-		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::OnWindowClose));
-		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(Application::OnWindowResize));
+        dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::OnWindowClose));
+        dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(Application::OnWindowResize));
 
-		for (Layer* layer : m_LayerStack)
-		{
-			if (e.Handled)
-				break;
+        for (Layer* layer : m_LayerStack)
+        {
+            if (e.Handled)
+                break;
 
-			layer->OnEvent(e);
-		}
-	}
+            layer->OnEvent(e);
+        }
+    }
 
-	void Application::SubmitToMainThread(const std::function<void()>& fn)
-	{
-		EPPO_PROFILE_FUNCTION("Application::SubmitToMainThread");
+    void Application::SubmitToMainThread(const std::function<void()>& fn)
+    {
+        EPPO_PROFILE_FUNCTION("Application::SubmitToMainThread");
 
-		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+        std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
 
-		m_MainThreadQueue->AddCommand(fn);
-	}
+        m_MainThreadQueue->AddCommand(fn);
+    }
 
-	void Application::RenderGui()
-	{
-		EPPO_PROFILE_FUNCTION("Application::RenderGui");
+    void Application::RenderGui()
+    {
+        EPPO_PROFILE_FUNCTION("Application::RenderGui");
 
-		for (Layer* layer : m_LayerStack)
-			layer->RenderGui();
-	}
+        for (Layer* layer : m_LayerStack)
+            layer->RenderGui();
+    }
 
-	void Application::PushLayer(Layer* layer, const bool overlay)
-	{
-		EPPO_PROFILE_FUNCTION("Application::PushLayer");
+    void Application::PushLayer(Layer* layer, const bool overlay)
+    {
+        EPPO_PROFILE_FUNCTION("Application::PushLayer");
 
-		if (overlay)
-			m_LayerStack.PushOverlay(layer);
-		else
-			m_LayerStack.PushLayer(layer);
-	}
+        if (overlay)
+            m_LayerStack.PushOverlay(layer);
+        else
+            m_LayerStack.PushLayer(layer);
+    }
 
-	void Application::PopLayer(Layer* layer, const bool overlay)
-	{
-		EPPO_PROFILE_FUNCTION("Application::PopLayer");
+    void Application::PopLayer(Layer* layer, const bool overlay)
+    {
+        EPPO_PROFILE_FUNCTION("Application::PopLayer");
 
-		if (overlay)
-			m_LayerStack.PopOverlay(layer);
-		else
-			m_LayerStack.PopLayer(layer);
-	}
+        if (overlay)
+            m_LayerStack.PopOverlay(layer);
+        else
+            m_LayerStack.PopLayer(layer);
+    }
 
-	void Application::Run()
-	{
-		Ref<RendererContext> context = RendererContext::Get();
+    void Application::Run()
+    {
+        const Ref<RendererContext> context = RendererContext::Get();
 
-		while (m_IsRunning)
-		{
-			auto time = static_cast<float>(glfwGetTime());
-			float timestep = time - m_LastFrameTime;
-			m_LastFrameTime = time;
+        while (m_IsRunning)
+        {
+            const auto time = static_cast<float>(glfwGetTime());
+            const float timestep = time - m_LastFrameTime;
+            m_LastFrameTime = time;
 
-			ExecuteMainThreadQueue();
+            ExecuteMainThreadQueue();
 
-			{
-				EPPO_PROFILE_FUNCTION("CPU Update");
+            {
+                EPPO_PROFILE_FUNCTION("CPU Update");
 
-				for (Layer* layer : m_LayerStack)
-					layer->Update(timestep);
-			}
+                for (Layer* layer : m_LayerStack)
+                    layer->Update(timestep);
+            }
 
-			if (!m_IsMinimized)
-			{
-				{
-					EPPO_PROFILE_FUNCTION("CPU Render");
+            if (!m_IsMinimized)
+            {
+                {
+                    EPPO_PROFILE_FUNCTION("CPU Render");
 
-					for (Layer* layer : m_LayerStack)
-						layer->Render();
-				}
+                    for (Layer* layer : m_LayerStack)
+                        layer->Render();
+                }
 
-				context->BeginFrame();
-				context->GetRenderer()->ExecuteRenderCommands();
-				context->PresentFrame();
+                context->BeginFrame();
+                context->GetRenderer()->ExecuteRenderCommands();
+                context->PresentFrame();
 
-				EPPO_PROFILE_FRAME_MARK;
-			}
+                EPPO_PROFILE_FRAME_MARK;
+            }
 
-			m_Window->ProcessEvents();
-		}
+            Window::ProcessEvents();
+        }
 
-		context->WaitIdle();
-	}
+        context->WaitIdle();
+    }
 
-	void Application::ExecuteMainThreadQueue()
-	{
-		EPPO_PROFILE_FUNCTION("Application::ExecuteMainThreadQueue");
+    void Application::ExecuteMainThreadQueue()
+    {
+        EPPO_PROFILE_FUNCTION("Application::ExecuteMainThreadQueue");
 
-		std::scoped_lock lock(m_MainThreadMutex);
+        std::scoped_lock lock(m_MainThreadMutex);
 
-		m_MainThreadQueue->Execute();
-	}
+        m_MainThreadQueue->Execute();
+    }
 
-	bool Application::OnWindowClose(const WindowCloseEvent& e)
-	{
-		Close();
+    bool Application::OnWindowClose(const WindowCloseEvent& e)
+    {
+        Close();
 
-		return true;
-	}
+        return true;
+    }
 
-	bool Application::OnWindowResize(const WindowResizeEvent& e)
-	{
-		EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
+    bool Application::OnWindowResize(const WindowResizeEvent& e)
+    {
+        EPPO_PROFILE_FUNCTION("Application::OnWindowResize");
 
-		const uint32_t width = e.GetWidth();
-		const uint32_t height = e.GetHeight();
+        const uint32_t width = e.GetWidth();
+        const uint32_t height = e.GetHeight();
 
-		if (width == 0 || height == 0)
-		{
-			m_IsMinimized = true;
-			return false;
-		}
-			
-		m_IsMinimized = false;
+        if (width == 0 || height == 0)
+        {
+            m_IsMinimized = true;
+            return false;
+        }
 
-		return true;
-	}
+        m_IsMinimized = false;
+
+        return true;
+    }
 }

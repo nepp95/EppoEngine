@@ -5,25 +5,28 @@
 
 namespace Eppo
 {
-	using AssetHandle = UUID;
+    using AssetHandle = UUID;
 
-	struct Asset
-	{
-		Asset() = default;
-		virtual ~Asset() = default;
+    struct Asset
+    {
+        Asset() = default;
+        virtual ~Asset() = default;
 
-		AssetHandle Handle;
+        AssetHandle Handle;
 
-		static AssetType GetStaticType() { return AssetType::None; }
+        static AssetType GetStaticType()
+        {
+            return AssetType::None;
+        }
 
-		virtual bool operator==(const Asset& other) const
-		{
-			return Handle == other.Handle;
-		}
+        virtual bool operator==(const Asset& other) const
+        {
+            return Handle == other.Handle;
+        }
 
-		virtual bool operator!=(const Asset& other) const
-		{
-			return !(*this == other);
-		}
-	};
+        virtual bool operator!=(const Asset& other) const
+        {
+            return !(*this == other);
+        }
+    };
 }

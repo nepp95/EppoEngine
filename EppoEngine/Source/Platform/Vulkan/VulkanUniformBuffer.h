@@ -5,7 +5,7 @@
 
 namespace Eppo
 {
-	class VulkanUniformBuffer : public UniformBuffer
+	class VulkanUniformBuffer final : public UniformBuffer
 	{
 	public:
 		VulkanUniformBuffer(uint32_t size, uint32_t binding);

@@ -9,7 +9,7 @@ namespace Eppo
 {
 	const std::filesystem::path& Project::GetProjectDirectory()
 	{
-		EPPO_ASSERT(s_ActiveProject)
+        EPPO_ASSERT(s_ActiveProject);
 		return s_ActiveProject->m_Specification.ProjectDirectory;
 	}
 
@@ -20,25 +20,25 @@ namespace Eppo
 
 	std::filesystem::path Project::GetProjectFile()
 	{
-		EPPO_ASSERT(s_ActiveProject)
+        EPPO_ASSERT(s_ActiveProject);
 		return GetProjectDirectory() / std::filesystem::path(s_ActiveProject->m_Specification.Name + ".epproj");
 	}
 
 	std::filesystem::path Project::GetAssetsDirectory()
 	{
-		EPPO_ASSERT(s_ActiveProject)
+        EPPO_ASSERT(s_ActiveProject);
 		return GetProjectDirectory() / "Assets";
 	}
 
 	std::filesystem::path Project::GetAssetFilepath(const std::filesystem::path& filepath)
 	{
-		EPPO_ASSERT(s_ActiveProject)
+        EPPO_ASSERT(s_ActiveProject);
 		return GetAssetsDirectory() / filepath;
 	}
 
 	std::filesystem::path Project::GetAssetRelativeFilepath(const std::filesystem::path& filepath)
 	{
-		EPPO_ASSERT(s_ActiveProject)
+        EPPO_ASSERT(s_ActiveProject);
 		return std::filesystem::relative(filepath, GetAssetsDirectory());
 	}
 

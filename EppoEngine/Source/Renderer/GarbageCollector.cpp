@@ -7,7 +7,7 @@ namespace Eppo
 
 	GarbageCollector::GarbageCollector()
 	{
-		EPPO_ASSERT(!s_IsInstantiated)
+        EPPO_ASSERT(!s_IsInstantiated);
 		s_IsInstantiated = true;
 	}
 
