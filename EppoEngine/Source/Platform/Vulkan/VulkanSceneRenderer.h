@@ -2,6 +2,7 @@
 
 #include "Core/Buffer.h"
 #include "Platform/Vulkan/Vulkan.h"
+#include "Platform/Vulkan/VulkanCmd.h"
 #include "Renderer/Mesh/Mesh.h"
 #include "Renderer/DrawCommand.h"
 #include "Renderer/DebugRenderer.h"
@@ -45,14 +46,13 @@ namespace Eppo
         void SkyboxPass();
         void GeometryPass();
         void DebugLinePass();
-        void CompositePass();
+        void CompositePass() const;
 
     private:
         RenderSpecification m_RenderSpecification;
         Ref<Scene> m_Scene;
 
-        Ref<CommandBuffer> m_CommandBuffer;
-        Ref<DebugRenderer> m_DebugRenderer;
+        Ref<VulkanCmd> m_CommandBuffer;
 
         Ref<Pipeline> m_PreDepthPipeline;
         Ref<Pipeline> m_EnvPipeline;
@@ -61,7 +61,7 @@ namespace Eppo
         Ref<Pipeline> m_DebugLinePipeline;
         Ref<Pipeline> m_CompositePipeline;
 
-        static constexpr uint32_t s_MaxLights = 8;
+        static constexpr uint32_t m_MaxLights = 8;
 
         // Frame in flight --> Set
         std::unordered_map<uint32_t, std::array<VkDescriptorSet, 4>> m_DescriptorSets;
@@ -95,14 +95,14 @@ namespace Eppo
         struct LightsData
         {
             glm::mat4 Projection;
-            PointLight Lights[s_MaxLights];
+            PointLight Lights[m_MaxLights];
             uint32_t NumLights;
         } m_LightsBuffer;
 
         Ref<UniformBuffer> m_LightsUB;
 
         // Set 1, Binding 2
-        std::array<Ref<Image>, s_MaxLights> m_ShadowMaps;
+        std::array<Ref<Image>, m_MaxLights> m_ShadowMaps;
 
         // Draw commands
         std::unordered_map<EntityType, std::vector<Ref<DrawCommand>>> m_DrawList;
@@ -115,14 +115,5 @@ namespace Eppo
 
         // Statistics
         RenderStatistics m_RenderStatistics;
-
-        struct TimestampQueries
-        {
-            uint32_t CompositeQuery = UINT32_MAX;
-            uint32_t DebugLineQuery = UINT32_MAX;
-            uint32_t GeometryQuery = UINT32_MAX;
-            uint32_t PreDepthQuery = UINT32_MAX;
-            uint32_t SkyboxQuery = UINT32_MAX;
-        } m_TimestampQueries;
     };
 }

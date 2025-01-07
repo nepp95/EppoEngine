@@ -192,33 +192,6 @@ namespace Eppo
         });
     }
 
-    uint32_t VulkanCommandBuffer::RT_BeginTimestampQuery()
-    {
-        uint32_t queryIndex = m_QueryIndex;
-        m_QueryIndex += 2;
-
-        const auto renderer = VulkanContext::Get()->GetRenderer();
-        renderer->SubmitCommand([this, queryIndex]()
-        {
-            const uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
-
-            vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex);
-        });
-
-        return queryIndex;
-    }
-
-    void VulkanCommandBuffer::RT_EndTimestampQuery(uint32_t queryIndex) const
-    {
-        const auto renderer = VulkanContext::Get()->GetRenderer();
-        renderer->SubmitCommand([this, queryIndex]()
-        {
-            const uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
-
-            vkCmdWriteTimestamp(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex + 1);
-        });
-    }
-
     float VulkanCommandBuffer::GetTimestamp(const uint32_t frameIndex, const uint32_t queryIndex) const
     {
         const auto& timing = m_TimestampDeltas[frameIndex];
@@ -235,5 +208,33 @@ namespace Eppo
     {
         const uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
         return m_CommandBuffers[imageIndex];
+    }
+
+    uint32_t VulkanCommandBuffer::RT_BeginTimestampQuery()
+    {
+        uint32_t queryIndex = m_QueryIndex;
+        m_QueryIndex += 2;
+
+        const auto renderer = VulkanContext::Get()->GetRenderer();
+        renderer->SubmitCommand([this, queryIndex]()
+        {
+            const uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
+
+            vkCmdWriteTimestamp2(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_QueryPools[imageIndex], queryIndex);
+        });
+
+        return queryIndex;
+    }
+
+    void VulkanCommandBuffer::RT_EndTimestampQuery(uint32_t queryIndex) const
+    {
+        const auto renderer = VulkanContext::Get()->GetRenderer();
+        renderer->SubmitCommand([this, queryIndex]()
+        {
+            const uint32_t imageIndex = VulkanContext::Get()->GetCurrentFrameIndex();
+
+            vkCmdWriteTimestamp2(m_CommandBuffers[imageIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_QueryPools[imageIndex],
+                                 queryIndex + 1);
+        });
     }
 }

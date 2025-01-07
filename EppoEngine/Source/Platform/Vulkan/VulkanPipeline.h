@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Platform/Vulkan/VulkanCmd.h"
 #include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/Image.h"
 #include "Renderer/Pipeline.h"
@@ -10,13 +11,15 @@ namespace Eppo
     {
     public:
         explicit VulkanPipeline(PipelineSpecification specification);
-        VulkanPipeline(const VulkanPipeline&) = delete;
-        VulkanPipeline(const VulkanPipeline&&) = delete;
-        VulkanPipeline& operator=(const VulkanPipeline&) = delete;
-        VulkanPipeline& operator=(const VulkanPipeline&&) = delete;
         ~VulkanPipeline() override;
 
-        [[nodiscard]] Ref<Image> GetImage(const uint32_t index) const override { return m_Specification.RenderAttachments.at(index).RenderImage; }
+        [[nodiscard]] Ref<VulkanCmd> GetCommandBuffers() const { return m_CommandBuffers; }
+
+        [[nodiscard]] Ref<Image> GetImage(const uint32_t index) const override
+        {
+            return m_Specification.RenderAttachments.at(index).RenderImage;
+        }
+
         [[nodiscard]] Ref<Image> GetFinalImage() const override { return m_Specification.RenderAttachments.at(0).RenderImage; }
 
         [[nodiscard]] VkPipeline GetPipeline() const { return m_Pipeline; }
@@ -27,6 +30,7 @@ namespace Eppo
 
     private:
         PipelineSpecification m_Specification;
+        Ref<VulkanCmd> m_CommandBuffers;
 
         VkPipeline m_Pipeline;
         VkPipelineLayout m_PipelineLayout;

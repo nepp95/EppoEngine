@@ -18,9 +18,9 @@ namespace Eppo
         virtual void ExecuteRenderCommands() = 0;
         virtual void SubmitCommand(RenderCommand command) = 0;
 
-        // Render passes
-        virtual void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) = 0;
-        virtual void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) = 0;
+		// Render passes
+		virtual void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true, bool debugLabel = true) = 0;
+		virtual void EndRenderPass(const Ref<CommandBuffer>& commandBuffer, bool debugLabel = true) = 0;
 
         // Shaders
         virtual Ref<Shader> GetShader(const std::string& name) = 0;

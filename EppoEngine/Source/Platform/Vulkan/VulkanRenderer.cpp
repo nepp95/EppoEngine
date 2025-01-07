@@ -39,17 +39,21 @@ namespace Eppo
             "Resources/Shaders/skybox.glsl"
         };
 
-#ifdef EPPO_DEBUG
+#define MT
+#ifndef MT
         std::for_each(std::execution::seq, shaders.cbegin(), shaders.cend(), [&](const std::string& path)
         {
             m_ShaderLibrary.Load(path);
         });
-#elif defined(EPPO_RELEASE)
+#else
         std::for_each(std::execution::par, shaders.cbegin(), shaders.cend(), [&](const std::string& path)
         {
             m_ShaderLibrary.Load(path);
         });
 #endif
+
+        // Create debug renderer
+        m_DebugRenderer = DebugRenderer::Create();
     }
 
     void VulkanRenderer::Shutdown()
@@ -73,13 +77,17 @@ namespace Eppo
         m_CommandQueue.AddCommand(std::move(command));
     }
 
-    void VulkanRenderer::BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline)
+    void VulkanRenderer::BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline,
+                                         bool debugLabel)
     {
         EPPO_PROFILE_FUNCTION("VulkanRenderer::BeginRenderPass");
 
         const Ref<VulkanContext> context = VulkanContext::Get();
         const Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
         const Ref<VulkanPipeline> vkPipeline = std::static_pointer_cast<VulkanPipeline>(pipeline);
+
+        if (debugLabel)
+            m_DebugRenderer->StartDebugLabel(commandBuffer, pipeline->GetSpecification().Shader->GetName());
 
         // Setup render attachments
         const auto& spec = pipeline->GetSpecification();
@@ -176,13 +184,16 @@ namespace Eppo
         }
     }
 
-    void VulkanRenderer::EndRenderPass(const Ref<CommandBuffer>& commandBuffer)
+    void VulkanRenderer::EndRenderPass(const Ref<CommandBuffer>& commandBuffer, bool debugLabel)
     {
         EPPO_PROFILE_FUNCTION("VulkanRenderer::EndRenderPass");
 
         const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
         const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
         vkCmdEndRendering(cb);
+
+        if (debugLabel)
+            m_DebugRenderer->EndDebugLabel(commandBuffer);
     }
 
     void* VulkanRenderer::AllocateDescriptor(void* layout)
