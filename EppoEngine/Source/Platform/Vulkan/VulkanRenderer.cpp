@@ -155,7 +155,7 @@ namespace Eppo
         }
 
         // Begin dynamic rendering
-        const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+        const auto cmd = std::static_pointer_cast<VulkanCmd>(commandBuffer);
         const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
         vkCmdBeginRendering(cb, &renderingInfo);
 
@@ -184,11 +184,11 @@ namespace Eppo
         }
     }
 
-    void VulkanRenderer::EndRenderPass(const Ref<CommandBuffer>& commandBuffer, bool debugLabel)
+    void VulkanRenderer::EndRenderPass(const Ref<CommandBuffer>& commandBuffer, const bool debugLabel)
     {
         EPPO_PROFILE_FUNCTION("VulkanRenderer::EndRenderPass");
 
-        const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+        const auto cmd = std::static_pointer_cast<VulkanCmd>(commandBuffer);
         const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
         vkCmdEndRendering(cb);
 

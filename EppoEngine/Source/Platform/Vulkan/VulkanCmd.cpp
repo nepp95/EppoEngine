@@ -41,7 +41,7 @@ namespace Eppo
                  "Failed to allocate command buffers!");
 
         // Create fences
-        VkFenceCreateInfo fenceCreateInfo;
+        VkFenceCreateInfo fenceCreateInfo{};
         fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
@@ -51,7 +51,7 @@ namespace Eppo
         // Create query pools
         if (!s_QueryPoolCreated)
         {
-            VkQueryPoolCreateInfo queryPoolCreateInfo;
+            VkQueryPoolCreateInfo queryPoolCreateInfo{};
             queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
             queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
             queryPoolCreateInfo.queryCount = s_QueryCount;

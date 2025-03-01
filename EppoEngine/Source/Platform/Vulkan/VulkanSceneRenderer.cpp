@@ -20,6 +20,9 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
+#include <tracy/TracyC.h>
+
+#include "Utility/Random.h"
 
 namespace Eppo
 {
@@ -339,6 +342,8 @@ namespace Eppo
         PrepareImages();
         UpdateDescriptors();
 
+        m_CommandBuffer->RT_End();
+
         // Record render commands
         GuiPass();
         PreDepthPass();
@@ -357,11 +362,10 @@ namespace Eppo
         {
             const auto context = VulkanContext::Get();
             const VkCommandBuffer commandBuffer = cmd->GetCurrentCommandBuffer();
-            EPPO_PROFILE_GPU_END(context->GetTracyContext(), commandBuffer)
+            EPPO_PROFILE_GPU_COLLECT(context->GetTracyContext(), commandBuffer)
         });*/
 
-        // Submit work
-        m_CommandBuffer->RT_End();
+        
     }
 
     void VulkanSceneRenderer::PrepareBuffers()
@@ -490,7 +494,6 @@ namespace Eppo
 
         const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
         const auto descriptorSets = m_DescriptorSets[frameIndex];
-        const auto commandBuffer = m_CommandBuffer->GetCurrentCommandBuffer();
 
         DescriptorWriter writer;
 
@@ -523,14 +526,14 @@ namespace Eppo
         writer.WriteBuffer(m_LightsUB->GetBinding(), lightBuffer, sizeof(LightsData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
         // Image bindings
-        std::vector<VkDescriptorImageInfo> imageInfos;
+        std::vector<VkDescriptorImageInfo> imageInfos(m_ShadowMaps.size());
 
         // Binding 2
-        for (const auto& shadowMap : m_ShadowMaps)
+        for (size_t i = 0; i < imageInfos.size(); i++)
         {
-            const ImageInfo& imageInfo = std::static_pointer_cast<VulkanImage>(shadowMap)->GetImageInfo();
+            const ImageInfo& imageInfo = std::static_pointer_cast<VulkanImage>(m_ShadowMaps[i])->GetImageInfo();
 
-            auto& [sampler, imageView, imageLayout] = imageInfos.emplace_back();
+            auto& [sampler, imageView, imageLayout] = imageInfos[i];
             imageLayout = imageInfo.ImageLayout;
             imageView = imageInfo.ImageView;
             sampler = imageInfo.Sampler;
@@ -546,9 +549,7 @@ namespace Eppo
         // Binding 0
         for (const auto& dc : m_DrawList[EntityType::Mesh])
         {
-            const auto meshCmd = std::static_pointer_cast<MeshCommand>(dc);
-
-            for (const auto& image : meshCmd->Mesh->GetImages())
+            for (const auto meshCmd = std::static_pointer_cast<MeshCommand>(dc); const auto& image : meshCmd->Mesh->GetImages())
             {
                 const ImageInfo& imageInfo = std::static_pointer_cast<VulkanImage>(image)->GetImageInfo();
 
@@ -587,6 +588,7 @@ namespace Eppo
         const auto cmd = commandBuffer->GetCurrentCommandBuffer();
         auto& pipelineSpec = pipeline->GetSpecification();
 
+        // Begin command buffer recording
         commandBuffer->RT_Begin();
 
         // Push constant range buffer
@@ -594,7 +596,14 @@ namespace Eppo
         ScopedBuffer pcrBuffer(pcr[0].size);
 
         // Profiling
-        EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd, "PreDepth")
+        const auto zoneName = "PreDepth";
+        ___tracy_emit_gpu_zone_begin_alloc((const struct ___tracy_gpu_zone_begin_data){
+            .srcloc = ___tracy_alloc_srcloc_name(__LINE__, __FILE__, sizeof(__FILE__), __FUNCTION__, sizeof(__FUNCTION__), zoneName,
+                                                 sizeof(zoneName), 0xffff00ff),
+            .queryId = static_cast<uint16_t>(Utility::GenerateRandomUInt32(0, UINT16_MAX)),
+            .context = VulkanContext::Get()->GetTracyContext()
+        });
+        EPPO_PROFILE_GPU_SCOPED(VulkanContext::Get()->GetTracyContext(), cmd, "PreDepth")
 
         // Update descriptor sets
         const uint32_t frameIndex = VulkanContext::Get()->GetCurrentFrameIndex();
@@ -660,6 +669,9 @@ namespace Eppo
                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
                 );
+
+        // End command buffer recording
+        commandBuffer->RT_End();
     }
 
     // TODO: Precompute once (compute shader)
@@ -672,8 +684,11 @@ namespace Eppo
         const auto commandBuffer = pipeline->GetCommandBuffers();
         const auto cmd = commandBuffer->GetCurrentCommandBuffer();
 
+        // Begin command buffer recording
+        commandBuffer->RT_Begin();
+
         // Profiling
-        EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd, "EnvPass")
+        EPPO_PROFILE_GPU_SCOPED(VulkanContext::Get()->GetTracyContext(), cmd, "EnvPass")
 
         // Begin rendering
         renderer->BeginRenderPass(commandBuffer, pipeline);
@@ -688,7 +703,11 @@ namespace Eppo
         m_RenderStatistics.DrawCalls++;
         vkCmdDraw(cmd, 36, 1, 0, 0);
 
+        // End render pass
         renderer->EndRenderPass(commandBuffer);
+
+        // End command buffer recording
+        commandBuffer->RT_End();
     }
 
     void VulkanSceneRenderer::SkyboxPass()
@@ -700,8 +719,11 @@ namespace Eppo
         const auto commandBuffer = pipeline->GetCommandBuffers();
         const auto cmd = commandBuffer->GetCurrentCommandBuffer();
 
+        // Begin command buffer recording
+        commandBuffer->RT_Begin();
+
         // Profiling
-        EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd, "SkyboxPass")
+        EPPO_PROFILE_GPU_SCOPED(VulkanContext::Get()->GetTracyContext(), cmd, "SkyboxPass")
 
         // Begin rendering
         renderer->BeginRenderPass(commandBuffer, pipeline);
@@ -716,7 +738,11 @@ namespace Eppo
         m_RenderStatistics.DrawCalls++;
         vkCmdDraw(cmd, 36, 1, 0, 0);
 
+        // End render pass
         renderer->EndRenderPass(commandBuffer);
+
+        // End command buffer recording
+        commandBuffer->RT_End();
     }
 
     void VulkanSceneRenderer::GeometryPass()
@@ -728,8 +754,11 @@ namespace Eppo
         const auto commandBuffer = pipeline->GetCommandBuffers();
         const auto cmd = commandBuffer->GetCurrentCommandBuffer();
 
+        // Begin command buffer recording
+        commandBuffer->RT_Begin();
+
         // Profiling
-        EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd, "GeometryPass")
+        EPPO_PROFILE_GPU_SCOPED(VulkanContext::Get()->GetTracyContext(), cmd, "GeometryPass")
 
         // Begin rendering
         renderer->BeginRenderPass(commandBuffer, pipeline);
@@ -787,8 +816,11 @@ namespace Eppo
             }
         }
 
-        // End rendering
+        // End render pass
         renderer->EndRenderPass(commandBuffer);
+
+        // End command buffer recording
+        commandBuffer->RT_End();
     }
 
     void VulkanSceneRenderer::DebugLinePass()
@@ -800,10 +832,13 @@ namespace Eppo
         const auto commandBuffer = pipeline->GetCommandBuffers();
         const auto cmd = commandBuffer->GetCurrentCommandBuffer();
 
+        // Begin command buffer recording
+        commandBuffer->RT_Begin();
+
         if (m_LightsBuffer.NumLights > 0)
         {
             // Profiling
-            EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd, "DebugLinePass")
+            EPPO_PROFILE_GPU_SCOPED(VulkanContext::Get()->GetTracyContext(), cmd, "DebugLinePass")
 
             // Begin rendering
             renderer->BeginRenderPass(commandBuffer, m_DebugLinePipeline);
@@ -832,6 +867,9 @@ namespace Eppo
             // End rendering
             renderer->EndRenderPass(commandBuffer);
         }
+
+        // End command buffer recording
+        commandBuffer->RT_End();
     }
 
     void VulkanSceneRenderer::CompositePass() const
@@ -846,8 +884,11 @@ namespace Eppo
         const Ref<VulkanContext> context = VulkanContext::Get();
         const Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
 
+        // Begin command buffer recording
+        commandBuffer->RT_Begin();
+
         // Profiling
-        EPPO_PROFILE_GPU(VulkanContext::Get()->GetTracyContext(), cmd, "CompositePass")
+        EPPO_PROFILE_GPU_SCOPED(VulkanContext::Get()->GetTracyContext(), cmd, "CompositePass")
 
         VulkanImage::TransitionImage(cmd, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -871,5 +912,8 @@ namespace Eppo
 
         VulkanImage::TransitionImage(cmd, swapchain->GetCurrentImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+        // End command buffer recording
+        commandBuffer->RT_End();
     }
 }
