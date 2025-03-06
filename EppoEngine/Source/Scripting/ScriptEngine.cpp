@@ -395,7 +395,7 @@ namespace Eppo
 
             std::string fullName;
             if (strlen(nameSpace) != 0)
-                fullName = fmt::format("{}.{}", nameSpace, name);
+                fullName = std::format("{}.{}", nameSpace, name);
             else
                 fullName = name;
 

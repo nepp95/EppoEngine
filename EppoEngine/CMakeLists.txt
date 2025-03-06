@@ -28,29 +28,18 @@ endforeach()
 # Includes
 set(INCLUDE_DIRS
     "Source"
-    "Vendor/bullet/include"
-    "Vendor/bullet/include/bullet"
-    "Vendor/entt/single_include"
     "Vendor/filewatch"
-    "Vendor/glfw/include"
-    "Vendor/glm"
-    "Vendor/imgui"
     "Vendor/mono/include"
-    "Vendor/spdlog/include"
     "Vendor/stb"
     "Vendor/tinygltf"
-    "Vendor/tracy/public"
     "Vendor/vulkan-memory-allocator"
     "Vendor/volk"
-    "Vendor/yaml-cpp/include"
 )
 
 # Externals
-include(FindPkgConfig)
-set(ENV{PKG_CONFIG_PATH} "/usr/local/bin/lib/pkgconfig")
-pkg_search_module(mono REQUIRED mono-2)
-find_package(Bullet REQUIRED)
-find_package(Vulkan REQUIRED)
+#include(FindPkgConfig)
+#set(ENV{PKG_CONFIG_PATH} "/usr/local/bin/lib/pkgconfig")
+#pkg_search_module(mono REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
@@ -59,5 +48,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE VK_NO_PROTOTYPES)
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${BULLET_INCLUDE_DIR})
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+    ${INCLUDE_DIRS}
+    ${BULLET_INCLUDE_DIR}
+    ${Vulkan_INCLUDE_DIRS}
+    ${FETCHCONTENT_BASE_DIR}/imgui-src
+    ${FETCHCONTENT_BASE_DIR}/tracy-src/public
+)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    EnTT glfw spirv-cross-core spdlog yaml-cpp
+)
 target_precompile_headers(${PROJECT_NAME} PRIVATE Source/pch.h)

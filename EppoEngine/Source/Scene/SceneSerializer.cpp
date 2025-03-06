@@ -4,94 +4,7 @@
 #include "Core/Filesystem.h"
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptEngine.h"
-
-#include <yaml-cpp/yaml.h>
-
-namespace YAML
-{
-    Emitter& operator<<(Emitter& out, const glm::vec2& v)
-    {
-        out << YAML::Flow;
-        out << YAML::BeginSeq << v.x << v.y << YAML::EndSeq;
-        return out;
-    }
-
-    Emitter& operator<<(Emitter& out, const glm::vec3& v)
-    {
-        out << YAML::Flow;
-        out << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
-        return out;
-    }
-
-    Emitter& operator<<(Emitter& out, const glm::vec4& v)
-    {
-        out << YAML::Flow;
-        out << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
-        return out;
-    }
-
-    template<>
-    struct convert<glm::vec2>
-    {
-        static bool decode(const Node& node, glm::vec2& v)
-        {
-            if (!node.IsSequence() || node.size() != 2)
-                return false;
-
-            v.x = node[0].as<float>();
-            v.y = node[1].as<float>();
-
-            return true;
-        }
-    };
-
-    template<>
-    struct convert<glm::vec3>
-    {
-        static bool decode(const Node& node, glm::vec3& v)
-        {
-            if (!node.IsSequence() || node.size() != 3)
-                return false;
-
-            v.x = node[0].as<float>();
-            v.y = node[1].as<float>();
-            v.z = node[2].as<float>();
-
-            return true;
-        }
-    };
-
-    template<>
-    struct convert<glm::vec4>
-    {
-        static bool decode(const Node& node, glm::vec4& v)
-        {
-            if (!node.IsSequence() || node.size() != 4)
-                return false;
-
-            v.x = node[0].as<float>();
-            v.y = node[1].as<float>();
-            v.z = node[2].as<float>();
-            v.w = node[3].as<float>();
-
-            return true;
-        }
-    };
-
-    template<>
-    struct convert<Eppo::UUID>
-    {
-        static bool decode(const Node& node, Eppo::UUID& uuid)
-        {
-            if (node.IsSequence())
-                return false;
-
-            uuid = node[0].as<uint64_t>();
-
-            return true;
-        }
-    };
-}
+#include "Utility/Yaml.h"
 
 namespace Eppo
 {
@@ -126,8 +39,7 @@ namespace Eppo
         out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
 
         m_SceneContext->m_Registry.sort<IDComponent>([](const auto& lhs, const auto& rhs) { return lhs.ID < rhs.ID; });
-        const auto view = m_SceneContext->m_Registry.view<IDComponent>();
-        for (const auto e : view)
+        for (const auto view = m_SceneContext->m_Registry.view<IDComponent>(); const auto e : view)
         {
             const Entity entity(e, m_SceneContext.get());
             if (!entity)

@@ -7,7 +7,7 @@ namespace Eppo
 {
     struct AssetMetadata
     {
-        AssetHandle Handle = 0;
+        AssetHandle Handle = UUID(0);
         AssetType Type = AssetType::None;
 
         std::filesystem::path Filepath;

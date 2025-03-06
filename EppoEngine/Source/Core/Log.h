@@ -1,10 +1,14 @@
 #pragma once
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/string_cast.hpp>
+#include "Core/UUID.h"
 
-#include <spdlog/spdlog.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <filesystem>
+#include <glm/gtx/string_cast.hpp>
 #include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
+
+#include "KeyCodes.h"
 
 namespace Eppo
 {
@@ -30,12 +34,30 @@ namespace Eppo
     };
 }
 
-template<glm::length_t L, typename T, glm::qualifier Q>
-struct fmt::formatter<glm::vec<L, T, Q>> : fmt::formatter<std::string>
+template<>
+struct fmt::formatter<Eppo::UUID> : formatter<uint64_t>
 {
-    auto format(glm::vec<L, T, Q> vector, format_context& ctx) -> decltype(ctx.out())
+    auto format(const Eppo::UUID& v, format_context& ctx) const -> format_context::iterator
     {
-        return format_to(ctx.out(), glm::to_string(vector));
+        return formatter<uint64_t>::format(static_cast<uint64_t>(v), ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<std::filesystem::path> : formatter<std::string_view>
+{
+    auto format(const std::filesystem::path& v, format_context& ctx) const -> format_context::iterator
+    {
+        return formatter<std::string_view>::format(v.string(), ctx);
+    }
+};
+
+template<glm::length_t L, typename T, glm::precision Q>
+struct fmt::formatter<glm::vec<L, T, Q>> : formatter<std::string>
+{
+    auto format(glm::vec<L, T, Q> v, format_context& ctx) const -> format_context::iterator
+    {
+        return formatter<std::string>::format(glm::to_string(v), ctx);
     }
 };
 

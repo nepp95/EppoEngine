@@ -597,12 +597,12 @@ namespace Eppo
 
         // Profiling
         const auto zoneName = "PreDepth";
-        ___tracy_emit_gpu_zone_begin_alloc((const struct ___tracy_gpu_zone_begin_data){
+        /*___tracy_emit_gpu_zone_begin_alloc((const struct ___tracy_gpu_zone_begin_data){
             .srcloc = ___tracy_alloc_srcloc_name(__LINE__, __FILE__, sizeof(__FILE__), __FUNCTION__, sizeof(__FUNCTION__), zoneName,
                                                  sizeof(zoneName), 0xffff00ff),
             .queryId = static_cast<uint16_t>(Utility::GenerateRandomUInt32(0, UINT16_MAX)),
             .context = VulkanContext::Get()->GetTracyContext()
-        });
+        });*/
         EPPO_PROFILE_GPU_SCOPED(VulkanContext::Get()->GetTracyContext(), cmd, "PreDepth")
 
         // Update descriptor sets

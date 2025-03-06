@@ -630,7 +630,7 @@ namespace Eppo
             if (const auto& startSceneMetadata = assetRegistry.at(startScene);
                 ImGui::BeginCombo("##StartScene", startSceneMetadata.GetName().c_str()))
             {
-                for (const auto& [handle, metadata] : assetRegistry)
+                for (const auto& metadata : assetRegistry | std::views::values)
                 {
                     if (metadata.Type != AssetType::Scene)
                         continue;

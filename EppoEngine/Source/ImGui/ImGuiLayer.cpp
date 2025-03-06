@@ -161,7 +161,7 @@ namespace Eppo
     {
         glm::vec4 v = ImGuiToGLM(vec);
 
-        return glm::vec4(glm::pow(v.x, 2.2f), glm::pow(v.y, 2.2f), glm::pow(v.z, 2.2f), glm::pow(v.w, 2.2f));
+        return { glm::pow(v.x, 2.2f), glm::pow(v.y, 2.2f), glm::pow(v.z, 2.2f), glm::pow(v.w, 2.2f) };
     }
 
     void ImGuiLayer::SetupStyle() const
