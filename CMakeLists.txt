@@ -6,7 +6,7 @@ include(FetchContent)
 if(WIN32)
     add_compile_definitions(EPPO_PLATFORM_WINDOWS VK_USE_PLATFORM_WIN32_KHR)
 elseif(UNIX)
-    add_compile_definitions(EPPO_PLATFORM_LINUX)
+    add_compile_definitions(EPPO_PLATFORM_LINUX VK_USE_PLATFORM_XLIB_KHR)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -15,13 +15,10 @@ else()
     add_compile_definitions(EPPO_RELEASE)
 endif()
 
-# Dependencies
-find_package(Bullet REQUIRED)
-if(NOT Bullet_FOUND)
-    message(FATAL_ERROR "Bullet not found!")
-endif()
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-find_package(Vulkan REQUIRED)
+# Dependencies
+find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
 if(NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan not found!")
 endif()
@@ -29,9 +26,15 @@ endif()
 FetchContent_Declare(entt
     GIT_REPOSITORY https://github.com/skypjack/entt.git
     GIT_TAG v3.14.0
-    FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(entt)
+
+set(BUILD_SHARED_LIBS OFF)
+FetchContent_Declare(efsw
+    GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
+    GIT_TAG ad4ac9056402940bd41df38597d6046674b1c4a1
+)
+FetchContent_MakeAvailable(efsw)
 
 FetchContent_Declare(glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -43,41 +46,38 @@ FetchContent_MakeAvailable(glfw)
 FetchContent_Declare(glm
     GIT_REPOSITORY https://github.com/g-truc/glm.git
     GIT_TAG 1.0.1
-    FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(glm)
 
 FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG v1.91.8-docking
-    FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(imgui)
+
+FetchContent_Declare(jolt
+    GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+    GIT_TAG v5.2.0
+    SOURCE_SUBDIR Build
+)
+FetchContent_MakeAvailable(jolt)
 
 FetchContent_Declare(spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
     GIT_TAG v1.15.1
-    FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(spdlog)
-
-FetchContent_Declare(spirv-cross
-    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross.git
-    GIT_TAG vulkan-sdk-1.3.275.0
-)
-FetchContent_MakeAvailable(spirv-cross)
 
 FetchContent_Declare(tracy
     GIT_REPOSITORY https://github.com/wolfpld/tracy.git
     GIT_TAG v0.11.1
-    FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(tracy)
 
+set(YAML_BUILD_SHARED_LIBS OFF)
 FetchContent_Declare(yaml-cpp
     GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
     GIT_TAG 0.8.0
-    FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(yaml-cpp)
 

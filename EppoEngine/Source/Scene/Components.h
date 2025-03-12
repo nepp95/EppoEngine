@@ -2,7 +2,6 @@
 
 #include "Asset/Asset.h"
 #include "Core/UUID.h"
-#include "Physics/RigidBody.h"
 #include "Renderer/Camera/SceneCamera.h"
 
 #include <glm/glm.hpp>
@@ -90,12 +89,11 @@ namespace Eppo
     
     struct RigidBodyComponent
     {
-        enum class BodyType : uint8_t { Static, Dynamic, Kinematic };
-        BodyType Type = BodyType::Static;
-
+        bool IsActive = false;
         float Mass = 1.0f;
 
-        RigidBody RuntimeBody;
+        // Equivalent of JPH::BodyID
+        uint32_t BodyId;
 
         RigidBodyComponent() = default;
     };

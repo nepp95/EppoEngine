@@ -8,8 +8,6 @@
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
 
-#include "KeyCodes.h"
-
 namespace Eppo
 {
     // TODO: Refactor because this can be done with single loggers. Refer to docs.

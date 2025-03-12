@@ -184,7 +184,7 @@ namespace Eppo
             if (auto c = entity["RigidBodyComponent"])
             {
                 auto& rbc = newEntity.AddComponent<RigidBodyComponent>();
-                rbc.Type = static_cast<RigidBodyComponent::BodyType>(c["BodyType"].as<int>());
+                rbc.IsActive = c["IsActive"].as<bool>();
                 rbc.Mass = c["Mass"].as<float>();
             }
 
@@ -341,7 +341,7 @@ namespace Eppo
             out << YAML::BeginMap;
 
             const auto& c = entity.GetComponent<RigidBodyComponent>();
-            out << YAML::Key << "BodyType" << YAML::Value << static_cast<int>(c.Type);
+            out << YAML::Key << "IsActive" << YAML::Value << c.IsActive;
             out << YAML::Key << "Mass" << YAML::Value << c.Mass;
 
             out << YAML::EndMap;

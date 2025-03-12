@@ -26,7 +26,6 @@ target_link_options(${PROJECT_NAME} PRIVATE ${mono_LDFLAGS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE
     EppoEng glfw gmock gtest imgui yaml-cpp
-    ${BULLET_COLLISION_LIBRARY} ${BULLET_DYNAMICS_LIBRARY} ${BULLET_MATH_LIBRARY} ${BULLET_SOFTBODY_LIBRARY}
     ${mono_LIBRARIES}
     ${Vulkan_LIBRARY} shaderc_combined spirv-cross-core spirv-cross-glsl
 )

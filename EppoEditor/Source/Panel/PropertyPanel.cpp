@@ -696,9 +696,9 @@ namespace Eppo
 
         DrawComponent<RigidBodyComponent>(entity, [](auto& component)
         {
-            const char* bodyTypes[] = { "Static", "Dynamic", "Kinematic" };
+            const char* bodyTypes[] = { "Static", "Dynamic" };
 
-            if (const char* currentBodyType = bodyTypes[static_cast<int>(component.Type)];
+            if (const char* currentBodyType = bodyTypes[static_cast<int>(component.IsActive)];
                 ImGui::BeginCombo("Body Type", currentBodyType))
             {
                 for (uint32_t i = 0; i < 2; i++)
@@ -708,7 +708,7 @@ namespace Eppo
                     if (ImGui::Selectable(bodyTypes[i], isSelected))
                     {
                         currentBodyType = bodyTypes[i];
-                        component.Type = static_cast<RigidBodyComponent::BodyType>(i);
+                        component.IsActive = static_cast<bool>(i);
                     }
 
                     if (isSelected)

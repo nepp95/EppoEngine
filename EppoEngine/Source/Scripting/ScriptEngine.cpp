@@ -7,7 +7,6 @@
 #include "Scripting/ScriptGlue.h"
 #include "Scripting/ScriptInstance.h"
 
-#include <filewatch.h>
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/mono-debug.h>
@@ -28,7 +27,6 @@ namespace Eppo
         MonoAssembly* AppAssembly = nullptr;
         MonoImage* AppAssemblyImage = nullptr;
         std::filesystem::path AppAssemblyFilepath;
-        Scope<filewatch::FileWatch<std::filesystem::path>> AppAssemblyFileWatcher;
         bool AppAssemblyReloadPending = false;
 
         Ref<ScriptClass> EntityClass;
@@ -189,8 +187,9 @@ namespace Eppo
             return false;
 
         s_Data->AppAssemblyImage = mono_assembly_get_image(s_Data->AppAssembly);
-        s_Data->AppAssemblyFileWatcher = CreateScope<filewatch::FileWatch<std::filesystem::path>>(filepath, OnAppAssemblyFileSystemEvent);
         s_Data->AppAssemblyReloadPending = false;
+
+        Filesystem::WatchFile(filepath, OnAppAssemblyFileSystemEvent);
 
         // Register internal calls
         ScriptGlue::RegisterFunctions();
@@ -449,9 +448,9 @@ namespace Eppo
         }
     }
 
-    void ScriptEngine::OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, const filewatch::Event changeType)
+    void ScriptEngine::OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath)
     {
-        if (!s_Data->AppAssemblyReloadPending && changeType == filewatch::Event::added)
+        if (!s_Data->AppAssemblyReloadPending)
         {
             s_Data->AppAssemblyReloadPending = true;
 

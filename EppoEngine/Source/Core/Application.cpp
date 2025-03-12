@@ -3,6 +3,7 @@
 
 #include "Core/Filesystem.h"
 #include "Scripting/ScriptEngine.h"
+#include "Physics/Physics.h"
 
 #include <GLFW/glfw3.h>
 
@@ -37,6 +38,7 @@ namespace Eppo
         // Initialize systems
         Filesystem::Init();
         ScriptEngine::Init();
+        Physics::Init();
 
         // Add GUI layer
         m_ImGuiLayer = new ImGuiLayer();
@@ -50,6 +52,7 @@ namespace Eppo
         for (Layer* layer : m_LayerStack)
             layer->OnDetach();
 
+        Physics::Shutdown();
         ScriptEngine::Shutdown();
         // TODO: Remove Renderer::Shutdown();
         m_Window->Shutdown();

@@ -2,12 +2,12 @@
 #include "ScriptGlue.h"
 
 #include "Core/Input.h"
+#include "Physics/Physics.h"
 #include "Project/Project.h"
 #include "Scene/Entity.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <mono/metadata/reflection.h>
-#include <bullet/btBulletDynamicsCommon.h>
 
 namespace Eppo
 {
@@ -171,7 +171,7 @@ namespace Eppo
         EPPO_ASSERT(entity);
 
         const auto& rb = entity.GetComponent<RigidBodyComponent>();
-        rb.RuntimeBody.ApplyLinearImpulse(*impulse, *worldPosition);
+        Physics::ApplyLinearImpulse(rb.BodyId, *impulse, *worldPosition);
     }
 
     static void RigidBodyComponent_ApplyLinearImpulseToCenter(const UUID uuid, const glm::vec3* impulse)
@@ -184,7 +184,7 @@ namespace Eppo
         EPPO_ASSERT(entity);
 
         const auto& rb = entity.GetComponent<RigidBodyComponent>();
-        rb.RuntimeBody.ApplyLinearImpulse(*impulse);
+        Physics::ApplyLinearImpulse(rb.BodyId, *impulse);
     }
 
     static MonoObject* GetScriptInstance(const UUID uuid)

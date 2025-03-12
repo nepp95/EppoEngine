@@ -29,5 +29,7 @@ namespace Eppo
         // Specifically used for shaders which are 4 byte aligned
         static void WriteBytes(const std::filesystem::path& filepath, const std::vector<uint32_t>& buffer, bool overwrite = true);
         static void WriteText(const std::filesystem::path& filepath, const std::string& text, bool overwrite = true);
+
+        static void WatchFile(const std::filesystem::path& filepath, const std::function<void(std::filesystem::path)>& fn);
     };
 }
