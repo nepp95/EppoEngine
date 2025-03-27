@@ -367,7 +367,7 @@ namespace Eppo
         const auto context = VulkanContext::Get();
         const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
-        auto& builder = context->GetDescriptorLayoutBuilder();
+        DescriptorLayoutBuilder builder;
 
         m_DescriptorSetLayouts.resize(4);
         for (const auto& [set, setResources] : m_ShaderResources)

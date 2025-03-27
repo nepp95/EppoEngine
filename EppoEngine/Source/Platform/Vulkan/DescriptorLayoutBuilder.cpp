@@ -69,28 +69,33 @@ namespace Eppo
         const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
         VkDescriptorSetLayout layout;
-        if (const auto it = m_DescriptorLayoutCache.find(m_CurrentLayoutInfo); it != m_DescriptorLayoutCache.end())
-            layout = it->second;
-        else
+
         {
-            // Layout not cached, create new layout
-            VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
-            descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(m_CurrentLayoutInfo.Bindings.size());
-            descriptorSetLayoutCreateInfo.pBindings = m_CurrentLayoutInfo.Bindings.data();
-            descriptorSetLayoutCreateInfo.flags = createFlags;
-            descriptorSetLayoutCreateInfo.pNext = pNext;
+            std::scoped_lock lock(m_Mutex);
 
-            VK_CHECK(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &layout), "Failed to create descriptor set layout!");
-
-            // Cache layout
-            m_DescriptorLayoutCache[m_CurrentLayoutInfo] = layout;
-
-            context->SubmitResourceFree([device, layout]()
+            if (const auto it = m_DescriptorLayoutCache.find(m_CurrentLayoutInfo); it != m_DescriptorLayoutCache.end())
+                layout = it->second;
+            else
             {
-                EPPO_MEM_WARN("Releasing descriptor set layout {}", static_cast<void*>(layout));
-                vkDestroyDescriptorSetLayout(device, layout, nullptr);
-            });
+                // Layout not cached, create new layout
+                VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
+                descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(m_CurrentLayoutInfo.Bindings.size());
+                descriptorSetLayoutCreateInfo.pBindings = m_CurrentLayoutInfo.Bindings.data();
+                descriptorSetLayoutCreateInfo.flags = createFlags;
+                descriptorSetLayoutCreateInfo.pNext = pNext;
+
+                VK_CHECK(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &layout), "Failed to create descriptor set layout!");
+
+                // Cache layout
+                m_DescriptorLayoutCache[m_CurrentLayoutInfo] = layout;
+
+                context->SubmitResourceFree([device, layout]()
+                {
+                    EPPO_MEM_WARN("Releasing descriptor set layout {}", static_cast<void*>(layout));
+                    vkDestroyDescriptorSetLayout(device, layout, nullptr);
+                });
+            }
         }
 
         Clear();

@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.24)
 project(EppoEngine)
 
+include(FetchContent)
+
 if(WIN32)
     add_compile_definitions(EPPO_PLATFORM_WINDOWS VK_USE_PLATFORM_WIN32_KHR)
 elseif(UNIX)
-    add_compile_definitions(EPPO_PLATFORM_LINUX)
+    add_compile_definitions(EPPO_PLATFORM_LINUX VK_USE_PLATFORM_XLIB_KHR)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -13,22 +15,85 @@ else()
     add_compile_definitions(EPPO_RELEASE)
 endif()
 
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 # Dependencies
-if(DEFINED ENV{VULKAN_SDK})
-    link_directories(AFTER $ENV{VULKAN_SDK}/lib)
-else()
-    message(FATAL_ERROR "'VULKAN_SDK' not found in environment variables!")
+find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
+if(NOT Vulkan_FOUND)
+    message(FATAL_ERROR "Vulkan not found!")
 endif()
 
-set(CMAKE_LIBRARY_ARCHIVE_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+# Entt
+FetchContent_Declare(entt
+    GIT_REPOSITORY https://github.com/skypjack/entt.git
+    GIT_TAG v3.14.0
+)
+FetchContent_MakeAvailable(entt)
 
-add_subdirectory(EppoEngine/Vendor/bullet)
-add_subdirectory(EppoEngine/Vendor/glfw)
-add_subdirectory(EppoEngine/Vendor/imgui)
-add_subdirectory(EppoEngine/Vendor/yaml-cpp)
-add_subdirectory(EppoEngine/Vendor/googletest)
+# Efsw
+FetchContent_Declare(efsw
+    GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
+    GIT_TAG ad4ac9056402940bd41df38597d6046674b1c4a1
+)
+FetchContent_MakeAvailable(efsw)
+
+# Glfw
+FetchContent_Declare(glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+    FIND_PACKAGE_ARGS NAMES glfw3
+)
+FetchContent_MakeAvailable(glfw)
+
+# Glm
+FetchContent_Declare(glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+)
+FetchContent_MakeAvailable(glm)
+
+# ImGui
+FetchContent_Declare(imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.8-docking
+)
+FetchContent_MakeAvailable(imgui)
+
+# Jolt Physics
+FetchContent_Declare(jolt
+    GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+    GIT_TAG v5.2.0
+    SOURCE_SUBDIR Build
+)
+FetchContent_MakeAvailable(jolt)
+
+# Spdlog
+FetchContent_Declare(spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.15.1
+)
+FetchContent_MakeAvailable(spdlog)
+
+# Tracy Profiler
+FetchContent_Declare(tracy
+    GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+    GIT_TAG v0.11.1
+)
+FetchContent_MakeAvailable(tracy)
+
+# Yaml-cpp
+FetchContent_Declare(yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG 0.8.0
+)
+FetchContent_MakeAvailable(yaml-cpp)
+
+# Jolt overrides our MSVC Runtime Library variable
+if(MSVC)
+    set_property(TARGET Jolt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
 
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)

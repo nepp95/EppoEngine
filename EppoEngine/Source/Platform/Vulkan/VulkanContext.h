@@ -40,8 +40,6 @@ namespace Eppo
 
         [[nodiscard]] Ref<Renderer> GetRenderer() const override { return m_Renderer; }
 
-        DescriptorLayoutBuilder& GetDescriptorLayoutBuilder() { return m_DescriptorLayoutBuilder; }
-
         static VkInstance GetVulkanInstance() { return s_Instance; }
         GLFWwindow* GetWindowHandle() override { return m_WindowHandle; }
         [[nodiscard]] TracyVkCtx GetTracyContext() const { return m_TracyContext; }
@@ -60,7 +58,6 @@ namespace Eppo
         Ref<VulkanRenderer> m_Renderer;
         Ref<VulkanSwapchain> m_Swapchain;
 
-        DescriptorLayoutBuilder m_DescriptorLayoutBuilder;
         GarbageCollector m_GarbageCollector;
 
         TracyVkCtx m_TracyContext = nullptr;
