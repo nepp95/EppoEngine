@@ -2,43 +2,14 @@
 #include "Scene.h"
 
 #include "Asset/AssetManager.h"
+#include "Physics/Physics.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/SceneRenderer.h"
 #include "Scene/Entity.h"
 #include "Scripting/ScriptEngine.h"
 
-#include <bullet/btBulletDynamicsCommon.h>
-
 namespace Eppo
 {
-    namespace
-    {
-        auto* s_collisionConfig = new btDefaultCollisionConfiguration();
-        auto* s_collisionDispatcher = new btCollisionDispatcher(s_collisionConfig);
-        btBroadphaseInterface* s_broadPhaseInterface = new btDbvtBroadphase();
-        auto* s_Solver = new btSequentialImpulseConstraintSolver();
-
-        glm::vec3 BulletToGlm(const btVector3& v)
-        {
-            return { v.getX(), v.getY(), v.getZ() };
-        }
-
-        glm::quat BulletToGlm(const btQuaternion& q)
-        {
-            return { q.getW(), q.getX(), q.getY(), q.getZ() };
-        }
-
-        btVector3 GlmToBullet(const glm::vec3& v)
-        {
-            return { v.x, v.y, v.z };
-        }
-
-        btQuaternion GlmToBullet(const glm::quat& q)
-        {
-            return { q.x, q.y, q.z, q.w };
-        }
-    }
-
     void Scene::SetViewportSize(const uint32_t width, const uint32_t height)
     {
         EPPO_PROFILE_FUNCTION("Scene::SetViewportSize");
@@ -62,24 +33,16 @@ namespace Eppo
         }
 
         // Physics
-        m_PhysicsWorld->stepSimulation(timestep, 10);
-
         for (const auto view = m_Registry.view<RigidBodyComponent>(); const auto e : view)
         {
             Entity entity(e, this);
             auto& transform = entity.GetComponent<TransformComponent>();
             const auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 
-            btRigidBody* body = rigidbody.RuntimeBody.Body;
-            btTransform trans;
+            Physics::Update(rigidbody.BodyId);
 
-            if (body && body->getMotionState())
-                body->getMotionState()->getWorldTransform(trans);
-
-            const auto& position = trans.getOrigin();
-            transform.Translation = BulletToGlm(position);
-
-            trans.getRotation().getEulerZYX(transform.Rotation.z, transform.Rotation.y, transform.Rotation.x);
+            transform.Translation = Physics::GetRigidBodyPosition(rigidbody.BodyId);
+            transform.Rotation = Physics::GetRigidBodyRotation(rigidbody.BodyId);
         }
     }
 
@@ -115,7 +78,7 @@ namespace Eppo
             sceneRenderer->BeginScene(*sceneCamera, cameraTransform);
 
             RenderScene(sceneRenderer);
-            
+
             sceneRenderer->EndScene();
         }
     }
@@ -129,8 +92,7 @@ namespace Eppo
         OnPhysicsStart();
         ScriptEngine::OnRuntimeStart();
 
-        const auto view = m_Registry.view<ScriptComponent>();
-        for (const auto e : view)
+        for (const auto view = m_Registry.view<ScriptComponent>(); const auto e : view)
         {
             const Entity entity(e, this);
             ScriptEngine::OnCreateEntity(entity);
@@ -189,7 +151,8 @@ namespace Eppo
     }
 
     template<typename T>
-    void Scene::CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry, const std::unordered_map<UUID, entt::entity>& entityMap)
+    void Scene::CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry,
+                              const std::unordered_map<UUID, entt::entity>& entityMap)
     {
         EPPO_PROFILE_FUNCTION("Scene::CopyComponent");
 
@@ -255,8 +218,7 @@ namespace Eppo
     {
         EPPO_PROFILE_FUNCTION("Scene::FindEntityByUUID");
 
-        if (const auto it = m_EntityMap.find(uuid);
-            it != m_EntityMap.end())
+        if (const auto it = m_EntityMap.find(uuid); it != m_EntityMap.end())
         {
             return { it->second, this };
         }
@@ -282,7 +244,7 @@ namespace Eppo
     {
         EPPO_PROFILE_FUNCTION("Scene::OnPhysicsStart");
 
-        m_PhysicsWorld = new btDiscreteDynamicsWorld(s_collisionDispatcher, s_broadPhaseInterface, s_Solver, s_collisionConfig);
+        /*m_PhysicsWorld = new btDiscreteDynamicsWorld(s_collisionDispatcher, s_broadPhaseInterface, s_Solver, s_collisionConfig);
         m_PhysicsWorld->setGravity(btVector3(0.0f, -9.81f, 0.0f));
 
         for (const auto view = m_Registry.view<RigidBodyComponent>(); const auto e : view)
@@ -313,14 +275,14 @@ namespace Eppo
 
             m_PhysicsWorld->addRigidBody(body);
             rigidbody.RuntimeBody = RigidBody(body);
-        }
+        }*/
     }
 
     void Scene::OnPhysicsStop()
     {
         EPPO_PROFILE_FUNCTION("Scene::OnPhysicsStop");
 
-        for (int i = m_PhysicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+        /*for (int i = m_PhysicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
         {
             btCollisionObject* obj = m_PhysicsWorld->getCollisionObjectArray()[i];
             btRigidBody* body = btRigidBody::upcast(obj);
@@ -344,7 +306,7 @@ namespace Eppo
         }
 
         delete m_PhysicsWorld;
-        m_PhysicsWorld = nullptr;
+        m_PhysicsWorld = nullptr;*/
     }
 
     void Scene::RenderScene(const Ref<SceneRenderer>& sceneRenderer)

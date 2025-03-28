@@ -59,7 +59,7 @@ namespace Eppo
 
         m_ViewportRenderer = SceneRenderer::Create(m_EditorScene, renderSpec);
     }
-    
+
     void EditorLayer::OnDetach()
     {
         CloseProject();
@@ -71,8 +71,8 @@ namespace Eppo
 
         m_ViewportRenderer = nullptr;
     }
-    
-    void EditorLayer::Update(float timestep)
+
+    void EditorLayer::Update(const float timestep)
     {
         if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
         {
@@ -98,7 +98,7 @@ namespace Eppo
             }
         }
     }
-    
+
     void EditorLayer::Render()
     {
         if (!Project::GetActive())
@@ -231,7 +231,7 @@ namespace Eppo
         }
 
         // Viewport
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0 ));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("Viewport");
 
         m_ViewportFocused = ImGui::IsWindowFocused();
@@ -242,7 +242,8 @@ namespace Eppo
         m_ViewportWidth = static_cast<uint32_t>(viewportSize.x);
         m_ViewportHeight = static_cast<uint32_t>(viewportSize.y);
 
-        UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
+        UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)),
+                  ImVec2(0, 1), ImVec2(1, 0));
         if (ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_ASSET"))
@@ -265,7 +266,7 @@ namespace Eppo
         UI_File_NewProject();
         UI_File_Preferences();
         UI_Toolbar();
-    
+
         ImGui::End(); // DockSpace
     }
 
@@ -318,7 +319,7 @@ namespace Eppo
 
         ScriptEngine::SetSceneContext(m_ActiveScene);
         m_PanelManager.SetSceneContext(m_ActiveScene);
-        
+
         m_ActiveScene->OnRuntimeStart();
     }
 
@@ -418,7 +419,7 @@ namespace Eppo
 
         // Run premake
         std::filesystem::path batchFile = projectPath / "Assets" / "Scripts" / "Win-GenerateProjects.bat";
-        
+
         // todo: not working
         // system(batchFile.string().c_str());
 
@@ -428,7 +429,8 @@ namespace Eppo
 
     bool EditorLayer::OpenProject()
     {
-        const std::filesystem::path filePath = FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0", Project::GetProjectsDirectory());
+        const std::filesystem::path filePath =
+            FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0", Project::GetProjectsDirectory());
 
         if (filePath.empty())
         {
@@ -461,7 +463,8 @@ namespace Eppo
         {
             const auto& projSpec = Project::GetActive()->GetSpecification();
 
-            const std::filesystem::path scriptPath = Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
+            const std::filesystem::path scriptPath =
+                Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
             ScriptEngine::LoadAppAssembly(scriptPath);
 
             if (!projSpec.StartScene)
@@ -502,13 +505,12 @@ namespace Eppo
         }
 
         const auto newScene = CreateRef<Scene>();
-        if (const SceneSerializer serializer(newScene);
-            serializer.Deserialize(filepath))
+        if (const SceneSerializer serializer(newScene); serializer.Deserialize(filepath))
         {
             m_EditorScene = newScene;
             m_ActiveScene = m_EditorScene;
             m_ActiveScenePath = filepath;
-            
+
             m_PanelManager.SetSceneContext(m_EditorScene);
         }
     }
@@ -524,7 +526,7 @@ namespace Eppo
         m_ActiveScene = m_EditorScene;
 
         m_ActiveScenePath = Project::GetActive()->GetAssetManagerEditor()->GetFilepath(handle);
-        
+
         m_PanelManager.SetSceneContext(m_ActiveScene);
     }
 
@@ -538,8 +540,7 @@ namespace Eppo
 
     void EditorLayer::SaveSceneAs()
     {
-        if (const std::filesystem::path filepath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
-            !filepath.empty())
+        if (const std::filesystem::path filepath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0"); !filepath.empty())
         {
             m_ActiveScenePath = filepath;
             AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
@@ -548,7 +549,9 @@ namespace Eppo
 
     void EditorLayer::ImportAsset()
     {
-        if (const std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
+        if (const std::filesystem::path filepath =
+                FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0",
+                                     Project::GetAssetsDirectory());
             !filepath.empty())
         {
             Project::GetActive()->GetAssetManagerEditor()->ImportAsset(filepath);
@@ -557,7 +560,8 @@ namespace Eppo
 
     void EditorLayer::UI_File_NewProject()
     {
-        if (constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+        if (constexpr ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
             ImGui::BeginPopupModal("New Project", nullptr, flags))
         {
             static char nameBuffer[200]{};
@@ -607,18 +611,20 @@ namespace Eppo
 
     void EditorLayer::UI_File_Preferences()
     {
-        if (constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+        if (constexpr ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
             ImGui::BeginPopupModal("Project settings", nullptr, flags))
         {
             auto& spec = Project::GetActive()->GetSpecification();
-            
+
             static std::string nameBuffer = std::string(200, ' ').replace(0, 200, spec.Name);
 
             ImGui::Text("Project Name");
             ImGui::InputText("##ProjectName", nameBuffer.data(), 200);
 
             ImGui::Text("Project Directory");
-            ImGui::InputText("##ProjectDirectory", spec.ProjectDirectory.string().data(), spec.ProjectDirectory.string().length(), ImGuiInputTextFlags_ReadOnly);
+            ImGui::InputText("##ProjectDirectory", spec.ProjectDirectory.string().data(), spec.ProjectDirectory.string().length(),
+                             ImGuiInputTextFlags_ReadOnly);
 
             ImGui::Text("Start Scene");
 
@@ -630,7 +636,7 @@ namespace Eppo
             if (const auto& startSceneMetadata = assetRegistry.at(startScene);
                 ImGui::BeginCombo("##StartScene", startSceneMetadata.GetName().c_str()))
             {
-                for (const auto& [handle, metadata] : assetRegistry)
+                for (const auto& metadata : assetRegistry | std::views::values)
                 {
                     if (metadata.Type != AssetType::Scene)
                         continue;
@@ -657,7 +663,8 @@ namespace Eppo
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
-        ImGui::Begin("Scene Control", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::Begin("Scene Control", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
         const float buttonSize = ImGui::GetWindowHeight() - 4.0f;
 

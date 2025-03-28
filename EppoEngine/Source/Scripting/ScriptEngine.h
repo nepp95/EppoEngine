@@ -12,14 +12,6 @@ typedef struct _MonoImage MonoImage;
 typedef struct _MonoMethod MonoMethod;
 typedef struct _MonoObject MonoObject;
 
-namespace filewatch
-{
-    template<class T>
-    class FileWatch;
-
-    enum class Event;
-}
-
 namespace Eppo
 {
     using ScriptFieldMap = std::unordered_map<std::string, ScriptFieldInstance>;
@@ -60,7 +52,7 @@ namespace Eppo
         static bool LoadCoreAssembly(const std::filesystem::path& filepath);
         static void LoadAssemblyClasses();
 
-        static void OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, filewatch::Event changeType);
+        static void OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath);
     };
 
     namespace Utils

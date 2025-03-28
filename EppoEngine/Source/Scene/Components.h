@@ -2,7 +2,6 @@
 
 #include "Asset/Asset.h"
 #include "Core/UUID.h"
-#include "Physics/RigidBody.h"
 #include "Renderer/Camera/SceneCamera.h"
 
 #include <glm/glm.hpp>
@@ -47,9 +46,7 @@ namespace Eppo
 
         [[nodiscard]] glm::mat4 GetTransform() const
         {
-            return glm::translate(glm::mat4(1.0f), Translation)
-                * glm::toMat4(glm::quat(Rotation))
-                * glm::scale(glm::mat4(1.0f), Scale);
+            return glm::translate(glm::mat4(1.0f), Translation) * glm::toMat4(glm::quat(Rotation)) * glm::scale(glm::mat4(1.0f), Scale);
         }
     };
 
@@ -87,15 +84,14 @@ namespace Eppo
 
         ScriptComponent() = default;
     };
-    
+
     struct RigidBodyComponent
     {
-        enum class BodyType : uint8_t { Static, Dynamic, Kinematic };
-        BodyType Type = BodyType::Static;
-
+        bool IsActive = false;
         float Mass = 1.0f;
 
-        RigidBody RuntimeBody;
+        // Equivalent of JPHJ::BodyID
+        uint32_t BodyId;
 
         RigidBodyComponent() = default;
     };

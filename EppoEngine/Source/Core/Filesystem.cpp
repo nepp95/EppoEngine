@@ -1,15 +1,35 @@
 #include "pch.h"
 #include "Filesystem.h"
 
+#include <efsw/efsw.hpp>
+
 namespace Eppo
 {
+    class FileUpdateListener final : public efsw::FileWatchListener
+    {
+    public:
+        void handleFileAction(efsw::WatchID watchid, const std::string& dir, const std::string& filename, efsw::Action action,
+                              std::string oldFilename) override;
+    };
+
     struct FilesystemData
     {
         std::filesystem::path RootPath;
         std::filesystem::path AssetPath;
+
+        efsw::FileWatcher* FileWatcher;
+        FileUpdateListener* FileWatcherListener;
+        std::unordered_map<std::filesystem::path, std::function<void(std::filesystem::path)>> WatchFiles;
     };
 
     FilesystemData* s_Data;
+
+    void FileUpdateListener::handleFileAction(efsw::WatchID watchid, const std::string& dir, const std::string& filename,
+                                              efsw::Action action, std::string oldFilename)
+    {
+        if (const std::filesystem::path path = dir + filename; s_Data->WatchFiles.contains(path))
+            s_Data->WatchFiles[path](path);
+    }
 
     void Filesystem::Init()
     {
@@ -17,6 +37,9 @@ namespace Eppo
 
         s_Data->RootPath = std::filesystem::current_path();
         s_Data->AssetPath = s_Data->RootPath / "Resources";
+
+        s_Data->FileWatcher = new efsw::FileWatcher();
+        s_Data->FileWatcherListener = new FileUpdateListener();
     }
 
     void Filesystem::Shutdown()
@@ -168,5 +191,11 @@ namespace Eppo
         EPPO_ASSERT(stream);
 
         stream.write(text.c_str(), static_cast<int32_t>(text.size()));
+    }
+
+    void Filesystem::WatchFile(const std::filesystem::path& filepath, const std::function<void(std::filesystem::path)>& fn)
+    {
+        s_Data->FileWatcher->addWatch(filepath.parent_path().string(), s_Data->FileWatcherListener);
+        s_Data->WatchFiles[filepath] = fn;
     }
 }

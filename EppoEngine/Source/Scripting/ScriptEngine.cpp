@@ -7,7 +7,6 @@
 #include "Scripting/ScriptGlue.h"
 #include "Scripting/ScriptInstance.h"
 
-#include <filewatch.h>
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/mono-debug.h>
@@ -28,7 +27,6 @@ namespace Eppo
         MonoAssembly* AppAssembly = nullptr;
         MonoImage* AppAssemblyImage = nullptr;
         std::filesystem::path AppAssemblyFilepath;
-        Scope<filewatch::FileWatch<std::filesystem::path>> AppAssemblyFileWatcher;
         bool AppAssemblyReloadPending = false;
 
         Ref<ScriptClass> EntityClass;
@@ -49,20 +47,14 @@ namespace Eppo
     namespace
     {
         std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap{
-            { "System.Single", ScriptFieldType::Float },
-            { "System.Double", ScriptFieldType::Double },
-            { "System.Boolean", ScriptFieldType::Bool },
-            { "System.Char", ScriptFieldType::Char },
-            { "System.Int16", ScriptFieldType::Int16 },
-            { "System.Int32", ScriptFieldType::Int32 },
-            { "System.Int64", ScriptFieldType::Int64 },
-            { "System.Byte", ScriptFieldType::Byte },
-            { "System.UInt16", ScriptFieldType::UInt16 },
-            { "System.UInt32", ScriptFieldType::UInt32 },
+            { "System.Single", ScriptFieldType::Float },  { "System.Double", ScriptFieldType::Double },
+            { "System.Boolean", ScriptFieldType::Bool },  { "System.Char", ScriptFieldType::Char },
+            { "System.Int16", ScriptFieldType::Int16 },   { "System.Int32", ScriptFieldType::Int32 },
+            { "System.Int64", ScriptFieldType::Int64 },   { "System.Byte", ScriptFieldType::Byte },
+            { "System.UInt16", ScriptFieldType::UInt16 }, { "System.UInt32", ScriptFieldType::UInt32 },
             { "System.UInt64", ScriptFieldType::UInt64 },
 
-            { "Eppo.Vector2", ScriptFieldType::Vector2 },
-            { "Eppo.Vector3", ScriptFieldType::Vector3 },
+            { "Eppo.Vector2", ScriptFieldType::Vector2 }, { "Eppo.Vector3", ScriptFieldType::Vector3 },
             { "Eppo.Vector4", ScriptFieldType::Vector4 },
 
             { "Eppo.Entity", ScriptFieldType::Entity },
@@ -189,8 +181,9 @@ namespace Eppo
             return false;
 
         s_Data->AppAssemblyImage = mono_assembly_get_image(s_Data->AppAssembly);
-        s_Data->AppAssemblyFileWatcher = CreateScope<filewatch::FileWatch<std::filesystem::path>>(filepath, OnAppAssemblyFileSystemEvent);
         s_Data->AppAssemblyReloadPending = false;
+
+        Filesystem::WatchFile(filepath, OnAppAssemblyFileSystemEvent);
 
         // Register internal calls
         ScriptGlue::RegisterFunctions();
@@ -449,16 +442,13 @@ namespace Eppo
         }
     }
 
-    void ScriptEngine::OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, const filewatch::Event changeType)
+    void ScriptEngine::OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath)
     {
-        if (!s_Data->AppAssemblyReloadPending && changeType == filewatch::Event::added)
+        if (!s_Data->AppAssemblyReloadPending)
         {
             s_Data->AppAssemblyReloadPending = true;
 
-            Application::Get().SubmitToMainThread([]()
-            {
-                ReloadAssembly();
-            });
+            Application::Get().SubmitToMainThread([]() { ReloadAssembly(); });
         }
     }
 }

@@ -10,19 +10,14 @@ namespace Eppo
 {
     namespace
     {
-        std::map<std::filesystem::path, AssetType> s_AssetExtensionMap =
-        {
-            { ".epscene", AssetType::Scene },
-            { ".glb", AssetType::Mesh },
-            { ".gltf", AssetType::Mesh },
-            { ".jpeg", AssetType::Texture },
-            { ".jpg", AssetType::Texture },
-            { ".png", AssetType::Texture },
+        std::map<std::filesystem::path, AssetType> s_AssetExtensionMap = {
+            { ".epscene", AssetType::Scene }, { ".glb", AssetType::Mesh },    { ".gltf", AssetType::Mesh },
+            { ".jpeg", AssetType::Texture },  { ".jpg", AssetType::Texture }, { ".png", AssetType::Texture },
         };
 
         AssetType GetAssetTypeFromFileExtension(const std::filesystem::path& extension)
         {
-            if (s_AssetExtensionMap.find(extension) == s_AssetExtensionMap.end())
+            if (!s_AssetExtensionMap.contains(extension))
             {
                 EPPO_WARN("Could not find AssetType for '{}'", extension);
                 return AssetType::None;
@@ -127,12 +122,12 @@ namespace Eppo
 
     bool AssetManagerEditor::IsAssetHandleValid(const AssetHandle handle) const
     {
-        return handle != 0 && m_AssetData.find(handle) != m_AssetData.end();
+        return handle != 0 && m_AssetData.contains(handle);
     }
 
     bool AssetManagerEditor::IsAssetLoaded(const AssetHandle handle) const
     {
-        return m_Assets.find(handle) != m_Assets.end();
+        return m_Assets.contains(handle);
     }
 
     AssetType AssetManagerEditor::GetAssetType(const AssetHandle handle) const

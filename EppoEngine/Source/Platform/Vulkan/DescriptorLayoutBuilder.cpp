@@ -51,7 +51,8 @@ namespace Eppo
         m_CurrentLayoutInfo.Bindings.clear();
     }
 
-    VkDescriptorSetLayout DescriptorLayoutBuilder::Build(const VkShaderStageFlags shaderStageFlags, const VkDescriptorSetLayoutCreateFlags createFlags, const void* pNext)
+    VkDescriptorSetLayout DescriptorLayoutBuilder::Build(const VkShaderStageFlags shaderStageFlags,
+                                                         const VkDescriptorSetLayoutCreateFlags createFlags, const void* pNext)
     {
         EPPO_PROFILE_FUNCTION("DescriptorLayoutBuilder::Build");
 
@@ -59,10 +60,8 @@ namespace Eppo
             binding.stageFlags |= shaderStageFlags;
 
         // Sort bindings so we always verify the hash correctly
-        std::sort(m_CurrentLayoutInfo.Bindings.begin(), m_CurrentLayoutInfo.Bindings.end(), [](const VkDescriptorSetLayoutBinding& lhs, const VkDescriptorSetLayoutBinding& rhs)
-        {
-            return lhs.binding < rhs.binding;
-        });
+        std::ranges::sort(m_CurrentLayoutInfo.Bindings, [](const VkDescriptorSetLayoutBinding& lhs, const VkDescriptorSetLayoutBinding& rhs)
+                          { return lhs.binding < rhs.binding; });
 
         // Check cache and return layout if we cached it
         const auto context = VulkanContext::Get();
@@ -85,16 +84,18 @@ namespace Eppo
                 descriptorSetLayoutCreateInfo.flags = createFlags;
                 descriptorSetLayoutCreateInfo.pNext = pNext;
 
-                VK_CHECK(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &layout), "Failed to create descriptor set layout!");
+                VK_CHECK(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &layout),
+                         "Failed to create descriptor set layout!");
 
                 // Cache layout
                 m_DescriptorLayoutCache[m_CurrentLayoutInfo] = layout;
 
-                context->SubmitResourceFree([device, layout]()
-                {
-                    EPPO_MEM_WARN("Releasing descriptor set layout {}", static_cast<void*>(layout));
-                    vkDestroyDescriptorSetLayout(device, layout, nullptr);
-                });
+                context->SubmitResourceFree(
+                    [device, layout]()
+                    {
+                        EPPO_MEM_WARN("Releasing descriptor set layout {}", static_cast<void*>(layout));
+                        vkDestroyDescriptorSetLayout(device, layout, nullptr);
+                    });
             }
         }
 

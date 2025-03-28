@@ -10,11 +10,11 @@ namespace Eppo
     {
         ScopedBegin scopedBegin("Scene Hierarchy");
 
-        GetSceneContext()->m_Registry.each([&](auto entityID)
+        for (const auto view = GetSceneContext()->m_Registry.view<IDComponent>(); const auto entity : view)
         {
-            const Entity entity(entityID, GetSceneContext().get());
-            DrawEntityNode(entity);
-        });
+            const Entity e(entity, GetSceneContext().get());
+            DrawEntityNode(e);
+        }
 
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
             SetSelectedEntity({});
@@ -37,7 +37,7 @@ namespace Eppo
 
         ImGui::PushID(reinterpret_cast<void*>(static_cast<uint64_t>(entity.GetUUID())));
         const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
-        
+
         if (ImGui::IsItemClicked())
             SetSelectedEntity(entity);
 

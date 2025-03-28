@@ -2,12 +2,12 @@
 #include "ScriptGlue.h"
 
 #include "Core/Input.h"
+#include "Physics/Physics.h"
 #include "Project/Project.h"
 #include "Scene/Entity.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <mono/metadata/reflection.h>
-#include <bullet/btBulletDynamicsCommon.h>
 
 namespace Eppo
 {
@@ -16,7 +16,7 @@ namespace Eppo
         std::unordered_map<MonoType*, std::function<bool(Entity)>> s_EntityHasComponentFns;
     }
 
-#define EPPO_ADD_INTERNAL_CALL(fn) mono_add_internal_call("Eppo.InternalCalls::"#fn, reinterpret_cast<const void*>(fn));
+#define EPPO_ADD_INTERNAL_CALL(fn) mono_add_internal_call("Eppo.InternalCalls::" #fn, reinterpret_cast<const void*>(fn));
 
     static void Log(const uint32_t logLevel, MonoString* message)
     {
@@ -28,13 +28,17 @@ namespace Eppo
 
         switch (logLevel)
         {
-            case 0: EPPO_SCRIPT_TRACE(messageStr);
+            case 0:
+                EPPO_SCRIPT_TRACE(messageStr);
                 break;
-            case 1: EPPO_SCRIPT_INFO(messageStr);
+            case 1:
+                EPPO_SCRIPT_INFO(messageStr);
                 break;
-            case 2: EPPO_SCRIPT_WARN(messageStr);
+            case 2:
+                EPPO_SCRIPT_WARN(messageStr);
                 break;
-            case 3: EPPO_SCRIPT_ERROR(messageStr);
+            case 3:
+                EPPO_SCRIPT_ERROR(messageStr);
                 break;
         }
     }
@@ -87,7 +91,7 @@ namespace Eppo
         Entity entity = scene->CreateEntity(nameStr);
         EPPO_ASSERT(entity);
 
-        return entity.GetUUID();
+        return static_cast<uint64_t>(entity.GetUUID());
     }
 
     static uint64_t Entity_FindEntityByName(MonoString* name)
@@ -105,7 +109,7 @@ namespace Eppo
         if (!entity)
             return 0;
 
-        return entity.GetUUID();
+        return static_cast<uint64_t>(entity.GetUUID());
     }
 
     static MonoString* Entity_GetName(const UUID uuid)
@@ -171,7 +175,7 @@ namespace Eppo
         EPPO_ASSERT(entity);
 
         const auto& rb = entity.GetComponent<RigidBodyComponent>();
-        rb.RuntimeBody.ApplyLinearImpulse(*impulse, *worldPosition);
+        Physics::ApplyLinearImpulse(rb.BodyId, *impulse, *worldPosition);
     }
 
     static void RigidBodyComponent_ApplyLinearImpulseToCenter(const UUID uuid, const glm::vec3* impulse)
@@ -184,7 +188,7 @@ namespace Eppo
         EPPO_ASSERT(entity);
 
         const auto& rb = entity.GetComponent<RigidBodyComponent>();
-        rb.RuntimeBody.ApplyLinearImpulse(*impulse);
+        Physics::ApplyLinearImpulse(rb.BodyId, *impulse);
     }
 
     static MonoObject* GetScriptInstance(const UUID uuid)

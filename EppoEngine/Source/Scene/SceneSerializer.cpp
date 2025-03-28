@@ -4,109 +4,22 @@
 #include "Core/Filesystem.h"
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptEngine.h"
-
-#include <yaml-cpp/yaml.h>
-
-namespace YAML
-{
-    Emitter& operator<<(Emitter& out, const glm::vec2& v)
-    {
-        out << YAML::Flow;
-        out << YAML::BeginSeq << v.x << v.y << YAML::EndSeq;
-        return out;
-    }
-
-    Emitter& operator<<(Emitter& out, const glm::vec3& v)
-    {
-        out << YAML::Flow;
-        out << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
-        return out;
-    }
-
-    Emitter& operator<<(Emitter& out, const glm::vec4& v)
-    {
-        out << YAML::Flow;
-        out << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
-        return out;
-    }
-
-    template<>
-    struct convert<glm::vec2>
-    {
-        static bool decode(const Node& node, glm::vec2& v)
-        {
-            if (!node.IsSequence() || node.size() != 2)
-                return false;
-
-            v.x = node[0].as<float>();
-            v.y = node[1].as<float>();
-
-            return true;
-        }
-    };
-
-    template<>
-    struct convert<glm::vec3>
-    {
-        static bool decode(const Node& node, glm::vec3& v)
-        {
-            if (!node.IsSequence() || node.size() != 3)
-                return false;
-
-            v.x = node[0].as<float>();
-            v.y = node[1].as<float>();
-            v.z = node[2].as<float>();
-
-            return true;
-        }
-    };
-
-    template<>
-    struct convert<glm::vec4>
-    {
-        static bool decode(const Node& node, glm::vec4& v)
-        {
-            if (!node.IsSequence() || node.size() != 4)
-                return false;
-
-            v.x = node[0].as<float>();
-            v.y = node[1].as<float>();
-            v.z = node[2].as<float>();
-            v.w = node[3].as<float>();
-
-            return true;
-        }
-    };
-
-    template<>
-    struct convert<Eppo::UUID>
-    {
-        static bool decode(const Node& node, Eppo::UUID& uuid)
-        {
-            if (node.IsSequence())
-                return false;
-
-            uuid = node[0].as<uint64_t>();
-
-            return true;
-        }
-    };
-}
+#include "Utility/Yaml.h"
 
 namespace Eppo
 {
-#define WRITE_SCRIPT_FIELD(FieldType, Type)                \
-        case ScriptFieldType::FieldType:                    \
-            out << scriptField.GetValue<Type>();            \
-            break
+#define WRITE_SCRIPT_FIELD(FieldType, Type)                                                                                                \
+    case ScriptFieldType::FieldType:                                                                                                       \
+        out << scriptField.GetValue<Type>();                                                                                               \
+        break
 
-#define READ_SCRIPT_FIELD(FieldType, Type)                \
-        case ScriptFieldType::FieldType:                    \
-        {                                                    \
-            Type data = scriptField["Data"].as<Type>();        \
-            fieldInstance.SetValue(data);                    \
-            break;                                            \
-        }
+#define READ_SCRIPT_FIELD(FieldType, Type)                                                                                                 \
+    case ScriptFieldType::FieldType:                                                                                                       \
+    {                                                                                                                                      \
+        Type data = scriptField["Data"].as<Type>();                                                                                        \
+        fieldInstance.SetValue(data);                                                                                                      \
+        break;                                                                                                                             \
+    }
 
     SceneSerializer::SceneSerializer(const Ref<Scene>& scene)
         : m_SceneContext(scene)
@@ -126,8 +39,7 @@ namespace Eppo
         out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
 
         m_SceneContext->m_Registry.sort<IDComponent>([](const auto& lhs, const auto& rhs) { return lhs.ID < rhs.ID; });
-        const auto view = m_SceneContext->m_Registry.view<IDComponent>();
-        for (const auto e : view)
+        for (const auto view = m_SceneContext->m_Registry.view<IDComponent>(); const auto e : view)
         {
             const Entity entity(e, m_SceneContext.get());
             if (!entity)
@@ -272,7 +184,7 @@ namespace Eppo
             if (auto c = entity["RigidBodyComponent"])
             {
                 auto& rbc = newEntity.AddComponent<RigidBodyComponent>();
-                rbc.Type = static_cast<RigidBodyComponent::BodyType>(c["BodyType"].as<int>());
+                rbc.IsActive = c["IsActive"].as<bool>();
                 rbc.Mass = c["Mass"].as<float>();
             }
 
@@ -387,7 +299,7 @@ namespace Eppo
                     auto& entityFields = ScriptEngine::GetScriptFieldMap(entity.GetUUID());
                     for (const auto& [name, field] : fields)
                     {
-                        if (entityFields.find(name) == entityFields.end())
+                        if (!entityFields.contains(name))
                             continue;
 
                         out << YAML::BeginMap;
@@ -429,7 +341,7 @@ namespace Eppo
             out << YAML::BeginMap;
 
             const auto& c = entity.GetComponent<RigidBodyComponent>();
-            out << YAML::Key << "BodyType" << YAML::Value << static_cast<int>(c.Type);
+            out << YAML::Key << "IsActive" << YAML::Value << c.IsActive;
             out << YAML::Key << "Mass" << YAML::Value << c.Mass;
 
             out << YAML::EndMap;

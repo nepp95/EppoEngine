@@ -2,6 +2,7 @@
 #include "Application.h"
 
 #include "Core/Filesystem.h"
+#include "Physics/Physics.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <GLFW/glfw3.h>
@@ -29,14 +30,12 @@ namespace Eppo
 
         m_Window = CreateScope<Window>(windowSpec);
         m_Window->Init();
-        m_Window->SetEventCallback([this](Event& e)
-        {
-            Application::OnEvent(e);
-        });
+        m_Window->SetEventCallback([this](Event& e) { Application::OnEvent(e); });
 
         // Initialize systems
         Filesystem::Init();
         ScriptEngine::Init();
+        Physics::Init();
 
         // Add GUI layer
         m_ImGuiLayer = new ImGuiLayer();
@@ -50,6 +49,7 @@ namespace Eppo
         for (Layer* layer : m_LayerStack)
             layer->OnDetach();
 
+        Physics::Shutdown();
         ScriptEngine::Shutdown();
         // TODO: Remove Renderer::Shutdown();
         m_Window->Shutdown();

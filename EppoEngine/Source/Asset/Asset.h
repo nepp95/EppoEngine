@@ -18,15 +18,5 @@ namespace Eppo
         {
             return AssetType::None;
         }
-
-        virtual bool operator==(const Asset& other) const
-        {
-            return Handle == other.Handle;
-        }
-
-        virtual bool operator!=(const Asset& other) const
-        {
-            return !(*this == other);
-        }
     };
 }
