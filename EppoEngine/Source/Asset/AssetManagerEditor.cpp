@@ -11,8 +11,12 @@ namespace Eppo
     namespace
     {
         std::map<std::filesystem::path, AssetType> s_AssetExtensionMap = {
-            { ".epscene", AssetType::Scene }, { ".glb", AssetType::Mesh },    { ".gltf", AssetType::Mesh },
-            { ".jpeg", AssetType::Texture },  { ".jpg", AssetType::Texture }, { ".png", AssetType::Texture },
+            { ".epscene", AssetType::Scene   },
+            { ".glb",     AssetType::Mesh    },
+            { ".gltf",    AssetType::Mesh    },
+            { ".jpeg",    AssetType::Texture },
+            { ".jpg",     AssetType::Texture },
+            { ".png",     AssetType::Texture },
         };
 
         AssetType GetAssetTypeFromFileExtension(const std::filesystem::path& extension)

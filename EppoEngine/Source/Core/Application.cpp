@@ -82,7 +82,7 @@ namespace Eppo
     {
         EPPO_PROFILE_FUNCTION("Application::SubmitToMainThread");
 
-        std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+        std::scoped_lock lock(m_MainThreadMutex);
 
         m_MainThreadQueue->AddCommand(fn);
     }

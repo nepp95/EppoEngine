@@ -2,24 +2,9 @@
 
 namespace Eppo
 {
-    namespace Utils
-    {
-        static const char* GetImGuiPayloadTypeFromExtension(const std::filesystem::path& filepath)
-        {
-            if (filepath == ".glb") return "MESH_ASSET";
-            if (filepath == ".gltf") return "MESH_ASSET";
-            if (filepath == ".png") return "TEXTURE_ASSET";
-            if (filepath == ".cs")  return "SCRIPT_ASSET";
-
-            return "CONTENT_BROWSER_ITEM";
-        }
-    }
-
     ContentBrowserPanel::ContentBrowserPanel(PanelManager& panelManager)
         : Panel(panelManager)
-    {
-        
-    }
+    {}
 
     void ContentBrowserPanel::RenderGui()
     {

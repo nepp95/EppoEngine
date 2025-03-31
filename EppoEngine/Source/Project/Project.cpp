@@ -61,7 +61,7 @@ namespace Eppo
 
         const auto project = CreateRef<Project>();
 
-        if (ProjectSerializer serializer(project); serializer.Deserialize(filepath))
+        if (const ProjectSerializer serializer(project); serializer.Deserialize(filepath))
         {
             project->GetSpecification().ProjectDirectory = filepath.parent_path();
             s_ActiveProject = project;
@@ -81,8 +81,7 @@ namespace Eppo
         EPPO_PROFILE_FUNCTION("Project::SaveActive");
 
         // Serialize every scene
-        for (const auto& registry = s_ActiveProject->GetAssetManagerEditor()->GetAssetRegistry(); const auto& [handle, metadata] :
-             registry)
+        for (const auto& registry = s_ActiveProject->GetAssetManagerEditor()->GetAssetRegistry(); const auto& [handle, metadata] : registry)
         {
             if (metadata.Type != AssetType::Scene)
                 continue;

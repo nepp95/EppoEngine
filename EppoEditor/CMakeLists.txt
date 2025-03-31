@@ -29,3 +29,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     EppoEng
     ${mono_LIBRARIES}
 )
+
+set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")

@@ -37,7 +37,7 @@ set(INCLUDE_DIRS
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 target_link_directories(${PROJECT_NAME} PUBLIC "$ENV{VULKAN_SDK}/Lib")
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_CONFIGURATION_TYPES STREQUAL "Debug")
     target_compile_definitions(${PROJECT_NAME} PRIVATE TRACY_ENABLE TRACY_ONLY_LOCALHOST)
     target_link_directories(${PROJECT_NAME} PUBLIC "Vendor/mono/lib/Debug")
     target_link_libraries(${PROJECT_NAME} PUBLIC spirv-cross-cored)
@@ -52,14 +52,13 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE Source/pch.h)
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${INCLUDE_DIRS}
     ${Vulkan_INCLUDE_DIRS}
-    ${FETCHCONTENT_BASE_DIR}/glm-src
     ${FETCHCONTENT_BASE_DIR}/imgui-src
     ${FETCHCONTENT_BASE_DIR}/tracy-src/public
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     # Dependencies
-    efsw-static EnTT glfw Jolt libmono-static-sgen spdlog yaml-cpp
+    efsw-static EnTT glfw glm::glm Jolt libmono-static-sgen spdlog yaml-cpp
     Vulkan::Vulkan Vulkan::shaderc_combined
 
     # Dependencies of mono

@@ -20,9 +20,9 @@ namespace Eppo
 
         // Create descriptor allocators
         const std::vector<DescriptorAllocator::PoolSizeRatio> ratios = {
-            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .Ratio = 3.0f },
-            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .Ratio = 3.0f },
-            { .Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .Ratio = 3.0f },
+            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          .Ratio = 3.0f },
+            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         .Ratio = 3.0f },
+            { .Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .Ratio = 3.0f },
             { .Type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .Ratio = 4.0f }
         };
 
@@ -30,6 +30,7 @@ namespace Eppo
             m_DescriptorAllocators[i].Init(1000, ratios);
 
         // Load shaders
+        // clang-format off
         constexpr std::array shaders = {
             "Resources/Shaders/composite.glsl",
             "Resources/Shaders/debug.glsl",
@@ -38,6 +39,7 @@ namespace Eppo
             "Resources/Shaders/predepth.glsl",
             "Resources/Shaders/skybox.glsl"
         };
+        // clang-format on
 
 #ifdef EPPO_DEBUG
         std::for_each(std::execution::seq, shaders.cbegin(), shaders.cend(), [&](const std::string& path)

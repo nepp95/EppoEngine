@@ -3,17 +3,23 @@ project(EppoEngine)
 
 include(FetchContent)
 
-if(WIN32)
+if (WIN32)
     add_compile_definitions(EPPO_PLATFORM_WINDOWS VK_USE_PLATFORM_WIN32_KHR)
-elseif(UNIX)
+elseif (UNIX)
     add_compile_definitions(EPPO_PLATFORM_LINUX VK_USE_PLATFORM_XLIB_KHR)
-endif()
+endif ()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_CONFIGURATION_TYPES STREQUAL "Debug")
     add_compile_definitions(EPPO_DEBUG)
-else()
+elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_CONFIGURATION_TYPES STREQUAL "RelWithDebInfo")
     add_compile_definitions(EPPO_RELEASE)
-endif()
+elseif (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_CONFIGURATION_TYPES STREQUAL "Release")
+    add_compile_definitions(EPPO_DIST)
+endif ()
+
+if (MSVC)
+    add_compile_options("/MP")
+endif ()
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(BUILD_SHARED_LIBS OFF)
@@ -21,9 +27,9 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
 # Dependencies
 find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
-if(NOT Vulkan_FOUND)
+if (NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan not found!")
-endif()
+endif ()
 
 # Entt
 FetchContent_Declare(entt
@@ -50,7 +56,6 @@ FetchContent_MakeAvailable(glfw)
 # Glm
 FetchContent_Declare(glm
     GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 1.0.1
 )
 FetchContent_MakeAvailable(glm)
 
@@ -91,10 +96,13 @@ FetchContent_Declare(yaml-cpp
 FetchContent_MakeAvailable(yaml-cpp)
 
 # Jolt overrides our MSVC Runtime Library variable
-if(MSVC)
+if (MSVC)
     set_property(TARGET Jolt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-endif()
+endif ()
 
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)
+add_subdirectory(EppoScripting)
 add_subdirectory(EppoTesting)
+
+add_dependencies(EppoEditor EppoScripting)

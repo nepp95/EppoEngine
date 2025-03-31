@@ -5,8 +5,6 @@
 #include "Panel/PropertyPanel.h"
 #include "Panel/SceneHierarchyPanel.h"
 
-#include <imgui.h>
-
 #include <fstream>
 
 namespace Eppo
@@ -18,6 +16,7 @@ namespace Eppo
     namespace
     {
         bool s_NewProjectPopup = false;
+        bool s_OpenProjectPopup = false;
         bool s_PreferencesPopup = false;
 
         void ReplaceToken(std::string& input, const char* token, const std::string& value)
@@ -48,7 +47,7 @@ namespace Eppo
         m_PanelManager.SetSceneContext(m_EditorScene);
 
         // Open scene
-        OpenProject();
+        OpenProject("Projects/Test/Test.epproj");
 
         RenderSpecification renderSpec;
         renderSpec.Width = 1600;
@@ -101,9 +100,6 @@ namespace Eppo
 
     void EditorLayer::Render()
     {
-        if (!Project::GetActive())
-            return;
-
         switch (m_SceneState)
         {
             case SceneState::Edit:
@@ -185,7 +181,7 @@ namespace Eppo
                     SaveProject();
 
                 if (ImGui::MenuItem("Open Project", "CTRL+O"))
-                    OpenProject();
+                    s_OpenProjectPopup = true;
 
                 if (ImGui::MenuItem("New Scene"))
                     NewScene();
@@ -221,6 +217,13 @@ namespace Eppo
             constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
             ImGui::OpenPopup("New Project", flags);
             s_NewProjectPopup = false;
+        }
+
+        if (s_OpenProjectPopup)
+        {
+            constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+            ImGui::OpenPopup("Open Project", flags);
+            s_OpenProjectPopup = false;
         }
 
         if (s_PreferencesPopup)
@@ -264,6 +267,7 @@ namespace Eppo
         m_ViewportRenderer->RenderGui();
 
         UI_File_NewProject();
+        UI_File_OpenProject();
         UI_File_Preferences();
         UI_Toolbar();
 
@@ -604,6 +608,86 @@ namespace Eppo
 
             if (projectExists)
                 ImGui::EndDisabled();
+
+            ImGui::EndPopup();
+        }
+    }
+    void EditorLayer::UI_File_OpenProject()
+    {
+        if (constexpr ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+            ImGui::BeginPopupModal("Open Project", nullptr, flags))
+        {
+            static std::array<bool, 250> selected{ false };
+
+            uint32_t index = 0;
+            for (const auto& path : std::filesystem::recursive_directory_iterator(Filesystem::GetAppRootDirectory() / "Projects"))
+            {
+                if (path.is_directory() && path.path().parent_path().filename() == "Projects")
+                {
+                    if (const auto p = path.path(); ImGui::BeginTable(p.string().c_str(), 3))
+                    {
+                        const auto name = p.filename().string();
+
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Selectable(name.c_str(), &selected[index], ImGuiSelectableFlags_SpanAllColumns);
+                        ImGui::Dummy(ImVec2(50, 50));
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(350.0f);
+                        ImGui::Text("0 Assets");
+                        ImGui::Text("15 Somethings");
+                        ImGui::TableNextColumn();
+                        ImGui::Button("Open");
+                        ImGui::EndTable();
+                    }
+                    index++;
+                }
+            }
+
+
+            ImGui::Selectable("Something", false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(100, 50));
+            ImGui::Selectable("Something", false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(100, 50));
+            ImGui::Selectable("Something", false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(100, 50));
+
+            /*if (ImGui::IsMouseDoubleClicked(0))
+                selection[3] = !selection[3];*/
+
+
+            /*const auto projectPath = std::string(nameBuffer);
+            const std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
+
+            projectExists = Filesystem::Exists(fullProjectPath);
+
+            if (Filesystem::Exists(fullProjectPath) && !projectPath.empty())
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+                ImGui::Text("Project name already exists");
+                ImGui::PopStyleColor();
+            }
+            else
+            {
+                ImGui::Text("Project path: \n%s", fullProjectPath.string().c_str());
+            }
+
+            ImGui::Dummy(ImVec2(50, 20));
+
+            if (ImGui::Button("Cancel", ImVec2(100, 30)))
+                ImGui::CloseCurrentPopup();
+
+            ImGui::SameLine();
+
+            if (projectExists)
+                ImGui::BeginDisabled();
+
+            if (ImGui::Button("Create", ImVec2(100, 30)))
+            {
+                NewProject(projectPath);
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (projectExists)
+                ImGui::EndDisabled();*/
 
             ImGui::EndPopup();
         }
