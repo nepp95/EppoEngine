@@ -13,21 +13,21 @@ namespace Eppo
     {
         UUID uuid;
 
-        EXPECT_LT(0, uuid);
+        EXPECT_LT(0, static_cast<uint64_t>(uuid));
     }
 
     TEST(UUIDTest, Constructor_Zero)
     {
         UUID uuid(0);
 
-        EXPECT_EQ(0, uuid);
+        EXPECT_EQ(0, static_cast<uint64_t>(uuid));
     }
 
     TEST_P(UUIDTestFixture, Constructor_UInt64)
     {
         UUID uuid(GetParam());
 
-        EXPECT_EQ(GetParam(), uuid);
+        EXPECT_EQ(GetParam(), static_cast<uint64_t>(uuid));
     }
 
     TEST_P(UUIDTestFixture, Constructor_Copy)
@@ -35,6 +35,6 @@ namespace Eppo
         UUID uuid(GetParam());
         UUID targetUuid(uuid);
 
-        EXPECT_EQ(uuid, targetUuid);
+        EXPECT_EQ(uuid, static_cast<uint64_t>(targetUuid));
     }
 }

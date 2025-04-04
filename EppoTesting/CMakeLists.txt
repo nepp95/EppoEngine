@@ -14,8 +14,6 @@ file(GLOB_RECURSE SOURCES
 set(INCLUDE_DIRS
     "Source"
     "${CMAKE_SOURCE_DIR}/EppoEngine/Source"
-    "${CMAKE_SOURCE_DIR}/EppoEngine/Vendor/googletest/googlemock/include"
-    "${CMAKE_SOURCE_DIR}/EppoEngine/Vendor/googletest/googletest/include"
 )
 
 add_executable(EppoTesting ${SOURCES})
@@ -25,5 +23,5 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${mono_CFLAGS})
 target_link_options(${PROJECT_NAME} PRIVATE ${mono_LDFLAGS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    EppoEng gmock gtest
+    EppoEng gmock
 )
