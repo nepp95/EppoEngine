@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ProjectSerializer.h"
 
-#include <yaml-cpp/yaml.h>
+#include "Utility/Json.h"
 
 namespace Eppo
 {
@@ -15,21 +15,15 @@ namespace Eppo
 
         const auto& spec = m_Project->GetSpecification();
 
-        YAML::Emitter out;
+        nlohmann::json data;
 
-        out << YAML::BeginMap;
-        out << YAML::Key << "Project" << YAML::Value;
+        data = {
+            { "Name", spec.Name },
+            { "ProjectDirectory", spec.ProjectDirectory.string() },
+            { "StartScene", static_cast<uint64_t>(spec.StartScene) }
+        };
 
-        out << YAML::BeginMap;
-        out << YAML::Key << "Name" << YAML::Value << spec.Name;
-        out << YAML::Key << "ProjectDirectory" << YAML::Value << spec.ProjectDirectory.string();
-        out << YAML::Key << "StartScene" << YAML::Value << spec.StartScene;
-        out << YAML::EndMap;
-
-        out << YAML::EndMap;
-
-        std::ofstream fout(spec.ProjectDirectory / std::filesystem::path(spec.Name + ".epproj"));
-        fout << out.c_str();
+        Filesystem::WriteText(spec.ProjectDirectory / std::filesystem::path(spec.Name + ".epproj"), data.dump(4));
 
         return true;
     }
@@ -40,30 +34,28 @@ namespace Eppo
 
         auto& spec = m_Project->GetSpecification();
 
-        YAML::Node data;
+        std::ifstream stream(filepath);
+        nlohmann::json data;
 
         try
         {
-            data = YAML::LoadFile(filepath.string());
+            data = nlohmann::json::parse(stream);
         }
-        catch (YAML::ParserException& e)
+        catch (nlohmann::json::exception& e)
         {
-            EPPO_ERROR("Failed to load project file '{}'!\nError: {}", filepath, e.what());
+            EPPO_ERROR("Failed to load project file '{}'!", filepath);
+            EPPO_ERROR("Parse Error: {}", e.what());
             return false;
         }
 
-        auto projectNode = data["Project"];
-        if (!projectNode)
-            return false;
-
-        spec.Name = projectNode["Name"].as<std::string>();
+        spec.Name = data["Name"].get<std::string>();
         EPPO_INFO("Deserializing project '{}'", spec.Name);
 
-        if (projectNode["ProjectDirectory"])
-            spec.ProjectDirectory = std::filesystem::path(projectNode["ProjectDirectory"].as<std::string>());
+        if (data.contains("ProjectDirectory"))
+            spec.ProjectDirectory = std::filesystem::path(data["ProjectDirectory"].get<std::string>());
 
-        if (projectNode["StartScene"])
-            spec.StartScene = projectNode["StartScene"].as<uint64_t>();
+        if (data.contains("StartScene"))
+            spec.StartScene = data["StartScene"].get<UUID>();
 
         return true;
     }

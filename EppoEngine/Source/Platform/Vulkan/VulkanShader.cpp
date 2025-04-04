@@ -68,12 +68,14 @@ namespace Eppo
         m_ShaderResources[2] = {};
         m_ShaderResources[3] = {};
 
-        // Reflection
-        for (const auto& [type, data] : m_ShaderBytes)
-            Reflect(type, data);
-
         CreatePipelineShaderInfos();
         CreateDescriptorSetLayouts();
+    }
+
+    void VulkanShader::Reflect()
+    {
+        for (const auto& [type, data] : m_ShaderBytes)
+            Reflect(type, data);
     }
 
     std::unordered_map<ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source) const

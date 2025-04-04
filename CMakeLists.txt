@@ -66,6 +66,12 @@ FetchContent_Declare(imgui
 )
 FetchContent_MakeAvailable(imgui)
 
+# Json (nlohmann)
+FetchContent_Declare(nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 # Jolt Physics
 FetchContent_Declare(jolt
     GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
@@ -87,13 +93,6 @@ FetchContent_Declare(tracy
     GIT_TAG v0.11.1
 )
 FetchContent_MakeAvailable(tracy)
-
-# Yaml-cpp
-FetchContent_Declare(yaml-cpp
-    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG 0.8.0
-)
-FetchContent_MakeAvailable(yaml-cpp)
 
 # Jolt overrides our MSVC Runtime Library variable
 if (MSVC)

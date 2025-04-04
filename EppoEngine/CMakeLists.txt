@@ -58,7 +58,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     # Dependencies
-    efsw-static EnTT glfw glm::glm Jolt libmono-static-sgen spdlog yaml-cpp
+    efsw-static EnTT glfw glm::glm Jolt nlohmann_json::nlohmann_json libmono-static-sgen spdlog
     Vulkan::Vulkan Vulkan::shaderc_combined
 
     # Dependencies of mono

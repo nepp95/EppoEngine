@@ -1,6 +1,6 @@
 #pragma once
 
-typedef struct _MonoClassField MonoClassField;
+using MonoClassField = struct _MonoClassField;
 
 namespace Eppo
 {

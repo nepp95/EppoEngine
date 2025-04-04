@@ -41,12 +41,13 @@ namespace Eppo
         };
         // clang-format on
 
-#ifdef EPPO_DEBUG
+#define MT
+#ifndef MT
         std::for_each(std::execution::seq, shaders.cbegin(), shaders.cend(), [&](const std::string& path)
         {
             m_ShaderLibrary.Load(path);
         });
-#elif defined(EPPO_RELEASE)
+#else
         std::for_each(std::execution::par, shaders.cbegin(), shaders.cend(), [&](const std::string& path)
         {
             m_ShaderLibrary.Load(path);
@@ -132,8 +133,8 @@ namespace Eppo
                     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
                     attachmentInfo.loadOp = attachment.Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
                     attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(image)->GetImageInfo().ImageView;
-                    attachmentInfo.clearValue.color = { attachment.ClearValue.Color.r, attachment.ClearValue.Color.g, attachment.ClearValue.Color.b,
-                                                        attachment.ClearValue.Color.a };
+                    attachmentInfo.clearValue.color = { attachment.ClearValue.Color.r, attachment.ClearValue.Color.g,
+                                                        attachment.ClearValue.Color.b, attachment.ClearValue.Color.a };
                     attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 }
             }

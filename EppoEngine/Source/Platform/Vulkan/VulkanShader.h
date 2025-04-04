@@ -14,6 +14,8 @@ namespace Eppo
         [[nodiscard]] const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts() const { return m_DescriptorSetLayouts; }
         [[nodiscard]] const std::vector<VkPushConstantRange>& GetPushConstantRanges() const { return m_PushConstantRanges; }
 
+        void Reflect();
+
     private:
         [[nodiscard]] std::unordered_map<ShaderStage, std::string> PreProcess(std::string_view source) const;
         void Compile(ShaderStage stage, const std::string& source);

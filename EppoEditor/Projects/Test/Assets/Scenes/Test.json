@@ -1,0 +1,201 @@
+{
+    "Scene": {
+        "Entities": [
+          {
+            "IDComponent": {
+              "UUID": 4053877638510577070
+            },
+            "MeshComponent": {
+              "MeshHandle": 17362452449132321929
+            },
+            "TagComponent": {
+              "Tag": "Sponza"
+            },
+            "TransformComponent": {
+              "Rotation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "Scale": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "Translation": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          },
+          {
+            "PointLightComponent": {
+              "Color": [
+                1.0,
+                0.3529411852359772,
+                0.0,
+                1.0
+              ]
+            },
+            "TagComponent": {
+              "Tag": "Point Light 1"
+            },
+            "TransformComponent": {
+              "Rotation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "Scale": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "Translation": [
+                -4.949999809265137,
+                1.0,
+                1.149999976158142
+              ]
+            },
+            "IDComponent": {
+              "UUID": 4545082005372352439
+            }
+          },
+            {
+              "IDComponent": {
+                "UUID": 8203999123257290006
+              },
+              "PointLightComponent": {
+                "Color": [
+                  1.0,
+                  0.3529411852359772,
+                  0.0,
+                  1.0
+                ]
+              },
+              "TagComponent": {
+                "Tag": "Point Light 3"
+              },
+              "TransformComponent": {
+                "Rotation": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "Scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "Translation": [
+                  3.9000000953674316,
+                  1.0,
+                  1.149999976158142
+                ]
+              }
+            },
+            {
+              "IDComponent": {
+                "UUID": 8533309991787433210
+              },
+              "PointLightComponent": {
+                "Color": [
+                  1.0,
+                  0.3529411852359772,
+                  0.0,
+                  1.0
+                ]
+              },
+              "TagComponent": {
+                "Tag": "Point Light 4"
+              },
+              "TransformComponent": {
+                "Rotation": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "Scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "Translation": [
+                  3.9000000953674316,
+                  1.0,
+                  -1.75
+                ]
+              }
+            },
+            {
+              "IDComponent": {
+                "UUID": 10744061758300817162
+              },
+              "PointLightComponent": {
+                "Color": [
+                  1.0,
+                  0.3529411852359772,
+                  0.0,
+                  1.0
+                ]
+              },
+              "TagComponent": {
+                "Tag": "Point Light 2"
+              },
+              "TransformComponent": {
+                "Rotation": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "Scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "Translation": [
+                  -4.949999809265137,
+                  1.0,
+                  -1.75
+                ]
+              }
+            },
+            {
+              "IDComponent": {
+                "UUID": 10124499925899082567
+              },
+              "CameraComponent": {
+                "OrthographicFarClip": 1,
+                "OrthographicNearClip": -1,
+                "OrthographicSize": 10,
+                "PerspectiveFarClip": 1000,
+                "PerspectiveFov": 0.7853981852531433,
+                "PerspectiveNearClip": 0.009999999776482582,
+                "ProjectionType": 0
+              },
+              "TagComponent": {
+                "Tag": "Camera"
+              },
+              "TransformComponent": {
+                "Rotation": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "Scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "Translation": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+        ],
+        "Name": "Test"
+    }
+}

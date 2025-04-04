@@ -47,7 +47,7 @@ namespace Eppo
         m_PanelManager.SetSceneContext(m_EditorScene);
 
         // Open scene
-        OpenProject("Projects/Test/Test.epproj");
+        OpenProject("Projects/Test/Test.json");
 
         RenderSpecification renderSpec;
         renderSpec.Width = 1600;
@@ -454,12 +454,6 @@ namespace Eppo
 
     void EditorLayer::OpenProject(const std::filesystem::path& filepath)
     {
-        if (filepath.extension().string() != ".epproj")
-        {
-            EPPO_ERROR("Could not load '{}' because it is not a project file!", filepath.string());
-            return;
-        }
-
         if (Project::GetActive())
             CloseProject();
 
