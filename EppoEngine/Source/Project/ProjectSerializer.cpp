@@ -23,7 +23,7 @@ namespace Eppo
             { "StartScene", static_cast<uint64_t>(spec.StartScene) }
         };
 
-        Filesystem::WriteText(spec.ProjectDirectory / std::filesystem::path(spec.Name + ".epproj"), data.dump(4));
+        Filesystem::WriteText(spec.ProjectDirectory / std::filesystem::path(spec.Name + ".json"), data.dump(4));
 
         return true;
     }

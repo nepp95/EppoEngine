@@ -4,6 +4,7 @@
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Platform/Vulkan/VulkanImage.h"
 #include "Platform/Vulkan/VulkanPipeline.h"
+#include "Platform/Vulkan/VulkanShader.h"
 
 namespace Eppo
 {
@@ -53,6 +54,12 @@ namespace Eppo
             m_ShaderLibrary.Load(path);
         });
 #endif
+
+        std::for_each(std::execution::seq, shaders.cbegin(), shaders.cend(),
+                      [&](const std::string& path)
+        {
+            std::static_pointer_cast<VulkanShader>(m_ShaderLibrary.Get(std::filesystem::path(path).stem().string()))->Reflect();
+        });
     }
 
     void VulkanRenderer::Shutdown()

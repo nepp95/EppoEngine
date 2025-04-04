@@ -35,7 +35,7 @@ namespace Eppo
 
         nlohmann::json data;
 
-        data["Scene"] = sceneName;
+        data["Scene"]["Name"] = sceneName;
         auto entities = nlohmann::json::array();
 
         m_SceneContext->m_Registry.sort<IDComponent>([](const auto& lhs, const auto& rhs) { return lhs.ID < rhs.ID; });
@@ -47,6 +47,8 @@ namespace Eppo
 
             SerializeEntity(entities, entity);
         }
+
+        data["Scene"]["Entities"] = entities;
 
         Filesystem::WriteText(filepath, data.dump(4));
 
@@ -225,8 +227,13 @@ namespace Eppo
         EPPO_INFO("Serializing entity '{}' ({})", entity.GetName(), entity.GetUUID());
 
         uint64_t handle = static_cast<uint64_t>(entity.GetUUID());
-        data["Entities"].emplace_back(handle);
-        auto& e = data["Entities"][handle];
+
+        nlohmann::json e;
+
+        if (entity.HasComponent<IDComponent>())
+        {
+            e["IDComponent"]["UUID"] = handle;
+        }
 
         if (entity.HasComponent<TagComponent>())
         {
@@ -341,5 +348,7 @@ namespace Eppo
             const auto& [color] = entity.GetComponent<PointLightComponent>();
             e["PointLightComponent"]["Color"] = color;
         }
+
+        data.emplace_back(e);
     }
 }
