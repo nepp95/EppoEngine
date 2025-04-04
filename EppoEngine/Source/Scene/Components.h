@@ -46,9 +46,7 @@ namespace Eppo
 
         [[nodiscard]] glm::mat4 GetTransform() const
         {
-            return glm::translate(glm::mat4(1.0f), Translation)
-                * glm::toMat4(glm::quat(Rotation))
-                * glm::scale(glm::mat4(1.0f), Scale);
+            return glm::translate(glm::mat4(1.0f), Translation) * glm::toMat4(glm::quat(Rotation)) * glm::scale(glm::mat4(1.0f), Scale);
         }
     };
 
@@ -86,7 +84,7 @@ namespace Eppo
 
         ScriptComponent() = default;
     };
-    
+
     struct RigidBodyComponent
     {
         bool IsActive = false;

@@ -2,6 +2,7 @@
 #include "Application.h"
 
 #include "Core/Filesystem.h"
+#include "Physics/Physics.h"
 #include "Scripting/ScriptEngine.h"
 #include "Physics/Physics.h"
 
@@ -30,10 +31,7 @@ namespace Eppo
 
         m_Window = CreateScope<Window>(windowSpec);
         m_Window->Init();
-        m_Window->SetEventCallback([this](Event& e)
-        {
-            Application::OnEvent(e);
-        });
+        m_Window->SetEventCallback([this](Event& e) { Application::OnEvent(e); });
 
         // Initialize systems
         Filesystem::Init();
@@ -85,7 +83,7 @@ namespace Eppo
     {
         EPPO_PROFILE_FUNCTION("Application::SubmitToMainThread");
 
-        std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+        std::scoped_lock lock(m_MainThreadMutex);
 
         m_MainThreadQueue->AddCommand(fn);
     }

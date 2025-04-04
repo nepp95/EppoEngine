@@ -3,26 +3,24 @@
 
 #include "Asset/AssetImporter.h"
 #include "Project/Project.h"
-
-#include <yaml-cpp/yaml.h>
+#include "Utility/Json.h"
 
 namespace Eppo
 {
     namespace
     {
-        std::map<std::filesystem::path, AssetType> s_AssetExtensionMap =
-        {
-            { ".epscene", AssetType::Scene },
-            { ".glb", AssetType::Mesh },
-            { ".gltf", AssetType::Mesh },
-            { ".jpeg", AssetType::Texture },
-            { ".jpg", AssetType::Texture },
-            { ".png", AssetType::Texture },
+        std::map<std::filesystem::path, AssetType> s_AssetExtensionMap = {
+            { ".epscene", AssetType::Scene   },
+            { ".glb",     AssetType::Mesh    },
+            { ".gltf",    AssetType::Mesh    },
+            { ".jpeg",    AssetType::Texture },
+            { ".jpg",     AssetType::Texture },
+            { ".png",     AssetType::Texture },
         };
 
         AssetType GetAssetTypeFromFileExtension(const std::filesystem::path& extension)
         {
-            if (s_AssetExtensionMap.find(extension) == s_AssetExtensionMap.end())
+            if (!s_AssetExtensionMap.contains(extension))
             {
                 EPPO_WARN("Could not find AssetType for '{}'", extension);
                 return AssetType::None;
@@ -194,31 +192,26 @@ namespace Eppo
         EPPO_PROFILE_FUNCTION("AssetManagerEditor::SerializeAssetRegistry");
         EPPO_INFO("Serializing asset registry");
 
-        YAML::Emitter out;
-        out << YAML::BeginSeq;
+        nlohmann::json data = nlohmann::json::array();
 
         for (const auto& [handle, metadata] : m_AssetData)
         {
-            out << YAML::BeginMap;
+            nlohmann::json asset;
+            asset["AssetHandle"] = handle;
+            asset["Type"] = Utils::AssetTypeToString(metadata.Type);
+            asset["Filepath"] = metadata.Filepath.string();
 
-            out << YAML::Key << "AssetHandle" << YAML::Value << handle;
-            out << YAML::Key << "Type" << YAML::Value << Utils::AssetTypeToString(metadata.Type);
-            out << YAML::Key << "Filepath" << YAML::Value << metadata.Filepath.string();
-
-            out << YAML::EndMap;
+            data.emplace_back(asset);
         }
 
-        out << YAML::EndSeq;
-
-        std::ofstream fout(Project::GetAssetsDirectory() / "AssetRegistry.epporeg", std::ios::trunc);
-        fout << out.c_str();
+        Filesystem::WriteText(Project::GetAssetsDirectory() / "AssetRegistry.json", data.dump(4));
     }
 
     bool AssetManagerEditor::DeserializeAssetRegistry()
     {
         EPPO_PROFILE_FUNCTION("AssetManagerEditor::DeserializeAssetRegistry");
 
-        std::filesystem::path assetRegistryFile = Project::GetAssetsDirectory() / "AssetRegistry.epporeg";
+        std::filesystem::path assetRegistryFile = Project::GetAssetsDirectory() / "AssetRegistry.json";
 
         if (!Filesystem::Exists(assetRegistryFile))
         {
@@ -228,39 +221,40 @@ namespace Eppo
 
         EPPO_INFO("Deserializing asset registry");
 
-        YAML::Node data;
+        std::ifstream stream(assetRegistryFile);
+        nlohmann::json data;
 
         // Load the entries in the asset registry
         try
         {
-            data = YAML::LoadFile(assetRegistryFile.string());
+            data = nlohmann::json::parse(stream);
         }
-        catch (YAML::ParserException& e)
+        catch (nlohmann::json::exception& e)
         {
             EPPO_ERROR("Failed to load asset registry file '{}'!", assetRegistryFile);
-            EPPO_ERROR("YAML Error: {}", e.what());
+            EPPO_ERROR("Parse Error: {}", e.what());
             return false;
         }
 
         for (const auto& asset : data)
         {
-            std::filesystem::path filepath = asset["Filepath"].as<std::string>();
+            std::filesystem::path filepath = asset["Filepath"].get<std::string>();
             if (!Filesystem::Exists(Project::GetAssetFilepath(filepath)))
             {
                 EPPO_WARN("Asset with filepath '{}' has been removed from the asset registry because it does not exist!", filepath);
                 continue;
             }
 
-            AssetHandle handle = asset["AssetHandle"].as<uint64_t>();
+            AssetHandle handle = asset["AssetHandle"].get<UUID>();
 
             AssetMetadata metadata;
             metadata.Handle = handle;
-            metadata.Type = Utils::AssetTypeFromString(asset["Type"].as<std::string>());
+            metadata.Type = Utils::AssetTypeFromString(asset["Type"].get<std::string>());
             metadata.Filepath = filepath;
 
             m_AssetData[handle] = metadata;
 
-            EPPO_TRACE("Asset '{}' ({}) deserialized", filepath.string(), handle);
+            EPPO_TRACE("Asset '{}' ({}) deserialized", filepath, handle);
         }
 
         // Since the information can have changed if a asset did not exist, we serialize it again

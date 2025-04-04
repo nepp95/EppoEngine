@@ -16,7 +16,7 @@ namespace Eppo
         std::unordered_map<MonoType*, std::function<bool(Entity)>> s_EntityHasComponentFns;
     }
 
-#define EPPO_ADD_INTERNAL_CALL(fn) mono_add_internal_call("Eppo.InternalCalls::"#fn, reinterpret_cast<const void*>(fn));
+#define EPPO_ADD_INTERNAL_CALL(fn) mono_add_internal_call("Eppo.InternalCalls::" #fn, reinterpret_cast<const void*>(fn));
 
     static void Log(const uint32_t logLevel, MonoString* message)
     {
@@ -28,13 +28,17 @@ namespace Eppo
 
         switch (logLevel)
         {
-            case 0: EPPO_SCRIPT_TRACE(messageStr);
+            case 0:
+                EPPO_SCRIPT_TRACE(messageStr);
                 break;
-            case 1: EPPO_SCRIPT_INFO(messageStr);
+            case 1:
+                EPPO_SCRIPT_INFO(messageStr);
                 break;
-            case 2: EPPO_SCRIPT_WARN(messageStr);
+            case 2:
+                EPPO_SCRIPT_WARN(messageStr);
                 break;
-            case 3: EPPO_SCRIPT_ERROR(messageStr);
+            case 3:
+                EPPO_SCRIPT_ERROR(messageStr);
                 break;
         }
     }

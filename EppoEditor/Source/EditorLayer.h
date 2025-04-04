@@ -6,15 +6,15 @@
 
 namespace Eppo
 {
-    class EditorLayer : public Layer
+    class EditorLayer final : public Layer
     {
     public:
         EditorLayer();
         ~EditorLayer() override = default;
-    
+
         void OnAttach() override;
         void OnDetach() override;
-    
+
         void Update(float timestep) override;
         void Render() override;
         void RenderGui() override;
@@ -42,6 +42,7 @@ namespace Eppo
         void ImportAsset();
 
         void UI_File_NewProject();
+        void UI_File_OpenProject();
         void UI_File_Preferences();
         void UI_Toolbar();
 
@@ -51,7 +52,7 @@ namespace Eppo
         Ref<Scene> m_ActiveScene = CreateRef<Scene>();
         Ref<Scene> m_EditorScene = CreateRef<Scene>();
         std::filesystem::path m_ActiveScenePath;
-        
+
         // Editor
         PanelManager& m_PanelManager;
         EditorCamera m_EditorCamera = EditorCamera(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);

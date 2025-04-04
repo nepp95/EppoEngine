@@ -68,12 +68,43 @@ namespace Eppo
         m_ShaderResources[2] = {};
         m_ShaderResources[3] = {};
 
-        // Reflection
         for (const auto& [type, data] : m_ShaderBytes)
             Reflect(type, data);
 
         CreatePipelineShaderInfos();
         CreateDescriptorSetLayouts();
+    }
+
+    void VulkanShader::Reflect() const
+    {
+        auto pushConstants = m_PushConstantRanges.size();
+        uint32_t uniformBuffers = 0;
+        uint32_t sampledImages = 0;
+
+        EPPO_TRACE("Shader::Reflect - {}.glsl", GetName());
+        EPPO_TRACE("\tSet 0:");
+        
+        for (const auto& res : m_ShaderResources.at(0))
+        {
+            EPPO_TRACE("\t\t{}", res.Name);
+            EPPO_TRACE("\t\tBinding = {}", res.Binding);
+
+            if (res.ResourceType == ShaderResourceType::Sampler)
+            {
+                EPPO_TRACE("\t\tType = Sampler");
+                sampledImages++;
+            }
+            else if (res.ResourceType == ShaderResourceType::UniformBuffer)
+            {
+                EPPO_TRACE("\t\tType = Uniform buffer");
+                uniformBuffers++;
+            }
+            
+            EPPO_TRACE("\t\tSize = {}", res.Size);
+        }
+
+        EPPO_TRACE("{} Samplers", sampledImages);
+        EPPO_TRACE("{} Uniform buffers", uniformBuffers);
     }
 
     std::unordered_map<ShaderStage, std::string> VulkanShader::PreProcess(std::string_view source) const
@@ -211,14 +242,8 @@ namespace Eppo
         const spirv_cross::Compiler compiler(shaderBytes);
         spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-        EPPO_TRACE("Shader::Reflect - {}.glsl (Stage: {})", GetName(), Utils::ShaderStageToString(stage));
-        EPPO_TRACE("    {} Push constants", resources.push_constant_buffers.size());
-        EPPO_TRACE("    {} Uniform buffers", resources.uniform_buffers.size());
-        EPPO_TRACE("    {} Sampled images", resources.sampled_images.size());
-
         if (!resources.push_constant_buffers.empty())
         {
-            EPPO_TRACE("    Push constants:");
             EPPO_ASSERT(resources.push_constant_buffers.size() == 1); // At the moment, vulkan only supports one push constant buffer
 
             const auto& resource = resources.push_constant_buffers[0];
@@ -233,22 +258,10 @@ namespace Eppo
                 stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
                 offset = 0;
             }
-
-            if (!resource.name.empty())
-                EPPO_TRACE("        {}", resource.name);
-            EPPO_TRACE("        Size = {}", bufferSize);
-            EPPO_TRACE("        Members = {}", memberCount);
-
-            for (size_t i = 0; i < memberCount; i++)
-                EPPO_TRACE("            Member: {} ({})",
-                       compiler.get_member_name(resource.base_type_id, static_cast<uint32_t>(i)),
-                       static_cast<uint32_t>(compiler.get_type(resource.base_type_id).member_types[i]));
         }
 
         if (!resources.uniform_buffers.empty())
         {
-            EPPO_TRACE("    Uniform buffers:");
-
             for (const auto& resource : resources.uniform_buffers)
             {
                 const auto& bufferType = compiler.get_type(resource.base_type_id);
@@ -277,19 +290,11 @@ namespace Eppo
                     shaderResource.Size = static_cast<uint32_t>(bufferSize);
                     shaderResource.Name = resource.name;
                 }
-
-                EPPO_TRACE("        {}", resource.name);
-                EPPO_TRACE("            Size = {}", bufferSize);
-                EPPO_TRACE("            Set = {}", set);
-                EPPO_TRACE("            Binding = {}", binding);
-                EPPO_TRACE("            Members = {}", memberCount);
             }
         }
 
         if (!resources.sampled_images.empty())
         {
-            EPPO_TRACE("    Sampled images:");
-
             for (const auto& resource : resources.sampled_images)
             {
                 const auto& bufferType = compiler.get_type(resource.base_type_id);
@@ -321,12 +326,8 @@ namespace Eppo
                     shaderResource.ArraySize = arraySize;
                     shaderResource.Name = resource.name;
                 }
-
-                EPPO_TRACE("        Set = {}", set);
-                EPPO_TRACE("        Binding = {}", binding);
             }
         }
-        EPPO_TRACE("");
     }
 
     void VulkanShader::CreatePipelineShaderInfos()
@@ -367,7 +368,7 @@ namespace Eppo
         const auto context = VulkanContext::Get();
         const VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
-        auto& builder = context->GetDescriptorLayoutBuilder();
+        DescriptorLayoutBuilder builder;
 
         m_DescriptorSetLayouts.resize(4);
         for (const auto& [set, setResources] : m_ShaderResources)

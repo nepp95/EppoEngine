@@ -259,14 +259,13 @@ namespace Eppo
             {
                 if (Ref<ScriptInstance> instance = ScriptEngine::GetEntityInstance(uuid))
                 {
-                    const auto& fields = instance->GetScriptClass()->GetFields();
-                    for (const auto& [name, field] : fields)
+                    for (const auto& fields = instance->GetScriptClass()->GetFields(); const auto& [name, field] : fields)
                     {
                         switch (field.Type)
                         {
                             case ScriptFieldType::Float:
                             {
-                                float data = instance->GetFieldValue<float>(name);
+                                auto data = instance->GetFieldValue<float>(name);
                                 if (ImGui::InputFloat(name.c_str(), &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -274,7 +273,7 @@ namespace Eppo
 
                             case ScriptFieldType::Double:
                             {
-                                double data = instance->GetFieldValue<double>(name);
+                                auto data = instance->GetFieldValue<double>(name);
                                 if (ImGui::InputDouble(name.c_str(), &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -290,7 +289,7 @@ namespace Eppo
 
                             case ScriptFieldType::Char:
                             {
-                                int8_t data = instance->GetFieldValue<int8_t>(name);
+                                auto data = instance->GetFieldValue<int8_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S8, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -298,7 +297,7 @@ namespace Eppo
 
                             case ScriptFieldType::Int16:
                             {
-                                int16_t data = instance->GetFieldValue<int16_t>(name);
+                                auto data = instance->GetFieldValue<int16_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S16, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -306,7 +305,7 @@ namespace Eppo
 
                             case ScriptFieldType::Int32:
                             {
-                                int32_t data = instance->GetFieldValue<int32_t>(name);
+                                auto data = instance->GetFieldValue<int32_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S32, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -314,7 +313,7 @@ namespace Eppo
 
                             case ScriptFieldType::Int64:
                             {
-                                int64_t data = instance->GetFieldValue<int64_t>(name);
+                                auto data = instance->GetFieldValue<int64_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S64, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -322,7 +321,7 @@ namespace Eppo
 
                             case ScriptFieldType::Byte:
                             {
-                                uint8_t data = instance->GetFieldValue<uint8_t>(name);
+                                auto data = instance->GetFieldValue<uint8_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U8, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -330,7 +329,7 @@ namespace Eppo
 
                             case ScriptFieldType::UInt16:
                             {
-                                uint16_t data = instance->GetFieldValue<uint16_t>(name);
+                                auto data = instance->GetFieldValue<uint16_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U16, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -338,7 +337,7 @@ namespace Eppo
 
                             case ScriptFieldType::UInt32:
                             {
-                                uint32_t data = instance->GetFieldValue<uint32_t>(name);
+                                auto data = instance->GetFieldValue<uint32_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U32, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -346,7 +345,7 @@ namespace Eppo
 
                             case ScriptFieldType::UInt64:
                             {
-                                uint64_t data = instance->GetFieldValue<uint64_t>(name);
+                                auto data = instance->GetFieldValue<uint64_t>(name);
                                 if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U64, &data))
                                     instance->SetFieldValue(name, data);
                                 break;
@@ -354,9 +353,11 @@ namespace Eppo
 
                             case ScriptFieldType::Vector2:
                             {
-                                glm::vec2 data = instance->GetFieldValue<glm::vec2>(name);
-                                if (ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+                                if (auto data = instance->GetFieldValue<glm::vec2>(name);
+                                    ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+                                {
                                     instance->SetFieldValue(name, data);
+                                }
                                 break;
                             }
 
@@ -400,7 +401,7 @@ namespace Eppo
                             {
                                 case ScriptFieldType::Float:
                                 {
-                                    float data = scriptField.GetValue<float>();
+                                    auto data = scriptField.GetValue<float>();
                                     if (ImGui::InputFloat(name.c_str(), &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -408,7 +409,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Double:
                                 {
-                                    double data = scriptField.GetValue<double>();
+                                    auto data = scriptField.GetValue<double>();
                                     if (ImGui::InputDouble(name.c_str(), &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -424,7 +425,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Char:
                                 {
-                                    int8_t data = scriptField.GetValue<int8_t>();
+                                    auto data = scriptField.GetValue<int8_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S8, &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -432,7 +433,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Int16:
                                 {
-                                    int16_t data = scriptField.GetValue<int16_t>();
+                                    auto data = scriptField.GetValue<int16_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S16, &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -440,7 +441,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Int32:
                                 {
-                                    int32_t data = scriptField.GetValue<int32_t>();
+                                    auto data = scriptField.GetValue<int32_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S32, &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -448,7 +449,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Int64:
                                 {
-                                    int64_t data = scriptField.GetValue<int64_t>();
+                                    auto data = scriptField.GetValue<int64_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_S64, &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -456,7 +457,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Byte:
                                 {
-                                    uint8_t data = scriptField.GetValue<uint8_t>();
+                                    auto data = scriptField.GetValue<uint8_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U8, &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -464,7 +465,7 @@ namespace Eppo
 
                                 case ScriptFieldType::UInt16:
                                 {
-                                    uint16_t data = scriptField.GetValue<uint16_t>();
+                                    auto data = scriptField.GetValue<uint16_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U16, &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -472,7 +473,7 @@ namespace Eppo
 
                                 case ScriptFieldType::UInt32:
                                 {
-                                    uint32_t data = scriptField.GetValue<uint32_t>();
+                                    auto data = scriptField.GetValue<uint32_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U32, &data))
                                         scriptField.SetValue(data);
                                     break;
@@ -480,7 +481,7 @@ namespace Eppo
 
                                 case ScriptFieldType::UInt64:
                                 {
-                                    uint64_t data = scriptField.GetValue<uint64_t>();
+                                    auto data = scriptField.GetValue<uint64_t>();
                                     if (ImGui::InputScalar(name.c_str(), ImGuiDataType_U64, &data))
                                         scriptField.SetValue(data);
                                     break;

@@ -25,7 +25,5 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${mono_CFLAGS})
 target_link_options(${PROJECT_NAME} PRIVATE ${mono_LDFLAGS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    EppoEng glfw gmock gtest imgui yaml-cpp
-    ${mono_LIBRARIES}
-    ${Vulkan_LIBRARY} shaderc_combined spirv-cross-core spirv-cross-glsl
+    EppoEng gmock gtest
 )

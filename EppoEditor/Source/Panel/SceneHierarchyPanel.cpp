@@ -37,7 +37,7 @@ namespace Eppo
 
         ImGui::PushID(reinterpret_cast<void*>(static_cast<uint64_t>(entity.GetUUID())));
         const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
-        
+
         if (ImGui::IsItemClicked())
             SetSelectedEntity(entity);
 

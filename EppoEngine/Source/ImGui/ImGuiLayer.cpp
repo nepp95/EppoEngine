@@ -15,7 +15,7 @@ namespace Eppo
     static std::vector<VkCommandBuffer> s_ImGuiCommandBuffers;
     static VkDescriptorPool s_DescriptorPool = nullptr;
 
-    static void CheckVkResult(VkResult err)
+    static void CheckVkResult(const VkResult err)
     {
         if (err == 0)
             return;
@@ -64,16 +64,11 @@ namespace Eppo
 
         // Create descriptor pool
         const VkDescriptorPoolSize poolSizes[] = {
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
-            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100 },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },
-            { VK_DESCRIPTOR_TYPE_SAMPLER, 100 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 }, { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100 },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },          { VK_DESCRIPTOR_TYPE_SAMPLER, 100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100 },          { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100 },
             { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100 },
         };
 
@@ -84,7 +79,8 @@ namespace Eppo
         descriptorPoolCreateInfo.pPoolSizes = poolSizes;
         descriptorPoolCreateInfo.maxSets = 100 * IM_ARRAYSIZE(poolSizes);
 
-        VK_CHECK(vkCreateDescriptorPool(logicalDevice->GetNativeDevice(), &descriptorPoolCreateInfo, nullptr, &s_DescriptorPool), "Failed to create descriptor pool!");
+        VK_CHECK(vkCreateDescriptorPool(logicalDevice->GetNativeDevice(), &descriptorPoolCreateInfo, nullptr, &s_DescriptorPool),
+                 "Failed to create descriptor pool!");
 
         // Init
         ImGui_ImplVulkan_InitInfo initInfo{};
@@ -125,7 +121,7 @@ namespace Eppo
 
     void ImGuiLayer::OnDetach()
     {
-        VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
+        const VkDevice device = VulkanContext::Get()->GetLogicalDevice()->GetNativeDevice();
 
         // Clear resources which in turn calls the vulkan API to clear all the descriptor sets allocated for ImGui
         UI::ClearResources();
@@ -159,7 +155,7 @@ namespace Eppo
 
     static ImVec4 SRGBToLinear(const ImVec4& vec)
     {
-        glm::vec4 v = ImGuiToGLM(vec);
+        const glm::vec4 v = ImGuiToGLM(vec);
 
         return { glm::pow(v.x, 2.2f), glm::pow(v.y, 2.2f), glm::pow(v.z, 2.2f), glm::pow(v.w, 2.2f) };
     }

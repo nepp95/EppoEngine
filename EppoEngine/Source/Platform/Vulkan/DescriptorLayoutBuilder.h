@@ -30,6 +30,9 @@ namespace Eppo
 
     private:
         DescriptorLayoutInfo m_CurrentLayoutInfo;
-        std::unordered_map<DescriptorLayoutInfo, VkDescriptorSetLayout, DescriptorLayoutHash> m_DescriptorLayoutCache;
+
+        // Shaders can be compiled async and use the builder to create or fetch the descriptor set layout during compilation
+        static inline std::unordered_map<DescriptorLayoutInfo, VkDescriptorSetLayout, DescriptorLayoutHash> m_DescriptorLayoutCache;
+        static inline std::mutex m_Mutex;
     };
 }

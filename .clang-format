@@ -2,15 +2,17 @@
 Language: Cpp
 BasedOnStyle: LLVM
 AccessModifierOffset: -4
+AlignArrayOfStructures: Left
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignOperands: false
 AlignTrailingComments: false
-AllowShortBlocksOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: false
-AlwaysBreakAfterDefinitionReturnType: false
+AllowShortLambdasOnASingleLine: None
 AlwaysBreakTemplateDeclarations: Yes
-BraceWrapping: 
+BraceWrapping:
   AfterCaseLabel: true
   AfterClass: true
   AfterControlStatement: true
@@ -29,17 +31,13 @@ BraceWrapping:
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
   AfterObjCDeclaration: false
+BracedInitializerIndentWidth: 4
 BreakBeforeBraces: Custom
+BreakConstructorInitializers: BeforeColon
 ColumnLimit: 140
 Cpp11BracedListStyle: false
-IncludeBlocks: Regroup
-IncludeCategories: 
-  - Regex: ^<.*
-    Priority: 1
-  - Regex: ^".*
-    Priority: 2
-  - Regex: .*
-    Priority: 3
+FixNamespaceComments: false
+SortIncludes: Never
 IncludeIsMainRegex: ([-_](test|unittest))?$
 IndentCaseLabels: true
 IndentPPDirectives: BeforeHash
@@ -47,8 +45,10 @@ IndentWidth: 4
 InsertNewlineAtEOF: true
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
+PackConstructorInitializers: NextLineOnly
 PointerAlignment: Left
 SpaceAfterTemplateKeyword: false
+SpaceBeforeCtorInitializerColon: true
 SpaceInEmptyParentheses: false
 SpacesInAngles: false
 SpacesInConditionalStatement: false

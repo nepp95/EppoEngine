@@ -53,13 +53,15 @@ namespace Eppo
             return m_ObjectToBroadPhase[layer];
         }
 
-        #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
         [[nodiscard]] const char* GetBroadPhaseLayerName(const BroadPhaseLayer layer) const override
         {
             switch (static_cast<BroadPhaseLayer::Type>(layer))
             {
-                case 0: return "NON_MOVING";
-                case 1: return "MOVING";
+                case 0:
+                    return "NON_MOVING";
+                case 1:
+                    return "MOVING";
 
                 default:
                 {
@@ -68,7 +70,7 @@ namespace Eppo
                 }
             }
         }
-        #endif
+#endif
 
     private:
         BroadPhaseLayer m_ObjectToBroadPhase[2];
@@ -81,8 +83,10 @@ namespace Eppo
         {
             switch (layerA)
             {
-                case 0: return static_cast<BroadPhaseLayer::Type>(layerB) == 2;
-                case 1: return true;
+                case 0:
+                    return static_cast<BroadPhaseLayer::Type>(layerB) == 2;
+                case 1:
+                    return true;
 
                 default:
                 {
@@ -100,8 +104,10 @@ namespace Eppo
         {
             switch (objectA)
             {
-                case 0: return objectB == 1;
-                case 1: return true;
+                case 0:
+                    return objectB == 1;
+                case 1:
+                    return true;
 
                 default:
                 {
@@ -129,7 +135,8 @@ namespace Eppo
     class ContactListener final : public JPH::ContactListener
     {
     public:
-        ValidateResult OnContactValidate(const Body& bodyA, const Body& bodyB, RVec3Arg baseOffset, const CollideShapeResult& collisionResult) override
+        ValidateResult OnContactValidate(const Body& bodyA, const Body& bodyB, RVec3Arg baseOffset,
+                                         const CollideShapeResult& collisionResult) override
         {
             EPPO_TRACE("Contact validate callback");
             return ValidateResult::AcceptAllContactsForThisBodyPair;

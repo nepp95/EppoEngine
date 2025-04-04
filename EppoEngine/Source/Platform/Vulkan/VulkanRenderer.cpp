@@ -4,6 +4,7 @@
 #include "Platform/Vulkan/VulkanContext.h"
 #include "Platform/Vulkan/VulkanImage.h"
 #include "Platform/Vulkan/VulkanPipeline.h"
+#include "Platform/Vulkan/VulkanShader.h"
 
 namespace Eppo
 {
@@ -20,9 +21,9 @@ namespace Eppo
 
         // Create descriptor allocators
         const std::vector<DescriptorAllocator::PoolSizeRatio> ratios = {
-            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .Ratio = 3.0f },
-            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .Ratio = 3.0f },
-            { .Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .Ratio = 3.0f },
+            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          .Ratio = 3.0f },
+            { .Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         .Ratio = 3.0f },
+            { .Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .Ratio = 3.0f },
             { .Type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .Ratio = 4.0f }
         };
 
@@ -30,6 +31,7 @@ namespace Eppo
             m_DescriptorAllocators[i].Init(1000, ratios);
 
         // Load shaders
+        // clang-format off
         constexpr std::array shaders = {
             "Resources/Shaders/composite.glsl",
             "Resources/Shaders/debug.glsl",
@@ -38,6 +40,7 @@ namespace Eppo
             "Resources/Shaders/predepth.glsl",
             "Resources/Shaders/skybox.glsl"
         };
+        // clang-format on
 
 #define MT
 #ifndef MT
@@ -52,6 +55,12 @@ namespace Eppo
         });
 #endif
 
+        std::for_each(std::execution::seq, shaders.cbegin(), shaders.cend(),
+                      [&](const std::string& path)
+        {
+            std::static_pointer_cast<VulkanShader>(m_ShaderLibrary.Get(std::filesystem::path(path).stem().string()))->Reflect();
+        });
+        
         // Create debug renderer
         m_DebugRenderer = DebugRenderer::Create();
     }
@@ -138,8 +147,8 @@ namespace Eppo
                     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
                     attachmentInfo.loadOp = attachment.Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
                     attachmentInfo.imageView = std::static_pointer_cast<VulkanImage>(image)->GetImageInfo().ImageView;
-                    attachmentInfo.clearValue.color = { attachment.ClearValue.Color.r, attachment.ClearValue.Color.g, attachment.ClearValue.Color.b,
-                                                        attachment.ClearValue.Color.a };
+                    attachmentInfo.clearValue.color = { attachment.ClearValue.Color.r, attachment.ClearValue.Color.g,
+                                                        attachment.ClearValue.Color.b, attachment.ClearValue.Color.a };
                     attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 }
             }

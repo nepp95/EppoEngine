@@ -73,10 +73,10 @@ namespace Eppo
 
     void Physics::Init()
     {
-        s_Data = new PhysicsData();
-
         // Allocation hook - can be overridden
         RegisterDefaultAllocator();
+
+        s_Data = new PhysicsData();
 
         // Trace and assert callbacks
         Trace = TraceImpl;

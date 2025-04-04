@@ -3,6 +3,9 @@
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
 
+// TODO: Possibly remove to remove dependency from runtime
+#include <nlohmann/json.hpp>
+
 namespace YAML
 {
     class Emitter;
@@ -19,7 +22,7 @@ namespace Eppo
         [[nodiscard]] bool Deserialize(const std::filesystem::path& filepath) const;
 
     private:
-        void SerializeEntity(YAML::Emitter& out, Entity entity);
+        void SerializeEntity(nlohmann::json& data, Entity entity);
 
     private:
         Ref<Scene> m_SceneContext;

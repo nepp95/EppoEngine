@@ -78,7 +78,7 @@ namespace Eppo
             sceneRenderer->BeginScene(*sceneCamera, cameraTransform);
 
             RenderScene(sceneRenderer);
-            
+
             sceneRenderer->EndScene();
         }
     }
@@ -92,8 +92,7 @@ namespace Eppo
         OnPhysicsStart();
         ScriptEngine::OnRuntimeStart();
 
-        const auto view = m_Registry.view<ScriptComponent>();
-        for (const auto e : view)
+        for (const auto view = m_Registry.view<ScriptComponent>(); const auto e : view)
         {
             const Entity entity(e, this);
             ScriptEngine::OnCreateEntity(entity);
@@ -152,7 +151,8 @@ namespace Eppo
     }
 
     template<typename T>
-    void Scene::CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry, const std::unordered_map<UUID, entt::entity>& entityMap)
+    void Scene::CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry,
+                              const std::unordered_map<UUID, entt::entity>& entityMap)
     {
         EPPO_PROFILE_FUNCTION("Scene::CopyComponent");
 
@@ -218,8 +218,7 @@ namespace Eppo
     {
         EPPO_PROFILE_FUNCTION("Scene::FindEntityByUUID");
 
-        if (const auto it = m_EntityMap.find(uuid);
-            it != m_EntityMap.end())
+        if (const auto it = m_EntityMap.find(uuid); it != m_EntityMap.end())
         {
             return { it->second, this };
         }
@@ -245,69 +244,69 @@ namespace Eppo
     {
         EPPO_PROFILE_FUNCTION("Scene::OnPhysicsStart");
 
-        // m_PhysicsWorld = new btDiscreteDynamicsWorld(s_collisionDispatcher, s_broadPhaseInterface, s_Solver, s_collisionConfig);
-        // m_PhysicsWorld->setGravity(btVector3(0.0f, -9.81f, 0.0f));
-        //
-        // for (const auto view = m_Registry.view<RigidBodyComponent>(); const auto e : view)
-        // {
-        //     Entity entity(e, this);
-        //     const auto& transform = entity.GetComponent<TransformComponent>();
-        //     auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
-        //
-        //     btCollisionShape* shape = new btBoxShape(btVector3(transform.Scale.x, transform.Scale.y, transform.Scale.z));
-        //
-        //     btTransform bTransform;
-        //     bTransform.setIdentity();
-        //     bTransform.setOrigin(btVector3(transform.Translation.x, transform.Translation.y, transform.Translation.z));
-        //     bTransform.setRotation(GlmToBullet(glm::quat(transform.Rotation)));
-        //
-        //     const bool isDynamic = rigidbody.Type == RigidBodyComponent::BodyType::Dynamic;
-        //     btScalar mass(0.0f);
-        //     if (isDynamic)
-        //         mass = rigidbody.Mass;
-        //
-        //     auto localInertia(btVector3(0.0f, 0.0f, 0.0f));
-        //     if (isDynamic)
-        //         shape->calculateLocalInertia(mass, localInertia);
-        //
-        //     auto* motionState = new btDefaultMotionState(bTransform);
-        //     btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, localInertia);
-        //     auto* body = new btRigidBody(rbInfo);
-        //
-        //     m_PhysicsWorld->addRigidBody(body);
-        //     rigidbody.RuntimeBody = RigidBody(body);
-        // }
+        /*m_PhysicsWorld = new btDiscreteDynamicsWorld(s_collisionDispatcher, s_broadPhaseInterface, s_Solver, s_collisionConfig);
+        m_PhysicsWorld->setGravity(btVector3(0.0f, -9.81f, 0.0f));
+
+        for (const auto view = m_Registry.view<RigidBodyComponent>(); const auto e : view)
+        {
+            Entity entity(e, this);
+            const auto& transform = entity.GetComponent<TransformComponent>();
+            auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
+
+            btCollisionShape* shape = new btBoxShape(btVector3(transform.Scale.x, transform.Scale.y, transform.Scale.z));
+
+            btTransform bTransform;
+            bTransform.setIdentity();
+            bTransform.setOrigin(btVector3(transform.Translation.x, transform.Translation.y, transform.Translation.z));
+            bTransform.setRotation(GlmToBullet(glm::quat(transform.Rotation)));
+
+            const bool isDynamic = rigidbody.Type == RigidBodyComponent::BodyType::Dynamic;
+            btScalar mass(0.0f);
+            if (isDynamic)
+                mass = rigidbody.Mass;
+
+            auto localInertia(btVector3(0.0f, 0.0f, 0.0f));
+            if (isDynamic)
+                shape->calculateLocalInertia(mass, localInertia);
+
+            auto* motionState = new btDefaultMotionState(bTransform);
+            btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, localInertia);
+            auto* body = new btRigidBody(rbInfo);
+
+            m_PhysicsWorld->addRigidBody(body);
+            rigidbody.RuntimeBody = RigidBody(body);
+        }*/
     }
 
     void Scene::OnPhysicsStop()
     {
         EPPO_PROFILE_FUNCTION("Scene::OnPhysicsStop");
 
-        // for (int i = m_PhysicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
-        // {
-        //     btCollisionObject* obj = m_PhysicsWorld->getCollisionObjectArray()[i];
-        //     btRigidBody* body = btRigidBody::upcast(obj);
-        //
-        //     if (body && body->getMotionState())
-        //         delete body->getMotionState();
-        //
-        //     if (body && body->getCollisionShape())
-        //         delete body->getCollisionShape();
-        //
-        //     m_PhysicsWorld->removeCollisionObject(obj);
-        //     delete obj;
-        // }
-        //
-        // for (const auto view = m_Registry.view<RigidBodyComponent>(); const auto e : view)
-        // {
-        //     Entity entity(e, this);
-        //     auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
-        //
-        //     rigidbody.RuntimeBody.Body = nullptr;
-        // }
-        //
-        // delete m_PhysicsWorld;
-        // m_PhysicsWorld = nullptr;
+        /*for (int i = m_PhysicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+        {
+            btCollisionObject* obj = m_PhysicsWorld->getCollisionObjectArray()[i];
+            btRigidBody* body = btRigidBody::upcast(obj);
+
+            if (body && body->getMotionState())
+                delete body->getMotionState();
+
+            if (body && body->getCollisionShape())
+                delete body->getCollisionShape();
+
+            m_PhysicsWorld->removeCollisionObject(obj);
+            delete obj;
+        }
+
+        for (const auto view = m_Registry.view<RigidBodyComponent>(); const auto e : view)
+        {
+            Entity entity(e, this);
+            auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
+
+            rigidbody.RuntimeBody.Body = nullptr;
+        }
+
+        delete m_PhysicsWorld;
+        m_PhysicsWorld = nullptr;*/
     }
 
     void Scene::RenderScene(const Ref<SceneRenderer>& sceneRenderer)
