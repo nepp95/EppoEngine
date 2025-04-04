@@ -25,8 +25,6 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-
 # Dependencies
 find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
 if (NOT Vulkan_FOUND)
