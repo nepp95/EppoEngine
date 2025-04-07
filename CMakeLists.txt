@@ -112,4 +112,5 @@ add_subdirectory(EppoEditor)
 add_subdirectory(EppoScripting)
 add_subdirectory(EppoTesting)
 
+set_target_properties(EppoEditor PROPERTIES VS_DOTNET_REFERENCES_COPY_LOCAL OFF)
 add_dependencies(EppoEditor EppoScripting)

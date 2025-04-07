@@ -31,3 +31,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+add_custom_command(
+    TARGET EppoEditor
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Scripts"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/EppoScripting.dll" "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Scripts"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/EppoScripting.pdb" "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Scripts"
+)
