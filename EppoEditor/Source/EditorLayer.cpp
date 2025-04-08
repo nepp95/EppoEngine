@@ -370,8 +370,10 @@ namespace Eppo
         Filesystem::CreateDirectory(projectPath / "Assets" / "Scenes");
         Filesystem::CreateDirectory(projectPath / "Assets" / "Textures");
 
+        // Process templates
+        // Project config
         {
-            std::ifstream in(projectPath / "project.epproj");
+            std::ifstream in(projectPath / "project.json.template");
             std::stringstream ss;
             ss << in.rdbuf();
             in.close();
@@ -379,17 +381,18 @@ namespace Eppo
             std::string inputStr = ss.str();
             ReplaceToken(inputStr, "$PROJECT_NAME$", name);
 
-            std::ofstream out(projectPath / "project.epproj");
+            std::ofstream out(projectPath / "project.json");
             out << inputStr;
             out.close();
 
-            Filesystem::Rename(projectPath, "project.epproj", name + ".epproj");
+            Filesystem::Rename(projectPath, "project.json", name + ".json");
         }
 
+        // VS Solution file
         {
-            Filesystem::Move(projectPath / "premake5.lua", projectPath / "Assets" / "Scripts" / "premake5.lua");
+            Filesystem::Move(projectPath / "cs.sln.template", projectPath / "Assets" / "Scripts" / "cs.sln.template");
 
-            std::ifstream in(projectPath / "Assets" / "Scripts" / "premake5.lua");
+            std::ifstream in(projectPath / "Assets" / "Scripts" / "cs.sln.template");
             std::stringstream ss;
             ss << in.rdbuf();
             in.close();
@@ -397,12 +400,31 @@ namespace Eppo
             std::string inputStr = ss.str();
             ReplaceToken(inputStr, "$PROJECT_NAME$", name);
 
-            std::ofstream out(projectPath / "Assets" / "Scripts" / "premake5.lua");
+            std::ofstream out(projectPath / "Assets" / "Scripts" / "cs.sln.template");
             out << inputStr;
             out.close();
+
+            Filesystem::Rename(projectPath / "Assets" / "Scripts", "cs.sln.template", name + ".sln");
         }
 
-        Filesystem::Move(projectPath / "Win-GenerateProjects.bat", projectPath / "Assets" / "Scripts" / "Win-GenerateProjects.bat");
+        // VS Project file
+        {
+            Filesystem::Move(projectPath / "cs.csproj.template", projectPath / "Assets" / "Scripts" / "cs.csproj.template");
+
+            std::ifstream in(projectPath / "Assets" / "Scripts" / "cs.csproj.template");
+            std::stringstream ss;
+            ss << in.rdbuf();
+            in.close();
+
+            std::string inputStr = ss.str();
+            ReplaceToken(inputStr, "$PROJECT_NAME$", name);
+
+            std::ofstream out(projectPath / "Assets" / "Scripts" / "cs.csproj.template");
+            out << inputStr;
+            out.close();
+
+            Filesystem::Rename(projectPath / "Assets" / "Scripts", "cs.csproj.template", name + ".csproj");
+        }
 
         // Create hello world script
         Filesystem::Copy("Resources/Templates/Scripts/Main.cs", projectPath / "Assets" / "Scripts" / "Source");
@@ -421,20 +443,14 @@ namespace Eppo
             out.close();
         }
 
-        // Run premake
-        std::filesystem::path batchFile = projectPath / "Assets" / "Scripts" / "Win-GenerateProjects.bat";
-
-        // todo: not working
-        // system(batchFile.string().c_str());
-
         // Open project
-        OpenProject(projectPath / std::filesystem::path(name + ".epproj"));
+        OpenProject(projectPath / std::filesystem::path(name + ".json"));
     }
 
     bool EditorLayer::OpenProject()
     {
         const std::filesystem::path filePath =
-            FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0", Project::GetProjectsDirectory());
+            FileDialog::OpenFile("EppoEngine Project (*.json)\0*.json\0", Project::GetProjectsDirectory());
 
         if (filePath.empty())
         {
