@@ -10,7 +10,7 @@ if (MSVC)
 endif ()
 
 # Sources
-file(GLOB_RECURSE SOURCES
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     "Source/*.cpp"
 )
 

@@ -3,7 +3,7 @@
 
 #include "Platform/Vulkan/VulkanImage.h"
 
-#include <backends/imgui_impl_vulkan.h>
+#include <imgui_impl_vulkan.h>
 
 namespace Eppo::UI
 {

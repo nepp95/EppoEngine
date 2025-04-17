@@ -1,7 +1,5 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.31)
 project(EppoEngine)
-
-include(FetchContent)
 
 if (WIN32)
     add_compile_definitions(EPPO_PLATFORM_WINDOWS VK_USE_PLATFORM_WIN32_KHR)
@@ -9,103 +7,95 @@ elseif (UNIX)
     add_compile_definitions(EPPO_PLATFORM_LINUX VK_USE_PLATFORM_XLIB_KHR)
 endif ()
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_CONFIGURATION_TYPES STREQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(EPPO_DEBUG)
-elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_CONFIGURATION_TYPES STREQUAL "RelWithDebInfo")
+elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_definitions(EPPO_RELEASE)
-elseif (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_CONFIGURATION_TYPES STREQUAL "Release")
-    add_compile_definitions(EPPO_DIST)
 endif ()
 
 if (MSVC)
     add_compile_options("/MP")
 endif ()
 
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 # Dependencies
+set(Vulkan_DIR $ENV{VULKAN_SDK})
 find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
 if (NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan not found!")
 endif ()
 
 # Entt
-FetchContent_Declare(entt
-    GIT_REPOSITORY https://github.com/skypjack/entt.git
-    GIT_TAG v3.14.0
-)
-FetchContent_MakeAvailable(entt)
+find_package(EnTT CONFIG REQUIRED)
+if (NOT EnTT_FOUND)
+    #message(FATAL_ERROR "EnTT not found!")
+endif ()
 
 # Efsw
-FetchContent_Declare(efsw
-    GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
-    GIT_TAG ad4ac9056402940bd41df38597d6046674b1c4a1
-)
-FetchContent_MakeAvailable(efsw)
+find_package(efsw CONFIG REQUIRED)
+if (NOT efsw_FOUND)
+    message(FATAL_ERROR "efsw not found!")
+endif ()
 
 # Glfw
-FetchContent_Declare(glfw
-    GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG 3.4
-    FIND_PACKAGE_ARGS NAMES glfw3
-)
-FetchContent_MakeAvailable(glfw)
+find_package(glfw3 CONFIG REQUIRED)
+if (NOT glfw3_FOUND)
+    message(FATAL_ERROR "glfw3 not found!")
+endif ()
 
 # Glm
-FetchContent_Declare(glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-)
-FetchContent_MakeAvailable(glm)
+find_package(glm CONFIG REQUIRED)
+if (NOT glm_FOUND)
+    message(FATAL_ERROR "glm not found!")
+endif ()
 
 # Google Test
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_Declare(gtest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.16.0
-)
-FetchContent_MakeAvailable(gtest)
+find_package(gtest CONFIG REQUIRED)
+if (NOT gtest_FOUND)
+    message(FATAL_ERROR "GTest not found!")
+endif ()
 
 # ImGui
-FetchContent_Declare(imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.8-docking
-)
-FetchContent_MakeAvailable(imgui)
-
-# Json (nlohmann)
-FetchContent_Declare(nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json
-)
-FetchContent_MakeAvailable(nlohmann_json)
+#vcpkg_cmake_configure(
+#    SOURCE_PATH imgui
+#    OPTIONS -D
+#)
+find_package(imgui CONFIG REQUIRED)
+if (NOT imgui_FOUND)
+    message(FATAL_ERROR "imgui not found!")
+endif ()
 
 # Jolt Physics
-FetchContent_Declare(jolt
-    GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
-    GIT_TAG v5.2.0
-    SOURCE_SUBDIR Build
-)
-FetchContent_MakeAvailable(jolt)
+find_package(Jolt CONFIG REQUIRED)
+if (NOT Jolt_FOUND)
+    message(FATAL_ERROR "Jolt not found!")
+endif ()
+
+# Json (nlohmann)
+find_package(nlohmann_json CONFIG REQUIRED)
+if (NOT nlohmann_json_FOUND)
+    message(FATAL_ERROR "nlohmann_json not found!")
+endif ()
 
 # Spdlog
-FetchContent_Declare(spdlog
-    GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG v1.15.1
-)
-FetchContent_MakeAvailable(spdlog)
+find_package(spdlog CONFIG REQUIRED)
+if (NOT spdlog_FOUND)
+    message(FATAL_ERROR "spdlog not found!")
+endif ()
 
 # Tracy Profiler
-FetchContent_Declare(tracy
-    GIT_REPOSITORY https://github.com/wolfpld/tracy.git
-    GIT_TAG v0.11.1
-)
-FetchContent_MakeAvailable(tracy)
+find_package(Tracy CONFIG REQUIRED)
+if (NOT Tracy_FOUND)
+    message(FATAL_ERROR "Tracy not found!")
+endif ()
 
 # Jolt overrides our MSVC Runtime Library variable
-if (MSVC)
-    set_property(TARGET Jolt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-endif ()
+# if (MSVC)
+#     set_property(TARGET Jolt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+# endif ()
 
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)
