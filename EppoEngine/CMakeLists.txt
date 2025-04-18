@@ -11,10 +11,17 @@ endif ()
 
 # Sources
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
-    "Source/*.cpp"
-    "Vendor/stb/stb_image.cpp"
-    "Vendor/tinygltf/tinygltf.cpp"
-    "Vendor/volk/volk.cpp"
+    Source/*.cpp
+    Vendor/stb/stb_image.cpp
+    Vendor/tinygltf/tinygltf.cpp
+    Vendor/volk/volk.cpp
+    ${FETCHCONTENT_BASE_DIR}/imgui-src/imgui.cpp
+    ${FETCHCONTENT_BASE_DIR}/imgui-src/imgui_draw.cpp
+    ${FETCHCONTENT_BASE_DIR}/imgui-src/imgui_internal.cpp
+    ${FETCHCONTENT_BASE_DIR}/imgui-src/imgui_tables.cpp
+    ${FETCHCONTENT_BASE_DIR}/imgui-src/imgui_widgets.cpp
+    ${FETCHCONTENT_BASE_DIR}/imgui-src/imgui_demo.cpp
+    ${FETCHCONTENT_BASE_DIR}/imgui-src/misc/cpp/imgui_stdlib.cpp
 )
 
 # Includes
@@ -45,11 +52,12 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE Source/pch.h)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${INCLUDE_DIRS}
+    ${FETCHCONTENT_BASE_DIR}/imgui-src
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     # Dependencies
-    efsw::efsw EnTT::EnTT glfw glm::glm imgui::imgui Jolt::Jolt nlohmann_json::nlohmann_json spdlog::spdlog Tracy::TracyClient
+    efsw::efsw EnTT::EnTT glfw glm::glm Jolt::Jolt nlohmann_json::nlohmann_json spdlog::spdlog Tracy::TracyClient
     libmono-static-sgen
     Vulkan::Vulkan Vulkan::shaderc_combined
 

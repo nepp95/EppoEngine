@@ -42,6 +42,7 @@ IncludeIsMainRegex: ([-_](test|unittest))?$
 IndentCaseLabels: true
 IndentPPDirectives: BeforeHash
 IndentWidth: 4
+LambdaBodyIndentation: OuterScope
 InsertNewlineAtEOF: true
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All

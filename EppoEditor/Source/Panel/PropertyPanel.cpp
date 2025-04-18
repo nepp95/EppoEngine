@@ -41,10 +41,10 @@ namespace Eppo
             // ImGui wants a char*, we use std::string
             // We could cast a c_str to char*, but we still could not write to it
             char buffer[256]{ 0 };
-            // Since ImGui accounts for the buffer size AND the null termination char, we can safely use strncpy.
+            // Since ImGui accounts for the buffer size AND the null termination char, we can safely use
+            // strncpy.
             std::strncpy(buffer, tag.c_str(), sizeof(buffer));
 
-            // Double quote prevents the label from showing
             if (ImGui::InputText("##Tag", buffer, sizeof(buffer)))
                 tag = std::string(buffer); // TODO: Add support for empty labels --> Don't crash...
         });
@@ -153,11 +153,13 @@ namespace Eppo
         {
             if (component.TextureHandle)
             {
-                ImGui::TextDisabled(Project::GetActive()->GetAssetManagerEditor()->GetMetadata(component.TextureHandle).Filepath.string().c_str());
+                ImGui::TextDisabled(
+                    Project::GetActive()->GetAssetManagerEditor()->GetMetadata(component.TextureHandle).Filepath.string().c_str());
                 ImGui::SameLine();
                 if (ImGui::Button("X"))
                     component.TextureHandle = 0;
-            } else
+            }
+            else
             {
                 ImGui::Button("Texture", ImVec2(100.0f, 0.0f));
                 if (ImGui::BeginDragDropTarget())
@@ -167,8 +169,8 @@ namespace Eppo
                         auto path = (const wchar_t*)payload->Data;
                         std::filesystem::path texturePath = path;
 
-                        //Ref<Texture> texture = AssetManager::GetAsset<Texture>(texturePath);
-                        //component.TextureHandle = texture->Handle;
+                        // Ref<Texture> texture = AssetManager::GetAsset<Texture>(texturePath);
+                        // component.TextureHandle = texture->Handle;
                     }
                     ImGui::EndDragDropTarget();
                 }
@@ -181,11 +183,13 @@ namespace Eppo
         {
             if (component.MeshHandle)
             {
-                ImGui::TextDisabled(Project::GetActive()->GetAssetManagerEditor()->GetMetadata(component.MeshHandle).Filepath.string().c_str());
+                ImGui::TextDisabled(
+                    Project::GetActive()->GetAssetManagerEditor()->GetMetadata(component.MeshHandle).Filepath.string().c_str());
                 ImGui::SameLine();
                 if (ImGui::Button("X"))
                     component.MeshHandle = 0;
-            } else 
+            }
+            else
             {
                 ImGui::Button("Mesh", ImVec2(100.0f, 0.0f));
                 if (ImGui::BeginDragDropTarget())
@@ -383,7 +387,8 @@ namespace Eppo
                         }
                     }
                 }
-            } else
+            }
+            else
             {
                 if (Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(name))
                 {
@@ -392,8 +397,7 @@ namespace Eppo
 
                     for (const auto& [name, field] : fields)
                     {
-                        if (auto it = entityFields.find(name);
-                            it != entityFields.end())
+                        if (auto it = entityFields.find(name); it != entityFields.end())
                         {
                             ScriptFieldInstance& scriptField = it->second;
 
@@ -517,7 +521,8 @@ namespace Eppo
                                     break;
                                 }
                             }
-                        } else
+                        }
+                        else
                         {
                             switch (field.Type)
                             {
@@ -655,8 +660,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Vector2:
                                 {
-                                    if (auto data = glm::vec2(0.0f);
-                                        ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
+                                    if (auto data = glm::vec2(0.0f); ImGui::InputFloat2(name.c_str(), glm::value_ptr(data)))
                                     {
                                         ScriptFieldInstance& scriptField = entityFields[name];
                                         scriptField.Field = field;
@@ -667,8 +671,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Vector3:
                                 {
-                                    if (auto data = glm::vec3(0.0f);
-                                        ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
+                                    if (auto data = glm::vec3(0.0f); ImGui::InputFloat3(name.c_str(), glm::value_ptr(data)))
                                     {
                                         ScriptFieldInstance& scriptField = entityFields[name];
                                         scriptField.Field = field;
@@ -679,8 +682,7 @@ namespace Eppo
 
                                 case ScriptFieldType::Vector4:
                                 {
-                                    if (auto data = glm::vec4(0.0f);
-                                        ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
+                                    if (auto data = glm::vec4(0.0f); ImGui::InputFloat4(name.c_str(), glm::value_ptr(data)))
                                     {
                                         ScriptFieldInstance& scriptField = entityFields[name];
                                         scriptField.Field = field;
@@ -811,7 +813,7 @@ namespace Eppo
             label = tag;
         else
             label = Utils::GetComponentString<T>();
-        
+
         bool closedHeader = true; // If this is set to false by ImGui, we delete the component
         if (ImGui::CollapsingHeader(label.c_str(), &closedHeader, ImGuiTreeNodeFlags_DefaultOpen))
             uiFn(c);

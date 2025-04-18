@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.31)
 project(EppoEngine)
 
+include(FetchContent)
+
 if (WIN32)
     add_compile_definitions(EPPO_PLATFORM_WINDOWS VK_USE_PLATFORM_WIN32_KHR)
 elseif (UNIX)
@@ -31,7 +33,7 @@ endif ()
 # Entt
 find_package(EnTT CONFIG REQUIRED)
 if (NOT EnTT_FOUND)
-    #message(FATAL_ERROR "EnTT not found!")
+    message(FATAL_ERROR "EnTT not found!")
 endif ()
 
 # Efsw
@@ -59,14 +61,11 @@ if (NOT gtest_FOUND)
 endif ()
 
 # ImGui
-#vcpkg_cmake_configure(
-#    SOURCE_PATH imgui
-#    OPTIONS -D
-#)
-find_package(imgui CONFIG REQUIRED)
-if (NOT imgui_FOUND)
-    message(FATAL_ERROR "imgui not found!")
-endif ()
+FetchContent_Declare(imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.8-docking
+)
+FetchContent_MakeAvailable(imgui)
 
 # Jolt Physics
 find_package(Jolt CONFIG REQUIRED)
@@ -91,11 +90,6 @@ find_package(Tracy CONFIG REQUIRED)
 if (NOT Tracy_FOUND)
     message(FATAL_ERROR "Tracy not found!")
 endif ()
-
-# Jolt overrides our MSVC Runtime Library variable
-# if (MSVC)
-#     set_property(TARGET Jolt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-# endif ()
 
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)

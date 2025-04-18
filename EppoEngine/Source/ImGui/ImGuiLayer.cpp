@@ -4,8 +4,8 @@
 #include "ImGui/Image.h"
 #include "Platform/Vulkan/VulkanContext.h"
 
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_vulkan.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
@@ -65,12 +65,17 @@ namespace Eppo
 
         // Create descriptor pool
         const VkDescriptorPoolSize poolSizes[] = {
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 }, { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100 },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },          { VK_DESCRIPTOR_TYPE_SAMPLER, 100 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100 },          { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
+            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       100 },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          100 },
+            { VK_DESCRIPTOR_TYPE_SAMPLER,                100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   100 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         100 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   100 },
         };
 
         VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
