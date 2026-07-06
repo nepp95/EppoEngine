@@ -19,7 +19,7 @@ cmake --preset=windows-debug          # configure (linux-debug on Linux)
 cmake --build --preset=windows-debug  # build
 ```
 
-Presets: `{windows,linux}-{debug,release,dist}` = Debug / RelWithDebInfo / Release; build trees `build/{debug,release,dist}`. Debug editor exe: `build/debug/EppoEditor/Debug/EppoEditor.exe`, with runtime DLLs, `Resources/`, and the managed scripting assembly copied beside it by post-build steps. A `BUILD_TESTING` option and `unittest-cpp` vcpkg dep exist, but no test target yet.
+Presets: `{windows,linux}-{debug,release,dist}` = Debug / RelWithDebInfo / Release; build trees `build/{debug,release,dist}`. Debug editor exe: `build/debug/EppoEditor/Debug/EppoEditor.exe`, with runtime DLLs, `Resources/`, and the managed scripting assembly copied beside it by post-build steps. Tests: the `EppoEngineTesting` target (built when `BUILD_TESTING` is ON, the default) is a UnitTest++ runner linking `EppoEngine`; build it and run `ctest --test-dir build/debug -C Debug` (or the exe at `build/debug/EppoEngineTesting/Debug/EppoEngineTesting.exe`).
 
 ## Architecture
 

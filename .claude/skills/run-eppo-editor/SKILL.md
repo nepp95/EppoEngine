@@ -55,8 +55,15 @@ That's the whole check: if the window comes up and stays up, it runs.
 
 ## Tests
 
-There is no test target yet (there is a `BUILD_TESTING` option and a
-`unittest-cpp` dependency, but nothing wired into CMake).
+The `EppoEngineTesting` target (UnitTest++ runner linking `EppoEngine`)
+builds when `BUILD_TESTING` is ON (the default). Run the suite with:
+
+```
+cmake --build --preset=windows-debug --target EppoEngineTesting
+ctest --test-dir build/debug -C Debug
+```
+
+Or run the exe directly: `build/debug/EppoEngineTesting/Debug/EppoEngineTesting.exe`.
 
 ## If it crashes
 
