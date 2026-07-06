@@ -40,6 +40,8 @@ endif ()
 
 find_package(EppoScriptCore CONFIG REQUIRED)
 
+find_package(UnitTest++ CONFIG REQUIRED)
+
 if (NOT DEFINED ENV{DOTNET_ROOT})
     message(FATAL_ERROR "Set the DOTNET_ROOT environment variable to the .net SDK")
 endif ()
