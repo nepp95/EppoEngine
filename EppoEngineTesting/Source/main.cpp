@@ -1,3 +1,5 @@
+#include "Support/EppoTest.h"
+
 #include <UnitTest++/UnitTest++.h>
 #include <UnitTest++/TestReporterStdout.h>
 
@@ -13,6 +15,11 @@
 // `ctest -L unit`.
 int main(int argc, char** argv)
 {
+    // The engine's loggers are null shared_ptrs until Init() runs; any engine
+    // code that logs on an error path (Filesystem, Scene, Scripting, ...) would
+    // otherwise dereference null. The runner owns this for every suite.
+    Eppo::Log::Init();
+
     if (argc > 1)
     {
         UnitTest::TestReporterStdout reporter;
