@@ -17,26 +17,37 @@ namespace Eppo
 		EP_ASSERT(!s_Instance, "There can only be one instance of the application!");
 		s_Instance = this;
 
-		// Create window
-		m_Window = CreateRef<Window>(1600, 900);
-		m_Window->SetEventCallback(
-			[this](Event& e) -> void
-			{
-				OnEvent(e);
-			}
-		);
+		// Bring-up can fail (no GPU/display). Keep the singleton consistent: if
+		// any of it throws, the destructor won't run (the object was never fully
+		// constructed), so clear s_Instance here before rethrowing.
+		try
+		{
+			// Create window
+			m_Window = CreateRef<Window>(1600, 900);
+			m_Window->SetEventCallback(
+				[this](Event& e) -> void
+				{
+					OnEvent(e);
+				}
+			);
 
-		// Create device manager (dx11/dx12/vk)
-		DeviceParams deviceParams{
-			.API = RendererAPI::Vulkan,
-		};
+			// Create device manager (dx11/dx12/vk)
+			DeviceParams deviceParams{
+				.API = RendererAPI::Vulkan,
+			};
 
-		m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
-		m_DeviceManager->Init();
-		m_DeviceManager->InitRenderer();
+			m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
+			m_DeviceManager->Init();
+			m_DeviceManager->InitRenderer();
 
-		// Create UI layer
-		m_ImGuiLayer = PushLayer<ImGuiLayer>();
+			// Create UI layer
+			m_ImGuiLayer = PushLayer<ImGuiLayer>();
+		}
+		catch (...)
+		{
+			s_Instance = nullptr;
+			throw;
+		}
 	}
 
 	Application::~Application()
@@ -54,43 +65,52 @@ namespace Eppo
 
 		m_DeviceManager->Shutdown();
 		m_Window->Shutdown();
+
+		// Release the singleton so a subsequent Application can be constructed in
+		// the same process (e.g. a test harness that boots, tears down, re-boots).
+		s_Instance = nullptr;
 	}
 
 	auto Application::Run() -> void
 	{
 		while (m_IsRunning)
 		{
-			EP_PROFILE_FN("Application::Run")
-
 			const auto time = static_cast<float>(glfwGetTime());
 			const float timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
 
-			m_Window->ProcessEvents();
-
-			if (!m_IsMinimized && m_DeviceManager->BeginFrame())
-			{
-				// Render work
-				for (const auto& layer : m_LayerStack)
-					layer->OnUpdate(timestep);
-
-				// UI
-				m_ImGuiLayer->PrepareRender();
-
-				for (const auto& layer : m_LayerStack)
-					layer->OnUIRender();
-
-				m_ImGuiLayer->Render();
-
-				// Present
-				m_DeviceManager->Present();
-			}
-
-			m_DeviceManager->GetDevice()->runGarbageCollection();
-			EP_FRAME_MARK;
+			StepFrame(timestep);
 		}
 
 		m_DeviceManager->GetDevice()->waitForIdle();
+	}
+
+	auto Application::StepFrame(float timestep) -> void
+	{
+		EP_PROFILE_FN("Application::StepFrame")
+
+		m_Window->ProcessEvents();
+
+		if (!m_IsMinimized && m_DeviceManager->BeginFrame())
+		{
+			// Render work
+			for (const auto& layer : m_LayerStack)
+				layer->OnUpdate(timestep);
+
+			// UI
+			m_ImGuiLayer->PrepareRender();
+
+			for (const auto& layer : m_LayerStack)
+				layer->OnUIRender();
+
+			m_ImGuiLayer->Render();
+
+			// Present
+			m_DeviceManager->Present();
+		}
+
+		m_DeviceManager->GetDevice()->runGarbageCollection();
+		EP_FRAME_MARK;
 	}
 
 	auto Application::OnEvent(Event& e) -> void

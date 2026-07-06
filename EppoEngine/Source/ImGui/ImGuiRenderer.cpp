@@ -307,8 +307,11 @@ namespace Eppo
 		m_LocalVertexData.resize(drawData->TotalVtxCount);
 		m_LocalIndexData.resize(drawData->TotalIdxCount);
 
-		ImDrawVert* vtxDst = &m_LocalVertexData[0];
-		ImDrawIdx* idxDst = &m_LocalIndexData[0];
+		// Use data() rather than &[0]: a frame with no UI (e.g. an app with no
+		// visible ImGui windows) yields empty buffers, and &vec[0] on an empty
+		// vector is undefined behaviour (a hard assert in debug STL builds).
+		ImDrawVert* vtxDst = m_LocalVertexData.data();
+		ImDrawIdx* idxDst = m_LocalIndexData.data();
 
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{
