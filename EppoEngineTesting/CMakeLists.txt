@@ -34,6 +34,13 @@ add_custom_command(
 add_custom_target(EppoTestResources ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync")
 add_dependencies(EppoEngineTesting EppoTestResources)
 
+# Committed scenario data (e.g. the testing scene) copied next to the exe so
+# scenarios can load it via FS::GetRootDirectory() (= working dir = exe dir).
+add_custom_command(TARGET EppoEngineTesting POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scenes" "$<TARGET_FILE_DIR:EppoEngineTesting>/TestData/Scenes"
+    COMMENT "Copying scenario TestData")
+
 # Scripting suite provisioning (Windows only, mirrors EppoEditor): the hosted
 # .NET runtime needs runtimeconfig.json + the managed core assembly (+ deps)
 # next to the test exe. We rebuild the managed core here rather than reaching
@@ -116,3 +123,4 @@ eppo_add_suite(Scene     LABEL scene)
 eppo_add_suite(Project   LABEL scene)
 eppo_add_suite(Scripting LABEL scripting)
 eppo_add_suite(App       LABEL graphical)
+eppo_add_suite(Scenario  LABEL graphical)
