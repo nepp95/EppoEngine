@@ -9,7 +9,7 @@ using namespace Eppo;
 
 // TransformComponent::GetTransform() composes translate * rotate * scale, so a
 // local point is scaled first, then rotated, then translated.
-SUITE(Core)
+SUITE(Scene)
 {
     constexpr float kTol = 1e-5f;
 
