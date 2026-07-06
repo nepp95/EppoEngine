@@ -17,6 +17,63 @@ add_custom_command(TARGET EppoEngineTesting POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:EppoEngineTesting> $<TARGET_RUNTIME_DLLS:EppoEngineTesting>
     COMMAND_EXPAND_LISTS)
 
+# Scripting suite provisioning (Windows only, mirrors EppoEditor): the hosted
+# .NET runtime needs runtimeconfig.json + the managed core assembly (+ deps)
+# next to the test exe. We rebuild the managed core here rather than reaching
+# into the editor's output so the test target stands alone.
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(DOTNET_EXE "$ENV{DOTNET_ROOT}/dotnet.exe")
+
+    file(GLOB_RECURSE MANAGED_CORE_SOURCES CONFIGURE_DEPENDS "${EppoScriptCore_MANAGED_SOURCE_DIR}/Source/*.cs")
+
+    # The editor builds this same csproj; we can't redirect its intermediate dir
+    # (the port's csproj uses default globbing, which then sweeps stale in-source
+    # obj/*.cs into the compile), so instead we output to our own dir but serialize
+    # after the editor's managed build to avoid a parallel-build race on the shared
+    # obj/. EppoScriptCoreManaged is defined in EppoEditor (added before us).
+    add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll"
+        COMMAND ${DOTNET_EXE} build "${EppoScriptCore_MANAGED_SOURCE_DIR}/EppoScriptCore.Managed.csproj" -c $<CONFIG> -o ${CMAKE_CURRENT_BINARY_DIR} -v m --nologo
+        COMMENT "Building EppoScriptCore.Managed (tests)"
+        DEPENDS ${MANAGED_CORE_SOURCES} "${EppoScriptCore_MANAGED_SOURCE_DIR}/EppoScriptCore.Managed.csproj"
+        VERBATIM)
+    add_custom_target(EppoScriptCoreManagedTest ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll")
+    if (TARGET EppoScriptCoreManaged)
+        add_dependencies(EppoScriptCoreManagedTest EppoScriptCoreManaged)
+    endif ()
+    add_dependencies(EppoEngineTesting EppoScriptCoreManagedTest)
+
+    # A tiny user script assembly (one concrete ScriptBehaviour) so the Scripting
+    # suite can exercise user-assembly loading + class/field discovery. References
+    # the core managed DLL by path (passed as an MSBuild property).
+    set(TEST_SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts")
+    file(GLOB_RECURSE TEST_SCRIPT_SOURCES CONFIGURE_DEPENDS "${TEST_SCRIPTS_DIR}/Source/*.cs")
+
+    # Intermediates go under the build tree (not the source tree next to the
+    # csproj) so nothing generated leaks into git.
+    add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/TestScripts/EppoTesting.Scripts.dll"
+        COMMAND ${DOTNET_EXE} build "${TEST_SCRIPTS_DIR}/HarnessScripts.csproj" -c $<CONFIG>
+            -o "${CMAKE_CURRENT_BINARY_DIR}/TestScripts"
+            -p:BaseIntermediateOutputPath=${CMAKE_CURRENT_BINARY_DIR}/TestScripts/obj/
+            -p:CoreManagedDll=${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll
+            -v m --nologo
+        COMMENT "Building test user script assembly"
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll" ${TEST_SCRIPT_SOURCES} "${TEST_SCRIPTS_DIR}/HarnessScripts.csproj"
+        VERBATIM)
+    add_custom_target(EppoTestScripts ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/TestScripts/EppoTesting.Scripts.dll")
+    add_dependencies(EppoTestScripts EppoScriptCoreManagedTest)
+    add_dependencies(EppoEngineTesting EppoTestScripts)
+
+    add_custom_command(TARGET EppoEngineTesting POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/EppoEditor/runtimeconfig.json" $<TARGET_FILE_DIR:EppoEngineTesting>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll" $<TARGET_FILE_DIR:EppoEngineTesting>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.pdb" $<TARGET_FILE_DIR:EppoEngineTesting>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.deps.json" $<TARGET_FILE_DIR:EppoEngineTesting>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/TestScripts/EppoTesting.Scripts.dll" $<TARGET_FILE_DIR:EppoEngineTesting>
+        COMMENT "Copying EppoScriptCore runtime + test scripts")
+endif ()
+
 # Register one CTest entry per UnitTest++ SUITE. The runner takes a suite name as
 # its first argument and runs only that suite (see Source/main.cpp), giving
 # per-suite pass/fail granularity. Labels group suites by cost/dependency so they
@@ -26,7 +83,11 @@ add_custom_command(TARGET EppoEngineTesting POST_BUILD
 #   scripting — needs the hosted .NET runtime + managed assembly
 function(eppo_add_suite suite)
     cmake_parse_arguments(ARG "" "LABEL" "" ${ARGN})
-    add_test(NAME ${suite} COMMAND EppoEngineTesting ${suite})
+    # Run from the exe's own directory: the hosted .NET runtime resolves the
+    # managed assemblies relative to the working directory, and the data files
+    # (runtimeconfig.json, script DLLs) are copied next to the exe.
+    add_test(NAME ${suite} COMMAND EppoEngineTesting ${suite}
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:EppoEngineTesting>)
     if (ARG_LABEL)
         set_tests_properties(${suite} PROPERTIES LABELS "${ARG_LABEL}")
     endif ()
