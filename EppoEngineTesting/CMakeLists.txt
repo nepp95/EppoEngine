@@ -17,6 +17,23 @@ add_custom_command(TARGET EppoEngineTesting POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:EppoEngineTesting> $<TARGET_RUNTIME_DLLS:EppoEngineTesting>
     COMMAND_EXPAND_LISTS)
 
+# Graphical suites (App/Scenario) boot the real Application, which loads shaders
+# and fonts from Resources/ next to the exe (FS::GetResourcesDirectory() resolves
+# against the working directory = exe dir). Reuse the editor's Resources tree,
+# copied incrementally via a stamp file so it only re-copies when files change.
+set(EDITOR_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/EppoEditor/Resources")
+file(GLOB_RECURSE TEST_RESOURCE_FILES CONFIGURE_DEPENDS "${EDITOR_RESOURCES_DIR}/*")
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoEngineTesting>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${EDITOR_RESOURCES_DIR}" "$<TARGET_FILE_DIR:EppoEngineTesting>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync"
+    DEPENDS ${TEST_RESOURCE_FILES}
+    COMMENT "Copying Resources (tests)"
+    VERBATIM)
+add_custom_target(EppoTestResources ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync")
+add_dependencies(EppoEngineTesting EppoTestResources)
+
 # Scripting suite provisioning (Windows only, mirrors EppoEditor): the hosted
 # .NET runtime needs runtimeconfig.json + the managed core assembly (+ deps)
 # next to the test exe. We rebuild the managed core here rather than reaching
@@ -98,3 +115,4 @@ eppo_add_suite(Input     LABEL unit)
 eppo_add_suite(Scene     LABEL scene)
 eppo_add_suite(Project   LABEL scene)
 eppo_add_suite(Scripting LABEL scripting)
+eppo_add_suite(App       LABEL graphical)
