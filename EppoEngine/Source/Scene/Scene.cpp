@@ -10,13 +10,19 @@ namespace Eppo
 {
 	auto Scene::SetViewportSize(uint32_t width, uint32_t height) -> void
 	{
-		// Change camera component sizzes
-
+		// Keep every scene camera's projection aspect ratio in sync with the viewport.
+		const auto view = m_Registry.view<CameraComponent>();
+		for (const auto e : view)
+			view.get<CameraComponent>(e).Camera.SetViewportSize(width, height);
 	}
 
 	auto Scene::OnRuntimeStart() -> void
 	{
 		EP_PROFILE_FN("Scene::OnRuntimeStart");
+
+		// Warn once at play start rather than every frame in OnRenderRuntime.
+		if (!GetPrimaryCameraEntity())
+			Log::Warn("Scene has no primary camera entity; nothing will be rendered in play mode.");
 
 		if (!ScriptEngine::IsInitialized())
 			return;
@@ -73,7 +79,35 @@ namespace Eppo
 
 	auto Scene::OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer) -> void
 	{
+		EP_PROFILE_FN("Scene::OnRenderRuntime");
 
+		const Entity cameraEntity = GetPrimaryCameraEntity();
+		if (!cameraEntity)
+			return; // No camera to render through (already warned on runtime start).
+
+		const auto& camera = cameraEntity.GetComponent<CameraComponent>().Camera;
+		const auto& transform = cameraEntity.GetComponent<TransformComponent>();
+
+		// Derive the view from translation + rotation only; a scaled camera entity
+		// must not distort the view, so scale is intentionally ignored here.
+		const glm::mat4 cameraTransform = glm::translate(glm::mat4(1.0f), transform.Translation)
+			* glm::mat4_cast(glm::quat(transform.Rotation));
+
+		sceneRenderer->BeginScene(glm::inverse(cameraTransform), camera.GetProjectionMatrix(), transform.Translation);
+		RenderScene(sceneRenderer);
+		sceneRenderer->EndScene();
+	}
+
+	auto Scene::GetPrimaryCameraEntity() -> Entity
+	{
+		const auto view = m_Registry.view<CameraComponent>();
+		for (const auto e : view)
+		{
+			if (view.get<CameraComponent>(e).Primary)
+				return Entity(e, this);
+		}
+
+		return {};
 	}
 
 	auto Scene::CreateEntity(const std::string& name) -> Entity
@@ -105,6 +139,7 @@ namespace Eppo
 
 		TryCopyComponent<TransformComponent>(entity, newEntity);
 		TryCopyComponent<MeshComponent>(entity, newEntity);
+		TryCopyComponent<CameraComponent>(entity, newEntity);
 		TryCopyComponent<ScriptComponent>(entity, newEntity);
 
 		// Script field values live in ScriptEngine's side table, keyed by UUID,
@@ -171,6 +206,7 @@ namespace Eppo
 
 		CopyComponent<TransformComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<MeshComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
 
 		return newScene;

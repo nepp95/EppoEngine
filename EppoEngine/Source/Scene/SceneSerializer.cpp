@@ -177,6 +177,18 @@ namespace Eppo
 				nc.MeshHandle = c["MeshHandle"].get<AssetHandle>();
 			}
 
+			if (entity.contains("CameraComponent"))
+			{
+				auto& c = entity["CameraComponent"];
+				auto& nc = newEntity.AddComponent<CameraComponent>();
+				nc.Primary = c["Primary"].get<bool>();
+				nc.Camera.SetPerspective(
+					c["VerticalFov"].get<float>(),
+					c["NearClip"].get<float>(),
+					c["FarClip"].get<float>()
+				);
+			}
+
 			if (entity.contains("ScriptComponent"))
 			{
 				auto& c = entity["ScriptComponent"];
@@ -229,6 +241,15 @@ namespace Eppo
 		{
 			const auto& c = entity.GetComponent<MeshComponent>();
 			e["MeshComponent"]["MeshHandle"] = c.MeshHandle;
+		}
+
+		if (entity.HasComponent<CameraComponent>())
+		{
+			const auto& c = entity.GetComponent<CameraComponent>();
+			e["CameraComponent"]["Primary"] = c.Primary;
+			e["CameraComponent"]["VerticalFov"] = c.Camera.GetPerspectiveVerticalFov();
+			e["CameraComponent"]["NearClip"] = c.Camera.GetPerspectiveNearClip();
+			e["CameraComponent"]["FarClip"] = c.Camera.GetPerspectiveFarClip();
 		}
 
 		if (entity.HasComponent<ScriptComponent>())

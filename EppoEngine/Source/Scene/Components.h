@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/UUID.h"
+#include "Renderer/Camera/SceneCamera.h"
 #include "Renderer/Mesh.h"
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -61,6 +62,18 @@ namespace Eppo
 		MeshComponent(const AssetHandle handle)
 			: MeshHandle(handle)
 		{}
+	};
+
+	// Turns an entity into a camera. On play, the scene renders through the
+	// primary camera entity, using its TransformComponent for the view. Primary
+	// selects which camera is used when several exist (first primary wins).
+	struct CameraComponent
+	{
+		SceneCamera Camera;
+		bool Primary = true;
+
+		CameraComponent() = default;
+		CameraComponent(const CameraComponent&) = default;
 	};
 
 	// Attaches a user script class to an entity. Kept intentionally small: it
