@@ -41,12 +41,18 @@ add_custom_command(TARGET EppoEngineTesting POST_BUILD
         "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scenes" "$<TARGET_FILE_DIR:EppoEngineTesting>/TestData/Scenes"
     COMMENT "Copying scenario TestData")
 
-# Scripting suite provisioning (Windows only, mirrors EppoEditor): the hosted
-# .NET runtime needs runtimeconfig.json + the managed core assembly (+ deps)
-# next to the test exe. We rebuild the managed core here rather than reaching
-# into the editor's output so the test target stands alone.
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(DOTNET_EXE "$ENV{DOTNET_ROOT}/dotnet.exe")
+# Scripting suite provisioning (mirrors EppoEditor): the hosted .NET runtime
+# needs runtimeconfig.json + the managed core assembly (+ deps) next to the test
+# exe. We rebuild the managed core here rather than reaching into the editor's
+# output so the test target stands alone. The whole block is portable — only the
+# dotnet executable name differs — so it runs on Windows and Linux (CI); the
+# editor's own managed build stays Windows-only, hence the optional TARGET guard.
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        set(DOTNET_EXE "$ENV{DOTNET_ROOT}/dotnet.exe")
+    else ()
+        set(DOTNET_EXE "$ENV{DOTNET_ROOT}/dotnet")
+    endif ()
 
     file(GLOB_RECURSE MANAGED_CORE_SOURCES CONFIGURE_DEPENDS "${EppoScriptCore_MANAGED_SOURCE_DIR}/Source/*.cs")
 
