@@ -6,6 +6,21 @@
 
 namespace Eppo
 {
+    namespace
+    {
+        // EppoScriptCore's Assembly API takes .NET hostfxr `char_t` strings, which
+        // are wchar_t on Windows and char on Linux. Hand it the matching encoding
+        // for the current platform rather than hardcoding wstring().
+        auto NativePath(const std::filesystem::path& path)
+        {
+#ifdef EP_PLATFORM_WINDOWS
+            return path.wstring();
+#else
+            return path.string();
+#endif
+        }
+    }
+
     std::unique_ptr<ScriptEngine> ScriptEngine::s_Instance = nullptr;
 
     ScriptEngine::~ScriptEngine()
@@ -26,7 +41,7 @@ namespace Eppo
 
         s_Instance->m_CoreAssembly = std::make_unique<EppoScriptCore::Assembly>(
             ErrorCallback,
-            runtimeConfigPath.wstring(),
+            NativePath(runtimeConfigPath),
             callbacks
         );
 
@@ -55,7 +70,7 @@ namespace Eppo
 
     auto ScriptEngine::LoadUserAssembly(const std::filesystem::path& path) -> void
     {
-        m_CoreAssembly->LoadUserAssembly(path.wstring());
+        m_CoreAssembly->LoadUserAssembly(NativePath(path));
     }
 
     auto ScriptEngine::UnloadUserAssembly() -> void
