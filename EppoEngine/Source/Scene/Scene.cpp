@@ -140,6 +140,7 @@ namespace Eppo
 		TryCopyComponent<TransformComponent>(entity, newEntity);
 		TryCopyComponent<MeshComponent>(entity, newEntity);
 		TryCopyComponent<CameraComponent>(entity, newEntity);
+		TryCopyComponent<PointLightComponent>(entity, newEntity);
 		TryCopyComponent<ScriptComponent>(entity, newEntity);
 
 		// Script field values live in ScriptEngine's side table, keyed by UUID,
@@ -207,7 +208,10 @@ namespace Eppo
 		CopyComponent<TransformComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<MeshComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<PointLightComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
+
+		newScene->m_Environment = scene->m_Environment;
 
 		return newScene;
 	}
@@ -215,6 +219,15 @@ namespace Eppo
 	auto Scene::RenderScene(const Ref<SceneRenderer>& sceneRenderer) -> void
 	{
 		EP_PROFILE_FN("Scene::RenderScene");
+
+		sceneRenderer->SubmitEnvironment(m_Environment);
+
+		const auto lightView = m_Registry.view<PointLightComponent, TransformComponent>();
+		for (const auto& entity : lightView)
+		{
+			auto [transformComponent, lightComponent] = lightView.get<TransformComponent, PointLightComponent>(entity);
+			sceneRenderer->SubmitPointLight(transformComponent.Translation, lightComponent.Color, lightComponent.Intensity);
+		}
 
 		const auto view = m_Registry.view<MeshComponent, TransformComponent>();
 		for (const auto& entity : view)

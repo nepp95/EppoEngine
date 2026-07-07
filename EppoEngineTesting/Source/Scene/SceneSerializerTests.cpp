@@ -1,4 +1,5 @@
 #include "Support/EppoTest.h"
+#include "Support/GlmCheck.h"
 #include "Support/TempDir.h"
 
 #include "Scene/Scene.h"
@@ -130,6 +131,94 @@ SUITE(Scene)
         const json a = ParseSceneFile(original);
         const json b = ParseSceneFile(reemitted);
         CHECK(a["Scene"]["Entities"] == b["Scene"]["Entities"]);
+    }
+
+    TEST(RoundTripPreservesPointLight)
+    {
+        const TempDir dir;
+        const auto original = dir.File("light-a.epscene");
+        const auto reemitted = dir.File("light-b.epscene");
+
+        Ref<Scene> scene = CreateRef<Scene>();
+        Entity lamp = scene->CreateEntityWithUUID(UUID(400ull), "Lamp");
+        auto& light = lamp.AddComponent<PointLightComponent>();
+        light.Color = { 0.1f, 0.5f, 0.9f };
+        light.Intensity = 12.5f;
+
+        SceneSerializer(scene).Serialize(original);
+
+        // The component lands in the JSON...
+        const json data = ParseSceneFile(original);
+        CHECK(data["Scene"]["Entities"][0].contains("PointLightComponent"));
+        CHECK_CLOSE(12.5f, data["Scene"]["Entities"][0]["PointLightComponent"]["Intensity"].get<float>(), 1e-6f);
+
+        // ...and survives a load + re-emit unchanged.
+        Ref<Scene> loaded = CreateRef<Scene>();
+        CHECK(SceneSerializer(loaded).Deserialize(original));
+        SceneSerializer(loaded).Serialize(reemitted);
+        const json b = ParseSceneFile(reemitted);
+        CHECK(data["Scene"]["Entities"] == b["Scene"]["Entities"]);
+    }
+
+    TEST(SerializeEmitsEnvironment)
+    {
+        const TempDir dir;
+        const auto path = dir.File("env.epscene");
+
+        Ref<Scene> scene = CreateRef<Scene>();
+        auto& env = scene->GetEnvironment();
+        env.AmbientIntensity = 0.5f;
+        env.ZenithColor = { 0.1f, 0.2f, 0.3f };
+        scene->CreateEntityWithUUID(UUID(100ull), "Alpha");
+
+        SceneSerializer(scene).Serialize(path);
+
+        const json data = ParseSceneFile(path);
+        CHECK(data["Scene"].contains("Environment"));
+        CHECK_CLOSE(0.5f, data["Scene"]["Environment"]["AmbientIntensity"].get<float>(), 1e-6f);
+    }
+
+    TEST(DeserializeAppliesEnvironment)
+    {
+        const TempDir dir;
+        const auto path = dir.File("env-rt.epscene");
+
+        Ref<Scene> scene = CreateRef<Scene>();
+        scene->GetEnvironment().AmbientIntensity = 0.25f;
+        scene->GetEnvironment().GroundColor = { 0.9f, 0.8f, 0.7f };
+        scene->CreateEntityWithUUID(UUID(100ull), "Alpha");
+        SceneSerializer(scene).Serialize(path);
+
+        Ref<Scene> loaded = CreateRef<Scene>();
+        CHECK(SceneSerializer(loaded).Deserialize(path));
+
+        CHECK_CLOSE(0.25f, loaded->GetEnvironment().AmbientIntensity, 1e-6f);
+        CHECK_VEC3_CLOSE(glm::vec3(0.9f, 0.8f, 0.7f), loaded->GetEnvironment().GroundColor, 1e-6f);
+    }
+
+    TEST(DeserializeMissingEnvironmentKeepsDefaults)
+    {
+        const TempDir dir;
+        const auto path = dir.File("no-env.epscene");
+
+        // Hand-write a scene with no Environment block (as older scenes had none).
+        json data;
+        data["Scene"]["Name"] = "no-env";
+        data["Scene"]["Handle"] = 0;
+        data["Scene"]["Entities"] = json::array();
+        json e;
+        e["IDComponent"]["ID"] = 100ull;
+        e["TagComponent"]["Tag"] = "Alpha";
+        data["Scene"]["Entities"].push_back(e);
+        FS::WriteText(path, data.dump(4), true);
+
+        Ref<Scene> loaded = CreateRef<Scene>();
+        CHECK(SceneSerializer(loaded).Deserialize(path));
+
+        // The constructed defaults survive untouched.
+        const EnvironmentSettings defaults;
+        CHECK_CLOSE(defaults.AmbientIntensity, loaded->GetEnvironment().AmbientIntensity, 1e-6f);
+        CHECK_VEC3_CLOSE(defaults.ZenithColor, loaded->GetEnvironment().ZenithColor, 1e-6f);
     }
 
     TEST(DeserializeMissingFileFails)
