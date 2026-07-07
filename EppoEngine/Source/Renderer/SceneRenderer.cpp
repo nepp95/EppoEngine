@@ -101,6 +101,11 @@ namespace Eppo
 
 	auto SceneRenderer::BeginScene(const ScopedPtr<EditorCamera>& camera) -> void
 	{
+		BeginScene(camera->GetViewMatrix(), camera->GetProjectionMatrix(), camera->GetPosition());
+	}
+
+	auto SceneRenderer::BeginScene(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& position) -> void
+	{
 		EP_PROFILE_FN("SceneRenderer::BeginScene")
 
 		// Reset
@@ -108,10 +113,10 @@ namespace Eppo
 		std::memset(&m_DrawStatistics, 0, sizeof(DrawStatistics));
 
 		// Set uniforms
-		m_CameraData.View = camera->GetViewMatrix();
-		m_CameraData.Projection = camera->GetProjectionMatrix();
-		m_CameraData.ViewProjection = camera->GetViewProjection();
-		m_CameraData.Position = glm::vec4(camera->GetPosition(), 0.0f);
+		m_CameraData.View = view;
+		m_CameraData.Projection = projection;
+		m_CameraData.ViewProjection = projection * view;
+		m_CameraData.Position = glm::vec4(position, 0.0f);
 		m_CameraUB->SetData(&m_CameraData, sizeof(CameraData));
 	}
 
@@ -161,7 +166,7 @@ namespace Eppo
 		const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
 
 		if (!m_InstanceTransformsSB)
-			m_InstanceTransformsSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), requiredSize, "StorageBuffer Instance Transforms");
+			m_InstanceTransformsSB = CreateRef<StorageBuffer>(static_cast<uint32_t>(sizeof(glm::mat4)), requiredSize, "StorageBuffer Instance Transforms");
 
 		m_InstanceTransformsSB->SetData(instanceTransforms.data(), requiredSize);
 

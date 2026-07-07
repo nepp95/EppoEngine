@@ -37,3 +37,11 @@ find_package(tracy REQUIRED NAMES Tracy)
 if (NOT tracy_FOUND)
     message(FATAL_ERROR "tracy not found!")
 endif ()
+
+find_package(EppoScriptCore CONFIG REQUIRED)
+
+find_package(UnitTest++ CONFIG REQUIRED)
+
+if (NOT DEFINED ENV{DOTNET_ROOT})
+    message(FATAL_ERROR "Set the DOTNET_ROOT environment variable to the .net SDK")
+endif ()

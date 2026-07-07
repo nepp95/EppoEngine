@@ -85,6 +85,11 @@ namespace Eppo
 		return GetProjectDirectory() / "Assets";
 	}
 
+	auto Project::GetScriptsDirectory() -> std::filesystem::path
+	{
+		return GetProjectDirectory() / "Scripts";
+	}
+
 	auto Project::GetAssetFilepath(const std::filesystem::path& filepath) -> std::filesystem::path
 	{
 		EP_ASSERT(s_ActiveProject != nullptr);

@@ -1,0 +1,7 @@
+The package epposcriptcore provides CMake targets:
+
+    find_package(EppoScriptCore CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE EppoScriptCore::EppoScriptCore.Native)
+
+After installation, managed C# source files are available at:
+  ${EppoScriptCore_MANAGED_SOURCE_DIR}

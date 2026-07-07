@@ -15,6 +15,43 @@ namespace Eppo
 
 			return fullType.substr(pos + 1, stringSize - 9);
 		}
+
+		// Renders an editor widget for a single script field, mutating the value
+		// buffer in place. ImGui reads/writes the typed value directly. Returns
+		// true on the frames the user changes the value, so the caller can push
+		// the edit to a live script instance during play.
+		static auto DrawScriptField(const EppoScriptCore::ScriptField& field, ScriptFieldValue& value) -> bool
+		{
+			using FT = EppoScriptCore::ScriptFieldType;
+
+			const std::string label = "##" + field.Name;
+			void* data = value.Buffer.data();
+
+			ImGui::TableNextColumn();
+			ImGui::Text("%s", field.Name.c_str());
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(-FLT_MIN);
+
+			switch (field.Type)
+			{
+				case FT::Float:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_Float, data, 0.1f);
+				case FT::Double:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_Double, data);
+				case FT::Bool:    return ImGui::Checkbox(label.c_str(), reinterpret_cast<bool*>(data));
+				case FT::Char:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
+				case FT::Int16:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S16, data);
+				case FT::Int32:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_S32, data);
+				case FT::Int64:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, data);
+				case FT::Byte:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U8, data);
+				case FT::UInt16:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
+				case FT::UInt32:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U32, data);
+				case FT::UInt64:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
+				case FT::Vector2: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 2, 0.1f);
+				case FT::Vector3: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 3, 0.1f);
+				case FT::Vector4: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 4, 0.1f);
+				case FT::Entity:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
+				default:          ImGui::TextDisabled("(unsupported type)"); return false;
+			}
+		}
 	}
 
 	auto PropertyPanel::RenderGui() -> void
@@ -38,6 +75,8 @@ namespace Eppo
 		if (ImGui::BeginPopup("AddComponent"))
 		{
 			DrawAddComponentEntry<MeshComponent>("Mesh");
+			DrawAddComponentEntry<CameraComponent>("Camera");
+			DrawAddComponentEntry<ScriptComponent>("Script");
 
 			ImGui::EndPopup();
 		}
@@ -140,10 +179,15 @@ namespace Eppo
 				ImGui::Button("Mesh Handle", ImVec2(100.0f, 0.0f));
 				if (ImGui::BeginDragDropTarget())
 				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MESH_ASSET"))
+					// Assets dragged from the content browser carry their handle.
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_HANDLE"))
 					{
-						/*Ref<Mesh> handle = *reinterpret_cast<Ref<Mesh>*>(payload->Data);
-						component.MeshHandle = handle;*/
+						const AssetHandle handle = *static_cast<const uint64_t*>(payload->Data);
+						const auto& assetManager = Project::GetActive()->GetAssetManager();
+						if (assetManager->GetMetadata(handle).Type == AssetType::Mesh)
+							component.MeshHandle = handle;
+						else
+							Log::Warn("Dropped asset is not a mesh; ignoring.");
 					}
 					ImGui::EndDragDropTarget();
 				}
@@ -179,6 +223,113 @@ namespace Eppo
 
 					ImGui::EndPopup();
 				}
+			}
+		});
+
+		DrawComponent<CameraComponent>(entity, [](auto& component)
+		{
+			ImGui::Checkbox("Primary", &component.Primary);
+
+			float verticalFov = component.Camera.GetPerspectiveVerticalFov();
+			if (ImGui::DragFloat("Vertical FOV", &verticalFov, 0.1f, 1.0f, 179.0f))
+				component.Camera.SetPerspectiveVerticalFov(verticalFov);
+
+			float nearClip = component.Camera.GetPerspectiveNearClip();
+			if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.001f, 0.0f))
+				component.Camera.SetPerspectiveNearClip(nearClip);
+
+			float farClip = component.Camera.GetPerspectiveFarClip();
+			if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 0.0f, 0.0f))
+				component.Camera.SetPerspectiveFarClip(farClip);
+		});
+
+		DrawComponent<ScriptComponent>(entity, [entity](auto& component)
+		{
+			if (!ScriptEngine::IsInitialized())
+			{
+				ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Script runtime not initialized");
+				return;
+			}
+
+			auto& scriptEngine = ScriptEngine::Get();
+			const auto& classes = scriptEngine.GetClasses();
+			const bool valid = scriptEngine.IsValidScriptClass(component.ClassName);
+
+			const char* preview = component.ClassName.empty() ? "(none)" : component.ClassName.c_str();
+			if (ImGui::BeginCombo("Class", preview))
+			{
+				for (const auto& cls : classes)
+				{
+					const bool selected = cls.GetFullName() == component.ClassName;
+					if (ImGui::Selectable(cls.GetFullName().c_str(), selected))
+						component.ClassName = cls.GetFullName();
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+
+			if (!component.ClassName.empty() && !valid)
+			{
+				ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Unknown script class");
+				return;
+			}
+
+			const auto classIndex = scriptEngine.FindClassIndex(component.ClassName);
+			if (classIndex < 0)
+				return;
+
+			const auto& fields = classes[classIndex].GetFields();
+			if (fields.empty())
+				return;
+
+			// The side table owns the editor-time field values (keyed by UUID).
+			const auto uuid = entity.GetUUID();
+			auto& fieldMap = scriptEngine.GetFieldMap(uuid);
+
+			// While a script is running, its engine-owned instance is the source
+			// of truth, so we show and edit that value directly. Editing it does
+			// not touch the serialized side table, so stopping play restores the
+			// editor-time values. A null handle means edit mode (or a script that
+			// failed to instantiate) — fall back to the side table.
+			ScriptInstance* instance = scriptEngine.GetEntityInstance(uuid);
+
+			if (ImGui::BeginTable("##ScriptFields", 2))
+			{
+				for (int32_t i = 0; i < static_cast<int32_t>(fields.size()); i++)
+				{
+					const auto& field = fields[i];
+					if (field.Type == EppoScriptCore::ScriptFieldType::None)
+						continue;
+
+					auto& stored = fieldMap[field.Name];
+					if (stored.Type != field.Type)
+					{
+						stored = ScriptFieldValue{};
+						stored.Type = field.Type;
+					}
+
+					ImGui::TableNextRow();
+					ImGui::PushID(field.Name.c_str());
+
+					if (instance)
+					{
+						// Seed the widget from the running instance's current value
+						// (the script may have changed it), then push edits back.
+						ScriptFieldValue liveValue = stored;
+						instance->GetFieldValue(i, liveValue.Buffer.data());
+						if (Utils::DrawScriptField(field, liveValue))
+							instance->SetFieldValue(i, liveValue.Buffer.data());
+					}
+					else
+					{
+						Utils::DrawScriptField(field, stored);
+					}
+
+					ImGui::PopID();
+				}
+
+				ImGui::EndTable();
 			}
 		});
 	}

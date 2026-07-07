@@ -132,16 +132,16 @@ namespace Eppo
 				if (resource.ArraySize == 0)
 				{
 					// Bindless layout needed
+					const nvrhi::BindingLayoutItem bindlessLayoutItem{
+						.slot = resource.Binding,
+						.type = resource.Type,
+					};
+
 					nvrhi::BindlessLayoutDesc bindlessLayoutDesc{
 						.visibility = nvrhi::ShaderType::All,
 						.firstSlot = resource.Binding,
 						.maxCapacity = 1024,
-						.registerSpaces = {
-							nvrhi::BindingLayoutItem{
-								.slot = resource.Binding,
-								.type = resource.Type,
-							}
-						},
+						.registerSpaces = { bindlessLayoutItem },
 					};
 
 					m_BindingLayouts[set] = device->createBindlessLayout(bindlessLayoutDesc);

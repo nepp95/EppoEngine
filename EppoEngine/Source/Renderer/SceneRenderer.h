@@ -22,6 +22,7 @@ namespace Eppo
 		auto RenderGui() const -> void;
 
 		auto BeginScene(const ScopedPtr<EditorCamera>& camera) -> void;
+		auto BeginScene(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& position) -> void;
 		auto EndScene() -> void;
 
 		auto GetFinalImage() const -> const Ref<Image>&;

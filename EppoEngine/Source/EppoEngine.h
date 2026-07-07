@@ -23,12 +23,15 @@
 #include "Project/Project.h"
 
 #include "Renderer/Camera/EditorCamera.h"
+#include "Renderer/Camera/SceneCamera.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/SceneRenderer.h"
 
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneSerializer.h"
+
+#include "Scripting/ScriptEngine.h"
 
 #include "Utility/Filesystem.h"
 #include "Utility/Json.h"

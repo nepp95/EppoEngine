@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/EppoScriptCoreTargets.cmake")
+
+set_and_check(EppoScriptCore_MANAGED_SOURCE_DIR "@PACKAGE_MANAGED_SOURCE_DIR@")
+
+check_required_components(EppoScriptCore)

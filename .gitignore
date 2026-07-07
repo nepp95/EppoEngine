@@ -6,6 +6,13 @@
 # Build / Cache
 /build
 /EppoEditor/Resources/Shaders/Cache
+/EppoScriptCore/bin
+/EppoScriptCore/obj
+
+# .NET intermediate/output for the test script assembly (built into the build
+# tree, but guard against a stray in-source build too)
+/EppoEngineTesting/TestData/Scripts/bin
+/EppoEngineTesting/TestData/Scripts/obj
 
 # Log files
 latest.log

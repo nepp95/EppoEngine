@@ -25,5 +25,6 @@
 #include "Core/Base.h"
 #include "Core/Buffer.h"
 #include "Core/Hash.h"
+#include "Core/UUID.h"
 #include "Utility/Filesystem.h"
 #include "Utility/Random.h"
