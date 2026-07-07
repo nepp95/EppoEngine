@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Scene/Entity.h"
+#include "Scripting/ScriptInstance.h"
 
 #include <EppoScriptCore.Native/Assembly.h>
 #include <EppoScriptCore.Native/ScriptClass.h>
@@ -76,6 +77,14 @@ namespace Eppo
         auto OnUpdateEntity(Entity entity, float timestep) -> void;
         auto OnDestroyEntity(Entity entity) -> void;
 
+        // The engine owns the live-instance registry: it is authoritative for
+        // which entities have a running script. Returns nullptr when the entity
+        // has no live instance (not playing, or its script failed to instantiate).
+        // Editing fields through the returned handle mutates the running script
+        // directly and deliberately bypasses the serialized side table, so
+        // stopping play restores the editor-time values.
+        [[nodiscard]] auto GetEntityInstance(const UUID& entityId) -> ScriptInstance*;
+
         // Editor-time field storage (side table keyed by entity UUID). This is
         // the authoritative, serialized copy; it is pushed into the live managed
         // instance when the entity's script is created.
@@ -93,6 +102,11 @@ namespace Eppo
 
         std::unique_ptr<EppoScriptCore::Assembly> m_CoreAssembly;
         std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
+
+        // The authoritative registry of live script instances, keyed by entity
+        // UUID. Populated on play (OnCreateEntity), cleared on stop / assembly
+        // unload. The managed runtime only holds the object bodies.
+        std::unordered_map<UUID, ScriptInstance> m_EntityInstances;
 
         static std::unique_ptr<ScriptEngine> s_Instance;
     };
