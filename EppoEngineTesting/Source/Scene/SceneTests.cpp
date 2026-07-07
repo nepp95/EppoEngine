@@ -107,4 +107,19 @@ SUITE(Scene)
         CHECK(copy.HasComponent<MeshComponent>());
         CHECK_EQUAL(77ull, static_cast<uint64_t>(copy.GetComponent<MeshComponent>().MeshHandle));
     }
+
+    TEST(DuplicateEntityCopiesPointLight)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity source = scene->CreateEntity("Lamp");
+        auto& light = source.AddComponent<PointLightComponent>();
+        light.Color = { 0.2f, 0.4f, 0.8f };
+        light.Intensity = 25.0f;
+
+        Entity copy = scene->DuplicateEntity(source);
+
+        CHECK(copy.HasComponent<PointLightComponent>());
+        CHECK_VEC3_CLOSE(glm::vec3(0.2f, 0.4f, 0.8f), copy.GetComponent<PointLightComponent>().Color, 1e-6f);
+        CHECK_CLOSE(25.0f, copy.GetComponent<PointLightComponent>().Intensity, 1e-6f);
+    }
 }

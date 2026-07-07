@@ -17,6 +17,16 @@ add_custom_command(TARGET EppoEngineTesting POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:EppoEngineTesting> $<TARGET_RUNTIME_DLLS:EppoEngineTesting>
     COMMAND_EXPAND_LISTS)
 
+# The Vulkan SDK's dxcompiler.dll isn't a CMake-known runtime dependency, and
+# Windows ships a SPIR-V-less Microsoft dxcompiler.dll that can shadow it on the
+# DLL search path — so the graphical suites' runtime shader compilation needs the
+# SDK DLL copied next to the exe (see EppoEditor/CMakeLists.txt for the full note).
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_custom_command(TARGET EppoEngineTesting POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$ENV{VULKAN_SDK}/Bin/dxcompiler.dll" $<TARGET_FILE_DIR:EppoEngineTesting>
+        COMMENT "Copying Vulkan DXC (dxcompiler.dll)")
+endif ()
+
 # Graphical suites (App/Scenario) boot the real Application, which loads shaders
 # and fonts from Resources/ next to the exe (FS::GetResourcesDirectory() resolves
 # against the working directory = exe dir). Reuse the editor's Resources tree,

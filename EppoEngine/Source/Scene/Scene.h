@@ -5,12 +5,27 @@
 #include "Renderer/Camera/EditorCamera.h"
 
 #include <entt/entt.hpp>
+#include <glm/glm.hpp>
 
 namespace Eppo
 {
 	using EntityHandle = entt::entity;
 	class Entity;
 	class SceneRenderer;
+
+	// Scene-level lighting environment. Without a skybox image the renderer
+	// shades the background and the ambient term from these three colors (a
+	// vertical zenith->horizon->ground gradient). SkyboxHandle is the seam for a
+	// future equirectangular HDR: when it resolves to a loaded image the renderer
+	// samples that instead of the gradient. Colors are authored in linear space.
+	struct EnvironmentSettings
+	{
+		AssetHandle SkyboxHandle = 0;
+		glm::vec3 ZenithColor = { 0.35f, 0.45f, 0.55f };
+		glm::vec3 HorizonColor = { 0.65f, 0.66f, 0.67f };
+		glm::vec3 GroundColor = { 0.20f, 0.17f, 0.13f };
+		float AmbientIntensity = 1.0f;
+	};
 
 	class Scene : public Asset
 	{
@@ -44,12 +59,16 @@ namespace Eppo
 
 		static auto Copy(Ref<Scene> scene) -> Ref<Scene>;
 
+		[[nodiscard]] auto GetEnvironment() -> EnvironmentSettings& { return m_Environment; }
+		[[nodiscard]] auto GetEnvironment() const -> const EnvironmentSettings& { return m_Environment; }
+
 	private:
 		auto RenderScene(const Ref<SceneRenderer>& sceneRenderer) -> void;
 
 	private:
 		entt::registry m_Registry;
 		std::unordered_map<UUID, EntityHandle> m_EntityMap;
+		EnvironmentSettings m_Environment;
 
 		friend class Entity;
 		friend class SceneHierarchyPanel;

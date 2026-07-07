@@ -30,28 +30,32 @@ float3 FSchlick(float3 matColor, float cosTheta, float metallic)
     return F;
 }
 
-// BRDF
-float3 BRDF(float3 matColor, float3 L, float3 V, float3 N, float metallic, float roughness)
+// Cook-Torrance BRDF for a single light. `radiance` is the incoming light
+// (color * intensity * attenuation); the caller computes it per light.
+float3 BRDF(float3 matColor, float3 L, float3 V, float3 N, float metallic, float roughness, float3 radiance)
 {
     float3 H = normalize(V + L);
     float dotNV = clamp(dot(N, V), 0.0, 1.0);
     float dotNL = clamp(dot(N, L), 0.0, 1.0);
-    float dotLH = clamp(dot(L, H), 0.0, 1.0);
     float dotNH = clamp(dot(N, H), 0.0, 1.0);
-    
-    float3 lightColor = float3(1.0, 1.0, 1.0);
+
     float3 color = float3(0.0, 0.0, 0.0);
-    
+
     if (dotNL > 0.0)
     {
+        // Clamp roughness for both D and G: raw roughness 0 makes DGGX 0/0.
         float rroughness = max(0.05, roughness);
-        float D = DGGX(dotNH, roughness);
+        float D = DGGX(dotNH, rroughness);
         float G = GSchlickSmithGGX(dotNL, dotNV, rroughness);
         float3 F = FSchlick(matColor, dotNV, metallic);
-        float3 spec = D * F * G / (4.0 * dotNL * dotNV);
-        color += spec * dotNL * lightColor;
+        float3 spec = D * F * G / (4.0 * dotNL * dotNV + 0.001);
+
+        // Energy-conserving Lambertian diffuse: metals have no diffuse response,
+        // and the fraction reflected specularly (F) is removed from the diffuse lobe.
+        float3 kD = (1.0 - F) * (1.0 - metallic);
+        color += (kD * matColor / PI + spec) * dotNL * radiance;
     }
-    
+
     return color;
 }
 
