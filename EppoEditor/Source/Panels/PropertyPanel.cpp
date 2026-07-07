@@ -282,10 +282,12 @@ namespace Eppo
 			const auto uuid = entity.GetUUID();
 			auto& fieldMap = scriptEngine.GetFieldMap(uuid);
 
-			// While a script is running its live instance is the source of truth,
-			// so we show and edit that value directly. Editing it does not touch
-			// the serialized side table, so stopping play restores editor values.
-			const bool live = scriptEngine.HasLiveInstance(uuid);
+			// While a script is running, its engine-owned instance is the source
+			// of truth, so we show and edit that value directly. Editing it does
+			// not touch the serialized side table, so stopping play restores the
+			// editor-time values. A null handle means edit mode (or a script that
+			// failed to instantiate) — fall back to the side table.
+			ScriptInstance* instance = scriptEngine.GetEntityInstance(uuid);
 
 			if (ImGui::BeginTable("##ScriptFields", 2))
 			{
@@ -305,14 +307,14 @@ namespace Eppo
 					ImGui::TableNextRow();
 					ImGui::PushID(field.Name.c_str());
 
-					if (live)
+					if (instance)
 					{
 						// Seed the widget from the running instance's current value
 						// (the script may have changed it), then push edits back.
 						ScriptFieldValue liveValue = stored;
-						scriptEngine.GetLiveFieldValue(uuid, i, liveValue.Buffer.data());
+						instance->GetFieldValue(i, liveValue.Buffer.data());
 						if (Utils::DrawScriptField(field, liveValue))
-							scriptEngine.SetLiveFieldValue(uuid, i, liveValue.Buffer.data());
+							instance->SetFieldValue(i, liveValue.Buffer.data());
 					}
 					else
 					{
