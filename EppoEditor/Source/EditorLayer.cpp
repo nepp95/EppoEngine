@@ -1,5 +1,8 @@
 #include "EditorLayer.h"
 
+#include "Renderer/Image.h"
+
+#include "Panels/ContentBrowserPanel.h"
 #include "Panels/PropertyPanel.h"
 #include "Panels/SceneHierarchyPanel.h"
 
@@ -9,7 +12,7 @@ namespace Eppo
 {
 	namespace
 	{
-		//constexpr const char* CONTENT_BROWSER_PANEL = "Content Browser";
+		constexpr const char* CONTENT_BROWSER_PANEL = "Content Browser";
 		constexpr const char* PROPERTY_PANEL = "Property";
 		constexpr const char* SCENE_HIERARCHY_PANEL = "Scene Hierarchy";
 	}
@@ -19,9 +22,33 @@ namespace Eppo
 		m_PanelManager = CreateRef<PanelManager>();
 		m_PanelManager->AddPanel<PropertyPanel>(PROPERTY_PANEL, true);
 		m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
-		//m_PanelManager->AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true);
+		m_PanelManager->AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true);
+
+		// Route scene opening through EditorLayer so scripting is rebuilt and the
+		// editor/active scene bookkeeping stays authoritative.
+		m_PanelManager->GetPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL)
+			->SetOpenSceneCallback([this](AssetHandle handle) { OpenScene(handle); });
 
 		m_EditorCamera = CreateScopedPtr<EditorCamera>(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
+
+		const auto loadIcon = [](const char* fileName) -> Ref<Image>
+		{
+			const auto path = FS::GetResourcesDirectory() / "Icons" / fileName;
+			if (!FS::Exists(path))
+			{
+				Log::Error("Toolbar icon not found: '{}'", path);
+				return nullptr;
+			}
+
+			ImageSpecification spec;
+			spec.ImageFormat = nvrhi::Format::SRGBA8_UNORM;
+			spec.DebugName = fileName;
+
+			return CreateRef<Image>(spec, ImageSource(path));
+		};
+
+		m_PlayIcon = loadIcon("PlayButton.png");
+		m_StopIcon = loadIcon("StopButton.png");
 
 		if (!OpenProject())
 		{
@@ -130,6 +157,20 @@ namespace Eppo
 
 				if (ImGui::MenuItem("Close"))
 					Application::Get().Close();
+
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Window"))
+			{
+				if (ImGui::MenuItem("Content Browser"))
+					m_PanelManager->TogglePanel(CONTENT_BROWSER_PANEL);
+
+				if (ImGui::MenuItem("Properties"))
+					m_PanelManager->TogglePanel(PROPERTY_PANEL);
+
+				if (ImGui::MenuItem("Scene Hierarchy"))
+					m_PanelManager->TogglePanel(SCENE_HIERARCHY_PANEL);
 
 				ImGui::EndMenu();
 			}
@@ -492,19 +533,35 @@ namespace Eppo
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.4f));
 
+		constexpr ImVec2 buttonSize(24.0f, 24.0f);
+
 		switch (m_SceneState)
 		{
 			case SceneState::Edit:
 			{
-				if (ImGui::Button("Play", ImVec2(40.0f, 24.0f)))
+				if (m_PlayIcon)
+				{
+					if (ImGui::ImageButton("##Play", ImGuiEx::CreateTextureRef(m_PlayIcon->GetTexture()), buttonSize))
+						OnScenePlay();
+				}
+				else if (ImGui::Button("Play", ImVec2(40.0f, 24.0f)))
+				{
 					OnScenePlay();
+				}
 				break;
 			}
 
 			case SceneState::Play:
 			{
-				if (ImGui::Button("Stop", ImVec2(40.0f, 24.0f)))
+				if (m_StopIcon)
+				{
+					if (ImGui::ImageButton("##Stop", ImGuiEx::CreateTextureRef(m_StopIcon->GetTexture()), buttonSize))
+						OnSceneStop();
+				}
+				else if (ImGui::Button("Stop", ImVec2(40.0f, 24.0f)))
+				{
 					OnSceneStop();
+				}
 				break;
 			}
 		}

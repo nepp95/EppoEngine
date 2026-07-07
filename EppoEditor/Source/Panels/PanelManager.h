@@ -37,7 +37,7 @@ namespace Eppo
 			auto it = m_PanelData.find(panelName);
 
 			if (it != m_PanelData.end())
-				return it->second;
+				return std::static_pointer_cast<T>(it->second.Panel);
 
 			return nullptr;
 		}
