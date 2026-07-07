@@ -1,5 +1,8 @@
 #include "EditorLayer.h"
 
+#include "Renderer/Image.h"
+
+#include "Panels/ContentBrowserPanel.h"
 #include "Panels/PropertyPanel.h"
 #include "Panels/SceneHierarchyPanel.h"
 
@@ -9,7 +12,7 @@ namespace Eppo
 {
 	namespace
 	{
-		//constexpr const char* CONTENT_BROWSER_PANEL = "Content Browser";
+		constexpr const char* CONTENT_BROWSER_PANEL = "Content Browser";
 		constexpr const char* PROPERTY_PANEL = "Property";
 		constexpr const char* SCENE_HIERARCHY_PANEL = "Scene Hierarchy";
 	}
@@ -19,9 +22,33 @@ namespace Eppo
 		m_PanelManager = CreateRef<PanelManager>();
 		m_PanelManager->AddPanel<PropertyPanel>(PROPERTY_PANEL, true);
 		m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
-		//m_PanelManager->AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true);
+		m_PanelManager->AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true);
+
+		// Route scene opening through EditorLayer so scripting is rebuilt and the
+		// editor/active scene bookkeeping stays authoritative.
+		m_PanelManager->GetPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL)
+			->SetOpenSceneCallback([this](AssetHandle handle) { OpenScene(handle); });
 
 		m_EditorCamera = CreateScopedPtr<EditorCamera>(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
+
+		const auto loadIcon = [](const char* fileName) -> Ref<Image>
+		{
+			const auto path = FS::GetResourcesDirectory() / "Icons" / fileName;
+			if (!FS::Exists(path))
+			{
+				Log::Error("Toolbar icon not found: '{}'", path);
+				return nullptr;
+			}
+
+			ImageSpecification spec;
+			spec.ImageFormat = nvrhi::Format::SRGBA8_UNORM;
+			spec.DebugName = fileName;
+
+			return CreateRef<Image>(spec, ImageSource(path));
+		};
+
+		m_PlayIcon = loadIcon("PlayButton.png");
+		m_StopIcon = loadIcon("StopButton.png");
 
 		if (!OpenProject())
 		{
@@ -34,6 +61,7 @@ namespace Eppo
 
 	auto EditorLayer::OnDetach() -> void
 	{
+		ScriptEngine::Shutdown();
 		Project::SetActive(nullptr);
 	}
 
@@ -133,6 +161,20 @@ namespace Eppo
 				ImGui::EndMenu();
 			}
 
+			if (ImGui::BeginMenu("Window"))
+			{
+				if (ImGui::MenuItem("Content Browser"))
+					m_PanelManager->TogglePanel(CONTENT_BROWSER_PANEL);
+
+				if (ImGui::MenuItem("Properties"))
+					m_PanelManager->TogglePanel(PROPERTY_PANEL);
+
+				if (ImGui::MenuItem("Scene Hierarchy"))
+					m_PanelManager->TogglePanel(SCENE_HIERARCHY_PANEL);
+
+				ImGui::EndMenu();
+			}
+
 			ImGui::EndMenuBar();
 		}
 
@@ -225,6 +267,7 @@ namespace Eppo
 		m_SceneState = SceneState::Play;
 		m_ActiveScene = Scene::Copy(m_EditorScene);
 		m_PanelManager->SetSceneContext(m_ActiveScene);
+		m_ActiveScene->OnRuntimeStart();
 	}
 
 	auto EditorLayer::OnSceneStop() -> void
@@ -232,6 +275,7 @@ namespace Eppo
 		if (!m_ActiveScene)
 			return;
 
+		m_ActiveScene->OnRuntimeStop();
 		m_SceneState = SceneState::Edit;
 		m_ActiveScene = m_EditorScene;
 		m_PanelManager->SetSceneContext(m_ActiveScene);
@@ -239,6 +283,11 @@ namespace Eppo
 
 	auto EditorLayer::CloseProject() -> void
 	{
+		// Unload the per-project user assembly (collectible), but keep the
+		// scripting runtime + core assembly alive for the next project.
+		if (ScriptEngine::IsInitialized())
+			ScriptEngine::Get().UnloadUserAssembly();
+
 		SaveProject();
 
 		auto scene = CreateRef<Scene>();
@@ -258,12 +307,13 @@ namespace Eppo
 		const auto projectPath = FS::GetRootDirectory() / "Projects" / name;
 		FS::CreateDirectory(projectPath);
 
+	    // Create asset directories
+	    FS::CreateDirectory(projectPath / "Assets" / "Meshes");
+	    FS::CreateDirectory(projectPath / "Assets" / "Scenes");
+	    FS::CreateDirectory(projectPath / "Assets" / "Scripts");
+
 		// Copy new project template
 		FS::Copy("Resources/Templates/NewProject", projectPath);
-
-		// Create directories
-		FS::CreateDirectory(projectPath / "Assets" / "Meshes");
-		FS::CreateDirectory(projectPath / "Assets" / "Scenes");
 
 		// Replace tokens
 		constexpr auto ReplaceToken = [](std::string& input, const char* token, const std::string& value) -> void
@@ -281,6 +331,15 @@ namespace Eppo
 			ReplaceToken(inputStr, "$PROJECT_NAME$", name);
 			FS::WriteText(projectPath / "project.epproj", inputStr, true);
 			FS::Move(projectPath / "project.epproj", projectPath / std::filesystem::path(name + ".epproj"));
+		}
+
+		// Replace tokens in the scripts project and rename it after the project.
+		{
+			const auto templateCsproj = projectPath / "Scripts" / "Scripts.csproj";
+			auto csprojStr = FS::ReadText(templateCsproj);
+			ReplaceToken(csprojStr, "$APP_DIR$", FS::GetRootDirectory().string());
+			FS::WriteText(templateCsproj, csprojStr, true);
+			FS::Move(templateCsproj, projectPath / "Scripts" / std::filesystem::path(name + ".csproj"));
 		}
 
 		OpenProject(projectPath / std::filesystem::path(name + ".epproj"));
@@ -312,6 +371,36 @@ namespace Eppo
 		if (Project::Open(path))
 		{
 			const auto& projSpec = Project::GetActive()->GetSpecification();
+
+			// Build and load the scripting assemblies before opening the scene:
+			// scene deserialization populates ScriptEngine's field storage, so
+			// the engine must be initialized and the user classes known first.
+			const auto scriptsProjectPath = Project::GetScriptsDirectory() / (projSpec.Name + ".csproj");
+			if (FS::Exists(scriptsProjectPath))
+			{
+				const std::string command = std::format(
+					"dotnet build \"{}\" -c Debug -o \"{}\"",
+					scriptsProjectPath.string(),
+					FS::GetRootDirectory().string()
+				);
+				std::system(command.c_str());
+			}
+
+			const auto runtimeConfigPath = FS::GetRootDirectory() / "runtimeconfig.json";
+			if (ScriptEngine::Init(runtimeConfigPath))
+			{
+				const auto userAssemblyPath = FS::GetRootDirectory() / (projSpec.Name + ".dll");
+				if (FS::Exists(userAssemblyPath))
+					ScriptEngine::Get().LoadUserAssembly(userAssemblyPath);
+				else
+					Log::Warn("No user script assembly found at '{}'; scripts will be unavailable.", userAssemblyPath);
+			}
+			else
+			{
+				Log::Error("Failed to initialize the script runtime for project '{}'.", projSpec.Name);
+			}
+
+			// Now that scripting is ready, open the start scene.
 			if (projSpec.StartScene)
 				OpenScene(projSpec.StartScene);
 			else
@@ -444,19 +533,35 @@ namespace Eppo
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.4f));
 
+		constexpr ImVec2 buttonSize(24.0f, 24.0f);
+
 		switch (m_SceneState)
 		{
 			case SceneState::Edit:
 			{
-				if (ImGui::Button("Play", ImVec2(40.0f, 24.0f)))
+				if (m_PlayIcon)
+				{
+					if (ImGui::ImageButton("##Play", ImGuiEx::CreateTextureRef(m_PlayIcon->GetTexture()), buttonSize))
+						OnScenePlay();
+				}
+				else if (ImGui::Button("Play", ImVec2(40.0f, 24.0f)))
+				{
 					OnScenePlay();
+				}
 				break;
 			}
 
 			case SceneState::Play:
 			{
-				if (ImGui::Button("Stop", ImVec2(40.0f, 24.0f)))
+				if (m_StopIcon)
+				{
+					if (ImGui::ImageButton("##Stop", ImGuiEx::CreateTextureRef(m_StopIcon->GetTexture()), buttonSize))
+						OnSceneStop();
+				}
+				else if (ImGui::Button("Stop", ImVec2(40.0f, 24.0f)))
+				{
 					OnSceneStop();
+				}
 				break;
 			}
 		}

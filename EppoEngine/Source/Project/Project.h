@@ -30,6 +30,7 @@ namespace Eppo
 		static auto GetProjectsDirectory() -> std::filesystem::path;
 		static auto GetProjectFile() -> std::filesystem::path;
 		static auto GetAssetsDirectory() -> std::filesystem::path;
+		static auto GetScriptsDirectory() -> std::filesystem::path;
 		static auto GetAssetFilepath(const std::filesystem::path& filepath) -> std::filesystem::path;
 		static auto GetAssetRelativeFilepath(const std::filesystem::path& filepath) -> std::filesystem::path;
 

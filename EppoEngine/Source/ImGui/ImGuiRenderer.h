@@ -22,6 +22,7 @@ namespace Eppo
 		auto RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain) -> void;
 		auto Render(ImGuiViewport* viewport, nvrhi::GraphicsPipelineHandle pipeline, nvrhi::FramebufferHandle framebuffer) -> void;
 		auto GetGPUTime(uint32_t frameIndex) const -> float;
+		auto GetOwnGPUTime(uint32_t frameIndex) const -> float;
 
 	private:
 		auto UpdateGeometry(ImDrawData* drawData) -> void;

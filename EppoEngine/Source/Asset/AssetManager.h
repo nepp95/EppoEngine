@@ -32,7 +32,24 @@ namespace Eppo
 		[[nodiscard]] auto IsAssetLoaded(AssetHandle handle) const -> bool;
 		[[nodiscard]] auto GetMetadata(AssetHandle handle) const -> const AssetMetadata&;
 
+		// Reverse lookup used by the content browser to tell whether a file on disk
+		// is already a registered asset. Accepts absolute or asset-relative paths.
+		// Returns a null handle (0) when the file is not registered.
+		[[nodiscard]] auto GetHandleForPath(const std::filesystem::path& path) const -> AssetHandle;
+
+		// Drop an asset from the registry (does not touch the file on disk) and
+		// re-serialize. Used when the content browser deletes a registered asset.
+		auto RemoveAsset(AssetHandle handle) -> void;
+
+		// Point an existing asset at a new file location (after a move/rename on
+		// disk) and re-serialize. No-op for unknown handles.
+		auto UpdateAssetPath(AssetHandle handle, const std::filesystem::path& newPath) -> void;
+
 		[[nodiscard]] auto GetAssetRegistry() const -> const std::map<AssetHandle, AssetMetadata>& { return m_AssetData; };
+
+		// Deduce an asset type purely from a file's extension. Shared by CreateAsset
+		// and the content browser (for picking icons on unregistered files).
+		[[nodiscard]] static auto GetAssetTypeFromPath(const std::filesystem::path& path) -> AssetType;
 		auto SerializeAssetRegistry() const -> void;
 		auto DeserializeAssetRegistry() -> bool;
 

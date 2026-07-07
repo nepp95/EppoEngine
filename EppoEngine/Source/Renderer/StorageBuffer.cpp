@@ -18,6 +18,12 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("StorageBuffer::SetData");
 
+		// Nothing to upload (e.g. an empty scene with no instance transforms).
+		// This is an expected per-frame case, so it is a quiet no-op rather than
+		// a logged error. Writing here would read from a null/short source.
+		if (size == 0 || !data)
+			return;
+
 		const auto device = DeviceManager::Get()->GetDevice();
 		const auto cmd = device->createCommandList();
 
@@ -28,8 +34,11 @@ namespace Eppo
 			CreateBuffer();
 		}
 
+		// Write exactly the bytes provided, not the whole buffer: the buffer may
+		// be larger than the current payload (it only ever grows), so writing
+		// m_Size would over-read the source data.
 		cmd->open();
-		cmd->writeBuffer(m_Buffer, data, m_Size);
+		cmd->writeBuffer(m_Buffer, data, size, offset);
 		cmd->close();
 
 		device->executeCommandList(cmd);

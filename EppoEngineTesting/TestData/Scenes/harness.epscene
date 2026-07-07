@@ -1,0 +1,47 @@
+{
+    "Scene": {
+        "Name": "harness",
+        "Handle": 4242,
+        "Entities": [
+            {
+                "IDComponent": {
+                    "ID": 1001
+                },
+                "TagComponent": {
+                    "Tag": "Ground"
+                },
+                "TransformComponent": {
+                    "Translation": [0.0, 0.0, 0.0],
+                    "Rotation": [0.0, 0.0, 0.0],
+                    "Scale": [10.0, 1.0, 10.0]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1002
+                },
+                "TagComponent": {
+                    "Tag": "Player"
+                },
+                "TransformComponent": {
+                    "Translation": [0.0, 1.0, 0.0],
+                    "Rotation": [0.0, 0.0, 0.0],
+                    "Scale": [1.0, 1.0, 1.0]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1003
+                },
+                "TagComponent": {
+                    "Tag": "Prop"
+                },
+                "TransformComponent": {
+                    "Translation": [3.0, 0.5, -2.0],
+                    "Rotation": [0.0, 1.5707963, 0.0],
+                    "Scale": [1.0, 1.0, 1.0]
+                }
+            }
+        ]
+    }
+}
