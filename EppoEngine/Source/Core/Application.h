@@ -46,6 +46,15 @@ namespace Eppo
 		auto Close() -> void { m_IsRunning = false; }
 
 		auto Run() -> void;
+
+		// Advance the application by exactly one frame with the given timestep:
+		// pump window events, update layers, render, and present. Run() is just a
+		// loop over this with a wall-clock timestep; a test harness can instead
+		// drive frames deterministically (fixed timestep, controlled count).
+		auto StepFrame(float timestep) -> void;
+
+		[[nodiscard]] auto IsRunning() const -> bool { return m_IsRunning; }
+
 		auto OnEvent(Event& e) -> void;
 
 		template<typename T>

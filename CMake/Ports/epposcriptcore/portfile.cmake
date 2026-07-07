@@ -23,7 +23,7 @@ include(CMakePackageConfigHelpers)
 
 set(MANAGED_SOURCE_DIR "share/epposcriptcore/EppoScriptCore.Managed")
 configure_package_config_file(
-    "${CMAKE_CURRENT_LIST_DIR}/EppoScriptCoreConfig.cmake.in"
+    "${CMAKE_CURRENT_LIST_DIR}/epposcriptcoreConfig.cmake.in"
     "${CURRENT_PACKAGES_DIR}/share/epposcriptcore/EppoScriptCoreConfig.cmake"
     INSTALL_DESTINATION "share/epposcriptcore"
     PATH_VARS MANAGED_SOURCE_DIR
