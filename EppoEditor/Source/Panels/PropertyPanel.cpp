@@ -17,8 +17,10 @@ namespace Eppo
 		}
 
 		// Renders an editor widget for a single script field, mutating the value
-		// buffer in place. ImGui reads/writes the typed value directly.
-		static auto DrawScriptField(const EppoScriptCore::ScriptField& field, ScriptFieldValue& value) -> void
+		// buffer in place. ImGui reads/writes the typed value directly. Returns
+		// true on the frames the user changes the value, so the caller can push
+		// the edit to a live script instance during play.
+		static auto DrawScriptField(const EppoScriptCore::ScriptField& field, ScriptFieldValue& value) -> bool
 		{
 			using FT = EppoScriptCore::ScriptFieldType;
 
@@ -32,22 +34,22 @@ namespace Eppo
 
 			switch (field.Type)
 			{
-				case FT::Float:   ImGui::DragScalar(label.c_str(), ImGuiDataType_Float, data, 0.1f); break;
-				case FT::Double:  ImGui::InputScalar(label.c_str(), ImGuiDataType_Double, data); break;
-				case FT::Bool:    ImGui::Checkbox(label.c_str(), reinterpret_cast<bool*>(data)); break;
-				case FT::Char:    ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data); break;
-				case FT::Int16:   ImGui::InputScalar(label.c_str(), ImGuiDataType_S16, data); break;
-				case FT::Int32:   ImGui::DragScalar(label.c_str(), ImGuiDataType_S32, data); break;
-				case FT::Int64:   ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, data); break;
-				case FT::Byte:    ImGui::InputScalar(label.c_str(), ImGuiDataType_U8, data); break;
-				case FT::UInt16:  ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data); break;
-				case FT::UInt32:  ImGui::InputScalar(label.c_str(), ImGuiDataType_U32, data); break;
-				case FT::UInt64:  ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data); break;
-				case FT::Vector2: ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 2, 0.1f); break;
-				case FT::Vector3: ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 3, 0.1f); break;
-				case FT::Vector4: ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 4, 0.1f); break;
-				case FT::Entity:  ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data); break;
-				default:          ImGui::TextDisabled("(unsupported type)"); break;
+				case FT::Float:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_Float, data, 0.1f);
+				case FT::Double:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_Double, data);
+				case FT::Bool:    return ImGui::Checkbox(label.c_str(), reinterpret_cast<bool*>(data));
+				case FT::Char:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
+				case FT::Int16:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S16, data);
+				case FT::Int32:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_S32, data);
+				case FT::Int64:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, data);
+				case FT::Byte:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U8, data);
+				case FT::UInt16:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
+				case FT::UInt32:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U32, data);
+				case FT::UInt64:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
+				case FT::Vector2: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 2, 0.1f);
+				case FT::Vector3: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 3, 0.1f);
+				case FT::Vector4: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 4, 0.1f);
+				case FT::Entity:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
+				default:          ImGui::TextDisabled("(unsupported type)"); return false;
 			}
 		}
 	}
@@ -277,25 +279,46 @@ namespace Eppo
 				return;
 
 			// The side table owns the editor-time field values (keyed by UUID).
-			auto& fieldMap = scriptEngine.GetFieldMap(entity.GetUUID());
+			const auto uuid = entity.GetUUID();
+			auto& fieldMap = scriptEngine.GetFieldMap(uuid);
+
+			// While a script is running its live instance is the source of truth,
+			// so we show and edit that value directly. Editing it does not touch
+			// the serialized side table, so stopping play restores editor values.
+			const bool live = scriptEngine.HasLiveInstance(uuid);
 
 			if (ImGui::BeginTable("##ScriptFields", 2))
 			{
-				for (const auto& field : fields)
+				for (int32_t i = 0; i < static_cast<int32_t>(fields.size()); i++)
 				{
+					const auto& field = fields[i];
 					if (field.Type == EppoScriptCore::ScriptFieldType::None)
 						continue;
 
-					auto& value = fieldMap[field.Name];
-					if (value.Type != field.Type)
+					auto& stored = fieldMap[field.Name];
+					if (stored.Type != field.Type)
 					{
-						value = ScriptFieldValue{};
-						value.Type = field.Type;
+						stored = ScriptFieldValue{};
+						stored.Type = field.Type;
 					}
 
 					ImGui::TableNextRow();
 					ImGui::PushID(field.Name.c_str());
-					Utils::DrawScriptField(field, value);
+
+					if (live)
+					{
+						// Seed the widget from the running instance's current value
+						// (the script may have changed it), then push edits back.
+						ScriptFieldValue liveValue = stored;
+						scriptEngine.GetLiveFieldValue(uuid, i, liveValue.Buffer.data());
+						if (Utils::DrawScriptField(field, liveValue))
+							scriptEngine.SetLiveFieldValue(uuid, i, liveValue.Buffer.data());
+					}
+					else
+					{
+						Utils::DrawScriptField(field, stored);
+					}
+
 					ImGui::PopID();
 				}
 

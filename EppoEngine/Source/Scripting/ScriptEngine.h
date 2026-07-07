@@ -76,6 +76,14 @@ namespace Eppo
         auto OnUpdateEntity(Entity entity, float timestep) -> void;
         auto OnDestroyEntity(Entity entity) -> void;
 
+        // Live (play-mode) field access. Only valid while an entity has a managed
+        // instance — HasLiveInstance() reports that. Editing a live value mutates
+        // the running script directly and deliberately bypasses the serialized
+        // side table, so stopping play restores the editor-time values.
+        [[nodiscard]] auto HasLiveInstance(const UUID& entityId) const -> bool;
+        auto SetLiveFieldValue(const UUID& entityId, int32_t fieldIndex, const void* data) -> void;
+        auto GetLiveFieldValue(const UUID& entityId, int32_t fieldIndex, void* data) const -> void;
+
         // Editor-time field storage (side table keyed by entity UUID). This is
         // the authoritative, serialized copy; it is pushed into the live managed
         // instance when the entity's script is created.
@@ -93,6 +101,10 @@ namespace Eppo
 
         std::unique_ptr<EppoScriptCore::Assembly> m_CoreAssembly;
         std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
+
+        // Entities that currently own a live managed instance (created on play,
+        // destroyed on stop). Guards the live field accessors.
+        std::unordered_set<UUID> m_LiveInstances;
 
         static std::unique_ptr<ScriptEngine> s_Instance;
     };
