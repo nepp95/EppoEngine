@@ -14,18 +14,22 @@ namespace Eppo
     namespace
     {
         const AssetMetadata s_NullMetadata;
+    }
 
-        auto DeduceAssetTypeFromExtension(const std::filesystem::path& path) -> AssetType
-        {
-			const auto ext = path.extension().string();
+    auto AssetManager::GetAssetTypeFromPath(const std::filesystem::path& path) -> AssetType
+    {
+        const auto ext = path.extension().string();
 
-			if (ext == ".gltf" || ext == ".glb")
-				return AssetType::Mesh;
-            if (ext == ".epscene")
-                return AssetType::Scene;
+        if (ext == ".gltf" || ext == ".glb")
+            return AssetType::Mesh;
+        if (ext == ".epscene")
+            return AssetType::Scene;
+        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp" || ext == ".hdr")
+            return AssetType::Texture;
+        if (ext == ".cs")
+            return AssetType::Script;
 
-			return AssetType::None;
-        }
+        return AssetType::None;
     }
 
     auto AssetManager::CreateAsset(const std::filesystem::path& path, const Ref<Asset>& existingAsset) -> bool
@@ -35,7 +39,7 @@ namespace Eppo
         const AssetHandle handle = existingAsset ? existingAsset->Handle : UUID();
         const AssetMetadata metadata{
 			.Handle = handle,
-			.Type = DeduceAssetTypeFromExtension(path),
+			.Type = GetAssetTypeFromPath(path),
 			.Filepath = Project::GetAssetRelativeFilepath(path),
         };
 
@@ -131,6 +135,58 @@ namespace Eppo
         if (m_AssetData.contains(handle))
             return m_AssetData.at(handle);
         return s_NullMetadata;
+    }
+
+    auto AssetManager::GetHandleForPath(const std::filesystem::path& path) const -> AssetHandle
+    {
+        // Registry stores asset-relative paths, so normalize whatever we get.
+        const auto relative = path.is_absolute() ? Project::GetAssetRelativeFilepath(path) : path;
+
+        std::shared_lock lock(m_Mutex);
+
+        for (const auto& [handle, metadata] : m_AssetData)
+        {
+            if (metadata.Filepath == relative)
+                return handle;
+        }
+
+        return 0;
+    }
+
+    auto AssetManager::RemoveAsset(AssetHandle handle) -> void
+    {
+        {
+            std::scoped_lock lock(m_Mutex);
+
+            if (!m_AssetData.contains(handle))
+            {
+                Log::Warn("Tried to remove asset '{}' which is not in the registry!", handle);
+                return;
+            }
+
+            m_AssetData.erase(handle);
+            m_LoadedAssets.erase(handle);
+        }
+
+        SerializeAssetRegistry();
+    }
+
+    auto AssetManager::UpdateAssetPath(AssetHandle handle, const std::filesystem::path& newPath) -> void
+    {
+        {
+            std::scoped_lock lock(m_Mutex);
+
+            const auto it = m_AssetData.find(handle);
+            if (it == m_AssetData.end())
+            {
+                Log::Warn("Tried to update path of asset '{}' which is not in the registry!", handle);
+                return;
+            }
+
+            it->second.Filepath = newPath.is_absolute() ? Project::GetAssetRelativeFilepath(newPath) : newPath;
+        }
+
+        SerializeAssetRegistry();
     }
 
 	auto AssetManager::SerializeAssetRegistry() const -> void

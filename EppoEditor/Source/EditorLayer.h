@@ -48,6 +48,9 @@ namespace Eppo
 
 		ScopedPtr<EditorCamera> m_EditorCamera = nullptr;
 
+		Ref<Image> m_PlayIcon = nullptr;
+		Ref<Image> m_StopIcon = nullptr;
+
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
 		uint32_t m_ViewportWidth = 1600;
