@@ -75,6 +75,9 @@ namespace Eppo
 
     auto ScriptEngine::UnloadUserAssembly() -> void
     {
+        // Live instances reference the assembly's managed bodies; drop the
+        // registry before those become invalid.
+        m_EntityInstances.clear();
         m_CoreAssembly->UnloadUserAssembly();
     }
 
@@ -120,6 +123,10 @@ namespace Eppo
             return;
         }
 
+        // Register the engine-owned handle to the fresh managed instance.
+        const auto [instanceIt, _] = m_EntityInstances.try_emplace(uuid, *m_CoreAssembly, uuid, classIndex);
+        ScriptInstance& instance = instanceIt->second;
+
         // Push the stored field values into the fresh managed instance.
         if (const auto storageIt = m_FieldStorage.find(uuid); storageIt != m_FieldStorage.end())
         {
@@ -127,11 +134,11 @@ namespace Eppo
             for (int32_t i = 0; i < static_cast<int32_t>(fields.size()); i++)
             {
                 if (const auto valueIt = storageIt->second.find(fields[i].Name); valueIt != storageIt->second.end())
-                    m_CoreAssembly->SetFieldValue(entityId, i, valueIt->second.Buffer.data());
+                    instance.SetFieldValue(i, valueIt->second.Buffer.data());
             }
         }
 
-        m_CoreAssembly->InvokeOnCreate(entityId);
+        instance.InvokeOnCreate();
     }
 
     auto ScriptEngine::OnUpdateEntity(Entity entity, const float timestep) -> void
@@ -139,12 +146,14 @@ namespace Eppo
         if (!entity.HasComponent<ScriptComponent>())
             return;
 
-        // Runtime-down is already reported by OnCreateEntity; stay quiet here to
-        // avoid flooding the log every frame.
-        if (!m_CoreAssembly)
+        // No live instance means the script never instantiated (a downed runtime
+        // is already reported by OnCreateEntity), so stay quiet here to avoid
+        // flooding the log every frame.
+        const auto it = m_EntityInstances.find(entity.GetUUID());
+        if (it == m_EntityInstances.end())
             return;
 
-        m_CoreAssembly->InvokeOnUpdate(static_cast<uint64_t>(entity.GetUUID()), timestep);
+        it->second.InvokeOnUpdate(timestep);
     }
 
     auto ScriptEngine::OnDestroyEntity(Entity entity) -> void
@@ -152,14 +161,20 @@ namespace Eppo
         if (!entity.HasComponent<ScriptComponent>())
             return;
 
-        // No runtime means there is no live instance to tear down; a downed
-        // runtime is already reported by OnCreateEntity, so stay quiet here.
-        if (!m_CoreAssembly)
+        const auto& uuid = entity.GetUUID();
+        const auto it = m_EntityInstances.find(uuid);
+        if (it == m_EntityInstances.end())
             return;
 
-        const auto entityId = static_cast<uint64_t>(entity.GetUUID());
-        m_CoreAssembly->InvokeOnDestroy(entityId);
-        m_CoreAssembly->DestroyInstance(entityId);
+        it->second.InvokeOnDestroy();
+        m_CoreAssembly->DestroyInstance(static_cast<uint64_t>(uuid));
+        m_EntityInstances.erase(it);
+    }
+
+    auto ScriptEngine::GetEntityInstance(const UUID& entityId) -> ScriptInstance*
+    {
+        const auto it = m_EntityInstances.find(entityId);
+        return it != m_EntityInstances.end() ? &it->second : nullptr;
     }
 
     auto ScriptEngine::GetFieldMap(const UUID& entityId) -> ScriptFieldMap&
