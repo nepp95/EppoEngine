@@ -176,10 +176,15 @@ namespace Eppo
 				ImGui::Button("Mesh Handle", ImVec2(100.0f, 0.0f));
 				if (ImGui::BeginDragDropTarget())
 				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MESH_ASSET"))
+					// Assets dragged from the content browser carry their handle.
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_HANDLE"))
 					{
-						/*Ref<Mesh> handle = *reinterpret_cast<Ref<Mesh>*>(payload->Data);
-						component.MeshHandle = handle;*/
+						const AssetHandle handle = *static_cast<const uint64_t*>(payload->Data);
+						const auto& assetManager = Project::GetActive()->GetAssetManager();
+						if (assetManager->GetMetadata(handle).Type == AssetType::Mesh)
+							component.MeshHandle = handle;
+						else
+							Log::Warn("Dropped asset is not a mesh; ignoring.");
 					}
 					ImGui::EndDragDropTarget();
 				}
