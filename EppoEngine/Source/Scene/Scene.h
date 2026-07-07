@@ -29,6 +29,8 @@ namespace Eppo
 		auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera) -> void;
 		auto OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer) -> void;
 
+		[[nodiscard]] auto GetPrimaryCameraEntity() -> Entity;
+
 		auto CreateEntity(const std::string& name = std::string()) -> Entity;
 		auto CreateEntityWithUUID(const UUID& uuid, const std::string& name) -> Entity;
 		auto DuplicateEntity(Entity entity) -> Entity;

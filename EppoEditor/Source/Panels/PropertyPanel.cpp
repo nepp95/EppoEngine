@@ -73,6 +73,7 @@ namespace Eppo
 		if (ImGui::BeginPopup("AddComponent"))
 		{
 			DrawAddComponentEntry<MeshComponent>("Mesh");
+			DrawAddComponentEntry<CameraComponent>("Camera");
 			DrawAddComponentEntry<ScriptComponent>("Script");
 
 			ImGui::EndPopup();
@@ -216,6 +217,23 @@ namespace Eppo
 					ImGui::EndPopup();
 				}
 			}
+		});
+
+		DrawComponent<CameraComponent>(entity, [](auto& component)
+		{
+			ImGui::Checkbox("Primary", &component.Primary);
+
+			float verticalFov = component.Camera.GetPerspectiveVerticalFov();
+			if (ImGui::DragFloat("Vertical FOV", &verticalFov, 0.1f, 1.0f, 179.0f))
+				component.Camera.SetPerspectiveVerticalFov(verticalFov);
+
+			float nearClip = component.Camera.GetPerspectiveNearClip();
+			if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.001f, 0.0f))
+				component.Camera.SetPerspectiveNearClip(nearClip);
+
+			float farClip = component.Camera.GetPerspectiveFarClip();
+			if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 0.0f, 0.0f))
+				component.Camera.SetPerspectiveFarClip(farClip);
 		});
 
 		DrawComponent<ScriptComponent>(entity, [entity](auto& component)
