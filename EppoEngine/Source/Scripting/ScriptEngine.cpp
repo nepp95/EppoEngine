@@ -120,6 +120,8 @@ namespace Eppo
             return;
         }
 
+        m_LiveInstances.insert(uuid);
+
         // Push the stored field values into the fresh managed instance.
         if (const auto storageIt = m_FieldStorage.find(uuid); storageIt != m_FieldStorage.end())
         {
@@ -157,9 +159,32 @@ namespace Eppo
         if (!m_CoreAssembly)
             return;
 
-        const auto entityId = static_cast<uint64_t>(entity.GetUUID());
+        const auto& uuid = entity.GetUUID();
+        const auto entityId = static_cast<uint64_t>(uuid);
         m_CoreAssembly->InvokeOnDestroy(entityId);
         m_CoreAssembly->DestroyInstance(entityId);
+        m_LiveInstances.erase(uuid);
+    }
+
+    auto ScriptEngine::HasLiveInstance(const UUID& entityId) const -> bool
+    {
+        return m_LiveInstances.contains(entityId);
+    }
+
+    auto ScriptEngine::SetLiveFieldValue(const UUID& entityId, const int32_t fieldIndex, const void* data) -> void
+    {
+        if (!m_CoreAssembly || !m_LiveInstances.contains(entityId))
+            return;
+
+        m_CoreAssembly->SetFieldValue(static_cast<uint64_t>(entityId), fieldIndex, data);
+    }
+
+    auto ScriptEngine::GetLiveFieldValue(const UUID& entityId, const int32_t fieldIndex, void* data) const -> void
+    {
+        if (!m_CoreAssembly || !m_LiveInstances.contains(entityId))
+            return;
+
+        m_CoreAssembly->GetFieldValue(static_cast<uint64_t>(entityId), fieldIndex, data);
     }
 
     auto ScriptEngine::GetFieldMap(const UUID& entityId) -> ScriptFieldMap&
