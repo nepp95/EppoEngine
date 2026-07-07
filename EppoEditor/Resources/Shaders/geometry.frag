@@ -19,7 +19,7 @@ struct Light
 
 struct LightData
 {
-	Light Lights[4];
+	Light Lights[32];
 	uint NumLights;
 };
 ConstantBuffer<LightData> uLights : register(b2, space0);

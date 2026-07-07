@@ -21,7 +21,6 @@ namespace Eppo
 	struct EnvironmentSettings
 	{
 		AssetHandle SkyboxHandle = 0;
-		// Godot-inspired procedural sky defaults.
 		glm::vec3 ZenithColor = { 0.35f, 0.45f, 0.55f };
 		glm::vec3 HorizonColor = { 0.65f, 0.66f, 0.67f };
 		glm::vec3 GroundColor = { 0.20f, 0.17f, 0.13f };

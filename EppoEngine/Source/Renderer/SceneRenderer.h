@@ -85,7 +85,7 @@ namespace Eppo
 		// Matches the geometry/skybox shaders' cbuffer layout. Each light is two
 		// float4s (Position.xyz, Color.rgb + intensity in Color.a); NumLights caps
 		// the shader loop so unused slots cost nothing.
-		static constexpr uint32_t MaxPointLights = 4;
+		static constexpr uint32_t MaxPointLights = 32;
 		struct LightData
 		{
 			struct PointLight
