@@ -66,16 +66,29 @@ namespace Eppo
 			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
 		}
 
+		// Sky Pipeline
+		// Renders a fullscreen triangle into the geometry framebuffer AFTER the
+		// meshes, filling only background pixels (depth == far). Shares the geometry
+		// framebuffer so it resizes with it and composites in the same pass target.
+		{
+			PipelineSpecification pipelineSpec{
+				.Shader = renderer->GetShader("skybox"),
+				.Framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer,
+				.Width = m_Width,
+				.Height = m_Height,
+				.CullMode = nvrhi::RasterCullMode::None,
+				.DepthTestEnable = true,
+				.DepthWriteEnable = false,
+				.DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
+			};
+
+			m_SkyPipeline = CreateRef<Pipeline>(pipelineSpec);
+		}
+
 		// Uniform buffers
 		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Camera");
-		m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightData) * 4, "UniformBuffer Lights");
-	
-		constexpr float p = 15.0f;
-		m_LightData[0] = { glm::vec3(-5.0f, 1.0f, -5.0f), 0.0f, glm::vec4(-p, -p * 0.5f, -p, 1.0f) };
-		m_LightData[1] = { glm::vec3(-5.0f, 1.0f, 5.0f), 0.0f, glm::vec4(-p, -p * 0.5f, p, 1.0f) };
-		m_LightData[2] = { glm::vec3(5.0f, 1.0f, -5.0f), 0.0f, glm::vec4(p, -p * 0.5f, p, 1.0f) };
-		m_LightData[3] = { glm::vec3(5.0f, 1.0f, 5.0f), 0.0f, glm::vec4(p, -p * 0.5f, -p, 1.0f) };
-		m_LightsUB->SetData(&m_LightData, sizeof(LightData) * 4);
+		m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightData), "UniformBuffer Lights");
+		m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), "UniformBuffer Environment");
 	}
 
 	auto SceneRenderer::RenderGui() const -> void
@@ -110,6 +123,7 @@ namespace Eppo
 
 		// Reset
 		m_DrawCommands.clear();
+		m_LightData.NumLights = 0;
 		std::memset(&m_DrawStatistics, 0, sizeof(DrawStatistics));
 
 		// Set uniforms
@@ -117,7 +131,35 @@ namespace Eppo
 		m_CameraData.Projection = projection;
 		m_CameraData.ViewProjection = projection * view;
 		m_CameraData.Position = glm::vec4(position, 0.0f);
+		m_CameraData.InverseViewProjection = glm::inverse(m_CameraData.ViewProjection);
 		m_CameraUB->SetData(&m_CameraData, sizeof(CameraData));
+	}
+
+	auto SceneRenderer::SubmitPointLight(const glm::vec3& position, const glm::vec3& color, const float intensity) -> void
+	{
+		if (m_LightData.NumLights >= MaxPointLights)
+		{
+			// Warn once per overflow rather than every submit, but never drop silently.
+			if (!m_LightOverflowWarned)
+			{
+				Log::Warn("Scene has more than {} point lights; extra lights are ignored.", MaxPointLights);
+				m_LightOverflowWarned = true;
+			}
+			return;
+		}
+
+		auto& light = m_LightData.Lights[m_LightData.NumLights++];
+		light.Position = glm::vec4(position, 1.0f);
+		light.Color = glm::vec4(color, intensity);
+	}
+
+	auto SceneRenderer::SubmitEnvironment(const EnvironmentSettings& environment) -> void
+	{
+		m_EnvironmentData.ZenithColor = glm::vec4(environment.ZenithColor, 1.0f);
+		m_EnvironmentData.HorizonColor = glm::vec4(environment.HorizonColor, 1.0f);
+		m_EnvironmentData.GroundColor = glm::vec4(environment.GroundColor, 1.0f);
+		// Params.y is the skybox flag; kept 0 until an HDR sky loader lands.
+		m_EnvironmentData.Params = glm::vec4(environment.AmbientIntensity, 0.0f, 0.0f, 0.0f);
 	}
 
 	auto SceneRenderer::EndScene() -> void
@@ -170,7 +212,12 @@ namespace Eppo
 
 		m_InstanceTransformsSB->SetData(instanceTransforms.data(), requiredSize);
 
+		// Upload per-frame lighting/environment state gathered via Submit*.
+		m_LightsUB->SetData(&m_LightData, sizeof(LightData));
+		m_EnvironmentUB->SetData(&m_EnvironmentData, sizeof(EnvironmentData));
+
 		GeometryPass();
+		SkyPass();
 
 		m_LastQueryTimes[frameIndex] = device->getTimerQueryTime(m_TimerQueries.at(frameIndex)) * 1000.0f;
 		device->resetTimerQuery(m_TimerQueries.at(frameIndex));
@@ -279,6 +326,7 @@ namespace Eppo
 			nvrhi::BindingSetItem::PushConstants(0, sizeof(PushConstants)),
 			nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
 			nvrhi::BindingSetItem::ConstantBuffer(2, m_LightsUB->GetBuffer()),
+			nvrhi::BindingSetItem::ConstantBuffer(3, m_EnvironmentUB->GetBuffer()),
 			nvrhi::BindingSetItem::Sampler(0, m_Sampler),
 			nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_InstanceTransformsSB->GetBuffer())
 		};
@@ -342,6 +390,52 @@ namespace Eppo
 
 		m_CommandList->endMarker();
 		m_CommandList->endTimerQuery(m_TimerQueries.at(frameIndex));
+		m_CommandList->close();
+		device->executeCommandList(m_CommandList);
+	}
+
+	auto SceneRenderer::SkyPass() -> void
+	{
+		EP_PROFILE_FN("SceneRenderer::SkyPass")
+
+		const auto& dm = DeviceManager::Get();
+		auto device = dm->GetDevice();
+
+		m_CommandList->open();
+		m_CommandList->beginMarker("Sky Pass");
+
+		// Draw into the geometry framebuffer without clearing: the fullscreen
+		// triangle only survives where geometry left the depth at the far plane,
+		// so it fills the background and leaves lit meshes untouched.
+		const auto& framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer;
+
+		nvrhi::GraphicsState state{
+			.pipeline = m_SkyPipeline->GetPipeline(),
+			.framebuffer = framebuffer->GetFramebuffer(),
+		};
+		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
+		state.viewport.scissorRects = { nvrhi::Rect(m_Width, m_Height) };
+
+		const auto& bindingLayouts = m_SkyPipeline->GetSpecification().Shader->GetBindingLayouts();
+
+		nvrhi::BindingSetDesc desc{};
+		desc.bindings = {
+			nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
+			nvrhi::BindingSetItem::ConstantBuffer(3, m_EnvironmentUB->GetBuffer()),
+		};
+
+		const auto bindingSet = device->createBindingSet(desc, bindingLayouts.at(0));
+		state.addBindingSet(bindingSet);
+
+		m_CommandList->setGraphicsState(state);
+
+		const nvrhi::DrawArguments drawArgs{
+			.vertexCount = 3,
+			.instanceCount = 1,
+		};
+		m_CommandList->draw(drawArgs);
+
+		m_CommandList->endMarker();
 		m_CommandList->close();
 		device->executeCommandList(m_CommandList);
 	}

@@ -84,6 +84,14 @@ namespace Eppo
 		json data;
 		data["Scene"]["Name"] = sceneName;
 		data["Scene"]["Handle"] = m_SceneContext->Handle;
+
+		const auto& env = m_SceneContext->GetEnvironment();
+		data["Scene"]["Environment"]["SkyboxHandle"] = env.SkyboxHandle;
+		data["Scene"]["Environment"]["ZenithColor"] = env.ZenithColor;
+		data["Scene"]["Environment"]["HorizonColor"] = env.HorizonColor;
+		data["Scene"]["Environment"]["GroundColor"] = env.GroundColor;
+		data["Scene"]["Environment"]["AmbientIntensity"] = env.AmbientIntensity;
+
 		auto entities = json::array();
 
 		m_SceneContext->m_Registry.sort<IDComponent>(
@@ -129,6 +137,24 @@ namespace Eppo
 
 		const auto sceneName = data["Scene"]["Name"].get<std::string>();
 		Log::Info("Deserializing scene '{}'", sceneName);
+
+		// Environment is optional: scenes saved before it existed keep the defaults.
+		if (data["Scene"].contains("Environment"))
+		{
+			const auto& envJson = data["Scene"]["Environment"];
+			auto& env = m_SceneContext->GetEnvironment();
+
+			if (envJson.contains("SkyboxHandle"))
+				env.SkyboxHandle = envJson["SkyboxHandle"].get<AssetHandle>();
+			if (envJson.contains("ZenithColor"))
+				env.ZenithColor = envJson["ZenithColor"].get<glm::vec3>();
+			if (envJson.contains("HorizonColor"))
+				env.HorizonColor = envJson["HorizonColor"].get<glm::vec3>();
+			if (envJson.contains("GroundColor"))
+				env.GroundColor = envJson["GroundColor"].get<glm::vec3>();
+			if (envJson.contains("AmbientIntensity"))
+				env.AmbientIntensity = envJson["AmbientIntensity"].get<float>();
+		}
 
 		auto& entities = data["Scene"]["Entities"];
 		if (entities.empty())
@@ -187,6 +213,14 @@ namespace Eppo
 					c["NearClip"].get<float>(),
 					c["FarClip"].get<float>()
 				);
+			}
+
+			if (entity.contains("PointLightComponent"))
+			{
+				auto& c = entity["PointLightComponent"];
+				auto& nc = newEntity.AddComponent<PointLightComponent>();
+				nc.Color = c["Color"].get<glm::vec3>();
+				nc.Intensity = c["Intensity"].get<float>();
 			}
 
 			if (entity.contains("ScriptComponent"))
@@ -250,6 +284,13 @@ namespace Eppo
 			e["CameraComponent"]["VerticalFov"] = c.Camera.GetPerspectiveVerticalFov();
 			e["CameraComponent"]["NearClip"] = c.Camera.GetPerspectiveNearClip();
 			e["CameraComponent"]["FarClip"] = c.Camera.GetPerspectiveFarClip();
+		}
+
+		if (entity.HasComponent<PointLightComponent>())
+		{
+			const auto& c = entity.GetComponent<PointLightComponent>();
+			e["PointLightComponent"]["Color"] = c.Color;
+			e["PointLightComponent"]["Intensity"] = c.Intensity;
 		}
 
 		if (entity.HasComponent<ScriptComponent>())

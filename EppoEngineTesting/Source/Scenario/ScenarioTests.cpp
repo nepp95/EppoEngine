@@ -1,9 +1,15 @@
+// pch first: this TU pulls in heavy engine headers (SceneRenderer -> Application,
+// nvrhi, ...) and test TUs do not get the engine PCH automatically.
+#include "pch.h"
+
+#include "Support/AppHarness.h"
 #include "Support/EppoTest.h"
 #include "Support/GlmCheck.h"
 #include "Support/TempDir.h"
 #include "Support/TestContext.h"
 
 #include "Renderer/Camera/EditorCamera.h"
+#include "Renderer/SceneRenderer.h"
 #include "Scene/Entity.h"
 #include "Scene/Components.h"
 #include "Scene/SceneSerializer.h"
@@ -149,5 +155,38 @@ SUITE(Scenario)
         CHECK_EQUAL(std::string("Ground"), entities[0]["TagComponent"]["Tag"].get<std::string>());
         CHECK_EQUAL(std::string("Player"), entities[1]["TagComponent"]["Tag"].get<std::string>());
         CHECK_EQUAL(1003ull, entities[2]["IDComponent"]["ID"].get<uint64_t>());
+    }
+
+    // Smoke test for the point-light + gradient-sky rendering path. Constructing
+    // the SceneRenderer builds both the geometry pipeline and the sky pipeline
+    // (whose fullscreen triangle has a zero-attribute input layout), and each
+    // rendered frame runs GeometryPass + SkyPass, uploading the light/environment
+    // buffers and issuing the background draw. No mesh is used: SubmitMesh needs an
+    // active Project/AssetManager, and the pipelines/sky pass are independent of
+    // scene geometry. Surviving the frames without a device error is the check.
+    TEST(RendersPointLitSceneWithGradientSky)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        const Ref<Scene> scene = ctx.GetScene();
+
+        Entity lamp = scene->CreateEntity("Lamp");
+        lamp.GetComponent<TransformComponent>().Translation = { 2.0f, 3.0f, 2.0f };
+        auto& light = lamp.AddComponent<PointLightComponent>();
+        light.Color = { 1.0f, 0.8f, 0.6f };
+        light.Intensity = 15.0f;
+
+        scene->GetEnvironment().AmbientIntensity = 0.75f;
+
+        const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, 256u, 256u);
+        const ScopedPtr<EditorCamera> camera = CreateScopedPtr<EditorCamera>(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
+
+        // Render across several real frames to cycle the frames-in-flight indices.
+        ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+
+        CHECK(sceneRenderer->GetFinalImage() != nullptr);
+        CHECK(Testing::AppHarness::Get()->IsRunning());
     }
 }

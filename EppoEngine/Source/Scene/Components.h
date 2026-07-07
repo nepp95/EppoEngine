@@ -76,6 +76,18 @@ namespace Eppo
 		CameraComponent(const CameraComponent&) = default;
 	};
 
+	// Turns an entity into a point light. Position comes from the entity's
+	// TransformComponent; the scene submits these to the SceneRenderer each
+	// frame. Intensity scales the radiance before inverse-square attenuation.
+	struct PointLightComponent
+	{
+		glm::vec3 Color = glm::vec3(1.0f);
+		float Intensity = 10.0f;
+
+		PointLightComponent() = default;
+		PointLightComponent(const PointLightComponent&) = default;
+	};
+
 	// Attaches a user script class to an entity. Kept intentionally small: it
 	// only names the class. The per-instance field values live in a side table
 	// owned by ScriptEngine (keyed by entity UUID), so this component stays

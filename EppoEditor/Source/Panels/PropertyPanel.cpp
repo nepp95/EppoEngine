@@ -76,6 +76,7 @@ namespace Eppo
 		{
 			DrawAddComponentEntry<MeshComponent>("Mesh");
 			DrawAddComponentEntry<CameraComponent>("Camera");
+			DrawAddComponentEntry<PointLightComponent>("Point Light");
 			DrawAddComponentEntry<ScriptComponent>("Script");
 
 			ImGui::EndPopup();
@@ -241,6 +242,14 @@ namespace Eppo
 			float farClip = component.Camera.GetPerspectiveFarClip();
 			if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 0.0f, 0.0f))
 				component.Camera.SetPerspectiveFarClip(farClip);
+		});
+
+		DrawComponent<PointLightComponent>(entity, [](auto& component)
+		{
+			ImGui::ColorEdit3("Color", &component.Color.x);
+			ImGui::DragFloat("Intensity", &component.Intensity, 0.1f, 0.0f, 0.0f);
+			if (component.Intensity < 0.0f)
+				component.Intensity = 0.0f;
 		});
 
 		DrawComponent<ScriptComponent>(entity, [entity](auto& component)
