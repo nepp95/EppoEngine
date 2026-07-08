@@ -77,4 +77,12 @@ namespace Eppo
 		// Popups
 		bool m_NewProjectPopup = false;
 	};
+
+	namespace Utils
+	{
+		// Point-in-rounded-rect test. Used by the toolbar so clicks that land in the
+		// transparent corner arcs (outside the visual rounded panel but inside the
+		// rectangular widget hitbox) are ignored.
+		auto IsInsideRoundedRect(const ImVec2& p, const ImVec2& min, const ImVec2& max, float radius) -> bool;
+	}
 }
