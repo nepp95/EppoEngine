@@ -17,14 +17,14 @@ namespace Eppo
     public:
         ScriptInstance(EppoScriptCore::Assembly& assembly, const UUID& entityId, int32_t classIndex);
 
-        auto InvokeOnCreate() -> void;
-        auto InvokeOnUpdate(float timestep) -> void;
-        auto InvokeOnDestroy() -> void;
+        auto InvokeOnCreate() const -> void;
+        auto InvokeOnUpdate(float timestep) const -> void;
+        auto InvokeOnDestroy() const -> void;
 
         // Field access on the live instance. fieldIndex indexes the owning class's
         // GetFields(); data must point to a buffer matching the field's type width.
         auto GetFieldValue(int32_t fieldIndex, void* data) const -> void;
-        auto SetFieldValue(int32_t fieldIndex, const void* data) -> void;
+        auto SetFieldValue(int32_t fieldIndex, const void* data) const -> void;
 
         [[nodiscard]] auto GetClassIndex() const -> int32_t { return m_ClassIndex; }
 

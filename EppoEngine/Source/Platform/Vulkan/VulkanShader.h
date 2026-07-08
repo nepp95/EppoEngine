@@ -7,7 +7,7 @@ namespace Eppo
 	class VulkanShader : public Shader
 	{
 	public:
-		VulkanShader(ShaderSpecification spec);
+        explicit VulkanShader(ShaderSpecification spec);
 
 	private:
 		auto CompileOrGetCache() -> void;

@@ -2,8 +2,6 @@
 
 #include "Core/InputBackend.h"
 
-#include <unordered_set>
-
 namespace Eppo
 {
 	// A programmable InputBackend for tests and automated scenarios: key/button

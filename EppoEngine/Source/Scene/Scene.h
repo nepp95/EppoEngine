@@ -31,7 +31,7 @@ namespace Eppo
 	{
 	public:
 		Scene() = default;
-		~Scene() = default;
+		~Scene() override = default;
 
 		static auto GetStaticType() -> AssetType { return AssetType::Scene; }
 
@@ -69,7 +69,7 @@ namespace Eppo
 		template<typename T>
 		static auto CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry, const std::unordered_map<UUID, EntityHandle>& entityMap) -> void;
 
-		static auto Copy(Ref<Scene> scene) -> Ref<Scene>;
+		static auto Copy(const Ref<Scene>& scene) -> Ref<Scene>;
 
 		[[nodiscard]] auto GetEnvironment() -> EnvironmentSettings& { return m_Environment; }
 		[[nodiscard]] auto GetEnvironment() const -> const EnvironmentSettings& { return m_Environment; }

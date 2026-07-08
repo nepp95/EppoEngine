@@ -56,7 +56,7 @@ namespace Eppo
 		m_Renderer = CreateScopedPtr<Renderer>();
 	}
 
-	DeviceManager::DeviceManager(const Ref<Window>& window, const DeviceParams& params)
-		: m_Params(params), m_Window(window)
+	DeviceManager::DeviceManager(const Ref<Window>& window, DeviceParams params)
+		: m_Params(std::move(params)), m_Window(window)
 	{}
 }

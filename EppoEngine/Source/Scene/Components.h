@@ -26,8 +26,8 @@ namespace Eppo
 		std::string Tag;
 
 		TagComponent() = default;
-		TagComponent(const std::string& tag)
-			: Tag(tag)
+        explicit TagComponent(std::string tag)
+			: Tag(std::move(tag))
 		{}
 	};
 
@@ -38,7 +38,7 @@ namespace Eppo
 		glm::vec3 Scale = glm::vec3(1.0f);
 
 		TransformComponent() = default;
-		TransformComponent(const glm::vec3& translation)
+        explicit TransformComponent(const glm::vec3& translation)
 			: Translation(translation)
 		{}
 
@@ -55,11 +55,11 @@ namespace Eppo
 		AssetHandle MeshHandle = 0;
 
 		MeshComponent() = default;
-		MeshComponent(const Ref<Mesh>& mesh)
+        explicit MeshComponent(const Ref<Mesh>& mesh)
 			: MeshHandle(mesh->Handle)
 		{}
 
-		MeshComponent(const AssetHandle handle)
+        explicit MeshComponent(const AssetHandle handle)
 			: MeshHandle(handle)
 		{}
 	};
@@ -97,7 +97,7 @@ namespace Eppo
 		std::string ClassName;
 
 		ScriptComponent() = default;
-		ScriptComponent(std::string className)
+        explicit ScriptComponent(std::string className)
 			: ClassName(std::move(className))
 		{}
 	};

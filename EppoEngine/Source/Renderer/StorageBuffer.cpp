@@ -5,8 +5,8 @@
 
 namespace Eppo
 {
-	StorageBuffer::StorageBuffer(uint32_t structStride, uint64_t initialSize, const std::string& debugName)
-		: m_Stride(structStride), m_DebugName(debugName)
+	StorageBuffer::StorageBuffer(const uint32_t structStride, const uint64_t initialSize, std::string debugName)
+		: m_Stride(structStride), m_DebugName(std::move(debugName))
 	{
 		EP_PROFILE_FN("StorageBuffer::StorageBuffer");
 
@@ -14,7 +14,7 @@ namespace Eppo
 		CreateBuffer();
 	}
 
-	auto StorageBuffer::SetData(const void* data, uint64_t size, uint64_t offset) -> void
+	auto StorageBuffer::SetData(const void* data, const uint64_t size, const uint64_t offset) -> void
 	{
 		EP_PROFILE_FN("StorageBuffer::SetData");
 

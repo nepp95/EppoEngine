@@ -7,7 +7,7 @@ namespace Eppo
 	class UniformBuffer
 	{
 	public:
-		UniformBuffer(uint64_t size, const std::string& debugName = "UniformBuffer");
+        explicit UniformBuffer(uint64_t size, std::string debugName = "UniformBuffer");
 
 		auto SetData(const void* data, uint64_t size, uint64_t offset = 0) -> void;
 

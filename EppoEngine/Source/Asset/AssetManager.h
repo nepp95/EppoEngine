@@ -3,10 +3,8 @@
 #include "Asset/Asset.h"
 #include "Asset/AssetMetadata.h"
 
-#include <future>
 #include <shared_mutex>
 #include <unordered_map>
-#include <unordered_set>
 
 namespace Eppo
 {

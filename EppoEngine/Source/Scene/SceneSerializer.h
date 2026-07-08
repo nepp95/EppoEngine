@@ -10,7 +10,7 @@ namespace Eppo
 	class SceneSerializer
 	{
 	public:
-		SceneSerializer(const Ref<Scene>& scene);
+        explicit SceneSerializer(const Ref<Scene>& scene);
 
 		auto Serialize(const std::filesystem::path& path) const -> bool;
 		auto Deserialize(const std::filesystem::path& path) const -> bool;

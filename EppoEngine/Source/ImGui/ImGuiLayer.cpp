@@ -214,9 +214,9 @@ namespace Eppo
 		EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_CreateWindow")
 
 		const auto& dm = static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
-		ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+        const auto& platformIO = ImGui::GetPlatformIO();
 
-		ImGuiViewportData* data = IM_NEW(ImGuiViewportData)();
+        const auto data = IM_NEW(ImGuiViewportData)();
 		viewport->RendererUserData = data;
 
 		VkSurfaceKHR surface = nullptr;
@@ -233,7 +233,7 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_DestroyWindow")
 
-		ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+		auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
 		IM_DELETE(vd);
 		viewport->RendererUserData = nullptr;
 	}
@@ -242,7 +242,7 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_SetWindowSize")
 
-		ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+        const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
 		vd->Swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
 	}
 
@@ -250,7 +250,7 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_RenderWindow")
 
-		ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+		const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
 		vd->Swapchain->BeginFrame();
 		vd->Renderer->UpdateFontTexture();
 		vd->Renderer->RenderToSwapchain(viewport, vd->Swapchain);
@@ -260,7 +260,7 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_SwapBuffers")
 
-		ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+		const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
 		vd->Swapchain->Present();
 	}
 }

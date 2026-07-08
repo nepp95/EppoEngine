@@ -103,11 +103,10 @@ namespace Eppo
 
 	auto Scene::GetPrimaryCameraEntity() -> Entity
 	{
-		const auto view = m_Registry.view<CameraComponent>();
-		for (const auto e : view)
+        for (const auto view = m_Registry.view<CameraComponent>(); const auto e : view)
 		{
 			if (view.get<CameraComponent>(e).Primary)
-				return Entity(e, this);
+				return { e, this };
 		}
 
 		return {};
@@ -136,9 +135,8 @@ namespace Eppo
 
 	auto Scene::GetEntityByUUID(const UUID& uuid) -> Entity
 	{
-		const auto it = m_EntityMap.find(uuid);
-		if (it != m_EntityMap.end())
-			return Entity(it->second, this);
+        if (const auto it = m_EntityMap.find(uuid); it != m_EntityMap.end())
+			return { it->second, this };
 
 		return {};
 	}
@@ -301,7 +299,7 @@ namespace Eppo
 		}
 	}
 
-	auto Scene::Copy(Ref<Scene> scene) -> Ref<Scene>
+	auto Scene::Copy(const Ref<Scene>& scene) -> Ref<Scene>
 	{
 		EP_PROFILE_FN("Scene::Copy");
 

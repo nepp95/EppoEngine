@@ -51,10 +51,10 @@ namespace Eppo
 	class Shader
 	{
 	public:
-		Shader(ShaderSpecification spec);
+        explicit Shader(ShaderSpecification spec);
 		virtual ~Shader() = default;
 
-		[[nodiscard]] auto GetShaderHandle(const nvrhi::ShaderType type) -> nvrhi::ShaderHandle;
+		[[nodiscard]] auto GetShaderHandle(nvrhi::ShaderType type) -> nvrhi::ShaderHandle;
 		[[nodiscard]] auto GetInputLayout() -> nvrhi::InputLayoutHandle { return m_InputLayout; }
 		[[nodiscard]] auto GetBindingLayouts() const -> const std::unordered_map<uint32_t, nvrhi::BindingLayoutHandle>& { return m_BindingLayouts; }
 		[[nodiscard]] auto GetDescriptorTable() const -> nvrhi::DescriptorTableHandle { return m_DescriptorTable; }

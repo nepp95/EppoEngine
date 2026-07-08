@@ -7,7 +7,7 @@ namespace Eppo
 	class StorageBuffer
 	{
 	public:
-		StorageBuffer(uint32_t structStride, uint64_t initialSize = 0, const std::string& debugName = "StorageBuffer");
+		StorageBuffer(uint32_t structStride, uint64_t initialSize = 0, std::string debugName = "StorageBuffer");
 
 		auto SetData(const void* data, uint64_t size, uint64_t offset = 0) -> void;
 

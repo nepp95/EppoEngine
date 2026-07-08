@@ -49,7 +49,7 @@ namespace Eppo
 	private:
 		[[nodiscard]] auto DecodeImageData(const ImageSource& source) -> void*;
 		auto SelectFormat(uint32_t channels, bool isHdr = false) -> nvrhi::Format;
-		constexpr auto GetStride(const nvrhi::Format format) const -> uint32_t;
+		[[nodiscard]] constexpr auto GetStride(nvrhi::Format format) const -> uint32_t;
 
 	private:
 		ImageSpecification m_Specification;

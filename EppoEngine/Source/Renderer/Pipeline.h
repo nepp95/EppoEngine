@@ -28,7 +28,7 @@ namespace Eppo
 	public:
 		Pipeline(PipelineSpecification spec);
 
-		auto Resize(uint32_t width, uint32_t height) -> void;
+		auto Resize(uint32_t width, uint32_t height) const -> void;
 		[[nodiscard]] auto GetWidth() const -> uint32_t { return m_Specification.Framebuffer->GetWidth(); }
 		[[nodiscard]] auto GetHeight() const -> uint32_t { return m_Specification.Framebuffer->GetHeight(); }
 
