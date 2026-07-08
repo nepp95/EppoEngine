@@ -12,12 +12,43 @@
 
 namespace Eppo
 {
-	// Default scene gravity (m/s^2). Scene-global for now; per-body scaling comes
-	// from RigidBodyComponent::GravityScale.
+	// Scene-global gravity (m/s^2); per-body scaling via RigidBodyComponent::GravityScale.
 	static constexpr glm::vec3 s_DefaultGravity = { 0.0f, -9.81f, 0.0f };
 
-	Scene::Scene() = default;
-	Scene::~Scene() = default;
+	namespace
+	{
+		// Collects an entity's collider components into the shape-agnostic list
+		// PhysicsWorld consumes. Adding a collider type touches only this function.
+		auto GatherColliders(Entity entity) -> std::vector<ColliderData>
+		{
+			std::vector<ColliderData> colliders;
+
+			if (entity.HasComponent<BoxColliderComponent>())
+			{
+				const auto& c = entity.GetComponent<BoxColliderComponent>();
+				colliders.push_back({ ColliderShape::Box, c.Offset, c.Density, c.Friction, c.Restitution, c.HalfExtents });
+			}
+
+			if (entity.HasComponent<SphereColliderComponent>())
+			{
+				const auto& c = entity.GetComponent<SphereColliderComponent>();
+				ColliderData data{ ColliderShape::Sphere, c.Offset, c.Density, c.Friction, c.Restitution };
+				data.Radius = c.Radius;
+				colliders.push_back(data);
+			}
+
+			if (entity.HasComponent<CapsuleColliderComponent>())
+			{
+				const auto& c = entity.GetComponent<CapsuleColliderComponent>();
+				ColliderData data{ ColliderShape::Capsule, c.Offset, c.Density, c.Friction, c.Restitution };
+				data.Radius = c.Radius;
+				data.Height = c.Height;
+				colliders.push_back(data);
+			}
+
+			return colliders;
+		}
+	}
 
 	auto Scene::SetViewportSize(uint32_t width, uint32_t height) -> void
 	{
@@ -35,9 +66,8 @@ namespace Eppo
 		if (!GetPrimaryCameraEntity())
 			Log::Warn("Scene has no primary camera entity; nothing will be rendered in play mode.");
 
-		// Build the physics world from the current components. Runs regardless of
-		// scripting so physics still simulates when no scripts are present.
-		m_PhysicsWorld = CreateScopedPtr<PhysicsWorld>(s_DefaultGravity);
+		// Build the physics world regardless of scripting so it simulates even with no scripts.
+		m_PhysicsWorld = CreateRef<PhysicsWorld>(s_DefaultGravity);
 		{
 			const auto view = m_Registry.view<RigidBodyComponent, TransformComponent>();
 			for (const auto e : view)
@@ -47,9 +77,7 @@ namespace Eppo
 					entity.GetUUID(),
 					entity.GetComponent<RigidBodyComponent>(),
 					entity.GetComponent<TransformComponent>(),
-					entity.HasComponent<BoxColliderComponent>() ? &entity.GetComponent<BoxColliderComponent>() : nullptr,
-					entity.HasComponent<SphereColliderComponent>() ? &entity.GetComponent<SphereColliderComponent>() : nullptr,
-					entity.HasComponent<CapsuleColliderComponent>() ? &entity.GetComponent<CapsuleColliderComponent>() : nullptr);
+					GatherColliders(entity));
 			}
 		}
 
@@ -57,7 +85,7 @@ namespace Eppo
 			return;
 
 		auto& scriptEngine = ScriptEngine::Get();
-		scriptEngine.SetActivePhysicsWorld(m_PhysicsWorld.get());
+		scriptEngine.SetActivePhysicsWorld(m_PhysicsWorld);
 
 		const auto view = m_Registry.view<ScriptComponent>();
 		for (const auto e : view)
@@ -71,9 +99,7 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("Scene::OnRuntimeStop");
 
-		// Clear the script engine's borrowed pointer before the world is destroyed.
-		if (ScriptEngine::IsInitialized())
-			ScriptEngine::Get().SetActivePhysicsWorld(nullptr);
+		// The script engine's WeakRef expires with this reset.
 		m_PhysicsWorld.reset();
 
 		if (!ScriptEngine::IsInitialized())
@@ -92,9 +118,8 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("Scene::OnUpdateRuntime");
 
-		// Step physics and write simulated poses back into transforms. Before the
-		// scripting early-return so physics runs even without scripts; before script
-		// update so scripts observe this frame's poses.
+		// Step physics before scripts so they observe this frame's poses (and before
+		// the scripting early-return so it runs without scripts).
 		if (m_PhysicsWorld)
 		{
 			m_PhysicsWorld->Step(timestep);

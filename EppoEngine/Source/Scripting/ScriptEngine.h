@@ -79,10 +79,9 @@ namespace Eppo
         auto OnUpdateEntity(Entity entity, float timestep) -> void;
         auto OnDestroyEntity(Entity entity) -> void;
 
-        // The physics world the script physics callbacks act on. Set by the scene
-        // in OnRuntimeStart (cleared on stop). Null outside play, so the callbacks
-        // no-op safely.
-        auto SetActivePhysicsWorld(PhysicsWorld* world) -> void { m_ActivePhysicsWorld = world; }
+        // The physics world the script physics callbacks act on. Held weakly: it
+        // expires when the scene drops the world on stop, so callbacks no-op safely.
+        auto SetActivePhysicsWorld(const Ref<PhysicsWorld>& world) -> void { m_ActivePhysicsWorld = world; }
 
         // The engine owns the live-instance registry: it is authoritative for
         // which entities have a running script. Returns nullptr when the entity
@@ -115,7 +114,7 @@ namespace Eppo
 
         std::unique_ptr<EppoScriptCore::Assembly> m_CoreAssembly;
         std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
-        PhysicsWorld* m_ActivePhysicsWorld = nullptr;
+        WeakRef<PhysicsWorld> m_ActivePhysicsWorld;
 
         // The authoritative registry of live script instances, keyed by entity
         // UUID. Populated on play (OnCreateEntity), cleared on stop / assembly

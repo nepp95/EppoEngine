@@ -115,12 +115,8 @@ namespace Eppo
 		RelationshipComponent(const RelationshipComponent&) = default;
 	};
 
-	// Turns an entity into a physics body. On play the scene builds a Box3D body
-	// from this + the entity's collider component(s); each frame it writes the
-	// simulated pose back into the TransformComponent. Static never moves,
-	// Kinematic is script/animation driven, Dynamic is fully simulated. No live
-	// body handle is stored here — PhysicsWorld owns that (keyed by UUID), since
-	// the scene is deep-copied on play and bodies are rebuilt at OnRuntimeStart.
+	// Turns an entity into a physics body simulated in play mode. The live body
+	// handle lives in PhysicsWorld (keyed by UUID), not here.
 	struct RigidBodyComponent
 	{
 		enum class BodyType : uint8_t { Static = 0, Kinematic, Dynamic };
@@ -134,9 +130,7 @@ namespace Eppo
 		RigidBodyComponent(const RigidBodyComponent&) = default;
 	};
 
-	// Box collider (a Box3D convex hull). HalfExtents/Offset are in the entity's
-	// local space. Material (density/friction/restitution) lives on the collider
-	// so different shapes on one body can differ.
+	// Box collider (a Box3D convex hull). Local-space half-extents/offset.
 	struct BoxColliderComponent
 	{
 		glm::vec3 HalfExtents = glm::vec3(0.5f);
@@ -161,8 +155,7 @@ namespace Eppo
 		SphereColliderComponent(const SphereColliderComponent&) = default;
 	};
 
-	// Capsule aligned to the local Y axis. Height is the distance between the two
-	// hemisphere centers (the cylindrical part); total height is Height + 2*Radius.
+	// Capsule aligned to local Y; Height is the gap between hemisphere centers.
 	struct CapsuleColliderComponent
 	{
 		float Radius = 0.5f;

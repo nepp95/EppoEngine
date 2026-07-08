@@ -263,10 +263,11 @@ namespace Eppo
 
     auto ScriptEngine::ApplyLinearImpulseCallback(const uint64_t entityId, const EppoScriptCore::EppoVec3 impulse) -> void
     {
-        if (!s_Instance || !s_Instance->m_ActivePhysicsWorld)
+        if (!s_Instance)
             return;
 
-        s_Instance->m_ActivePhysicsWorld->ApplyLinearImpulse(UUID(entityId), { impulse.x, impulse.y, impulse.z });
+        if (const Ref<PhysicsWorld> world = s_Instance->m_ActivePhysicsWorld.lock())
+            world->ApplyLinearImpulse(UUID(entityId), { impulse.x, impulse.y, impulse.z });
     }
 
     auto ScriptEngine::GetLinearVelocityCallback(const uint64_t entityId, EppoScriptCore::EppoVec3* outVelocity) -> void
@@ -275,18 +276,22 @@ namespace Eppo
             return;
 
         *outVelocity = { 0.0f, 0.0f, 0.0f };
-        if (!s_Instance || !s_Instance->m_ActivePhysicsWorld)
+        if (!s_Instance)
             return;
 
-        const glm::vec3 velocity = s_Instance->m_ActivePhysicsWorld->GetLinearVelocity(UUID(entityId));
-        *outVelocity = { velocity.x, velocity.y, velocity.z };
+        if (const Ref<PhysicsWorld> world = s_Instance->m_ActivePhysicsWorld.lock())
+        {
+            const glm::vec3 velocity = world->GetLinearVelocity(UUID(entityId));
+            *outVelocity = { velocity.x, velocity.y, velocity.z };
+        }
     }
 
     auto ScriptEngine::SetLinearVelocityCallback(const uint64_t entityId, const EppoScriptCore::EppoVec3 velocity) -> void
     {
-        if (!s_Instance || !s_Instance->m_ActivePhysicsWorld)
+        if (!s_Instance)
             return;
 
-        s_Instance->m_ActivePhysicsWorld->SetLinearVelocity(UUID(entityId), { velocity.x, velocity.y, velocity.z });
+        if (const Ref<PhysicsWorld> world = s_Instance->m_ActivePhysicsWorld.lock())
+            world->SetLinearVelocity(UUID(entityId), { velocity.x, velocity.y, velocity.z });
     }
 }

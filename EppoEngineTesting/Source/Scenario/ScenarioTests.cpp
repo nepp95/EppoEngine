@@ -157,6 +157,31 @@ SUITE(Scenario)
         CHECK_EQUAL(1003ull, entities[2]["IDComponent"]["ID"].get<uint64_t>());
     }
 
+    // Physics runs through the live runtime loop: OnRuntimeStart builds the world
+    // from the components, each stepped frame advances it and writes the simulated
+    // pose back into TransformComponent. A dynamic body must fall under gravity.
+    TEST(DynamicBodyFallsInPlayMode)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        const Ref<Scene> scene = ctx.GetScene();
+
+        Entity box = scene->CreateEntity("FallingBox");
+        box.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, 0.0f };
+        box.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
+        box.AddComponent<BoxColliderComponent>();
+
+        const float startY = box.GetComponent<TransformComponent>().Translation.y;
+
+        scene->OnRuntimeStart();
+        ctx.AdvanceFrames(60, [&](float ts) { scene->OnUpdateRuntime(ts); });
+        scene->OnRuntimeStop();
+
+        CHECK(box.GetComponent<TransformComponent>().Translation.y < startY - 0.1f);
+    }
+
     // Smoke test for the point-light + gradient-sky rendering path. Constructing
     // the SceneRenderer builds both the geometry pipeline and the sky pipeline
     // (whose fullscreen triangle has a zero-attribute input layout), and each
