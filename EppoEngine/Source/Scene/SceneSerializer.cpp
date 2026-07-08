@@ -199,8 +199,7 @@ namespace Eppo
 			if (entity.contains("RelationshipComponent"))
 			{
 				auto& c = entity["RelationshipComponent"];
-				// The component already exists (added in CreateEntityWithUUID); links
-				// are stable UUIDs, so no handle resolution is needed here.
+				// Already added in CreateEntityWithUUID; UUID links need no resolution.
 				auto& nc = newEntity.GetComponent<RelationshipComponent>();
 				nc.Parent = c["Parent"].get<UUID>();
 				if (c.contains("Children"))
@@ -310,8 +309,7 @@ namespace Eppo
 		if (entity.HasComponent<RelationshipComponent>())
 		{
 			const auto& c = entity.GetComponent<RelationshipComponent>();
-			// Only entities that actually participate in a hierarchy emit the
-			// component, keeping flat scenes unchanged on disk.
+			// Emit only for entities in a hierarchy, keeping flat scenes unchanged.
 			if (c.Parent || !c.Children.empty())
 			{
 				e["RelationshipComponent"]["Parent"] = c.Parent;

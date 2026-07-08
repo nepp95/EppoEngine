@@ -208,6 +208,30 @@ SUITE(Scene)
         CHECK_VEC3_CLOSE(glm::vec3(-7.0f, 0.0f, 0.0f), child.GetComponent<TransformComponent>().Translation, 1e-5f);
     }
 
+    TEST(ReparentPreservesWorldTransformUnderRotatedParent)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity parent = scene->CreateEntity("Parent");
+        auto& pt = parent.GetComponent<TransformComponent>();
+        pt.Translation = { 1.0f, 2.0f, 3.0f };
+        pt.Rotation = { 0.0f, glm::radians(90.0f), 0.0f };
+
+        Entity child = scene->CreateEntity("Child");
+        auto& ct = child.GetComponent<TransformComponent>();
+        ct.Translation = { 5.0f, 0.0f, 0.0f };
+        ct.Rotation = { glm::radians(30.0f), 0.0f, 0.0f };
+
+        // Reparenting decomposes a re-solved local matrix (rotation included), so a
+        // point in the child's local space must map to the same world point after.
+        const glm::mat4 before = scene->GetWorldTransform(child);
+        scene->SetParent(child, parent);
+        const glm::mat4 after = scene->GetWorldTransform(child);
+
+        // Tolerance is loose: the value round-trips through Euler-angle storage.
+        const glm::vec4 localPoint(1.0f, 1.0f, 1.0f, 1.0f);
+        CHECK_VEC3_CLOSE(glm::vec3(before * localPoint), glm::vec3(after * localPoint), 1e-3f);
+    }
+
     TEST(SetParentRejectsCycle)
     {
         const Ref<Scene> scene = CreateRef<Scene>();

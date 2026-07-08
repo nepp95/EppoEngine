@@ -102,13 +102,10 @@ namespace Eppo
 		{}
 	};
 
-	// Places an entity in the scene's transform hierarchy. Links are stored as
-	// stable UUIDs (not registry handles) so they survive Scene::Copy and
-	// serialization without remapping. Parent == 0 means the entity is a root.
-	// A TransformComponent is authored in the parent's local space; the composed
-	// world transform is resolved on demand via Scene::GetWorldTransform. Every
-	// entity carries this component (added in Scene::CreateEntityWithUUID), so the
-	// hierarchy walk never has to special-case its absence.
+	// Places an entity in the transform hierarchy. Links are stable UUIDs (not
+	// handles) so they survive Scene::Copy and serialization. Parent == 0 is a root;
+	// transforms are local, composed via Scene::GetWorldTransform. Every entity
+	// carries one (added in CreateEntityWithUUID).
 	struct RelationshipComponent
 	{
 		UUID Parent = 0;
