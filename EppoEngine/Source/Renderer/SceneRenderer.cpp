@@ -22,13 +22,6 @@ namespace Eppo
 
 		m_CommandList = device->createCommandList();
 
-		uint32_t maxFrames = dm->GetParams().MaxFramesInFlight;
-		m_TimerQueries.resize(maxFrames);
-		m_LastQueryTimes.resize(maxFrames);
-
-		for (uint32_t i = 0; i < maxFrames; i++)
-			m_TimerQueries[i] = device->createTimerQuery();
-
 		if (m_Width == 0 || m_Height == 0)
 		{
 			const auto& app = Application::Get();
@@ -100,15 +93,54 @@ namespace Eppo
 		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
+		const auto& imguiRenderer = app.GetImGuiLayer()->GetMainImGuiRenderer();
+
+		// One collapsible row per scene pass: its GPU time plus draw-call breakdown.
+		const auto renderPass = [frameIndex](const RenderPass& pass)
+		{
+			const PassStatistics& stats = pass.GetStats();
+			if (!ImGui::TreeNodeEx(pass.GetName().c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s: %.2fms", pass.GetName().c_str(), pass.GetTimeMs(frameIndex)))
+				return;
+
+			ImGui::Text("Draw calls: %u", stats.DrawCalls);
+			ImGui::Text("Meshes: %u", stats.Meshes);
+			ImGui::Text("Submeshes: %u", stats.Submeshes);
+			ImGui::Text("Instances: %u", stats.Instances);
+			ImGui::Text("Vertices: %u", stats.Vertices);
+			ImGui::Text("Indices: %u", stats.Indices);
+			ImGui::TreePop();
+		};
+
 		ImGui::Begin("Scene Renderer");
-		ImGui::SeparatorText("Draw Statistics");
-		ImGui::Text("Draw calls: %u", m_DrawStatistics.DrawCalls);
-		ImGui::Text("Instances: %u", m_DrawStatistics.Instances);
-		ImGui::Text("Meshes: %u", m_DrawStatistics.Meshes);
-		ImGui::Text("Submeshes: %u", m_DrawStatistics.Submeshes);
-		ImGui::SeparatorText("Render Passes");
-		ImGui::Text("UI: %.2fms", app.GetImGuiLayer()->GetMainImGuiRenderer()->GetGPUTime(frameIndex));
-		ImGui::Text("Geometry: %.2fms", m_LastQueryTimes.at(frameIndex));
+
+		// Scene passes and their subtotal.
+		ImGui::SeparatorText("Scene");
+		renderPass(m_GeometryPass);
+		renderPass(m_SkyPass);
+
+		PassStatistics sceneStats;
+		sceneStats += m_GeometryPass.GetStats();
+		sceneStats += m_SkyPass.GetStats();
+		const float sceneTime = m_GeometryPass.GetTimeMs(frameIndex) + m_SkyPass.GetTimeMs(frameIndex);
+		ImGui::Text("Scene total: %u draw calls, %.2fms", sceneStats.DrawCalls, sceneTime);
+
+		// UI is tracked and reported separately from the scene.
+		ImGui::SeparatorText("UI");
+		const PassStatistics uiStats = imguiRenderer->GetStats();
+		ImGui::Text("UI: %.2fms", imguiRenderer->GetGPUTime(frameIndex));
+		ImGui::Text("Draw calls: %u", uiStats.DrawCalls);
+		ImGui::Text("Vertices: %u", uiStats.Vertices);
+		ImGui::Text("Indices: %u", uiStats.Indices);
+
+		// Everything on screen: scene passes plus UI. Note the UI stats lag by a
+		// frame — this panel is part of the UI draw data being built now, so the UI
+		// counts reflect the previous frame's Render, whereas the scene counts are
+		// this frame's. Close enough for an at-a-glance readout, not a coherent snapshot.
+		ImGui::SeparatorText("Total: %.2fms", sceneTime + imguiRenderer->GetGPUTime(frameIndex));
+		ImGui::Text("Draw calls: %u", sceneStats.DrawCalls + uiStats.DrawCalls);
+		ImGui::Text("Vertices: %u", sceneStats.Vertices + uiStats.Vertices);
+		ImGui::Text("Indices: %u", sceneStats.Indices + uiStats.Indices);
+
 		ImGui::End();
 	}
 
@@ -121,10 +153,9 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("SceneRenderer::BeginScene")
 
-		// Reset
+		// Reset (per-pass draw stats are reset in each RenderPass::Begin)
 		m_DrawCommands.clear();
 		m_LightData.NumLights = 0;
-		std::memset(&m_DrawStatistics, 0, sizeof(DrawStatistics));
 
 		// Set uniforms
 		m_CameraData.View = view;
@@ -219,8 +250,9 @@ namespace Eppo
 		GeometryPass();
 		SkyPass();
 
-		m_LastQueryTimes[frameIndex] = device->getTimerQueryTime(m_TimerQueries.at(frameIndex)) * 1000.0f;
-		device->resetTimerQuery(m_TimerQueries.at(frameIndex));
+		// Both pass command lists have been executed; read their GPU timers back.
+		m_GeometryPass.Readback(frameIndex);
+		m_SkyPass.Readback(frameIndex);
 	}
 
 	auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
@@ -276,8 +308,8 @@ namespace Eppo
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
 		m_CommandList->open();
-		m_CommandList->beginTimerQuery(m_TimerQueries.at(frameIndex));
-		m_CommandList->beginMarker("Geometry Pass");
+		m_GeometryPass.Begin(m_CommandList, frameIndex, "Geometry Pass");
+		PassStatistics& stats = m_GeometryPass.Stats();
 
 		// Clear framebuffer if needed
 		const auto& framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer;
@@ -380,16 +412,17 @@ namespace Eppo
 
 					m_CommandList->drawIndexed(drawArgs);
 
-					m_DrawStatistics.DrawCalls++;
+					stats.DrawCalls++;
+					stats.Vertices += static_cast<uint32_t>(p.VertexCount) * instanceCount;
+					stats.Indices += static_cast<uint32_t>(p.IndexCount) * instanceCount;
 				}
-				m_DrawStatistics.Submeshes++;
+				stats.Submeshes++;
 			}
-			m_DrawStatistics.Instances += instanceCount;
-			m_DrawStatistics.Meshes++;
+			stats.Instances += instanceCount;
+			stats.Meshes++;
 		}
 
-		m_CommandList->endMarker();
-		m_CommandList->endTimerQuery(m_TimerQueries.at(frameIndex));
+		m_GeometryPass.End(m_CommandList, frameIndex);
 		m_CommandList->close();
 		device->executeCommandList(m_CommandList);
 	}
@@ -400,9 +433,11 @@ namespace Eppo
 
 		const auto& dm = DeviceManager::Get();
 		auto device = dm->GetDevice();
+		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
+		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
 		m_CommandList->open();
-		m_CommandList->beginMarker("Sky Pass");
+		m_SkyPass.Begin(m_CommandList, frameIndex, "Sky Pass");
 
 		// Draw into the geometry framebuffer without clearing: the fullscreen
 		// triangle only survives where geometry left the depth at the far plane,
@@ -435,7 +470,12 @@ namespace Eppo
 		};
 		m_CommandList->draw(drawArgs);
 
-		m_CommandList->endMarker();
+		// One non-indexed fullscreen-triangle draw (3 vertices, no index buffer).
+		PassStatistics& stats = m_SkyPass.Stats();
+		stats.DrawCalls++;
+		stats.Vertices += drawArgs.vertexCount;
+
+		m_SkyPass.End(m_CommandList, frameIndex);
 		m_CommandList->close();
 		device->executeCommandList(m_CommandList);
 	}
