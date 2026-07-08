@@ -4,6 +4,7 @@
 #include "Renderer/IndexBuffer.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Pipeline.h"
+#include "Renderer/RenderPass.h"
 #include "Renderer/StorageBuffer.h"
 #include "Renderer/UniformBuffer.h"
 #include "Renderer/VertexBuffer.h"
@@ -40,8 +41,9 @@ namespace Eppo
 	private:
 		Ref<Scene> m_Scene = nullptr;
 		nvrhi::CommandListHandle m_CommandList = nullptr;
-		std::vector<nvrhi::TimerQueryHandle> m_TimerQueries;
-		std::vector<float> m_LastQueryTimes;
+
+		RenderPass m_GeometryPass{ "Geometry" };
+		RenderPass m_SkyPass{ "Sky" };
 
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
@@ -110,13 +112,5 @@ namespace Eppo
 			glm::vec4 Params{ 1.0f, 0.0f, 0.0f, 0.0f };
 		} m_EnvironmentData{};
 		Ref<UniformBuffer> m_EnvironmentUB = nullptr;
-
-		struct DrawStatistics
-		{
-			uint32_t DrawCalls = 0;
-			uint32_t Meshes = 0;
-			uint32_t Submeshes = 0;
-			uint32_t Instances = 0;
-		} m_DrawStatistics;
 	};
 }
