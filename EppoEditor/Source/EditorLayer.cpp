@@ -74,6 +74,8 @@ namespace Eppo
 
 	auto EditorLayer::OnUpdate(float timestep) -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::OnUpdate");
+
 		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 		{
 			m_EditorCamera->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
@@ -127,6 +129,8 @@ namespace Eppo
 
 	auto EditorLayer::OnUIRender() -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::OnUIRender");
+
 		// Apply a requested layout restore before any window Begin this frame, so the
 		// docked windows pick up the restored dock nodes as they are submitted below.
 		// Doing this mid-frame (from the menu handler) leaves windows already placed
@@ -300,12 +304,16 @@ namespace Eppo
 
 	auto EditorLayer::OnEvent(Event& e) -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::OnEvent");
+
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<KeyPressedEvent>(std::bind_front(&EditorLayer::OnKeyPressed, this));
 	}
 
 	auto EditorLayer::OnKeyPressed(const KeyPressedEvent& e) -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::OnKeyPressed");
+
 		if (e.IsRepeat())
 			return false;
 
@@ -343,6 +351,8 @@ namespace Eppo
 
 	auto EditorLayer::OnScenePlay() -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::OnScenePlay");
+
 		if (!m_EditorScene)
 			return;
 
@@ -364,6 +374,8 @@ namespace Eppo
 
 	auto EditorLayer::OnSceneStop() -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::OnSceneStop");
+
 		if (!m_ActiveScene)
 			return;
 
@@ -411,6 +423,8 @@ namespace Eppo
 
 	auto EditorLayer::CloseProject() -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::CloseProject");
+
 		// Unload the per-project user assembly (collectible), but keep the
 		// scripting runtime + core assembly alive for the next project.
 		if (ScriptEngine::IsInitialized())
@@ -431,6 +445,8 @@ namespace Eppo
 
 	auto EditorLayer::NewProject(const std::string& name) -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::NewProject");
+
 		// Create project directory
 		const auto projectPath = FS::GetRootDirectory() / "Projects" / name;
 		FS::CreateDirectory(projectPath);
@@ -475,6 +491,8 @@ namespace Eppo
 
 	auto EditorLayer::OpenProject() -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::OpenProject");
+
 		const auto path = FileDialog::OpenFile({
 			{ "EppoEngine Project", "epproj" }
 		}, FS::GetRootDirectory());
@@ -487,6 +505,8 @@ namespace Eppo
 
 	auto EditorLayer::OpenProject(const std::filesystem::path& path) -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::OpenProject");
+
 		if (path.extension().string() != ".epproj")
 		{
 			Log::Error("Could not load '{}' because it is not a project file!", path);
@@ -540,6 +560,8 @@ namespace Eppo
 
 	auto EditorLayer::SaveProject() -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::SaveProject");
+
 		SaveScene();
 
 		if (!Project::GetActive()->GetSpecification().StartScene)
@@ -550,6 +572,8 @@ namespace Eppo
 
 	auto EditorLayer::NewScene() -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::NewScene");
+
 		m_EditorScene = CreateRef<Scene>();
 		m_ActiveScene = m_EditorScene;
 		m_ActiveScenePath = std::filesystem::path();
@@ -558,6 +582,8 @@ namespace Eppo
 
 	auto EditorLayer::OpenScene() -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::OpenScene");
+
 		const auto path = FileDialog::OpenFile({
 			{ "EppoEngine Scene", "epscene" }
 		}, FS::GetRootDirectory());
@@ -570,6 +596,8 @@ namespace Eppo
 
 	auto EditorLayer::OpenScene(const std::filesystem::path& path) -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::OpenScene");
+
 		if (path.extension().string() != ".epscene")
 		{
 			Log::Error("Could not load '{}' because it is not a scene file!", path);
@@ -597,6 +625,8 @@ namespace Eppo
 
 	auto EditorLayer::OpenScene(AssetHandle handle) -> void
 	{
+	    EP_PROFILE_FN("EditorLayer::OpenScene");
+
 		const auto& assetManager = Project::GetActive()->GetAssetManager();
 		m_EditorScene = std::static_pointer_cast<Scene>(assetManager->GetOrLoadAsset(handle));
 		m_ActiveScene = m_EditorScene;
@@ -607,6 +637,8 @@ namespace Eppo
 
 	auto EditorLayer::SaveScene() -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::SaveScene");
+
 		bool saved = false;
 
 		if (m_ActiveScenePath.empty())
@@ -626,6 +658,8 @@ namespace Eppo
 
 	auto EditorLayer::SaveSceneAs() -> bool
 	{
+	    EP_PROFILE_FN("EditorLayer::SaveSceneAs");
+
 		const auto path = FileDialog::SaveFile({
 			{ "EppoEngine Scene", "epscene" }
 		}, FS::GetRootDirectory());
