@@ -25,13 +25,6 @@ namespace Eppo
 		const auto& renderer = dm->GetRenderer();
 		const auto device = dm->GetDevice();
 
-		uint32_t maxFrames = dm->GetParams().MaxFramesInFlight;
-		m_TimerQueries.resize(maxFrames);
-		m_LastQueryTimes.resize(maxFrames);
-
-		for (uint32_t i = 0; i < maxFrames; i++)
-			m_TimerQueries[i] = device->createTimerQuery();
-
 		auto& io = ImGui::GetIO();
 		io.BackendRendererName = "ImGuiRenderer";
 		io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
@@ -150,10 +143,10 @@ namespace Eppo
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
 		m_CommandList->open();
-		m_CommandList->beginTimerQuery(m_TimerQueries.at(frameIndex));
 
 		const std::string marker = std::format("ImGui (Viewport: {})", viewport == ImGui::GetMainViewport() ? "Main" : std::to_string(reinterpret_cast<uint64_t>(viewport)));
-		m_CommandList->beginMarker(marker.c_str());
+		m_Pass.Begin(m_CommandList, frameIndex, marker);
+		PassStatistics& stats = m_Pass.Stats();
 
 		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
 
@@ -249,25 +242,28 @@ namespace Eppo
 					m_CommandList->setGraphicsState(state);
 					m_CommandList->setPushConstants(&pushConstants, sizeof(PushConstants));
 					m_CommandList->drawIndexed(drawArgs);
+
+					stats.DrawCalls++;
 				}
 			}
 			idxOffset += drawList->IdxBuffer.Size;
 			vtxOffset += drawList->VtxBuffer.Size;
 		}
 
-		m_CommandList->endMarker();
-		m_CommandList->endTimerQuery(m_TimerQueries.at(frameIndex));
+		// Geometry submitted for this viewport (draw calls counted above).
+		stats.Vertices += static_cast<uint32_t>(drawData->TotalVtxCount);
+		stats.Indices += static_cast<uint32_t>(drawData->TotalIdxCount);
+
+		m_Pass.End(m_CommandList, frameIndex);
 		m_CommandList->close();
 
 		device->executeCommandList(m_CommandList);
-		m_LastQueryTimes[frameIndex] = device->getTimerQueryTime(m_TimerQueries.at(frameIndex)) * 1000.0f;
-		device->resetTimerQuery(m_TimerQueries.at(frameIndex));
+		m_Pass.Readback(frameIndex);
 	}
 
 	auto ImGuiRenderer::GetOwnGPUTime(uint32_t frameIndex) const -> float
 	{
-		EP_ASSERT(frameIndex < m_LastQueryTimes.size());
-		return m_LastQueryTimes.at(frameIndex);
+		return m_Pass.GetTimeMs(frameIndex);
 	}
 
 	auto ImGuiRenderer::GetGPUTime(uint32_t frameIndex) const -> float
@@ -286,6 +282,24 @@ namespace Eppo
 		}
 
 		return totalTime;
+	}
+
+	auto ImGuiRenderer::GetStats() const -> PassStatistics
+	{
+		PassStatistics total = GetOwnStats();
+
+		const auto& platformIO = ImGui::GetPlatformIO();
+		for (ImGuiViewport* viewport : platformIO.Viewports)
+		{
+			if (viewport == ImGui::GetMainViewport())
+				continue;
+
+			ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+			if (vd && vd->Renderer)
+				total += vd->Renderer->GetOwnStats();
+		}
+
+		return total;
 	}
 
 	auto ImGuiRenderer::UpdateGeometry(ImDrawData* drawData) -> void

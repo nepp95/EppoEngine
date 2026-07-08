@@ -30,6 +30,8 @@ namespace Eppo
 
     auto ScriptEngine::Init(const std::filesystem::path& runtimeConfigPath) -> bool
     {
+        EP_PROFILE_FN("ScriptEngine::Init");
+
         if (s_Instance)
             return true;
 
@@ -50,6 +52,8 @@ namespace Eppo
 
     auto ScriptEngine::Shutdown() -> void
     {
+        EP_PROFILE_FN("ScriptEngine::Shutdown");
+
         if (!s_Instance)
             return;
 
@@ -70,11 +74,15 @@ namespace Eppo
 
     auto ScriptEngine::LoadUserAssembly(const std::filesystem::path& path) -> void
     {
+        EP_PROFILE_FN("ScriptEngine::LoadUserAssembly");
+
         m_CoreAssembly->LoadUserAssembly(NativePath(path));
     }
 
     auto ScriptEngine::UnloadUserAssembly() -> void
     {
+        EP_PROFILE_FN("ScriptEngine::UnloadUserAssembly");
+
         // Live instances reference the assembly's managed bodies; drop the
         // registry before those become invalid.
         m_EntityInstances.clear();
@@ -103,6 +111,8 @@ namespace Eppo
 
     auto ScriptEngine::OnCreateEntity(Entity entity) -> void
     {
+        EP_PROFILE_FN("ScriptEngine::OnCreateEntity");
+
         if (!entity.HasComponent<ScriptComponent>())
             return;
 
@@ -143,6 +153,8 @@ namespace Eppo
 
     auto ScriptEngine::OnUpdateEntity(Entity entity, const float timestep) -> void
     {
+        EP_PROFILE_FN("ScriptEngine::OnUpdateEntity");
+
         if (!entity.HasComponent<ScriptComponent>())
             return;
 
@@ -158,6 +170,8 @@ namespace Eppo
 
     auto ScriptEngine::OnDestroyEntity(Entity entity) -> void
     {
+        EP_PROFILE_FN("ScriptEngine::OnDestroyEntity");
+
         if (!entity.HasComponent<ScriptComponent>())
             return;
 
