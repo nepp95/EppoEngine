@@ -9,14 +9,19 @@ namespace Eppo
 		ScopedBegin scopedBegin("Scene Hierarchy");
 
 		const auto& scene = GetSceneContext();
+
+		// Tighter indent per depth level than the default.
+		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetStyle().IndentSpacing * 0.5f);
+
+		// Roots only; children are drawn by recursion in DrawEntityNode.
 		for (const auto e : scene->m_Registry.view<entt::entity>())
 		{
 			const Entity entity(e, scene.get());
-			// Only roots are drawn at the top level; children are reached by
-			// recursion in DrawEntityNode, so nested entities are not listed twice.
 			if (!entity.GetComponent<RelationshipComponent>().Parent)
 				DrawEntityNode(entity);
 		}
+
+		ImGui::PopStyleVar();
 
 		if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
 			SetSelectedEntity({});
@@ -35,8 +40,7 @@ namespace Eppo
 		const auto& scene = GetSceneContext();
 		const std::string& tag = entity.GetComponent<TagComponent>().Tag;
 
-		// Snapshot the child list: a drag-drop reparent below can mutate it, and we
-		// must not iterate the live vector while it changes underneath us.
+		// Snapshot: a drag-drop reparent below can mutate the live child list.
 		const std::vector<UUID> children = entity.GetComponent<RelationshipComponent>().Children;
 
 		ImGuiTreeNodeFlags flags = (GetSelectedEntity() == entity ? ImGuiTreeNodeFlags_Selected : 0);
@@ -50,7 +54,7 @@ namespace Eppo
 		if (ImGui::IsItemClicked())
 			SetSelectedEntity(entity);
 
-		// This node is a drag source (the entity being moved)...
+		// Drag source: the entity being moved.
 		if (ImGui::BeginDragDropSource())
 		{
 			const uint64_t payload = static_cast<uint64_t>(entity.GetUUID());
@@ -59,14 +63,13 @@ namespace Eppo
 			ImGui::EndDragDropSource();
 		}
 
-		// ...and a drop target (the entity dropped onto becomes the new parent).
+		// Drop target: the entity dropped onto becomes the new parent.
 		if (ImGui::BeginDragDropTarget())
 		{
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_UUID"))
 			{
 				const UUID droppedId = *static_cast<const uint64_t*>(payload->Data);
-				// SetParent guards against self/descendant drops, so an invalid move
-				// is silently ignored here.
+				// SetParent ignores self/descendant drops.
 				scene->SetParent(scene->GetEntityByUUID(droppedId), entity);
 			}
 			ImGui::EndDragDropTarget();
