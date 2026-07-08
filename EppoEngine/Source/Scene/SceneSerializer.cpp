@@ -260,6 +260,51 @@ namespace Eppo
 					}
 				}
 			}
+
+			if (entity.contains("RigidBodyComponent"))
+			{
+				auto& c = entity["RigidBodyComponent"];
+				auto& nc = newEntity.AddComponent<RigidBodyComponent>();
+				nc.Type = static_cast<RigidBodyComponent::BodyType>(c["Type"].get<uint8_t>());
+				nc.GravityScale = c["GravityScale"].get<float>();
+				nc.LinearDamping = c["LinearDamping"].get<float>();
+				nc.AngularDamping = c["AngularDamping"].get<float>();
+			}
+
+			if (entity.contains("BoxColliderComponent"))
+			{
+				auto& c = entity["BoxColliderComponent"];
+				auto& nc = newEntity.AddComponent<BoxColliderComponent>();
+				nc.HalfExtents = c["HalfExtents"].get<glm::vec3>();
+				nc.Offset = c["Offset"].get<glm::vec3>();
+				nc.Density = c["Density"].get<float>();
+				nc.Friction = c["Friction"].get<float>();
+				nc.Restitution = c["Restitution"].get<float>();
+			}
+
+			if (entity.contains("SphereColliderComponent"))
+			{
+				auto& c = entity["SphereColliderComponent"];
+				auto& nc = newEntity.AddComponent<SphereColliderComponent>();
+				nc.Radius = c["Radius"].get<float>();
+				nc.Offset = c["Offset"].get<glm::vec3>();
+				nc.Density = c["Density"].get<float>();
+				nc.Friction = c["Friction"].get<float>();
+				nc.Restitution = c["Restitution"].get<float>();
+			}
+
+			if (entity.contains("CapsuleColliderComponent"))
+			{
+				auto& c = entity["CapsuleColliderComponent"];
+				auto& nc = newEntity.AddComponent<CapsuleColliderComponent>();
+				nc.Radius = c["Radius"].get<float>();
+				nc.Height = c["Height"].get<float>();
+				nc.Offset = c["Offset"].get<glm::vec3>();
+				nc.Density = c["Density"].get<float>();
+				nc.Friction = c["Friction"].get<float>();
+				nc.Restitution = c["Restitution"].get<float>();
+			}
+
 		}
 
 		return true;
@@ -342,6 +387,46 @@ namespace Eppo
 				}
 			}
 			e["ScriptComponent"]["Fields"] = fields;
+		}
+
+		if (entity.HasComponent<RigidBodyComponent>())
+		{
+			const auto& c = entity.GetComponent<RigidBodyComponent>();
+			e["RigidBodyComponent"]["Type"] = static_cast<uint8_t>(c.Type);
+			e["RigidBodyComponent"]["GravityScale"] = c.GravityScale;
+			e["RigidBodyComponent"]["LinearDamping"] = c.LinearDamping;
+			e["RigidBodyComponent"]["AngularDamping"] = c.AngularDamping;
+		}
+
+		if (entity.HasComponent<BoxColliderComponent>())
+		{
+			const auto& c = entity.GetComponent<BoxColliderComponent>();
+			e["BoxColliderComponent"]["HalfExtents"] = c.HalfExtents;
+			e["BoxColliderComponent"]["Offset"] = c.Offset;
+			e["BoxColliderComponent"]["Density"] = c.Density;
+			e["BoxColliderComponent"]["Friction"] = c.Friction;
+			e["BoxColliderComponent"]["Restitution"] = c.Restitution;
+		}
+
+		if (entity.HasComponent<SphereColliderComponent>())
+		{
+			const auto& c = entity.GetComponent<SphereColliderComponent>();
+			e["SphereColliderComponent"]["Radius"] = c.Radius;
+			e["SphereColliderComponent"]["Offset"] = c.Offset;
+			e["SphereColliderComponent"]["Density"] = c.Density;
+			e["SphereColliderComponent"]["Friction"] = c.Friction;
+			e["SphereColliderComponent"]["Restitution"] = c.Restitution;
+		}
+
+		if (entity.HasComponent<CapsuleColliderComponent>())
+		{
+			const auto& c = entity.GetComponent<CapsuleColliderComponent>();
+			e["CapsuleColliderComponent"]["Radius"] = c.Radius;
+			e["CapsuleColliderComponent"]["Height"] = c.Height;
+			e["CapsuleColliderComponent"]["Offset"] = c.Offset;
+			e["CapsuleColliderComponent"]["Density"] = c.Density;
+			e["CapsuleColliderComponent"]["Friction"] = c.Friction;
+			e["CapsuleColliderComponent"]["Restitution"] = c.Restitution;
 		}
 
 		data.emplace_back(e);

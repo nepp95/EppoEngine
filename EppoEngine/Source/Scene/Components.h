@@ -114,4 +114,65 @@ namespace Eppo
 		RelationshipComponent() = default;
 		RelationshipComponent(const RelationshipComponent&) = default;
 	};
+
+	// Turns an entity into a physics body. On play the scene builds a Box3D body
+	// from this + the entity's collider component(s); each frame it writes the
+	// simulated pose back into the TransformComponent. Static never moves,
+	// Kinematic is script/animation driven, Dynamic is fully simulated. No live
+	// body handle is stored here — PhysicsWorld owns that (keyed by UUID), since
+	// the scene is deep-copied on play and bodies are rebuilt at OnRuntimeStart.
+	struct RigidBodyComponent
+	{
+		enum class BodyType : uint8_t { Static = 0, Kinematic, Dynamic };
+
+		BodyType Type = BodyType::Static;
+		float GravityScale = 1.0f;
+		float LinearDamping = 0.0f;
+		float AngularDamping = 0.0f;
+
+		RigidBodyComponent() = default;
+		RigidBodyComponent(const RigidBodyComponent&) = default;
+	};
+
+	// Box collider (a Box3D convex hull). HalfExtents/Offset are in the entity's
+	// local space. Material (density/friction/restitution) lives on the collider
+	// so different shapes on one body can differ.
+	struct BoxColliderComponent
+	{
+		glm::vec3 HalfExtents = glm::vec3(0.5f);
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		BoxColliderComponent() = default;
+		BoxColliderComponent(const BoxColliderComponent&) = default;
+	};
+
+	struct SphereColliderComponent
+	{
+		float Radius = 0.5f;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		SphereColliderComponent() = default;
+		SphereColliderComponent(const SphereColliderComponent&) = default;
+	};
+
+	// Capsule aligned to the local Y axis. Height is the distance between the two
+	// hemisphere centers (the cylindrical part); total height is Height + 2*Radius.
+	struct CapsuleColliderComponent
+	{
+		float Radius = 0.5f;
+		float Height = 1.0f;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		CapsuleColliderComponent() = default;
+		CapsuleColliderComponent(const CapsuleColliderComponent&) = default;
+	};
 }

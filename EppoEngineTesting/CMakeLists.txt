@@ -135,6 +135,7 @@ endfunction()
 
 eppo_add_suite(Core      LABEL unit)
 eppo_add_suite(Input     LABEL unit)
+eppo_add_suite(Physics   LABEL unit)
 eppo_add_suite(Renderer  LABEL unit)
 eppo_add_suite(Scene     LABEL scene)
 eppo_add_suite(Project   LABEL scene)

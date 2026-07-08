@@ -3,6 +3,11 @@ if (NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan not found!")
 endif ()
 
+find_package(box3d CONFIG REQUIRED)
+if (NOT box3d_FOUND)
+    message(FATAL_ERROR "box3d not found!")
+endif ()
+
 find_package(EnTT REQUIRED)
 if (NOT EnTT_FOUND)
     message(FATAL_ERROR "entt not found!")

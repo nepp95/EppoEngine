@@ -2,6 +2,7 @@
 #include "Scripting/ScriptEngine.h"
 
 #include "Core/Input.h"
+#include "Physics/PhysicsWorld.h"
 #include "Scene/Components.h"
 
 namespace Eppo
@@ -40,6 +41,9 @@ namespace Eppo
         EppoScriptCore::NativeCallbacks callbacks;
         callbacks.Log = LogCallback;
         callbacks.InputIsKeyDown = InputIsKeyDownCallback;
+        callbacks.ApplyLinearImpulse = ApplyLinearImpulseCallback;
+        callbacks.GetLinearVelocity = GetLinearVelocityCallback;
+        callbacks.SetLinearVelocity = SetLinearVelocityCallback;
 
         s_Instance->m_CoreAssembly = std::make_unique<EppoScriptCore::Assembly>(
             ErrorCallback,
@@ -255,5 +259,34 @@ namespace Eppo
     auto ScriptEngine::ErrorCallback(const std::string& message) -> void
     {
         Log::Error("{}", message);
+    }
+
+    auto ScriptEngine::ApplyLinearImpulseCallback(const uint64_t entityId, const EppoScriptCore::EppoVec3 impulse) -> void
+    {
+        if (!s_Instance || !s_Instance->m_ActivePhysicsWorld)
+            return;
+
+        s_Instance->m_ActivePhysicsWorld->ApplyLinearImpulse(UUID(entityId), { impulse.x, impulse.y, impulse.z });
+    }
+
+    auto ScriptEngine::GetLinearVelocityCallback(const uint64_t entityId, EppoScriptCore::EppoVec3* outVelocity) -> void
+    {
+        if (!outVelocity)
+            return;
+
+        *outVelocity = { 0.0f, 0.0f, 0.0f };
+        if (!s_Instance || !s_Instance->m_ActivePhysicsWorld)
+            return;
+
+        const glm::vec3 velocity = s_Instance->m_ActivePhysicsWorld->GetLinearVelocity(UUID(entityId));
+        *outVelocity = { velocity.x, velocity.y, velocity.z };
+    }
+
+    auto ScriptEngine::SetLinearVelocityCallback(const uint64_t entityId, const EppoScriptCore::EppoVec3 velocity) -> void
+    {
+        if (!s_Instance || !s_Instance->m_ActivePhysicsWorld)
+            return;
+
+        s_Instance->m_ActivePhysicsWorld->SetLinearVelocity(UUID(entityId), { velocity.x, velocity.y, velocity.z });
     }
 }

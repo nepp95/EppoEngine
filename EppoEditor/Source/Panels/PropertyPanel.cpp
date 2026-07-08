@@ -78,6 +78,10 @@ namespace Eppo
 			DrawAddComponentEntry<CameraComponent>("Camera");
 			DrawAddComponentEntry<PointLightComponent>("Point Light");
 			DrawAddComponentEntry<ScriptComponent>("Script");
+			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
+			DrawAddComponentEntry<BoxColliderComponent>("Box Collider");
+			DrawAddComponentEntry<SphereColliderComponent>("Sphere Collider");
+			DrawAddComponentEntry<CapsuleColliderComponent>("Capsule Collider");
 
 			ImGui::EndPopup();
 		}
@@ -340,6 +344,46 @@ namespace Eppo
 
 				ImGui::EndTable();
 			}
+		});
+
+		DrawComponent<RigidBodyComponent>(entity, [](auto& component)
+		{
+			const char* types[] = { "Static", "Kinematic", "Dynamic" };
+			int current = static_cast<int>(component.Type);
+			if (ImGui::Combo("Body Type", &current, types, IM_ARRAYSIZE(types)))
+				component.Type = static_cast<RigidBodyComponent::BodyType>(current);
+
+			ImGui::DragFloat("Gravity Scale", &component.GravityScale, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Linear Damping", &component.LinearDamping, 0.01f, 0.0f, 0.0f);
+			ImGui::DragFloat("Angular Damping", &component.AngularDamping, 0.01f, 0.0f, 0.0f);
+		});
+
+		DrawComponent<BoxColliderComponent>(entity, [](auto& component)
+		{
+			ImGui::DragFloat3("Half Extents", &component.HalfExtents.x, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat3("Offset", &component.Offset.x, 0.05f);
+			ImGui::DragFloat("Density", &component.Density, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
+			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
+		});
+
+		DrawComponent<SphereColliderComponent>(entity, [](auto& component)
+		{
+			ImGui::DragFloat("Radius", &component.Radius, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat3("Offset", &component.Offset.x, 0.05f);
+			ImGui::DragFloat("Density", &component.Density, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
+			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
+		});
+
+		DrawComponent<CapsuleColliderComponent>(entity, [](auto& component)
+		{
+			ImGui::DragFloat("Radius", &component.Radius, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Height", &component.Height, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat3("Offset", &component.Offset.x, 0.05f);
+			ImGui::DragFloat("Density", &component.Density, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
+			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
 		});
 	}
 
