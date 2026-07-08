@@ -8,7 +8,7 @@ namespace Eppo
 	{
 	public:
 		Camera() = default;
-		Camera(const glm::mat4& projection)
+        explicit Camera(const glm::mat4& projection)
 			: m_Projection(projection)
 		{}
 
@@ -17,6 +17,6 @@ namespace Eppo
 		[[nodiscard]] auto GetProjectionMatrix() const -> const glm::mat4& { return m_Projection; }
 
 	protected:
-		glm::mat4 m_Projection;
+		glm::mat4 m_Projection{};
 	};
 }

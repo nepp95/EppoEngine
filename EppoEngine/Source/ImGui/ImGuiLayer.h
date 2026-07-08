@@ -15,7 +15,7 @@ namespace Eppo
 		auto PrepareRender() -> void;
 		auto Render() -> void;
 		auto BlockEvents(bool blockEvents) -> void;
-		constexpr auto GetMainImGuiRenderer() const -> const ScopedPtr<ImGuiRenderer>& { return m_ImGuiRenderer; }
+		[[nodiscard]] constexpr auto GetMainImGuiRenderer() const -> const ScopedPtr<ImGuiRenderer>& { return m_ImGuiRenderer; }
 
 	private:
 		auto InitPlatformInterface() -> void;

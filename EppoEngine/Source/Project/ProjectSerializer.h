@@ -7,7 +7,7 @@ namespace Eppo
 	class ProjectSerializer
 	{
 	public:
-		ProjectSerializer(const Ref<Project>& project);
+        explicit ProjectSerializer(const Ref<Project>& project);
 
 		[[nodiscard]] auto Serialize() const -> bool;
 		[[nodiscard]] auto Deserialize(const std::filesystem::path& path) const -> bool;

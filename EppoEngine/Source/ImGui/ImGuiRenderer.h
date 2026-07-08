@@ -1,8 +1,6 @@
 #pragma once
 
-#include "Renderer/IndexBuffer.h"
 #include "Renderer/RenderPass.h"
-#include "Renderer/VertexBuffer.h"
 
 #include <imgui.h>
 #include <nvrhi/nvrhi.h>
@@ -21,20 +19,18 @@ namespace Eppo
 		auto Resize() -> void;
 		auto UpdateFontTexture() -> void;
 		auto RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain) -> void;
-		auto Render(ImGuiViewport* viewport, nvrhi::GraphicsPipelineHandle pipeline, nvrhi::FramebufferHandle framebuffer) -> void;
-		auto GetGPUTime(uint32_t frameIndex) const -> float;
-		auto GetOwnGPUTime(uint32_t frameIndex) const -> float;
+		auto Render(ImGuiViewport* viewport, const nvrhi::GraphicsPipelineHandle& pipeline, const nvrhi::FramebufferHandle& framebuffer) -> void;
 
-		// Draw statistics for the UI, aggregated across the main and platform
-		// (multi-viewport) renderers, mirroring how GetGPUTime sums time.
-		auto GetStats() const -> PassStatistics;
-		auto GetOwnStats() const -> const PassStatistics& { return m_Pass.GetStats(); }
+	    [[nodiscard]] auto GetGPUTime(uint32_t frameIndex) const -> float;
+		[[nodiscard]] auto GetOwnGPUTime(uint32_t frameIndex) const -> float;
+		[[nodiscard]] auto GetStats() const -> PassStatistics;
+		[[nodiscard]] auto GetOwnStats() const -> const PassStatistics& { return m_Pass.GetStats(); }
 
 	private:
 		auto UpdateGeometry(ImDrawData* drawData) -> void;
 		auto ReallocateBuffer(uint64_t size, bool indexBuffer) -> nvrhi::BufferHandle;
 		auto GetOrCreatePipeline(const ScopedPtr<Swapchain>& swapchain) -> nvrhi::GraphicsPipelineHandle;
-		auto GetOrCreateBindingSet(nvrhi::TextureHandle texture) -> nvrhi::BindingSetHandle;
+		auto GetOrCreateBindingSet(const nvrhi::TextureHandle& texture) -> nvrhi::BindingSetHandle;
 
 	private:
 		nvrhi::CommandListHandle m_CommandList = nullptr;

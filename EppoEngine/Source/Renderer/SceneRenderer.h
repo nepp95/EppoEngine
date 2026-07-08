@@ -1,13 +1,11 @@
 #pragma once
 
 #include "Renderer/Camera/EditorCamera.h"
-#include "Renderer/IndexBuffer.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderPass.h"
 #include "Renderer/StorageBuffer.h"
 #include "Renderer/UniformBuffer.h"
-#include "Renderer/VertexBuffer.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
 
@@ -26,9 +24,9 @@ namespace Eppo
 		auto BeginScene(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& position) -> void;
 		auto EndScene() -> void;
 
-		auto GetFinalImage() const -> const Ref<Image>&;
+		[[nodiscard]] auto GetFinalImage() const -> const Ref<Image>&;
 
-		auto SubmitMesh(const AssetHandle meshHandle, const glm::mat4& transform) -> void;
+		auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
 		auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity) -> void;
 		auto SubmitEnvironment(const EnvironmentSettings& environment) -> void;
 

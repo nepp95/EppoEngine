@@ -233,19 +233,19 @@ namespace Eppo
 		const auto& assetManager = Project::GetActive()->GetAssetManager();
 		const std::string search = m_SearchBuffer;
 
-		const float cellSize = THUMBNAIL_SIZE + CELL_PADDING;
+        constexpr float cellSize = THUMBNAIL_SIZE + CELL_PADDING;
 		const float panelWidth = ImGui::GetContentRegionAvail().x;
 		const int columnCount = std::max(1, static_cast<int>(panelWidth / cellSize));
 
 		ImGui::Columns(columnCount, nullptr, false);
 
-		std::error_code ec;
 		std::vector<std::filesystem::directory_entry> entries;
-		for (const auto& entry : std::filesystem::directory_iterator(m_CurrentDirectory, ec))
+		for (const auto& entry : std::filesystem::directory_iterator(m_CurrentDirectory))
 			entries.push_back(entry);
 
 		// Folders first, then files; alphabetical within each group.
-		std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b)
+		std::ranges::sort(
+            entries, [](const auto& a, const auto& b)
 		{
 			if (a.is_directory() != b.is_directory())
 				return a.is_directory();
@@ -355,13 +355,12 @@ namespace Eppo
 
 			if (ImGui::Button("Rename", ImVec2(100.0f, 0.0f)) && !m_RenameBuffer.empty())
 			{
-				const auto newPath = m_RenameTarget.parent_path() / m_RenameBuffer;
-				if (!FS::Exists(newPath))
+                if (const auto newPath = m_RenameTarget.parent_path() / m_RenameBuffer; !FS::Exists(newPath))
 				{
 					const auto& assetManager = Project::GetActive()->GetAssetManager();
-					const AssetHandle handle = assetManager->GetHandleForPath(m_RenameTarget);
 
-					if (FS::Move(m_RenameTarget, newPath) && handle)
+                    if (const AssetHandle handle = assetManager->GetHandleForPath(m_RenameTarget);
+                        FS::Move(m_RenameTarget, newPath) && handle)
 						assetManager->UpdateAssetPath(handle, newPath);
 				}
 				else

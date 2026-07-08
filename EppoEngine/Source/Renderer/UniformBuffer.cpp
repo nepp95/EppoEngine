@@ -5,8 +5,8 @@
 
 namespace Eppo
 {
-	UniformBuffer::UniformBuffer(uint64_t size, const std::string& debugName)
-		: m_Size(size), m_DebugName(debugName)
+	UniformBuffer::UniformBuffer(const uint64_t size, std::string debugName)
+		: m_Size(size), m_DebugName(std::move(debugName))
 	{
 		EP_PROFILE_FN("UniformBuffer::UniformBuffer");
 

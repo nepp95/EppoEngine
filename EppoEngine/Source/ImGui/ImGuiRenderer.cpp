@@ -133,7 +133,7 @@ namespace Eppo
 		Render(viewport, GetOrCreatePipeline(swapchain), swapchain->GetCurrentSwapchainImage().Framebuffer->GetFramebuffer());
 	}
 
-	auto ImGuiRenderer::Render(ImGuiViewport* viewport, nvrhi::GraphicsPipelineHandle pipeline, nvrhi::FramebufferHandle framebuffer) -> void
+	auto ImGuiRenderer::Render(ImGuiViewport* viewport, const nvrhi::GraphicsPipelineHandle& pipeline, const nvrhi::FramebufferHandle& framebuffer) -> void
 	{
 		EP_PROFILE_FN("ImGuiRenderer::Render")
 
@@ -276,8 +276,7 @@ namespace Eppo
 			if (viewport == ImGui::GetMainViewport())
 				continue;
 
-			ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
-			if (vd && vd->Renderer)
+            if (const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData); vd && vd->Renderer)
 				totalTime += vd->Renderer->GetOwnGPUTime(frameIndex);
 		}
 
@@ -288,14 +287,12 @@ namespace Eppo
 	{
 		PassStatistics total = GetOwnStats();
 
-		const auto& platformIO = ImGui::GetPlatformIO();
-		for (ImGuiViewport* viewport : platformIO.Viewports)
+        for (const auto& platformIO = ImGui::GetPlatformIO(); const ImGuiViewport* viewport : platformIO.Viewports)
 		{
 			if (viewport == ImGui::GetMainViewport())
 				continue;
 
-			ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
-			if (vd && vd->Renderer)
+            if (const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData); vd && vd->Renderer)
 				total += vd->Renderer->GetOwnStats();
 		}
 
@@ -306,24 +303,21 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiRenderer::UpdateGeometry")
 
-		// Calculate buffer size + a small margin since we can often have the case we just need a little bit more (menu's, hover effects, etc...)
-		uint64_t requiredVtxSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
-		uint64_t reallocateVtxSize = UINT64_MAX - requiredVtxSize > 1024 ? requiredVtxSize + 1024 : UINT64_MAX;
+		// Calculate buffer size + a small margin since we can often have the case we just need a little bit more (menu's, hover effects,
+        // etc...)
+        const uint64_t requiredVtxSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
+        const uint64_t reallocateVtxSize = UINT64_MAX - requiredVtxSize > 1024 ? requiredVtxSize + 1024 : UINT64_MAX;
 		if (!m_VertexBuffer || m_VertexBuffer->getDesc().byteSize < requiredVtxSize)
 			m_VertexBuffer = ReallocateBuffer(reallocateVtxSize, false);
 
-		uint64_t requiredIdxSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
-		uint64_t reallocateIdxSize = UINT64_MAX - requiredIdxSize > 1024 ? requiredIdxSize + 1024 : UINT64_MAX;
+        const uint64_t requiredIdxSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
+        const uint64_t reallocateIdxSize = UINT64_MAX - requiredIdxSize > 1024 ? requiredIdxSize + 1024 : UINT64_MAX;
 		if (!m_IndexBuffer || m_IndexBuffer->getDesc().byteSize < requiredIdxSize)
 			m_IndexBuffer = ReallocateBuffer(reallocateIdxSize, true);
 
 		// Update local data
 		m_LocalVertexData.resize(drawData->TotalVtxCount);
 		m_LocalIndexData.resize(drawData->TotalIdxCount);
-
-		// Use data() rather than &[0]: a frame with no UI (e.g. an app with no
-		// visible ImGui windows) yields empty buffers, and &vec[0] on an empty
-		// vector is undefined behaviour (a hard assert in debug STL builds).
 		ImDrawVert* vtxDst = m_LocalVertexData.data();
 		ImDrawIdx* idxDst = m_LocalIndexData.data();
 
@@ -342,13 +336,13 @@ namespace Eppo
 		m_CommandList->writeBuffer(m_IndexBuffer, m_LocalIndexData.data(), m_LocalIndexData.size() * sizeof(ImDrawIdx));
 	}
 
-	auto ImGuiRenderer::ReallocateBuffer(uint64_t size, bool indexBuffer) -> nvrhi::BufferHandle
+	auto ImGuiRenderer::ReallocateBuffer(const uint64_t size, const bool indexBuffer) -> nvrhi::BufferHandle
 	{
 		EP_PROFILE_FN("ImGuiRenderer::ReallocateBuffer")
 
 		const auto device = DeviceManager::Get()->GetDevice();
 
-		nvrhi::BufferDesc bufferDesc{
+        const nvrhi::BufferDesc bufferDesc{
 			.byteSize = size,
 			.debugName = indexBuffer ? "ImGui IndexBuffer" : "ImGui VertexBuffer",
 			.isVertexBuffer = !indexBuffer ? true : false,
@@ -367,7 +361,7 @@ namespace Eppo
 		const uint32_t framebufferIndex = swapchain->GetCurrentBackBufferIndex();
 		auto& pipelineCache = m_PipelineCache[swapchain.get()];
 
-		nvrhi::FramebufferHandle targetFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer->GetFramebuffer();
+        const nvrhi::FramebufferHandle targetFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer->GetFramebuffer();
 		nvrhi::GraphicsPipelineHandle pipeline = pipelineCache.Pipelines.at(framebufferIndex);
 
 		bool invalidate = !pipeline || pipelineCache.Framebuffers.at(framebufferIndex) != targetFramebuffer;
@@ -375,7 +369,7 @@ namespace Eppo
 		{
 			const auto& dm = DeviceManager::Get();
 			const auto device = dm->GetDevice();
-			
+
 			pipeline = device->createGraphicsPipeline(m_PipelineDesc, targetFramebuffer->getFramebufferInfo());
 			pipelineCache.Pipelines.at(framebufferIndex) = pipeline;
 			pipelineCache.Framebuffers.at(framebufferIndex) = targetFramebuffer;
@@ -384,12 +378,11 @@ namespace Eppo
 		return pipeline;
 	}
 
-	auto ImGuiRenderer::GetOrCreateBindingSet(nvrhi::TextureHandle texture) -> nvrhi::BindingSetHandle
+	auto ImGuiRenderer::GetOrCreateBindingSet(const nvrhi::TextureHandle& texture) -> nvrhi::BindingSetHandle
 	{
 		EP_PROFILE_FN("ImGuiRenderer::GetOrCreateBindingSet")
 
-		auto it = m_BindingSetCache.find(texture);
-		if (it != m_BindingSetCache.end())
+        if (const auto it = m_BindingSetCache.find(texture); it != m_BindingSetCache.end())
 			return it->second;
 
 		const auto& dm = DeviceManager::Get();
@@ -402,8 +395,7 @@ namespace Eppo
 			nvrhi::BindingSetItem::Sampler(0, m_FontSampler)
 		};
 
-		nvrhi::BindingSetHandle bindingSet;
-		bindingSet = device->createBindingSet(desc, m_BindingSetLayout);
+        nvrhi::BindingSetHandle bindingSet = device->createBindingSet(desc, m_BindingSetLayout);
 		EP_ASSERT(bindingSet);
 
 		m_BindingSetCache[texture] = bindingSet;

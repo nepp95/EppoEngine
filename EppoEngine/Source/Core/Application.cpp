@@ -12,42 +12,31 @@ namespace Eppo
 	Application* Application::s_Instance = nullptr;
 
 	Application::Application(ApplicationParams&& params)
-		: m_Params(std::move(params))
+		: m_Params(params)
 	{
 		EP_ASSERT(!s_Instance, "There can only be one instance of the application!");
 		s_Instance = this;
 
-		// Bring-up can fail (no GPU/display). Keep the singleton consistent: if
-		// any of it throws, the destructor won't run (the object was never fully
-		// constructed), so clear s_Instance here before rethrowing.
-		try
-		{
-			// Create window
-			m_Window = CreateRef<Window>(1600, 900);
-			m_Window->SetEventCallback(
-				[this](Event& e) -> void
-				{
-					OnEvent(e);
-				}
-			);
+		// Create window
+		m_Window = CreateRef<Window>(1600, 900);
+		m_Window->SetEventCallback(
+			[this](Event& e) -> void
+			{
+				OnEvent(e);
+			}
+		);
 
-			// Create device manager (dx11/dx12/vk)
-			DeviceParams deviceParams{
-				.API = RendererAPI::Vulkan,
-			};
+		// Create device manager (dx11/dx12/vk)
+        const DeviceParams deviceParams{
+			.API = RendererAPI::Vulkan,
+		};
 
-			m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
-			m_DeviceManager->Init();
-			m_DeviceManager->InitRenderer();
+		m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
+		m_DeviceManager->Init();
+		m_DeviceManager->InitRenderer();
 
-			// Create UI layer
-			m_ImGuiLayer = PushLayer<ImGuiLayer>();
-		}
-		catch (...)
-		{
-			s_Instance = nullptr;
-			throw;
-		}
+		// Create UI layer
+		m_ImGuiLayer = PushLayer<ImGuiLayer>();
 	}
 
 	Application::~Application()
@@ -58,7 +47,7 @@ namespace Eppo
 
 		for (auto it = m_LayerStack.begin(); it != m_LayerStack.end();)
 		{
-			auto layer = *it;
+            const auto layer = *it;
 			layer->OnDetach();
 			it = m_LayerStack.erase(it);
 		}
@@ -85,7 +74,7 @@ namespace Eppo
 		m_DeviceManager->GetDevice()->waitForIdle();
 	}
 
-	auto Application::StepFrame(float timestep) -> void
+	auto Application::StepFrame(const float timestep) const -> void
 	{
 		EP_PROFILE_FN("Application::StepFrame")
 
@@ -138,7 +127,7 @@ namespace Eppo
 	auto Application::OnWindowResize(const WindowResizeEvent& e) -> bool
 	{
 		const uint32_t width = e.GetWidth();
-		const uint32_t height = e.GetHeight();
+		const uint32_t height = e.GetHeight(); //NOLINT
 
 		if (width == 0 || height == 0)
 		{
@@ -148,6 +137,6 @@ namespace Eppo
 
 		m_IsMinimized = false;
 
-		return false;
+		return true;
 	}
 }

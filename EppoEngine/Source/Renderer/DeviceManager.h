@@ -93,23 +93,23 @@ namespace Eppo
 		// Frame
 		virtual auto BeginFrame() -> bool = 0;
 		virtual auto Present() -> bool = 0;
-		auto WaitIdle() const -> bool;
+		[[nodiscard]] auto WaitIdle() const -> bool;
 
 		// Renderer
 		auto InitRenderer() -> void;
 		[[nodiscard]] constexpr auto GetRenderer() const -> const ScopedPtr<Renderer>& { return m_Renderer; }
 
 		// Swapchain/Nvrhi device
-		virtual auto GetCurrentBackBufferIndex() const -> uint32_t = 0;
+		[[nodiscard]] virtual auto GetCurrentBackBufferIndex() const -> uint32_t = 0;
 		virtual auto GetCurrentSwapchainImage() -> const SwapchainImage & = 0;
-		virtual auto GetDevice() const -> nvrhi::IDevice* = 0;
+		[[nodiscard]] virtual auto GetDevice() const -> nvrhi::IDevice* = 0;
 
 		// Device Manager
 		[[nodiscard]] auto GetParams() -> const DeviceParams& { return m_Params; }
 		static auto Get() -> Ref<DeviceManager>;
 
 	protected:
-		DeviceManager(const Ref<Window>& window, const DeviceParams& params);
+		DeviceManager(const Ref<Window>& window, DeviceParams params);
 
 	protected:
 		DeviceParams m_Params;

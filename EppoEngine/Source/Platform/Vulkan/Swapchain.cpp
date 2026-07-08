@@ -10,7 +10,7 @@
 
 namespace Eppo
 {
-	Swapchain::Swapchain(VkSurfaceKHR surface)
+	Swapchain::Swapchain(const VkSurfaceKHR surface)
 		: m_Surface(surface)
 	{
 		const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());

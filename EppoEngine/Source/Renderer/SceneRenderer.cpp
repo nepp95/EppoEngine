@@ -5,7 +5,6 @@
 #include "Project/Project.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/Vertex.h"
 
 #include <nvrhi/utils.h>
 
@@ -337,7 +336,7 @@ namespace Eppo
 
 		// Viewport and scissor
 		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
-		state.viewport.scissorRects = { nvrhi::Rect(m_Width, m_Height) };
+		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
 
 		// Push constants forward decl
 		struct PushConstants
@@ -372,15 +371,15 @@ namespace Eppo
 		const auto& descriptorTable = m_GeometryPipeline->GetSpecification().Shader->GetDescriptorTable();
 		state.addBindingSet(descriptorTable);
 
-		for (const auto& [key, drawCmd] : m_DrawCommands)
+		for (const auto& drawCmd : m_DrawCommands | std::views::values)
 		{
-			const uint32_t instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+			const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
 			if (instanceCount == 0)
 				continue;
 
 			for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
 			{
-				nvrhi::VertexBufferBinding vtxBufBinding{
+                const nvrhi::VertexBufferBinding vtxBufBinding{
 					.buffer = submesh.VertexBuffer->GetBuffer(),
 					.slot = 0,
 					.offset = 0,
@@ -396,27 +395,27 @@ namespace Eppo
 				pushConstants.Transform = submesh.LocalTransform;
 				pushConstants.InstanceOffset = drawCmd.InstanceOffset;
 
-				for (const auto& p : submesh.Primitives)
+				for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
 				{
-					pushConstants.DiffuseMapIndex = p.Material->DiffuseMapIndex;
-					pushConstants.NormalMapIndex = p.Material->NormalMapIndex;
-					pushConstants.RoughMetMapIndex = p.Material->RoughMetMapIndex;
-					pushConstants.Metallic = p.Material->Metallic;
-					pushConstants.Roughness = p.Material->Roughness;
+					pushConstants.DiffuseMapIndex = material->DiffuseMapIndex;
+					pushConstants.NormalMapIndex = material->NormalMapIndex;
+					pushConstants.RoughMetMapIndex = material->RoughMetMapIndex;
+					pushConstants.Metallic = material->Metallic;
+					pushConstants.Roughness = material->Roughness;
 					m_CommandList->setPushConstants(&pushConstants, sizeof(PushConstants));
 
 					nvrhi::DrawArguments drawArgs{
-						.vertexCount = static_cast<uint32_t>(p.IndexCount),
+						.vertexCount = static_cast<uint32_t>(indexCount),
 						.instanceCount = instanceCount,
-						.startIndexLocation = p.FirstIndex,
-						.startVertexLocation = p.FirstVertex,
+						.startIndexLocation = firstIndex,
+						.startVertexLocation = firstVertex,
 					};
 
 					m_CommandList->drawIndexed(drawArgs);
 
 					stats.DrawCalls++;
-					stats.Vertices += static_cast<uint32_t>(p.VertexCount) * instanceCount;
-					stats.Indices += static_cast<uint32_t>(p.IndexCount) * instanceCount;
+					stats.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
+					stats.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
 				}
 				stats.Submeshes++;
 			}
@@ -434,7 +433,7 @@ namespace Eppo
 		EP_PROFILE_FN("SceneRenderer::SkyPass")
 
 		const auto& dm = DeviceManager::Get();
-		auto device = dm->GetDevice();
+        const auto device = dm->GetDevice();
 		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
@@ -451,7 +450,7 @@ namespace Eppo
 			.framebuffer = framebuffer->GetFramebuffer(),
 		};
 		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
-		state.viewport.scissorRects = { nvrhi::Rect(m_Width, m_Height) };
+		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
 
 		const auto& bindingLayouts = m_SkyPipeline->GetSpecification().Shader->GetBindingLayouts();
 
@@ -466,7 +465,7 @@ namespace Eppo
 
 		m_CommandList->setGraphicsState(state);
 
-		const nvrhi::DrawArguments drawArgs{
+        constexpr nvrhi::DrawArguments drawArgs{
 			.vertexCount = 3,
 			.instanceCount = 1,
 		};

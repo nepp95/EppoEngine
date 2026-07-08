@@ -3,8 +3,6 @@
 #include "Core/Base.h"
 #include "Core/Application.h"
 
-extern auto Eppo::CreateApplication(int argc, char** argv) -> Eppo::Application*;
-
 auto main(const int argc, char** argv) -> int
 {
 	// Initialize logging

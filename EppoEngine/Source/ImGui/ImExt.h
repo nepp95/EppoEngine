@@ -5,7 +5,7 @@
 
 namespace ImGuiEx
 {
-	inline auto CreateTextureRef(const nvrhi::TextureHandle texture) -> ImTextureRef
+	inline auto CreateTextureRef(const nvrhi::TextureHandle& texture) -> ImTextureRef
 	{
 		ImTextureRef ref;
 		ref._TexID = reinterpret_cast<ImU64>(texture.Get());

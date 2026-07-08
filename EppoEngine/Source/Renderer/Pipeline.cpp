@@ -44,7 +44,7 @@ namespace Eppo
 		EP_ASSERT(m_PipelineHandle);
 	}
 
-	auto Pipeline::Resize(uint32_t width, uint32_t height) -> void
+	auto Pipeline::Resize(const uint32_t width, const uint32_t height) const -> void
 	{
 		m_Specification.Framebuffer->Resize(width, height);
 	}

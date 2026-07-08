@@ -25,9 +25,9 @@ namespace Eppo
 				if (message)
 					Log::Error("Assertion failed: {}", message);
 				#if defined(EP_PLATFORM_WINDOWS)
-					__debugbreak();
+				__debugbreak();
 				#elif defined(EP_PLATFORM_LINUX)
-					raise(SIGTRAP);
+				raise(SIGTRAP);
 				#endif
 			}
 		#endif

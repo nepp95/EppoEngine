@@ -15,7 +15,7 @@ namespace Eppo
 		int Argc;
 		char** Argv;
 
-		CommandLineArgs(int argc, char** argv)
+		CommandLineArgs(const int argc, char** argv)
 			: Argc(argc), Argv(argv)
 		{}
 
@@ -51,7 +51,7 @@ namespace Eppo
 		// pump window events, update layers, render, and present. Run() is just a
 		// loop over this with a wall-clock timestep; a test harness can instead
 		// drive frames deterministically (fixed timestep, controlled count).
-		auto StepFrame(float timestep) -> void;
+		auto StepFrame(float timestep) const -> void;
 
 		[[nodiscard]] auto IsRunning() const -> bool { return m_IsRunning; }
 

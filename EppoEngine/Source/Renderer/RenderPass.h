@@ -2,9 +2,6 @@
 
 #include <nvrhi/nvrhi.h>
 
-#include <string>
-#include <vector>
-
 namespace Eppo
 {
 	// Accumulated per-pass draw statistics. Reset at the start of each pass and

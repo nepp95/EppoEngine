@@ -2,8 +2,6 @@
 
 #include "Event/Event.h"
 
-#include <filesystem>
-
 struct GLFWwindow;
 
 namespace Eppo

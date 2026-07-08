@@ -19,7 +19,7 @@ namespace Eppo
 		UpdateCameraVectors();
 	}
 
-	auto EditorCamera::OnUpdate(float timestep) -> void
+	auto EditorCamera::OnUpdate(const float timestep) -> void
 	{
 		float velocity = m_MovementSpeed * timestep;
 
@@ -58,7 +58,7 @@ namespace Eppo
 		m_ViewportSize = size;
 	}
 
-	auto EditorCamera::SetViewportSize(uint32_t width, uint32_t height) -> void
+	auto EditorCamera::SetViewportSize(const uint32_t width, const uint32_t height) -> void
 	{
 		SetViewportSize({ static_cast<float>(width), static_cast<float>(height) });
 	}

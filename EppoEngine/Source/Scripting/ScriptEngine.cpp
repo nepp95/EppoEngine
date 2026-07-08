@@ -239,11 +239,6 @@ namespace Eppo
             }
 
             case 3:
-            {
-                Log::Error("{}", message);
-                break;
-            }
-
             default:
             {
                 Log::Error("{}", message);
