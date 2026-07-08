@@ -2,6 +2,8 @@
 
 #include "Event/Event.h"
 
+#include <filesystem>
+
 struct GLFWwindow;
 
 namespace Eppo
@@ -18,6 +20,10 @@ namespace Eppo
 
 		auto ProcessEvents() -> void;
 		auto SetEventCallback(const EventCallbackFn& callback) { m_EventCallback = callback; }
+
+		// Set the OS window/taskbar icon from an image file (RGBA). Best-effort:
+		// logs and returns without changing the icon if the file cannot be loaded.
+		auto SetIcon(const std::filesystem::path& path) -> void;
 
 		[[nodiscard]] auto GetNative() const -> GLFWwindow* { return m_Window; }
 		[[nodiscard]] auto GetWidth() const -> uint32_t { return m_Width; }

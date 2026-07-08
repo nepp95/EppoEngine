@@ -130,6 +130,15 @@ namespace Eppo
 		return entity;
 	}
 
+	auto Scene::GetEntityByUUID(const UUID& uuid) -> Entity
+	{
+		const auto it = m_EntityMap.find(uuid);
+		if (it != m_EntityMap.end())
+			return Entity(it->second, this);
+
+		return {};
+	}
+
 	auto Scene::DuplicateEntity(Entity entity) -> Entity
 	{
 		EP_PROFILE_FN("Scene::DuplicateEntity");
@@ -197,8 +206,15 @@ namespace Eppo
 		std::unordered_map<UUID, EntityHandle> entityMap;
 		const auto idView = srcRegistry.view<IDComponent>();
 
-		for (const auto entity : idView)
+		// entt views iterate newest-first (reverse creation order). Recreating in
+		// that order would flip the destination registry's creation order relative
+		// to the source, so the hierarchy panel (which also walks newest-first)
+		// would show a reversed list during play. Walk the source in reverse so the
+		// copy preserves the original creation order.
+		const std::vector<EntityHandle> srcEntities(idView.begin(), idView.end());
+		for (auto it = srcEntities.rbegin(); it != srcEntities.rend(); ++it)
 		{
+			const auto entity = *it;
 			auto uuid = srcRegistry.get<IDComponent>(entity).ID;
 			const auto& name = srcRegistry.get<TagComponent>(entity).Tag;
 			Entity newEntity = newScene->CreateEntityWithUUID(uuid, name);

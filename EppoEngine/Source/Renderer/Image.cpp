@@ -114,6 +114,28 @@ namespace Eppo
 		}
 	}
 
+	auto Image::DecodeToRGBA8(const std::filesystem::path& path, uint32_t& outWidth, uint32_t& outHeight) -> Buffer
+	{
+		int width = 0, height = 0, channels = 0;
+		stbi_uc* pixels = stbi_load(path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+		if (!pixels)
+		{
+			Log::Error("Failed to decode image '{}': {}", path, stbi_failure_reason());
+			outWidth = 0;
+			outHeight = 0;
+			return {};
+		}
+
+		outWidth = static_cast<uint32_t>(width);
+		outHeight = static_cast<uint32_t>(height);
+
+		// Copy into an engine-owned Buffer so the caller frees with delete[] (via
+		// Buffer::Release) rather than needing stbi_image_free.
+		Buffer buffer = Buffer::Copy(pixels, static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4);
+		stbi_image_free(pixels);
+		return buffer;
+	}
+
 	auto Image::IsDepthImage() const -> bool
 	{
 		return m_Specification.ImageFormat == nvrhi::Format::D16 ||

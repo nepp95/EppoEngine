@@ -4,6 +4,7 @@
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
+#include "Renderer/Image.h"
 
 #include <GLFW/glfw3.h>
 #include <nfd.hpp>
@@ -148,5 +149,23 @@ namespace Eppo
 	auto Window::ProcessEvents() -> void
 	{
 		glfwPollEvents();
+	}
+
+	auto Window::SetIcon(const std::filesystem::path& path) -> void
+	{
+		uint32_t width = 0, height = 0;
+		Buffer pixels = Image::DecodeToRGBA8(path, width, height);
+		if (!pixels.Data)
+			return; // Image::DecodeToRGBA8 already logged the failure.
+
+		// GLFW copies the pixel data during the call, so the buffer can be released
+		// immediately afterwards.
+		GLFWimage image;
+		image.width = static_cast<int>(width);
+		image.height = static_cast<int>(height);
+		image.pixels = pixels.As<unsigned char>();
+		glfwSetWindowIcon(m_Window, 1, &image);
+
+		pixels.Release();
 	}
 }

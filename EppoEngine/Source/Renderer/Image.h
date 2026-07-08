@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Core/Buffer.h"
+
 #include <nvrhi/nvrhi.h>
 
 #include <variant>
 
 namespace Eppo
 {
-	struct Buffer;
 	using ImageSource = std::variant<std::filesystem::path, Buffer>;
 
 	struct ImageSpecification
@@ -31,6 +32,13 @@ namespace Eppo
 		~Image() = default;
 
 		auto SetData(const void* data, uint64_t size, const nvrhi::CommandListHandle& cmdList = nullptr) -> void;
+
+		// Decode an image file into a tightly-packed, 4-channel RGBA8 pixel buffer on
+		// the CPU. Ownership of the returned buffer transfers to the caller (call
+		// Release()). Returns an empty buffer on failure (logged). Keeps stb_image
+		// usage in one place for callers that need raw pixels rather than a GPU
+		// texture (e.g. the GLFW window icon).
+		[[nodiscard]] static auto DecodeToRGBA8(const std::filesystem::path& path, uint32_t& outWidth, uint32_t& outHeight) -> Buffer;
 
 		[[nodiscard]] auto GetTexture() const -> nvrhi::TextureHandle { return m_Texture; }
 		[[nodiscard]] constexpr auto GetWidth() const -> uint32_t { return m_Width; }
