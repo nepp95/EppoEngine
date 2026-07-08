@@ -21,6 +21,9 @@ namespace Eppo
 
 		auto OnScenePlay() -> void;
 		auto OnSceneStop() -> void;
+		[[nodiscard]] auto GetSelectedUUID() const -> UUID;
+
+		auto RestoreDefaultLayout() -> void;
 
 		auto CloseProject() -> void;
 		auto NewProject(const std::string& name) -> void;
@@ -50,11 +53,20 @@ namespace Eppo
 
 		Ref<Image> m_PlayIcon = nullptr;
 		Ref<Image> m_StopIcon = nullptr;
+		Ref<Image> m_PauseIcon = nullptr;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
 		uint32_t m_ViewportWidth = 1600;
 		uint32_t m_ViewportHeight = 900;
+
+		// Set while playing when the runtime scene has no primary camera: the play
+		// view falls back to the editor camera and a non-intrusive notice is shown.
+		bool m_MissingPrimaryCamera = false;
+
+		// Restoring the docking layout must happen before any window Begin this
+		// frame, so the menu item just raises this and OnUIRender services it early.
+		bool m_RestoreLayoutRequested = false;
 
 		enum class SceneState
 		{
@@ -65,4 +77,12 @@ namespace Eppo
 		// Popups
 		bool m_NewProjectPopup = false;
 	};
+
+	namespace Utils
+	{
+		// Point-in-rounded-rect test. Used by the toolbar so clicks that land in the
+		// transparent corner arcs (outside the visual rounded panel but inside the
+		// rectangular widget hitbox) are ignored.
+		auto IsInsideRoundedRect(const ImVec2& p, const ImVec2& min, const ImVec2& max, float radius) -> bool;
+	}
 }

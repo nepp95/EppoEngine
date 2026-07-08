@@ -20,6 +20,87 @@ namespace Eppo
 		ScopedPtr<ImGuiRenderer> Renderer = nullptr;
 	};
 
+	namespace
+	{
+		// Cohesive dark theme with a pumpkin-orange (#E8641C) accent. Applied on top
+		// of StyleColorsDark so any unset color keeps a sensible dark default.
+		auto SetEppoTheme() -> void
+		{
+			ImGuiStyle& style = ImGui::GetStyle();
+			ImVec4* colors = style.Colors;
+
+			const ImVec4 accent       = { 0.910f, 0.392f, 0.110f, 1.00f }; // #E8641C
+			const ImVec4 accentHover  = { 0.961f, 0.475f, 0.227f, 1.00f }; // #F5793A
+			const ImVec4 accentActive = { 0.788f, 0.325f, 0.082f, 1.00f }; // #C95315
+
+			const ImVec4 bg0 = { 0.086f, 0.086f, 0.098f, 1.00f };
+			const ImVec4 bg1 = { 0.125f, 0.125f, 0.141f, 1.00f };
+			const ImVec4 bg2 = { 0.169f, 0.169f, 0.188f, 1.00f };
+			const ImVec4 bg3 = { 0.220f, 0.220f, 0.243f, 1.00f };
+
+			colors[ImGuiCol_Text]                  = { 0.90f, 0.90f, 0.92f, 1.00f };
+			colors[ImGuiCol_TextDisabled]          = { 0.50f, 0.50f, 0.53f, 1.00f };
+			colors[ImGuiCol_WindowBg]              = bg1;
+			colors[ImGuiCol_ChildBg]               = { 0.00f, 0.00f, 0.00f, 0.00f };
+			colors[ImGuiCol_PopupBg]               = bg0;
+			colors[ImGuiCol_Border]                = { 0.00f, 0.00f, 0.00f, 0.35f };
+			colors[ImGuiCol_BorderShadow]          = { 0.00f, 0.00f, 0.00f, 0.00f };
+			colors[ImGuiCol_FrameBg]               = bg2;
+			colors[ImGuiCol_FrameBgHovered]        = bg3;
+			colors[ImGuiCol_FrameBgActive]         = { accentActive.x, accentActive.y, accentActive.z, 0.55f };
+			colors[ImGuiCol_TitleBg]               = bg0;
+			colors[ImGuiCol_TitleBgActive]         = bg0;
+			colors[ImGuiCol_TitleBgCollapsed]      = bg0;
+			colors[ImGuiCol_MenuBarBg]             = bg0;
+			colors[ImGuiCol_ScrollbarBg]           = bg0;
+			colors[ImGuiCol_ScrollbarGrab]         = bg3;
+			colors[ImGuiCol_ScrollbarGrabHovered]  = { 0.35f, 0.35f, 0.38f, 1.00f };
+			colors[ImGuiCol_ScrollbarGrabActive]   = accent;
+			colors[ImGuiCol_CheckMark]             = accent;
+			colors[ImGuiCol_SliderGrab]            = accent;
+			colors[ImGuiCol_SliderGrabActive]      = accentHover;
+			colors[ImGuiCol_Button]                = bg2;
+			colors[ImGuiCol_ButtonHovered]         = accent;
+			colors[ImGuiCol_ButtonActive]          = accentActive;
+			colors[ImGuiCol_Header]                = { accent.x, accent.y, accent.z, 0.55f };
+			colors[ImGuiCol_HeaderHovered]         = { accent.x, accent.y, accent.z, 0.75f };
+			colors[ImGuiCol_HeaderActive]          = accent;
+			colors[ImGuiCol_Separator]             = { 0.00f, 0.00f, 0.00f, 0.35f };
+			colors[ImGuiCol_SeparatorHovered]      = accent;
+			colors[ImGuiCol_SeparatorActive]       = accentHover;
+			colors[ImGuiCol_ResizeGrip]            = { accent.x, accent.y, accent.z, 0.25f };
+			colors[ImGuiCol_ResizeGripHovered]     = { accent.x, accent.y, accent.z, 0.60f };
+			colors[ImGuiCol_ResizeGripActive]      = accent;
+			colors[ImGuiCol_Tab]                   = bg1;
+			colors[ImGuiCol_TabHovered]            = accent;
+			colors[ImGuiCol_TabSelected]           = accentActive;
+			colors[ImGuiCol_TabSelectedOverline]   = accentHover;
+			colors[ImGuiCol_TabDimmed]             = bg1;
+			colors[ImGuiCol_TabDimmedSelected]     = bg2;
+			colors[ImGuiCol_DockingPreview]        = { accent.x, accent.y, accent.z, 0.70f };
+			colors[ImGuiCol_DockingEmptyBg]        = bg0;
+			colors[ImGuiCol_TextSelectedBg]        = { accent.x, accent.y, accent.z, 0.35f };
+			colors[ImGuiCol_NavCursor]             = accent;
+			colors[ImGuiCol_DragDropTarget]        = accentHover;
+
+			style.WindowRounding    = 6.0f;
+			style.ChildRounding     = 6.0f;
+			style.FrameRounding     = 4.0f;
+			style.PopupRounding     = 4.0f;
+			style.GrabRounding      = 4.0f;
+			style.TabRounding       = 4.0f;
+			style.ScrollbarRounding = 4.0f;
+			style.WindowBorderSize  = 1.0f;
+			style.FrameBorderSize   = 0.0f;
+			style.WindowPadding     = { 8.0f, 8.0f };
+			style.FramePadding      = { 6.0f, 4.0f };
+			style.ItemSpacing       = { 8.0f, 6.0f };
+			style.ItemInnerSpacing  = { 6.0f, 4.0f };
+			style.ScrollbarSize     = 12.0f;
+			style.GrabMinSize       = 10.0f;
+		}
+	}
+
 	auto ImGuiLayer::OnAttach() -> void
 	{
 		// Create imgui context
@@ -39,6 +120,7 @@ namespace Eppo
 
 		// Setup style
 		ImGui::StyleColorsDark();
+		SetEppoTheme();
 
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
