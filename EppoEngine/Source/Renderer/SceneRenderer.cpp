@@ -136,7 +136,9 @@ namespace Eppo
 		// frame — this panel is part of the UI draw data being built now, so the UI
 		// counts reflect the previous frame's Render, whereas the scene counts are
 		// this frame's. Close enough for an at-a-glance readout, not a coherent snapshot.
-		ImGui::SeparatorText("Total: %.2fms", sceneTime + imguiRenderer->GetGPUTime(frameIndex));
+		// SeparatorText takes only a label, so format the total time into it first.
+		const std::string totalLabel = std::format("Total: {:.2f}ms", sceneTime + imguiRenderer->GetGPUTime(frameIndex));
+		ImGui::SeparatorText(totalLabel.c_str());
 		ImGui::Text("Draw calls: %u", sceneStats.DrawCalls + uiStats.DrawCalls);
 		ImGui::Text("Vertices: %u", sceneStats.Vertices + uiStats.Vertices);
 		ImGui::Text("Indices: %u", sceneStats.Indices + uiStats.Indices);
@@ -309,7 +311,7 @@ namespace Eppo
 
 		m_CommandList->open();
 		m_GeometryPass.Begin(m_CommandList, frameIndex, "Geometry Pass");
-		PassStatistics& stats = m_GeometryPass.Stats();
+		PassStatistics& stats = m_GeometryPass.GetStats();
 
 		// Clear framebuffer if needed
 		const auto& framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer;
@@ -471,7 +473,7 @@ namespace Eppo
 		m_CommandList->draw(drawArgs);
 
 		// One non-indexed fullscreen-triangle draw (3 vertices, no index buffer).
-		PassStatistics& stats = m_SkyPass.Stats();
+		PassStatistics& stats = m_SkyPass.GetStats();
 		stats.DrawCalls++;
 		stats.Vertices += drawArgs.vertexCount;
 
