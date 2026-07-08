@@ -54,7 +54,6 @@ namespace Eppo
 		Ref<Image> m_PlayIcon = nullptr;
 		Ref<Image> m_StopIcon = nullptr;
 		Ref<Image> m_PauseIcon = nullptr;
-		Ref<Image> m_LogoIcon = nullptr;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;

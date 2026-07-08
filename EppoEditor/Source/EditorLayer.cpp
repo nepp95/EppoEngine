@@ -77,11 +77,13 @@ namespace Eppo
 		m_PlayIcon = loadIcon("PlayButton.png");
 		m_StopIcon = loadIcon("StopButton.png");
 		m_PauseIcon = loadIcon("PauseButton.png");
-		m_LogoIcon = loadIcon("Logo.png");
 
-		// Use the logo as the OS window/taskbar icon (best-effort).
-		if (m_LogoIcon)
-			Application::Get().GetWindow()->SetIcon(FS::GetResourcesDirectory() / "Icons" / "Logo.png");
+		// Use the pictorial logo as the OS window/taskbar icon (best-effort). It is
+		// intentionally not drawn in the menu bar; the wordmark is the in-app brand
+		// (cf. Unreal/Godot/Unity, which keep the app icon out of the menu bar).
+		const auto logoPath = FS::GetResourcesDirectory() / "Icons" / "Logo.png";
+		if (FS::Exists(logoPath))
+			Application::Get().GetWindow()->SetIcon(logoPath);
 
 		if (!OpenProject())
 		{
@@ -200,15 +202,20 @@ namespace Eppo
 		// Menu bar
 		if (ImGui::BeginMenuBar())
 		{
-			// Branding: logo mark + accent-colored wordmark on the left.
-			if (m_LogoIcon)
-			{
-				const float iconSize = ImGui::GetTextLineHeight() + 2.0f;
-				ImGui::Image(ImGuiEx::CreateTextureRef(m_LogoIcon->GetTexture()), ImVec2(iconSize, iconSize));
-				ImGui::SameLine(0.0f, 6.0f);
-			}
+			// Branding: an accent-colored wordmark, vertically centered in the bar,
+			// then a subtle divider before the menus. AlignTextToFramePadding lines
+			// the text up with the framed menu labels instead of top-aligning it.
+			ImGui::AlignTextToFramePadding();
 			ImGui::TextColored(ImVec4(0.91f, 0.39f, 0.11f, 1.0f), "EppoEditor");
-			ImGui::SameLine(0.0f, 16.0f);
+			ImGui::SameLine(0.0f, 12.0f);
+
+			const ImVec2 dividerPos = ImGui::GetCursorScreenPos();
+			const float dividerHeight = ImGui::GetFrameHeight();
+			ImGui::GetWindowDrawList()->AddLine(
+				{ dividerPos.x, dividerPos.y + 4.0f },
+				{ dividerPos.x, dividerPos.y + dividerHeight - 4.0f },
+				ImGui::GetColorU32(ImGuiCol_Separator));
+			ImGui::SameLine(0.0f, 12.0f);
 
 			if (ImGui::BeginMenu("File"))
 			{
