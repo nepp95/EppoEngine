@@ -196,6 +196,19 @@ namespace Eppo
 				nc.Scale = c["Scale"].get<glm::vec3>();
 			}
 
+			if (entity.contains("RelationshipComponent"))
+			{
+				auto& c = entity["RelationshipComponent"];
+				// Already added in CreateEntityWithUUID; UUID links need no resolution.
+				auto& nc = newEntity.GetComponent<RelationshipComponent>();
+				nc.Parent = c["Parent"].get<UUID>();
+				if (c.contains("Children"))
+				{
+					for (auto& child : c["Children"])
+						nc.Children.emplace_back(child.get<UUID>());
+				}
+			}
+
 			if (entity.contains("MeshComponent"))
 			{
 				auto& c = entity["MeshComponent"];
@@ -291,6 +304,20 @@ namespace Eppo
 			const auto& c = entity.GetComponent<PointLightComponent>();
 			e["PointLightComponent"]["Color"] = c.Color;
 			e["PointLightComponent"]["Intensity"] = c.Intensity;
+		}
+
+		if (entity.HasComponent<RelationshipComponent>())
+		{
+			const auto& c = entity.GetComponent<RelationshipComponent>();
+			// Emit only for entities in a hierarchy, keeping flat scenes unchanged.
+			if (c.Parent || !c.Children.empty())
+			{
+				e["RelationshipComponent"]["Parent"] = c.Parent;
+				auto children = json::array();
+				for (const UUID child : c.Children)
+					children.emplace_back(child);
+				e["RelationshipComponent"]["Children"] = children;
+			}
 		}
 
 		if (entity.HasComponent<ScriptComponent>())

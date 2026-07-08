@@ -57,8 +57,8 @@ namespace Eppo
 
 		[[nodiscard]] auto GetStats() -> PassStatistics& { return m_Statistics; }
 		[[nodiscard]] auto GetStats() const -> const PassStatistics& { return m_Statistics; }
-		[[nodiscard]] auto GetTime(const uint32_t frameIndex) const -> float { return m_LastTimes.at(frameIndex); }
-		[[nodiscard]] auto GetTimeMs(const uint32_t frameIndex) const -> float { return m_LastTimes.at(frameIndex) * 1000.0f;}
+		[[nodiscard]] auto GetTime(const uint32_t frameIndex) const -> float { return m_Timestamps.at(frameIndex); }
+		[[nodiscard]] auto GetTimeMs(const uint32_t frameIndex) const -> float { return m_Timestamps.at(frameIndex) * 1000.0f;}
 		[[nodiscard]] auto GetName() const -> const std::string& { return m_Name; }
 
 	private:
