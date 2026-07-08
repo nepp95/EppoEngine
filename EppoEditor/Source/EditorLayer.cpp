@@ -15,6 +15,33 @@ namespace Eppo
 		constexpr const char* CONTENT_BROWSER_PANEL = "Content Browser";
 		constexpr const char* PROPERTY_PANEL = "Property";
 		constexpr const char* SCENE_HIERARCHY_PANEL = "Scene Hierarchy";
+
+		// Point-in-rounded-rect test. Used by the toolbar so clicks that land in the
+		// transparent corner arcs (outside the visual rounded panel but inside the
+		// rectangular widget hitbox) are ignored.
+		auto IsInsideRoundedRect(const ImVec2& p, const ImVec2& min, const ImVec2& max, float radius) -> bool
+		{
+			if (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y)
+				return false;
+
+			const auto outsideCorner = [&](float cx, float cy) -> bool
+			{
+				const float dx = p.x - cx;
+				const float dy = p.y - cy;
+				return dx * dx + dy * dy > radius * radius;
+			};
+
+			if (p.x < min.x + radius && p.y < min.y + radius) // top-left
+				return !outsideCorner(min.x + radius, min.y + radius);
+			if (p.x > max.x - radius && p.y < min.y + radius) // top-right
+				return !outsideCorner(max.x - radius, min.y + radius);
+			if (p.x < min.x + radius && p.y > max.y - radius) // bottom-left
+				return !outsideCorner(min.x + radius, max.y - radius);
+			if (p.x > max.x - radius && p.y > max.y - radius) // bottom-right
+				return !outsideCorner(max.x - radius, max.y - radius);
+
+			return true;
+		}
 	}
 
 	auto EditorLayer::OnAttach() -> void
@@ -49,6 +76,12 @@ namespace Eppo
 
 		m_PlayIcon = loadIcon("PlayButton.png");
 		m_StopIcon = loadIcon("StopButton.png");
+		m_PauseIcon = loadIcon("PauseButton.png");
+		m_LogoIcon = loadIcon("Logo.png");
+
+		// Use the logo as the OS window/taskbar icon (best-effort).
+		if (m_LogoIcon)
+			Application::Get().GetWindow()->SetIcon(FS::GetResourcesDirectory() / "Icons" / "Logo.png");
 
 		if (!OpenProject())
 		{
@@ -79,7 +112,12 @@ namespace Eppo
 		{
 			case SceneState::Edit:
 			{
-				m_EditorCamera->OnUpdate(timestep);
+				// Only fly the editor camera when the viewport owns input. Otherwise
+				// typing in another panel (e.g. an entity's name field) would also
+				// drive WASD/QE/RF, since the camera polls global key state.
+				if (m_ViewportFocused && !ImGui::GetIO().WantCaptureKeyboard)
+					m_EditorCamera->OnUpdate(timestep);
+
 				m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera);
 				break;
 			}
@@ -132,6 +170,16 @@ namespace Eppo
 		// Menu bar
 		if (ImGui::BeginMenuBar())
 		{
+			// Branding: logo mark + accent-colored wordmark on the left.
+			if (m_LogoIcon)
+			{
+				const float iconSize = ImGui::GetTextLineHeight() + 2.0f;
+				ImGui::Image(ImGuiEx::CreateTextureRef(m_LogoIcon->GetTexture()), ImVec2(iconSize, iconSize));
+				ImGui::SameLine(0.0f, 6.0f);
+			}
+			ImGui::TextColored(ImVec4(0.91f, 0.39f, 0.11f, 1.0f), "EppoEditor");
+			ImGui::SameLine(0.0f, 16.0f);
+
 			if (ImGui::BeginMenu("File"))
 			{
 				if (ImGui::MenuItem("New Project", "CTRL+N"))
@@ -163,14 +211,19 @@ namespace Eppo
 
 			if (ImGui::BeginMenu("Window"))
 			{
-				if (ImGui::MenuItem("Content Browser"))
+				if (ImGui::MenuItem("Content Browser", nullptr, m_PanelManager->IsPanelOpen(CONTENT_BROWSER_PANEL)))
 					m_PanelManager->TogglePanel(CONTENT_BROWSER_PANEL);
 
-				if (ImGui::MenuItem("Properties"))
+				if (ImGui::MenuItem("Properties", nullptr, m_PanelManager->IsPanelOpen(PROPERTY_PANEL)))
 					m_PanelManager->TogglePanel(PROPERTY_PANEL);
 
-				if (ImGui::MenuItem("Scene Hierarchy"))
+				if (ImGui::MenuItem("Scene Hierarchy", nullptr, m_PanelManager->IsPanelOpen(SCENE_HIERARCHY_PANEL)))
 					m_PanelManager->TogglePanel(SCENE_HIERARCHY_PANEL);
+
+				ImGui::Separator();
+
+				if (ImGui::MenuItem("Restore window layout"))
+					RestoreDefaultLayout();
 
 				ImGui::EndMenu();
 			}
@@ -264,9 +317,14 @@ namespace Eppo
 		if (!m_EditorScene)
 			return;
 
+		// Capture the selection's UUID before switching scenes; the handle is only
+		// valid in the editor registry, but the UUID survives Scene::Copy.
+		const UUID selectedUUID = GetSelectedUUID();
+
 		m_SceneState = SceneState::Play;
 		m_ActiveScene = Scene::Copy(m_EditorScene);
 		m_PanelManager->SetSceneContext(m_ActiveScene);
+		RemapSelectionTo(m_ActiveScene, selectedUUID);
 		m_ActiveScene->OnRuntimeStart();
 	}
 
@@ -276,9 +334,51 @@ namespace Eppo
 			return;
 
 		m_ActiveScene->OnRuntimeStop();
+
+		// Read the selection's UUID while the runtime scene it points at is still
+		// alive (it is dropped by the assignment below).
+		const UUID selectedUUID = GetSelectedUUID();
+
 		m_SceneState = SceneState::Edit;
 		m_ActiveScene = m_EditorScene;
 		m_PanelManager->SetSceneContext(m_ActiveScene);
+		RemapSelectionTo(m_ActiveScene, selectedUUID);
+	}
+
+	auto EditorLayer::GetSelectedUUID() const -> UUID
+	{
+		const Entity selected = m_PanelManager->GetSelectedEntity();
+		return selected ? selected.GetUUID() : UUID(0);
+	}
+
+	auto EditorLayer::RemapSelectionTo(const Ref<Scene>& scene, const UUID& uuid) -> void
+	{
+		// Re-resolve the selection by UUID in the new panel scene context so the
+		// Property panel edits the entity that is actually being rendered. A zero
+		// UUID means nothing was selected; clear the selection if it is absent.
+		m_PanelManager->SetSelectedEntity(uuid ? scene->GetEntityByUUID(uuid) : Entity{});
+	}
+
+	auto EditorLayer::RestoreDefaultLayout() -> void
+	{
+		const auto path = FS::GetResourcesDirectory() / "Layouts" / "DefaultLayout.ini";
+		if (!FS::Exists(path))
+		{
+			Log::Error("Cannot restore window layout: default layout not found at '{}'", path);
+			return;
+		}
+
+		const std::string layout = FS::ReadText(path);
+		if (layout.empty())
+			return; // FS::ReadText already logged the failure.
+
+		ImGui::LoadIniSettingsFromMemory(layout.c_str(), layout.size());
+
+		// The docking layout references panel windows by name, so reopen every panel
+		// to guarantee the restored dock nodes have their windows to populate.
+		m_PanelManager->SetPanelOpen(CONTENT_BROWSER_PANEL, true);
+		m_PanelManager->SetPanelOpen(PROPERTY_PANEL, true);
+		m_PanelManager->SetPanelOpen(SCENE_HIERARCHY_PANEL, true);
 	}
 
 	auto EditorLayer::CloseProject() -> void
@@ -514,62 +614,100 @@ namespace Eppo
 
 	auto EditorLayer::UI_Toolbar() -> void
 	{
-		constexpr float toolbarWidth = 56.0f;
-		constexpr float toolbarHeight = 40.0f;
+		constexpr float buttonSize = 30.0f;
+		constexpr float rounding = 8.0f;
 		constexpr float topMargin = 24.0f;
-		ImVec2 winPos = ImGui::GetWindowPos();
-		ImVec2 winSize = ImGui::GetWindowSize();
-		ImVec2 toolbarPos = { winPos.x + (winSize.x - toolbarWidth) * 0.5f, winPos.y + topMargin };
 
-		ImGui::SetCursorScreenPos(toolbarPos);
-		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.35f));
-		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+		enum class ToolbarAction { None, Play, Stop };
+		struct ToolbarButton
+		{
+			const char* Id;
+			Ref<Image> Icon;
+			const char* Fallback;
+			bool Enabled;
+			ToolbarAction Action;
+		};
 
-		constexpr auto windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-		ImGui::BeginChild("##Toolbar", ImVec2(toolbarWidth, toolbarHeight), ImGuiChildFlags_AlwaysUseWindowPadding, windowFlags);
-
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.08f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.4f));
-
-		constexpr ImVec2 buttonSize(24.0f, 24.0f);
-
+		// Buttons are packed edge-to-edge (no padding/spacing); the panel supplies
+		// the rounded corners. Pause is shown during play but intentionally not
+		// wired up yet, so it renders disabled.
+		std::vector<ToolbarButton> buttons;
 		switch (m_SceneState)
 		{
 			case SceneState::Edit:
-			{
-				if (m_PlayIcon)
-				{
-					if (ImGui::ImageButton("##Play", ImGuiEx::CreateTextureRef(m_PlayIcon->GetTexture()), buttonSize))
-						OnScenePlay();
-				}
-				else if (ImGui::Button("Play", ImVec2(40.0f, 24.0f)))
-				{
-					OnScenePlay();
-				}
+				buttons.push_back({ "##Play", m_PlayIcon, "Play", true, ToolbarAction::Play });
 				break;
-			}
-
 			case SceneState::Play:
-			{
-				if (m_StopIcon)
-				{
-					if (ImGui::ImageButton("##Stop", ImGuiEx::CreateTextureRef(m_StopIcon->GetTexture()), buttonSize))
-						OnSceneStop();
-				}
-				else if (ImGui::Button("Stop", ImVec2(40.0f, 24.0f)))
-				{
-					OnSceneStop();
-				}
+				buttons.push_back({ "##Pause", m_PauseIcon, "II", false, ToolbarAction::None });
+				buttons.push_back({ "##Stop", m_StopIcon, "Stop", true, ToolbarAction::Stop });
 				break;
-			}
 		}
 
-		ImGui::PopStyleColor(3);
-		ImGui::EndChild();
-		ImGui::PopStyleVar(2);
-		ImGui::PopStyleColor();
+		if (buttons.empty())
+			return;
+
+		const float panelWidth = buttonSize * static_cast<float>(buttons.size());
+		const ImVec2 winPos = ImGui::GetWindowPos();
+		const ImVec2 winSize = ImGui::GetWindowSize();
+		const ImVec2 panelMin = { winPos.x + (winSize.x - panelWidth) * 0.5f, winPos.y + topMargin };
+		const ImVec2 panelMax = { panelMin.x + panelWidth, panelMin.y + buttonSize };
+
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		drawList->AddRectFilled(panelMin, panelMax, ImGui::GetColorU32(ImVec4(0.09f, 0.09f, 0.10f, 0.85f)), rounding);
+
+		for (size_t i = 0; i < buttons.size(); i++)
+		{
+			const ToolbarButton& button = buttons[i];
+
+			const ImVec2 p0 = { panelMin.x + buttonSize * static_cast<float>(i), panelMin.y };
+			const ImVec2 p1 = { p0.x + buttonSize, p0.y + buttonSize };
+
+			// Round only the corners this button shares with the panel.
+			ImDrawFlags corners = ImDrawFlags_RoundCornersNone;
+			if (i == 0)
+				corners |= ImDrawFlags_RoundCornersLeft;
+			if (i == buttons.size() - 1)
+				corners |= ImDrawFlags_RoundCornersRight;
+
+			ImGui::SetCursorScreenPos(p0);
+			ImGui::InvisibleButton(button.Id, ImVec2(buttonSize, buttonSize));
+
+			// The hitbox is rectangular; ignore hovers/clicks in the rounded corner
+			// arcs so the outer, non-button region doesn't activate.
+			const bool inside = IsInsideRoundedRect(ImGui::GetIO().MousePos, panelMin, panelMax, rounding);
+			const bool hovered = button.Enabled && inside && ImGui::IsItemHovered();
+			const bool held = hovered && ImGui::IsItemActive();
+			const bool clicked = button.Enabled && inside && ImGui::IsItemClicked();
+
+			if (held)
+				drawList->AddRectFilled(p0, p1, ImGui::GetColorU32(ImVec4(0.91f, 0.39f, 0.11f, 0.90f)), rounding, corners);
+			else if (hovered)
+				drawList->AddRectFilled(p0, p1, ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.14f)), rounding, corners);
+
+			const ImU32 tint = button.Enabled ? IM_COL32_WHITE : IM_COL32(255, 255, 255, 70);
+			if (button.Icon)
+			{
+				constexpr float pad = 6.0f;
+				drawList->AddImage(ImGuiEx::CreateTextureRef(button.Icon->GetTexture()),
+					{ p0.x + pad, p0.y + pad }, { p1.x - pad, p1.y - pad }, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), tint);
+			}
+			else
+			{
+				const ImVec2 ts = ImGui::CalcTextSize(button.Fallback);
+				drawList->AddText({ p0.x + (buttonSize - ts.x) * 0.5f, p0.y + (buttonSize - ts.y) * 0.5f }, tint, button.Fallback);
+			}
+
+			if (clicked)
+			{
+				switch (button.Action)
+				{
+					case ToolbarAction::Play: OnScenePlay(); break;
+					case ToolbarAction::Stop: OnSceneStop(); break;
+					case ToolbarAction::None: break;
+				}
+				break; // scene state changed; stop iterating this frame's snapshot
+			}
+		}
 	}
 
 	auto EditorLayer::UI_NewProjectPopup() -> void

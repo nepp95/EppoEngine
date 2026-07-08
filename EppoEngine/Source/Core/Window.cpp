@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <nfd.hpp>
 #include <nfd_glfw3.h>
+#include <stb_image.h>
 
 namespace Eppo
 {
@@ -148,5 +149,24 @@ namespace Eppo
 	auto Window::ProcessEvents() -> void
 	{
 		glfwPollEvents();
+	}
+
+	auto Window::SetIcon(const std::filesystem::path& path) -> void
+	{
+		int width = 0, height = 0, channels = 0;
+		stbi_uc* pixels = stbi_load(path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+		if (!pixels)
+		{
+			Log::Error("Failed to load window icon from '{}'", path);
+			return;
+		}
+
+		GLFWimage image;
+		image.width = width;
+		image.height = height;
+		image.pixels = pixels;
+		glfwSetWindowIcon(m_Window, 1, &image);
+
+		stbi_image_free(pixels);
 	}
 }

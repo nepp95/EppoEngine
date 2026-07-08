@@ -21,6 +21,10 @@ namespace Eppo
 
 		auto OnScenePlay() -> void;
 		auto OnSceneStop() -> void;
+		[[nodiscard]] auto GetSelectedUUID() const -> UUID;
+		auto RemapSelectionTo(const Ref<Scene>& scene, const UUID& uuid) -> void;
+
+		auto RestoreDefaultLayout() -> void;
 
 		auto CloseProject() -> void;
 		auto NewProject(const std::string& name) -> void;
@@ -50,6 +54,8 @@ namespace Eppo
 
 		Ref<Image> m_PlayIcon = nullptr;
 		Ref<Image> m_StopIcon = nullptr;
+		Ref<Image> m_PauseIcon = nullptr;
+		Ref<Image> m_LogoIcon = nullptr;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;

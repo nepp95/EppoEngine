@@ -45,6 +45,19 @@ namespace Eppo
 		auto HasPanel(const std::string& panelName) const -> bool { return m_PanelData.contains(panelName); }
 		auto TogglePanel(const std::string& panelName) -> void;
 
+		auto IsPanelOpen(const std::string& panelName) const -> bool
+		{
+			const auto it = m_PanelData.find(panelName);
+			return it != m_PanelData.end() && it->second.IsOpen;
+		}
+
+		auto SetPanelOpen(const std::string& panelName, bool isOpen) -> void
+		{
+			const auto it = m_PanelData.find(panelName);
+			if (it != m_PanelData.end())
+				it->second.IsOpen = isOpen;
+		}
+
 		auto SetSceneContext(const Ref<Scene>& scene) -> void { m_SceneContext = scene; }
 		auto GetSceneContext() const -> const Ref<Scene>& { return m_SceneContext; }
 		
