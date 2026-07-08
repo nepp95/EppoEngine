@@ -31,10 +31,8 @@ namespace Eppo
 	class Scene : public Asset
 	{
 	public:
-		// Both defined in the .cpp: the ScopedPtr<PhysicsWorld> member needs the
-		// complete type to be constructed/destroyed, which isn't available here.
-		Scene();
-		~Scene() override;
+		Scene() = default;
+		~Scene() override = default;
 
 		static auto GetStaticType() -> AssetType { return AssetType::Scene; }
 
@@ -77,10 +75,6 @@ namespace Eppo
 		[[nodiscard]] auto GetEnvironment() -> EnvironmentSettings& { return m_Environment; }
 		[[nodiscard]] auto GetEnvironment() const -> const EnvironmentSettings& { return m_Environment; }
 
-		// The live physics world. Only valid during play (created in OnRuntimeStart,
-		// destroyed in OnRuntimeStop); null in edit mode. Used by the script bridge.
-		[[nodiscard]] auto GetPhysicsWorld() -> PhysicsWorld* { return m_PhysicsWorld.get(); }
-
 	private:
 		auto RenderScene(const Ref<SceneRenderer>& sceneRenderer) -> void;
 
@@ -91,7 +85,7 @@ namespace Eppo
 		entt::registry m_Registry;
 		std::unordered_map<UUID, EntityHandle> m_EntityMap;
 		EnvironmentSettings m_Environment;
-		ScopedPtr<PhysicsWorld> m_PhysicsWorld;
+		Ref<PhysicsWorld> m_PhysicsWorld;
 
 		friend class Entity;
 		friend class SceneHierarchyPanel;

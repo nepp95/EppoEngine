@@ -58,4 +58,8 @@ namespace Eppo
 	{
 		return std::make_shared<T>(std::forward<Args>(args)...);
 	}
+
+	// Non-owning observer of a Ref; lock() before use.
+	template<typename T>
+	using WeakRef = std::weak_ptr<T>;
 }

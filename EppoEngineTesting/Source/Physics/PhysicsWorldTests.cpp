@@ -6,23 +6,26 @@
 
 using namespace Eppo;
 
-// PhysicsWorld wraps Box3D directly (no scene/ECS, no GPU), so these run as a
-// cheap 'unit' suite: build a world, create bodies from component data, step, and
-// assert the simulated poses/velocities.
+// PhysicsWorld wraps Box3D directly (no scene/ECS, no GPU), so this is a cheap
+// 'unit' suite: build a world, create bodies, step, assert poses/velocities.
 SUITE(Physics)
 {
     namespace
     {
-        auto MakeDynamic(PhysicsWorld& world, const UUID id, const glm::vec3& position) -> void
+        auto MakeBody(PhysicsWorld& world, const UUID id, RigidBodyComponent::BodyType type, const glm::vec3& position) -> void
         {
             RigidBodyComponent rb;
-            rb.Type = RigidBodyComponent::BodyType::Dynamic;
+            rb.Type = type;
 
             TransformComponent tc;
             tc.Translation = position;
 
-            const BoxColliderComponent box; // defaults: half-extents 0.5, density 1
-            world.CreateBody(id, rb, tc, &box, nullptr, nullptr);
+            world.CreateBody(id, rb, tc, { ColliderData{} }); // default ColliderData: unit-ish box, density 1
+        }
+
+        auto MakeDynamic(PhysicsWorld& world, const UUID id, const glm::vec3& position) -> void
+        {
+            MakeBody(world, id, RigidBodyComponent::BodyType::Dynamic, position);
         }
     }
 
@@ -69,11 +72,7 @@ SUITE(Physics)
         PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
 
         const UUID id;
-        RigidBodyComponent rb; // default: Static
-        TransformComponent tc;
-        tc.Translation = { 0.0f, 5.0f, 0.0f };
-        const BoxColliderComponent box;
-        world.CreateBody(id, rb, tc, &box, nullptr, nullptr);
+        MakeBody(world, id, RigidBodyComponent::BodyType::Static, { 0.0f, 5.0f, 0.0f });
 
         for (int i = 0; i < 30; ++i)
             world.Step(1.0f / 60.0f);

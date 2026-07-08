@@ -8,19 +8,34 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include <unordered_map>
+#include <vector>
 
 namespace Eppo
 {
 	struct RigidBodyComponent;
 	struct TransformComponent;
-	struct BoxColliderComponent;
-	struct SphereColliderComponent;
-	struct CapsuleColliderComponent;
 
-	// Thin RAII wrapper around a Box3D world. Owns the world and the UUID->body
-	// map so the rest of the engine never touches Box3D handles directly (same
-	// containment discipline as Platform/Vulkan). Lives only during play: the
-	// scene creates one in OnRuntimeStart and destroys it in OnRuntimeStop.
+	enum class ColliderShape : uint8_t { Box, Sphere, Capsule };
+
+	// Shape-agnostic collider description: the scene translates each collider
+	// component into one of these, so adding a shape never changes CreateBody's
+	// signature (add an enum value + a case in AttachCollider).
+	struct ColliderData
+	{
+		ColliderShape Shape = ColliderShape::Box;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		glm::vec3 HalfExtents = glm::vec3(0.5f); // Box
+		float Radius = 0.5f;                     // Sphere, Capsule
+		float Height = 1.0f;                     // Capsule
+	};
+
+	// RAII wrapper around a Box3D world; owns the world and the UUID->body map so
+	// the rest of the engine never touches Box3D handles (as Platform/Vulkan does
+	// for NVRHI). Lives only during play.
 	class PhysicsWorld
 	{
 	public:
@@ -30,27 +45,22 @@ namespace Eppo
 		PhysicsWorld(const PhysicsWorld&) = delete;
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-		// Builds a body for the entity from its rigid-body + collider components.
-		// Any collider pointer may be null; a body with no collider is inert.
 		auto CreateBody(UUID entityId, const RigidBodyComponent& rigidBody, const TransformComponent& transform,
-			const BoxColliderComponent* box, const SphereColliderComponent* sphere,
-			const CapsuleColliderComponent* capsule) -> void;
+			const std::vector<ColliderData>& colliders) -> void;
 
 		auto Step(float timestep, int subStepCount = 4) -> void;
 
 		[[nodiscard]] auto HasBody(UUID entityId) const -> bool;
 
-		// Simulated pose, for writing back into the TransformComponent each frame.
 		[[nodiscard]] auto GetPosition(UUID entityId) const -> glm::vec3;
 		[[nodiscard]] auto GetRotation(UUID entityId) const -> glm::quat;
 
-		// Script bridge. Miss (unknown UUID / no body) logs and no-ops.
 		auto ApplyLinearImpulse(UUID entityId, const glm::vec3& impulse) -> void;
 		[[nodiscard]] auto GetLinearVelocity(UUID entityId) const -> glm::vec3;
 		auto SetLinearVelocity(UUID entityId, const glm::vec3& velocity) -> void;
 
 	private:
-		// Resolves entityId to its body handle, false if the entity has none.
+		auto AttachCollider(b3BodyId body, const ColliderData& collider) const -> void;
 		[[nodiscard]] auto TryGetBody(UUID entityId, b3BodyId& outBody) const -> bool;
 
 		b3WorldId m_WorldId;

@@ -8,9 +8,9 @@
 
 namespace Eppo
 {
-	namespace
+	namespace Utils
 	{
-		auto ToB3BodyType(RigidBodyComponent::BodyType type) -> b3BodyType
+		static auto ToB3BodyType(RigidBodyComponent::BodyType type) -> b3BodyType
 		{
 			switch (type)
 			{
@@ -27,70 +27,69 @@ namespace Eppo
 	PhysicsWorld::PhysicsWorld(const glm::vec3& gravity)
 	{
 		b3WorldDef worldDef = b3DefaultWorldDef();
-		worldDef.gravity = ToB3(gravity);
+		worldDef.gravity = Utils::ToB3(gravity);
 		m_WorldId = b3CreateWorld(&worldDef);
 	}
 
 	PhysicsWorld::~PhysicsWorld()
 	{
-		// Frees all bodies and shapes created in this world.
 		b3DestroyWorld(m_WorldId);
 	}
 
 	auto PhysicsWorld::CreateBody(const UUID entityId, const RigidBodyComponent& rigidBody, const TransformComponent& transform,
-		const BoxColliderComponent* box, const SphereColliderComponent* sphere,
-		const CapsuleColliderComponent* capsule) -> void
+		const std::vector<ColliderData>& colliders) -> void
 	{
 		b3BodyDef bodyDef = b3DefaultBodyDef();
-		bodyDef.type = ToB3BodyType(rigidBody.Type);
-		bodyDef.position = ToB3(transform.Translation);
-		bodyDef.rotation = ToB3(glm::quat(transform.Rotation));
+		bodyDef.type = Utils::ToB3BodyType(rigidBody.Type);
+		bodyDef.position = Utils::ToB3(transform.Translation);
+		bodyDef.rotation = Utils::ToB3(glm::quat(transform.Rotation));
 		bodyDef.gravityScale = rigidBody.GravityScale;
 		bodyDef.linearDamping = rigidBody.LinearDamping;
 		bodyDef.angularDamping = rigidBody.AngularDamping;
 
 		const b3BodyId body = b3CreateBody(m_WorldId, &bodyDef);
-
-		if (box)
-		{
-			b3ShapeDef shapeDef = b3DefaultShapeDef();
-			shapeDef.density = box->Density;
-			shapeDef.baseMaterial.friction = box->Friction;
-			shapeDef.baseMaterial.restitution = box->Restitution;
-
-			b3BoxHull hull = b3MakeOffsetBoxHull(box->HalfExtents.x, box->HalfExtents.y, box->HalfExtents.z, ToB3(box->Offset));
-			b3CreateHullShape(body, &shapeDef, &hull.base);
-		}
-
-		if (sphere)
-		{
-			b3ShapeDef shapeDef = b3DefaultShapeDef();
-			shapeDef.density = sphere->Density;
-			shapeDef.baseMaterial.friction = sphere->Friction;
-			shapeDef.baseMaterial.restitution = sphere->Restitution;
-
-			const b3Sphere s{ ToB3(sphere->Offset), sphere->Radius };
-			b3CreateSphereShape(body, &shapeDef, &s);
-		}
-
-		if (capsule)
-		{
-			b3ShapeDef shapeDef = b3DefaultShapeDef();
-			shapeDef.density = capsule->Density;
-			shapeDef.baseMaterial.friction = capsule->Friction;
-			shapeDef.baseMaterial.restitution = capsule->Restitution;
-
-			// Capsule aligned to local Y; Height is the distance between hemisphere centers.
-			const float halfHeight = capsule->Height * 0.5f;
-			const b3Capsule c{
-				ToB3(capsule->Offset - glm::vec3(0.0f, halfHeight, 0.0f)),
-				ToB3(capsule->Offset + glm::vec3(0.0f, halfHeight, 0.0f)),
-				capsule->Radius
-			};
-			b3CreateCapsuleShape(body, &shapeDef, &c);
-		}
+		for (const ColliderData& collider : colliders)
+			AttachCollider(body, collider);
 
 		m_Bodies[entityId] = body;
+	}
+
+	auto PhysicsWorld::AttachCollider(const b3BodyId body, const ColliderData& collider) const -> void
+	{
+		b3ShapeDef shapeDef = b3DefaultShapeDef();
+		shapeDef.density = collider.Density;
+		shapeDef.baseMaterial.friction = collider.Friction;
+		shapeDef.baseMaterial.restitution = collider.Restitution;
+
+		switch (collider.Shape)
+		{
+			case ColliderShape::Box:
+			{
+				b3BoxHull hull = b3MakeOffsetBoxHull(collider.HalfExtents.x, collider.HalfExtents.y, collider.HalfExtents.z, Utils::ToB3(collider.Offset));
+				b3CreateHullShape(body, &shapeDef, &hull.base);
+				break;
+			}
+
+			case ColliderShape::Sphere:
+			{
+				const b3Sphere sphere{ Utils::ToB3(collider.Offset), collider.Radius };
+				b3CreateSphereShape(body, &shapeDef, &sphere);
+				break;
+			}
+
+			case ColliderShape::Capsule:
+			{
+				// Aligned to local Y; Height is the distance between hemisphere centers.
+				const float halfHeight = collider.Height * 0.5f;
+				const b3Capsule capsule{
+					Utils::ToB3(collider.Offset - glm::vec3(0.0f, halfHeight, 0.0f)),
+					Utils::ToB3(collider.Offset + glm::vec3(0.0f, halfHeight, 0.0f)),
+					collider.Radius
+				};
+				b3CreateCapsuleShape(body, &shapeDef, &capsule);
+				break;
+			}
+		}
 	}
 
 	auto PhysicsWorld::Step(const float timestep, const int subStepCount) -> void
@@ -119,7 +118,7 @@ namespace Eppo
 		if (!TryGetBody(entityId, body))
 			return glm::vec3(0.0f);
 
-		return FromB3(b3Body_GetPosition(body));
+		return Utils::FromB3(b3Body_GetPosition(body));
 	}
 
 	auto PhysicsWorld::GetRotation(const UUID entityId) const -> glm::quat
@@ -128,7 +127,7 @@ namespace Eppo
 		if (!TryGetBody(entityId, body))
 			return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
-		return FromB3(b3Body_GetRotation(body));
+		return Utils::FromB3(b3Body_GetRotation(body));
 	}
 
 	auto PhysicsWorld::ApplyLinearImpulse(const UUID entityId, const glm::vec3& impulse) -> void
@@ -140,7 +139,7 @@ namespace Eppo
 			return;
 		}
 
-		b3Body_ApplyLinearImpulseToCenter(body, ToB3(impulse), true);
+		b3Body_ApplyLinearImpulseToCenter(body, Utils::ToB3(impulse), true);
 	}
 
 	auto PhysicsWorld::GetLinearVelocity(const UUID entityId) const -> glm::vec3
@@ -152,7 +151,7 @@ namespace Eppo
 			return glm::vec3(0.0f);
 		}
 
-		return FromB3(b3Body_GetLinearVelocity(body));
+		return Utils::FromB3(b3Body_GetLinearVelocity(body));
 	}
 
 	auto PhysicsWorld::SetLinearVelocity(const UUID entityId, const glm::vec3& velocity) -> void
@@ -164,6 +163,6 @@ namespace Eppo
 			return;
 		}
 
-		b3Body_SetLinearVelocity(body, ToB3(velocity));
+		b3Body_SetLinearVelocity(body, Utils::ToB3(velocity));
 	}
 }
