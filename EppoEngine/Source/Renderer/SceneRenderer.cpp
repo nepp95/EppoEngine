@@ -136,8 +136,10 @@ namespace Eppo
 		// frame — this panel is part of the UI draw data being built now, so the UI
 		// counts reflect the previous frame's Render, whereas the scene counts are
 		// this frame's. Close enough for an at-a-glance readout, not a coherent snapshot.
-		ImGui::SeparatorText("Total");
+		ImGui::SeparatorText("Total: %.2fms", sceneTime + imguiRenderer->GetGPUTime(frameIndex));
 		ImGui::Text("Draw calls: %u", sceneStats.DrawCalls + uiStats.DrawCalls);
+		ImGui::Text("Vertices: %u", sceneStats.Vertices + uiStats.Vertices);
+		ImGui::Text("Indices: %u", sceneStats.Indices + uiStats.Indices);
 
 		ImGui::End();
 	}

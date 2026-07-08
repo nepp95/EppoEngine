@@ -55,15 +55,16 @@ namespace Eppo
 		// wrapped Begin/End has been executed.
 		auto Readback(uint32_t frameIndex) -> void;
 
-		[[nodiscard]] auto Stats() -> PassStatistics& { return m_Statistics; }
+		[[nodiscard]] auto GetStats() -> PassStatistics& { return m_Statistics; }
 		[[nodiscard]] auto GetStats() const -> const PassStatistics& { return m_Statistics; }
-		[[nodiscard]] auto GetTimeMs(const uint32_t frameIndex) const -> float { return m_LastTimesMs.at(frameIndex); }
+		[[nodiscard]] auto GetTime(const uint32_t frameIndex) const -> float { return m_LastTimes.at(frameIndex); }
+		[[nodiscard]] auto GetTimeMs(const uint32_t frameIndex) const -> float { return m_LastTimes.at(frameIndex) * 1000.0f;}
 		[[nodiscard]] auto GetName() const -> const std::string& { return m_Name; }
 
 	private:
 		std::string m_Name;
 		std::vector<nvrhi::TimerQueryHandle> m_TimerQueries;
-		std::vector<float> m_LastTimesMs;
+		std::vector<float> m_Timestamps;
 		PassStatistics m_Statistics;
 	};
 }
