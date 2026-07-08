@@ -51,6 +51,11 @@ namespace Eppo
 		auto DuplicateEntity(Entity entity) -> Entity;
 		auto DestroyEntity(Entity entity) -> void;
 
+		// Resolve an entity by its stable UUID. Returns an invalid Entity if the
+		// UUID is not present in this scene. Used to remap a selection across the
+		// editor/runtime scene copies (UUIDs survive Scene::Copy, handles do not).
+		[[nodiscard]] auto GetEntityByUUID(const UUID& uuid) -> Entity;
+
 		template<typename T>
 		static auto TryCopyComponent(Entity srcEntity, Entity dstEntity) -> void;
 
