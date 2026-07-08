@@ -53,7 +53,6 @@ namespace Eppo
 
 		// Use the pictorial logo as the OS window/taskbar icon (best-effort). It is
 		// intentionally not drawn in the menu bar; the wordmark is the in-app brand
-		// (cf. Unreal/Godot/Unity, which keep the app icon out of the menu bar).
 		const auto logoPath = FS::GetResourcesDirectory() / "Icons" / "Logo.png";
 		if (FS::Exists(logoPath))
 			Application::Get().GetWindow()->SetIcon(logoPath);
@@ -88,7 +87,7 @@ namespace Eppo
 		// then stays quiet while another panel is active, so e.g. typing an entity's
 		// name never drives the scene. m_ViewportFocused is from last frame's UI pass,
 		// which is close enough and avoids a one-frame input spill.
-		Input::SetWorldInputEnabled(m_ViewportFocused);
+		Input::SetViewportInputEnabled(m_ViewportFocused);
 
 		switch (m_SceneState)
 		{

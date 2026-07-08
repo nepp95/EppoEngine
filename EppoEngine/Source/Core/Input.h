@@ -32,8 +32,8 @@ namespace Eppo
 		// report no input, so everything that drives the scene from polled input
 		// (the editor camera, running scripts) stays quiet when the viewport isn't
 		// focused. Defaults to enabled, so non-editor hosts and tests are unaffected.
-		static auto SetWorldInputEnabled(bool enabled) -> void;
-		[[nodiscard]] static auto IsWorldInputEnabled() -> bool;
+		static auto SetViewportInputEnabled(bool enabled) -> void;
+		[[nodiscard]] static auto IsViewportInputEnabled() -> bool;
 
 		// Install a backend (non-owning; the caller keeps ownership). Passing
 		// nullptr reverts to the default GLFW-backed source. The caller MUST call
@@ -45,6 +45,6 @@ namespace Eppo
 
 	private:
 		static InputBackend* s_Backend;
-		static bool s_WorldInputEnabled;
+		static bool s_ViewportInputEnabled;
 	};
 }
