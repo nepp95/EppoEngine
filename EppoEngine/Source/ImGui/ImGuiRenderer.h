@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/IndexBuffer.h"
+#include "Renderer/RenderPass.h"
 #include "Renderer/VertexBuffer.h"
 
 #include <imgui.h>
@@ -24,6 +25,11 @@ namespace Eppo
 		auto GetGPUTime(uint32_t frameIndex) const -> float;
 		auto GetOwnGPUTime(uint32_t frameIndex) const -> float;
 
+		// Draw statistics for the UI, aggregated across the main and platform
+		// (multi-viewport) renderers, mirroring how GetGPUTime sums time.
+		auto GetStats() const -> PassStatistics;
+		auto GetOwnStats() const -> const PassStatistics& { return m_Pass.GetStats(); }
+
 	private:
 		auto UpdateGeometry(ImDrawData* drawData) -> void;
 		auto ReallocateBuffer(uint64_t size, bool indexBuffer) -> nvrhi::BufferHandle;
@@ -32,8 +38,7 @@ namespace Eppo
 
 	private:
 		nvrhi::CommandListHandle m_CommandList = nullptr;
-		std::vector<nvrhi::TimerQueryHandle> m_TimerQueries;
-		std::vector<float> m_LastQueryTimes;
+		RenderPass m_Pass{ "UI" };
 
 		nvrhi::GraphicsPipelineDesc m_PipelineDesc;
 
