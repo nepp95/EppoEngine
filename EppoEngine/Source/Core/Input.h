@@ -23,6 +23,18 @@ namespace Eppo
 		static auto GetMouseX() -> float;
 		static auto GetMouseY() -> float;
 
+		// Ungated query: reports the backend state regardless of the world-input
+		// gate below. Editor chrome (e.g. Ctrl+S / Ctrl+O accelerators) uses this so
+		// it keeps responding even when the viewport doesn't own gameplay input.
+		[[nodiscard]] static auto IsKeyPressedRaw(KeyCode key) -> bool;
+
+		// World-input gate. While disabled, IsKeyPressed and IsMouseButtonPressed
+		// report no input, so everything that drives the scene from polled input
+		// (the editor camera, running scripts) stays quiet when the viewport isn't
+		// focused. Defaults to enabled, so non-editor hosts and tests are unaffected.
+		static auto SetWorldInputEnabled(bool enabled) -> void;
+		[[nodiscard]] static auto IsWorldInputEnabled() -> bool;
+
 		// Install a backend (non-owning; the caller keeps ownership). Passing
 		// nullptr reverts to the default GLFW-backed source. The caller MUST call
 		// SetBackend(nullptr) before the backend is destroyed — the stored pointer
@@ -33,5 +45,6 @@ namespace Eppo
 
 	private:
 		static InputBackend* s_Backend;
+		static bool s_WorldInputEnabled;
 	};
 }

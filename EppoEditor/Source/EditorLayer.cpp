@@ -108,14 +108,20 @@ namespace Eppo
 			m_SceneRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
 		}
 
+		// Gate polled gameplay input (editor camera + running scripts) on the viewport
+		// being focused. Anything that reads Input::IsKeyPressed/IsMouseButtonPressed
+		// then stays quiet while another panel is active, so e.g. typing an entity's
+		// name never drives the scene. m_ViewportFocused is from last frame's UI pass,
+		// which is close enough and avoids a one-frame input spill.
+		Input::SetWorldInputEnabled(m_ViewportFocused);
+
 		switch (m_SceneState)
 		{
 			case SceneState::Edit:
 			{
-				// Only fly the editor camera when the viewport owns input. Otherwise
-				// typing in another panel (e.g. an entity's name field) would also
-				// drive WASD/QE/RF, since the camera polls global key state.
-				if (m_ViewportFocused && !ImGui::GetIO().WantCaptureKeyboard)
+				m_MissingPrimaryCamera = false;
+
+				if (m_ViewportFocused)
 					m_EditorCamera->OnUpdate(timestep);
 
 				m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera);
@@ -125,7 +131,21 @@ namespace Eppo
 			case SceneState::Play:
 			{
 				m_ActiveScene->OnUpdateRuntime(timestep);
-				m_ActiveScene->OnRenderRuntime(m_SceneRenderer);
+
+				// The runtime view renders through the scene's primary camera. Without
+				// one, OnRenderRuntime would draw nothing and leave a stale frame,
+				// making live component edits look ignored. Fall back to the editor
+				// camera so the scene (and edits) stay visible, and flag a notice.
+				if (m_ActiveScene->GetPrimaryCameraEntity())
+				{
+					m_MissingPrimaryCamera = false;
+					m_ActiveScene->OnRenderRuntime(m_SceneRenderer);
+				}
+				else
+				{
+					m_MissingPrimaryCamera = true;
+					m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera);
+				}
 				break;
 			}
 		}
@@ -133,6 +153,16 @@ namespace Eppo
 
 	auto EditorLayer::OnUIRender() -> void
 	{
+		// Apply a requested layout restore before any window Begin this frame, so the
+		// docked windows pick up the restored dock nodes as they are submitted below.
+		// Doing this mid-frame (from the menu handler) leaves windows already placed
+		// and corrupts the docking layout, especially with multi-viewport enabled.
+		if (m_RestoreLayoutRequested)
+		{
+			RestoreDefaultLayout();
+			m_RestoreLayoutRequested = false;
+		}
+
 		// From ImGui docking example
 		bool dockspaceOpen = true;
 		constexpr ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
@@ -223,7 +253,7 @@ namespace Eppo
 				ImGui::Separator();
 
 				if (ImGui::MenuItem("Restore window layout"))
-					RestoreDefaultLayout();
+					m_RestoreLayoutRequested = true;
 
 				ImGui::EndMenu();
 			}
@@ -263,6 +293,24 @@ namespace Eppo
 		const auto& finalImage = m_SceneRenderer->GetFinalImage();
 		ImGui::Image(ImGuiEx::CreateTextureRef(finalImage->GetTexture()), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)));
 
+		// Non-intrusive notice: while playing without a primary camera, the viewport
+		// shows the editor camera's view instead of the game view. A small pill in the
+		// corner explains why, so live edits still being applied don't look broken.
+		if (m_SceneState == SceneState::Play && m_MissingPrimaryCamera)
+		{
+			constexpr const char* notice = "No primary camera - showing editor view";
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+			const ImVec2 imageMin = ImGui::GetItemRectMin();
+			constexpr ImVec2 pad = { 8.0f, 5.0f };
+			const ImVec2 textPos = { imageMin.x + 10.0f, imageMin.y + 10.0f };
+			const ImVec2 textSize = ImGui::CalcTextSize(notice);
+			drawList->AddRectFilled(
+				{ textPos.x - pad.x, textPos.y - pad.y },
+				{ textPos.x + textSize.x + pad.x, textPos.y + textSize.y + pad.y },
+				IM_COL32(18, 18, 20, 205), 4.0f);
+			drawList->AddText(textPos, IM_COL32(232, 150, 60, 255), notice);
+		}
+
 		UI_Toolbar();
 
 		ImGui::End(); // Viewport
@@ -282,9 +330,11 @@ namespace Eppo
 		if (e.IsRepeat())
 			return false;
 
-		[[maybe_unused]] const bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
-		[[maybe_unused]] const bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
-		[[maybe_unused]] const bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
+		// Read modifiers ungated: editor accelerators must work regardless of whether
+		// the viewport currently owns gameplay input.
+		[[maybe_unused]] const bool alt = Input::IsKeyPressedRaw(Key::LeftAlt) || Input::IsKeyPressedRaw(Key::RightAlt);
+		[[maybe_unused]] const bool control = Input::IsKeyPressedRaw(Key::LeftControl) || Input::IsKeyPressedRaw(Key::RightControl);
+		[[maybe_unused]] const bool shift = Input::IsKeyPressedRaw(Key::LeftShift) || Input::IsKeyPressedRaw(Key::RightShift);
 
 		switch (e.GetKeyCode())
 		{
@@ -324,7 +374,12 @@ namespace Eppo
 		m_SceneState = SceneState::Play;
 		m_ActiveScene = Scene::Copy(m_EditorScene);
 		m_PanelManager->SetSceneContext(m_ActiveScene);
-		RemapSelectionTo(m_ActiveScene, selectedUUID);
+
+		// Re-resolve the selection by UUID in the runtime copy so the Property panel
+		// edits the entity that is actually being rendered (handles don't survive the
+		// copy, UUIDs do). Clear it if the UUID isn't present.
+		m_PanelManager->SetSelectedEntity(selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{});
+
 		m_ActiveScene->OnRuntimeStart();
 	}
 
@@ -342,21 +397,15 @@ namespace Eppo
 		m_SceneState = SceneState::Edit;
 		m_ActiveScene = m_EditorScene;
 		m_PanelManager->SetSceneContext(m_ActiveScene);
-		RemapSelectionTo(m_ActiveScene, selectedUUID);
+
+		// Map the selection back onto the editor scene by UUID (see OnScenePlay).
+		m_PanelManager->SetSelectedEntity(selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{});
 	}
 
 	auto EditorLayer::GetSelectedUUID() const -> UUID
 	{
 		const Entity selected = m_PanelManager->GetSelectedEntity();
 		return selected ? selected.GetUUID() : UUID(0);
-	}
-
-	auto EditorLayer::RemapSelectionTo(const Ref<Scene>& scene, const UUID& uuid) -> void
-	{
-		// Re-resolve the selection by UUID in the new panel scene context so the
-		// Property panel edits the entity that is actually being rendered. A zero
-		// UUID means nothing was selected; clear the selection if it is absent.
-		m_PanelManager->SetSelectedEntity(uuid ? scene->GetEntityByUUID(uuid) : Entity{});
 	}
 
 	auto EditorLayer::RestoreDefaultLayout() -> void

@@ -4,11 +4,11 @@
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
+#include "Renderer/Image.h"
 
 #include <GLFW/glfw3.h>
 #include <nfd.hpp>
 #include <nfd_glfw3.h>
-#include <stb_image.h>
 
 namespace Eppo
 {
@@ -153,20 +153,19 @@ namespace Eppo
 
 	auto Window::SetIcon(const std::filesystem::path& path) -> void
 	{
-		int width = 0, height = 0, channels = 0;
-		stbi_uc* pixels = stbi_load(path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
-		if (!pixels)
-		{
-			Log::Error("Failed to load window icon from '{}'", path);
-			return;
-		}
+		uint32_t width = 0, height = 0;
+		Buffer pixels = Image::DecodeToRGBA8(path, width, height);
+		if (!pixels.Data)
+			return; // Image::DecodeToRGBA8 already logged the failure.
 
+		// GLFW copies the pixel data during the call, so the buffer can be released
+		// immediately afterwards.
 		GLFWimage image;
-		image.width = width;
-		image.height = height;
-		image.pixels = pixels;
+		image.width = static_cast<int>(width);
+		image.height = static_cast<int>(height);
+		image.pixels = pixels.As<unsigned char>();
 		glfwSetWindowIcon(m_Window, 1, &image);
 
-		stbi_image_free(pixels);
+		pixels.Release();
 	}
 }

@@ -46,6 +46,7 @@ namespace Eppo
 	}
 
 	InputBackend* Input::s_Backend = nullptr;
+	bool Input::s_WorldInputEnabled = true;
 
 	auto Input::SetBackend(InputBackend* backend) -> void
 	{
@@ -57,14 +58,29 @@ namespace Eppo
 		return s_Backend ? *s_Backend : DefaultBackend();
 	}
 
+	auto Input::SetWorldInputEnabled(bool enabled) -> void
+	{
+		s_WorldInputEnabled = enabled;
+	}
+
+	auto Input::IsWorldInputEnabled() -> bool
+	{
+		return s_WorldInputEnabled;
+	}
+
 	auto Input::IsKeyPressed(KeyCode key) -> bool
+	{
+		return s_WorldInputEnabled && GetBackend().IsKeyPressed(key);
+	}
+
+	auto Input::IsKeyPressedRaw(KeyCode key) -> bool
 	{
 		return GetBackend().IsKeyPressed(key);
 	}
 
 	auto Input::IsMouseButtonPressed(MouseCode button) -> bool
 	{
-		return GetBackend().IsMouseButtonPressed(button);
+		return s_WorldInputEnabled && GetBackend().IsMouseButtonPressed(button);
 	}
 
 	auto Input::GetMousePosition() -> glm::vec2
