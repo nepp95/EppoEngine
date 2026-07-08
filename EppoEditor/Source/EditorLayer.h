@@ -22,7 +22,6 @@ namespace Eppo
 		auto OnScenePlay() -> void;
 		auto OnSceneStop() -> void;
 		[[nodiscard]] auto GetSelectedUUID() const -> UUID;
-		auto RemapSelectionTo(const Ref<Scene>& scene, const UUID& uuid) -> void;
 
 		auto RestoreDefaultLayout() -> void;
 
@@ -61,6 +60,14 @@ namespace Eppo
 		bool m_ViewportHovered = false;
 		uint32_t m_ViewportWidth = 1600;
 		uint32_t m_ViewportHeight = 900;
+
+		// Set while playing when the runtime scene has no primary camera: the play
+		// view falls back to the editor camera and a non-intrusive notice is shown.
+		bool m_MissingPrimaryCamera = false;
+
+		// Restoring the docking layout must happen before any window Begin this
+		// frame, so the menu item just raises this and OnUIRender services it early.
+		bool m_RestoreLayoutRequested = false;
 
 		enum class SceneState
 		{
