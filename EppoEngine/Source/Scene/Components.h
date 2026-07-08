@@ -101,4 +101,17 @@ namespace Eppo
 			: ClassName(std::move(className))
 		{}
 	};
+
+	// Places an entity in the transform hierarchy. Links are stable UUIDs (not
+	// handles) so they survive Scene::Copy and serialization. Parent == 0 is a root;
+	// transforms are local, composed via Scene::GetWorldTransform. Every entity
+	// carries one (added in CreateEntityWithUUID).
+	struct RelationshipComponent
+	{
+		UUID Parent = 0;
+		std::vector<UUID> Children;
+
+		RelationshipComponent() = default;
+		RelationshipComponent(const RelationshipComponent&) = default;
+	};
 }

@@ -13,7 +13,7 @@ namespace Eppo
 
 		const uint32_t maxFrames = dm->GetParams().MaxFramesInFlight;
 		m_TimerQueries.resize(maxFrames);
-		m_LastTimes.resize(maxFrames);
+		m_Timestamps.resize(maxFrames);
 
 		for (uint32_t i = 0; i < maxFrames; i++)
 			m_TimerQueries[i] = device->createTimerQuery();
@@ -43,7 +43,7 @@ namespace Eppo
 		const auto& dm = DeviceManager::Get();
 		const auto device = dm->GetDevice();
 
-		m_LastTimes[frameIndex] = device->getTimerQueryTime(m_TimerQueries.at(frameIndex));
+		m_Timestamps[frameIndex] = device->getTimerQueryTime(m_TimerQueries.at(frameIndex));
 		device->resetTimerQuery(m_TimerQueries.at(frameIndex));
 	}
 }

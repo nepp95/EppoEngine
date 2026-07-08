@@ -231,6 +231,58 @@ SUITE(Scene)
         CHECK(!SceneSerializer(scene).Deserialize(dir.File("does-not-exist.epscene")));
     }
 
+    TEST(RoundTripPreservesHierarchy)
+    {
+        const TempDir dir;
+        const auto original = dir.File("hier-a.epscene");
+        const auto reemitted = dir.File("hier-b.epscene");
+
+        Ref<Scene> scene = CreateRef<Scene>();
+        Entity parent = scene->CreateEntityWithUUID(UUID(100ull), "Parent");
+        Entity child = scene->CreateEntityWithUUID(UUID(200ull), "Child");
+        scene->SetParent(child, parent);
+
+        SceneSerializer(scene).Serialize(original);
+
+        // The parent link and child list land in the JSON (entities are ID-sorted,
+        // so [0] is the parent (100) and [1] is the child (200)).
+        const json data = ParseSceneFile(original);
+        CHECK_EQUAL(200ull, data["Scene"]["Entities"][0]["RelationshipComponent"]["Children"][0].get<uint64_t>());
+        CHECK_EQUAL(100ull, data["Scene"]["Entities"][1]["RelationshipComponent"]["Parent"].get<uint64_t>());
+
+        // ...and the links survive a load + re-emit unchanged.
+        Ref<Scene> loaded = CreateRef<Scene>();
+        CHECK(SceneSerializer(loaded).Deserialize(original));
+        SceneSerializer(loaded).Serialize(reemitted);
+        const json b = ParseSceneFile(reemitted);
+        CHECK(data["Scene"]["Entities"] == b["Scene"]["Entities"]);
+    }
+
+    TEST(DeserializeRelinksParentAndChild)
+    {
+        const TempDir dir;
+        const auto path = dir.File("relink.epscene");
+
+        Ref<Scene> scene = CreateRef<Scene>();
+        Entity parent = scene->CreateEntityWithUUID(UUID(100ull), "Parent");
+        Entity child = scene->CreateEntityWithUUID(UUID(200ull), "Child");
+        scene->SetParent(child, parent);
+        SceneSerializer(scene).Serialize(path);
+
+        Ref<Scene> loaded = CreateRef<Scene>();
+        CHECK(SceneSerializer(loaded).Deserialize(path));
+
+        Entity loadedChild = loaded->GetEntityByUUID(UUID(200ull));
+        CHECK(static_cast<bool>(loadedChild));
+        CHECK(loadedChild.GetComponent<RelationshipComponent>().Parent == UUID(100ull));
+
+        // World composition works on the reloaded tree.
+        Entity loadedParent = loaded->GetEntityByUUID(UUID(100ull));
+        loadedParent.GetComponent<TransformComponent>().Translation = { 4.0f, 0.0f, 0.0f };
+        const glm::vec3 world = glm::vec3(loaded->GetWorldTransform(loadedChild)[3]);
+        CHECK_VEC3_CLOSE(glm::vec3(4.0f, 0.0f, 0.0f), world, 1e-5f);
+    }
+
     TEST(DestroyEntityRemovesItFromSerialization)
     {
         const TempDir dir;

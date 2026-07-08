@@ -51,6 +51,13 @@ namespace Eppo
 		auto DuplicateEntity(Entity entity) -> Entity;
 		auto DestroyEntity(Entity entity) -> void;
 
+		// Reparents child under parent (invalid parent detaches to root), preserving
+		// the child's world transform. No-op if the move would create a cycle.
+		auto SetParent(Entity child, Entity parent) -> void;
+
+		// Composes an entity's world transform from its parent chain.
+		[[nodiscard]] auto GetWorldTransform(Entity entity) -> glm::mat4;
+
 		// Resolve an entity by its stable UUID. Returns an invalid Entity if the
 		// UUID is not present in this scene. Used to remap a selection across the
 		// editor/runtime scene copies (UUIDs survive Scene::Copy, handles do not).
@@ -69,6 +76,9 @@ namespace Eppo
 
 	private:
 		auto RenderScene(const Ref<SceneRenderer>& sceneRenderer) -> void;
+
+		// Destroys an entity and its descendants (caller detaches the subtree root).
+		auto DestroyEntityHierarchy(Entity entity) -> void;
 
 	private:
 		entt::registry m_Registry;

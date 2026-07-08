@@ -46,6 +46,7 @@ Presets: `{windows,linux}-{debug,release,dist}` = Debug / RelWithDebInfo / Relea
 - Config macros `EP_DEBUG`/`EP_RELEASE`/`EP_DIST`; platform macros `EP_PLATFORM_WINDOWS`/`EP_PLATFORM_LINUX`
 - Tracy profiling (`EP_PROFILE_FN`, `EP_FRAME_MARK`) enabled in Debug/Release; global `new`/`delete` overridden for memory tracking
 - Trailing return type style (`auto Foo() -> void`)
+- Keep comments concise — explain the non-obvious *why* in a line or two, not a paragraph
 
 ### Renderer (Source/Renderer/ + Platform/Vulkan/)
 

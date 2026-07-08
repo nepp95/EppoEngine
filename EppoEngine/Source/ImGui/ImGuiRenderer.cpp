@@ -146,7 +146,7 @@ namespace Eppo
 
 		const std::string marker = std::format("ImGui (Viewport: {})", viewport == ImGui::GetMainViewport() ? "Main" : std::to_string(reinterpret_cast<uint64_t>(viewport)));
 		m_Pass.Begin(m_CommandList, frameIndex, marker);
-		PassStatistics& stats = m_Pass.Stats();
+		PassStatistics& stats = m_Pass.GetStats();
 
 		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
 
