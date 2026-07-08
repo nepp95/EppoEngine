@@ -15,33 +15,6 @@ namespace Eppo
 		constexpr const char* CONTENT_BROWSER_PANEL = "Content Browser";
 		constexpr const char* PROPERTY_PANEL = "Property";
 		constexpr const char* SCENE_HIERARCHY_PANEL = "Scene Hierarchy";
-
-		// Point-in-rounded-rect test. Used by the toolbar so clicks that land in the
-		// transparent corner arcs (outside the visual rounded panel but inside the
-		// rectangular widget hitbox) are ignored.
-		auto IsInsideRoundedRect(const ImVec2& p, const ImVec2& min, const ImVec2& max, float radius) -> bool
-		{
-			if (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y)
-				return false;
-
-			const auto outsideCorner = [&](float cx, float cy) -> bool
-			{
-				const float dx = p.x - cx;
-				const float dy = p.y - cy;
-				return dx * dx + dy * dy > radius * radius;
-			};
-
-			if (p.x < min.x + radius && p.y < min.y + radius) // top-left
-				return !outsideCorner(min.x + radius, min.y + radius);
-			if (p.x > max.x - radius && p.y < min.y + radius) // top-right
-				return !outsideCorner(max.x - radius, min.y + radius);
-			if (p.x < min.x + radius && p.y > max.y - radius) // bottom-left
-				return !outsideCorner(min.x + radius, max.y - radius);
-			if (p.x > max.x - radius && p.y > max.y - radius) // bottom-right
-				return !outsideCorner(max.x - radius, max.y - radius);
-
-			return true;
-		}
 	}
 
 	auto EditorLayer::OnAttach() -> void
@@ -730,7 +703,7 @@ namespace Eppo
 
 			// The hitbox is rectangular; ignore hovers/clicks in the rounded corner
 			// arcs so the outer, non-button region doesn't activate.
-			const bool inside = IsInsideRoundedRect(ImGui::GetIO().MousePos, panelMin, panelMax, rounding);
+			const bool inside = Utils::IsInsideRoundedRect(ImGui::GetIO().MousePos, panelMin, panelMax, rounding);
 			const bool hovered = button.Enabled && inside && ImGui::IsItemHovered();
 			const bool held = hovered && ImGui::IsItemActive();
 			const bool clicked = button.Enabled && inside && ImGui::IsItemClicked();
@@ -808,6 +781,36 @@ namespace Eppo
 				ImGui::EndDisabled();
 
 			ImGui::EndPopup();
+		}
+	}
+
+	namespace Utils
+	{
+		// Point-in-rounded-rect test. Used by the toolbar so clicks that land in the
+		// transparent corner arcs (outside the visual rounded panel but inside the
+		// rectangular widget hitbox) are ignored.
+		auto IsInsideRoundedRect(const ImVec2& p, const ImVec2& min, const ImVec2& max, float radius) -> bool
+		{
+			if (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y)
+				return false;
+
+			const auto outsideCorner = [&](float cx, float cy) -> bool
+			{
+				const float dx = p.x - cx;
+				const float dy = p.y - cy;
+				return dx * dx + dy * dy > radius * radius;
+			};
+
+			if (p.x < min.x + radius && p.y < min.y + radius) // top-left
+				return !outsideCorner(min.x + radius, min.y + radius);
+			if (p.x > max.x - radius && p.y < min.y + radius) // top-right
+				return !outsideCorner(max.x - radius, min.y + radius);
+			if (p.x < min.x + radius && p.y > max.y - radius) // bottom-left
+				return !outsideCorner(min.x + radius, max.y - radius);
+			if (p.x > max.x - radius && p.y > max.y - radius) // bottom-right
+				return !outsideCorner(max.x - radius, max.y - radius);
+
+			return true;
 		}
 	}
 }
