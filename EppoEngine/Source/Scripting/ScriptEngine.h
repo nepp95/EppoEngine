@@ -9,6 +9,8 @@
 
 namespace Eppo
 {
+    class PhysicsWorld;
+
     // Editor-time value of a single script field. Buffer is sized to the widest
     // field type (Vector4 = 16 bytes) so any field fits without allocation.
     struct ScriptFieldValue
@@ -77,6 +79,11 @@ namespace Eppo
         auto OnUpdateEntity(Entity entity, float timestep) -> void;
         auto OnDestroyEntity(Entity entity) -> void;
 
+        // The physics world the script physics callbacks act on. Set by the scene
+        // in OnRuntimeStart (cleared on stop). Null outside play, so the callbacks
+        // no-op safely.
+        auto SetActivePhysicsWorld(PhysicsWorld* world) -> void { m_ActivePhysicsWorld = world; }
+
         // The engine owns the live-instance registry: it is authoritative for
         // which entities have a running script. Returns nullptr when the entity
         // has no live instance (not playing, or its script failed to instantiate).
@@ -100,8 +107,15 @@ namespace Eppo
         static auto InputIsKeyDownCallback(uint32_t keyCode) -> bool;
         static auto ErrorCallback(const std::string& message) -> void;
 
+        // Physics callbacks handed to the managed runtime. Signatures must match the
+        // function-pointer typedefs in EppoScriptCore's NativeCallbacks.
+        static auto ApplyLinearImpulseCallback(uint64_t entityId, EppoScriptCore::EppoVec3 impulse) -> void;
+        static auto GetLinearVelocityCallback(uint64_t entityId, EppoScriptCore::EppoVec3* outVelocity) -> void;
+        static auto SetLinearVelocityCallback(uint64_t entityId, EppoScriptCore::EppoVec3 velocity) -> void;
+
         std::unique_ptr<EppoScriptCore::Assembly> m_CoreAssembly;
         std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
+        PhysicsWorld* m_ActivePhysicsWorld = nullptr;
 
         // The authoritative registry of live script instances, keyed by entity
         // UUID. Populated on play (OnCreateEntity), cleared on stop / assembly

@@ -7,6 +7,7 @@ vcpkg_from_gitlab(
     HEAD_REF master
     PATCHES
         install-targets.patch
+        physics-callbacks.patch
 )
 
 vcpkg_cmake_configure(

@@ -1,0 +1,197 @@
+diff --git a/EppoScriptCore.Managed/Source/Core/NativeCallbacks.cs b/EppoScriptCore.Managed/Source/Core/NativeCallbacks.cs
+index f9e0964..5bcf614 100644
+--- a/EppoScriptCore.Managed/Source/Core/NativeCallbacks.cs
++++ b/EppoScriptCore.Managed/Source/Core/NativeCallbacks.cs
+@@ -7,5 +7,14 @@ namespace EppoScriptCore.Core
+ 
+         internal delegate bool InputIsKeyDownDelegate(uint keyCode);
+         internal static InputIsKeyDownDelegate? InputIsKeyDown;
++
++        internal delegate void ApplyLinearImpulseDelegate(ulong entityId, EppoScriptCore.Math.Vector3 impulse);
++        internal static ApplyLinearImpulseDelegate? ApplyLinearImpulse;
++
++        internal delegate void GetLinearVelocityDelegate(ulong entityId, out EppoScriptCore.Math.Vector3 velocity);
++        internal static GetLinearVelocityDelegate? GetLinearVelocity;
++
++        internal delegate void SetLinearVelocityDelegate(ulong entityId, EppoScriptCore.Math.Vector3 velocity);
++        internal static SetLinearVelocityDelegate? SetLinearVelocity;
+     }
+ }
+diff --git a/EppoScriptCore.Managed/Source/Core/ScriptBehaviour.cs b/EppoScriptCore.Managed/Source/Core/ScriptBehaviour.cs
+index de0822f..135465a 100644
+--- a/EppoScriptCore.Managed/Source/Core/ScriptBehaviour.cs
++++ b/EppoScriptCore.Managed/Source/Core/ScriptBehaviour.cs
+@@ -1,9 +1,17 @@
++using EppoScriptCore.ECS;
++
+ namespace EppoScriptCore
+ {
+     public abstract class ScriptBehaviour
+     {
+         public ulong Id { get; internal set; }
+ 
++        // This script's entity, and a shortcut to its component accessors so user
++        // code can write GetComponent<RigidBody>().ApplyLinearImpulse(...).
++        public Entity Entity => new Entity(Id);
++
++        public T GetComponent<T>() where T : Component, new() => Entity.GetComponent<T>();
++
+         public virtual void OnCreate()
+         {
+         }
+diff --git a/EppoScriptCore.Managed/Source/Core/ScriptGlue.cs b/EppoScriptCore.Managed/Source/Core/ScriptGlue.cs
+index 9d64731..f0a001e 100644
+--- a/EppoScriptCore.Managed/Source/Core/ScriptGlue.cs
++++ b/EppoScriptCore.Managed/Source/Core/ScriptGlue.cs
+@@ -352,12 +352,19 @@ namespace EppoScriptCore.Core
+         public static void FreeString(IntPtr ptr) => Marshal.FreeCoTaskMem(ptr);
+ 
+         [UnmanagedCallersOnly(EntryPoint = "RegisterNativeCallbacks")]
+-        public static void RegisterNativeCallbacks(IntPtr logCallbackPtr, IntPtr inputIsKeyDownPtr)
++        public static void RegisterNativeCallbacks(IntPtr logCallbackPtr, IntPtr inputIsKeyDownPtr,
++            IntPtr applyLinearImpulsePtr, IntPtr getLinearVelocityPtr, IntPtr setLinearVelocityPtr)
+         {
+             if (logCallbackPtr != IntPtr.Zero)
+                 NativeCallbacks.LogCallback = Marshal.GetDelegateForFunctionPointer<NativeCallbacks.LogCallbackDelegate>(logCallbackPtr);
+             if (inputIsKeyDownPtr != IntPtr.Zero)
+                 NativeCallbacks.InputIsKeyDown = Marshal.GetDelegateForFunctionPointer<NativeCallbacks.InputIsKeyDownDelegate>(inputIsKeyDownPtr);
++            if (applyLinearImpulsePtr != IntPtr.Zero)
++                NativeCallbacks.ApplyLinearImpulse = Marshal.GetDelegateForFunctionPointer<NativeCallbacks.ApplyLinearImpulseDelegate>(applyLinearImpulsePtr);
++            if (getLinearVelocityPtr != IntPtr.Zero)
++                NativeCallbacks.GetLinearVelocity = Marshal.GetDelegateForFunctionPointer<NativeCallbacks.GetLinearVelocityDelegate>(getLinearVelocityPtr);
++            if (setLinearVelocityPtr != IntPtr.Zero)
++                NativeCallbacks.SetLinearVelocity = Marshal.GetDelegateForFunctionPointer<NativeCallbacks.SetLinearVelocityDelegate>(setLinearVelocityPtr);
+         }
+ 
+         private static object? ReadFieldValue(IntPtr data, ScriptFieldType type)
+diff --git a/EppoScriptCore.Managed/Source/ECS/Component.cs b/EppoScriptCore.Managed/Source/ECS/Component.cs
+new file mode 100644
+index 0000000..ba7b665
+--- /dev/null
++++ b/EppoScriptCore.Managed/Source/ECS/Component.cs
+@@ -0,0 +1,10 @@
++namespace EppoScriptCore.ECS
++{
++    // Base for the managed component accessors. A component wrapper is a thin
++    // handle bound to an entity; it carries no state of its own and forwards to
++    // the native engine (via NativeCallbacks) using the entity's id.
++    public abstract class Component
++    {
++        public Entity Entity { get; internal set; }
++    }
++}
+diff --git a/EppoScriptCore.Managed/Source/ECS/Entity.cs b/EppoScriptCore.Managed/Source/ECS/Entity.cs
+index 9bc1390..168c7a5 100644
+--- a/EppoScriptCore.Managed/Source/ECS/Entity.cs
++++ b/EppoScriptCore.Managed/Source/ECS/Entity.cs
+@@ -14,6 +14,14 @@ namespace EppoScriptCore.ECS
+ 
+         public bool IsValid => Id != 0;
+ 
++        // Returns a component accessor bound to this entity. The wrapper is created
++        // on demand and holds no state, so it is cheap; it does not verify the
++        // entity actually has the component (calls no-op on the native side if not).
++        public T GetComponent<T>() where T : Component, new()
++        {
++            return new T { Entity = this };
++        }
++
+         public static Entity Null => new Entity(0);
+ 
+         public override string ToString() => $"Entity({Id})";
+diff --git a/EppoScriptCore.Managed/Source/ECS/RigidBody.cs b/EppoScriptCore.Managed/Source/ECS/RigidBody.cs
+new file mode 100644
+index 0000000..075b997
+--- /dev/null
++++ b/EppoScriptCore.Managed/Source/ECS/RigidBody.cs
+@@ -0,0 +1,29 @@
++using EppoScriptCore.Core;
++using EppoScriptCore.Math;
++
++namespace EppoScriptCore.ECS
++{
++    // Physics body accessor. Obtain via entity.GetComponent<RigidBody>() (or, from
++    // a ScriptBehaviour, GetComponent<RigidBody>()). Calls forward to the native
++    // physics world; if the entity has no body the engine logs and no-ops.
++    public class RigidBody : Component
++    {
++        public void ApplyLinearImpulse(Vector3 impulse)
++        {
++            NativeCallbacks.ApplyLinearImpulse?.Invoke(Entity.Id, impulse);
++        }
++
++        public Vector3 LinearVelocity
++        {
++            get
++            {
++                if (NativeCallbacks.GetLinearVelocity is null)
++                    return Vector3.Zero;
++
++                NativeCallbacks.GetLinearVelocity(Entity.Id, out Vector3 velocity);
++                return velocity;
++            }
++            set => NativeCallbacks.SetLinearVelocity?.Invoke(Entity.Id, value);
++        }
++    }
++}
+diff --git a/EppoScriptCore.Native/Include/EppoScriptCore.Native/Assembly.h b/EppoScriptCore.Native/Include/EppoScriptCore.Native/Assembly.h
+index 7e8139d..47a5580 100644
+--- a/EppoScriptCore.Native/Include/EppoScriptCore.Native/Assembly.h
++++ b/EppoScriptCore.Native/Include/EppoScriptCore.Native/Assembly.h
+@@ -16,13 +16,26 @@ namespace EppoScriptCore
+ 
+ 	using ErrorCallback = std::function<void(const std::string&)>;
+ 
++	// Blittable 3-float vector shared with the managed Vector3 (LayoutKind.Sequential)
++	// and layout-compatible with glm::vec3 on the engine side.
++	struct EppoVec3 { float x, y, z; };
++
+ 	using LogCallbackFn = void(*)(uint8_t level, const char* message);
+ 	using InputIsKeyDownCallbackFn = bool(*)(uint32_t keyCode);
+ 
++	// Physics: entityId is the engine entity UUID. Impulse/velocity are passed by
++	// value; the getter uses an out pointer to avoid struct-return ABI concerns.
++	using ApplyLinearImpulseCallbackFn = void(*)(uint64_t entityId, EppoVec3 impulse);
++	using GetLinearVelocityCallbackFn = void(*)(uint64_t entityId, EppoVec3* outVelocity);
++	using SetLinearVelocityCallbackFn = void(*)(uint64_t entityId, EppoVec3 velocity);
++
+ 	struct NativeCallbacks
+ 	{
+ 		LogCallbackFn Log = nullptr;
+ 		InputIsKeyDownCallbackFn InputIsKeyDown = nullptr;
++		ApplyLinearImpulseCallbackFn ApplyLinearImpulse = nullptr;
++		GetLinearVelocityCallbackFn GetLinearVelocity = nullptr;
++		SetLinearVelocityCallbackFn SetLinearVelocity = nullptr;
+ 	};
+ 
+ 	// Assembly is the public entrypoint for a loaded managed assembly. Owns the
+diff --git a/EppoScriptCore.Native/Source/Assembly.cpp b/EppoScriptCore.Native/Source/Assembly.cpp
+index 8ebe004..c84e343 100644
+--- a/EppoScriptCore.Native/Source/Assembly.cpp
++++ b/EppoScriptCore.Native/Source/Assembly.cpp
+@@ -30,7 +30,10 @@ namespace EppoScriptCore
+ 		m_Fns->Bootstrap();
+ 		m_Fns->RegisterNativeCallbacks(
+ 			reinterpret_cast<void*>(m_NativeCallbacks.Log),
+-			reinterpret_cast<void*>(m_NativeCallbacks.InputIsKeyDown)
++			reinterpret_cast<void*>(m_NativeCallbacks.InputIsKeyDown),
++			reinterpret_cast<void*>(m_NativeCallbacks.ApplyLinearImpulse),
++			reinterpret_cast<void*>(m_NativeCallbacks.GetLinearVelocity),
++			reinterpret_cast<void*>(m_NativeCallbacks.SetLinearVelocity)
+ 		);
+ 
+ 		RebuildClassIndex();
+diff --git a/EppoScriptCore.Native/Source/ManagedFunctions.h b/EppoScriptCore.Native/Source/ManagedFunctions.h
+index dc332ce..73ef1ff 100644
+--- a/EppoScriptCore.Native/Source/ManagedFunctions.h
++++ b/EppoScriptCore.Native/Source/ManagedFunctions.h
+@@ -27,7 +27,8 @@ namespace EppoScriptCore
+ 
+ 	using FreeStringFn = void(*)(char*);
+ 
+-	using RegisterNativeCallbacksFn = void(*)(void*, void*); // log, inputIsKeyDown
++	// log, inputIsKeyDown, applyLinearImpulse, getLinearVelocity, setLinearVelocity
++	using RegisterNativeCallbacksFn = void(*)(void*, void*, void*, void*, void*);
+ 
+ 	struct ManagedFunctions
+ 	{
