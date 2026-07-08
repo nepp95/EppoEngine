@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Scene/Scene.h"
 
+#include "Math/Math.h"
 #include "Renderer/SceneRenderer.h"
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
@@ -121,6 +122,7 @@ namespace Eppo
 
 		entity.AddComponent<IDComponent>(uuid);
 		entity.AddComponent<TransformComponent>();
+		entity.AddComponent<RelationshipComponent>();
 
 		auto& tag = entity.AddComponent<TagComponent>();
 		tag.Tag = name.empty() ? "Entity" : name;
@@ -157,18 +159,125 @@ namespace Eppo
 		if (entity.HasComponent<ScriptComponent>() && ScriptEngine::IsInitialized())
 			ScriptEngine::Get().CopyFieldMap(entity.GetUUID(), newEntity.GetUUID());
 
+		// The copy joins the source's parent as a sibling with the same local
+		// transform (so it lands exactly on top of the source). Children are not
+		// duplicated: the copy starts as a leaf. RelationshipComponent is therefore
+		// not blind-copied above, which would wrongly claim the source's children.
+		if (const UUID parentId = entity.GetComponent<RelationshipComponent>().Parent)
+		{
+			newEntity.GetComponent<RelationshipComponent>().Parent = parentId;
+			if (const Entity parent = GetEntityByUUID(parentId))
+				parent.GetComponent<RelationshipComponent>().Children.push_back(newEntity.GetUUID());
+		}
+
 		return newEntity;
 	}
 
 	auto Scene::DestroyEntity(Entity entity) -> void
 	{
+		// Detach from the parent first so the parent's child list stays valid; then
+		// tear down this entity and its whole subtree.
+		if (const UUID parentId = entity.GetComponent<RelationshipComponent>().Parent)
+		{
+			if (const Entity parent = GetEntityByUUID(parentId))
+			{
+				auto& siblings = parent.GetComponent<RelationshipComponent>().Children;
+				std::erase(siblings, entity.GetUUID());
+			}
+		}
+
+		DestroyEntityHierarchy(entity);
+	}
+
+	auto Scene::DestroyEntityHierarchy(Entity entity) -> void
+	{
+		// Snapshot the child list before recursing: each child's teardown frees its
+		// registry storage, so we must not hold a reference into the component while
+		// entities are being destroyed.
+		const std::vector<UUID> children = entity.GetComponent<RelationshipComponent>().Children;
+		for (const UUID childId : children)
+		{
+			if (const Entity child = GetEntityByUUID(childId))
+				DestroyEntityHierarchy(child);
+		}
+
 		if (entity.HasComponent<ScriptComponent>() && ScriptEngine::IsInitialized())
 			ScriptEngine::Get().RemoveFieldMap(entity.GetUUID());
 
-		if (m_EntityMap.contains(entity.GetUUID()))
-			m_EntityMap.erase(entity.GetUUID());
-
+		m_EntityMap.erase(entity.GetUUID());
 		m_Registry.destroy(entity);
+	}
+
+	auto Scene::SetParent(Entity child, Entity parent) -> void
+	{
+		EP_PROFILE_FN("Scene::SetParent");
+
+		auto& childRelationship = child.GetComponent<RelationshipComponent>();
+
+		// Reject moves that would form a cycle: a node cannot become a descendant of
+		// itself. Walk up from the prospective parent; if we meet the child, bail.
+		for (Entity ancestor = parent; ancestor; )
+		{
+			if (ancestor == child)
+			{
+				Log::Warn("Ignoring reparent of entity '{}': target is the entity itself or one of its descendants.", child.GetName());
+				return;
+			}
+
+			const UUID ancestorParent = ancestor.GetComponent<RelationshipComponent>().Parent;
+			ancestor = ancestorParent ? GetEntityByUUID(ancestorParent) : Entity{};
+		}
+
+		// Capture the world transform before the parent change so we can preserve it.
+		const glm::mat4 worldTransform = GetWorldTransform(child);
+
+		// Unlink from the current parent, if any.
+		if (const UUID oldParentId = childRelationship.Parent)
+		{
+			if (const Entity oldParent = GetEntityByUUID(oldParentId))
+				std::erase(oldParent.GetComponent<RelationshipComponent>().Children, child.GetUUID());
+		}
+
+		// Link to the new parent (or become a root when parent is invalid).
+		childRelationship.Parent = parent ? parent.GetUUID() : UUID(0);
+		if (parent)
+			parent.GetComponent<RelationshipComponent>().Children.push_back(child.GetUUID());
+
+		// Re-solve the local transform so the child stays put in world space:
+		// localNew = inverse(parentWorld) * worldChild.
+		const glm::mat4 parentWorld = parent ? GetWorldTransform(parent) : glm::mat4(1.0f);
+		const glm::mat4 localTransform = glm::inverse(parentWorld) * worldTransform;
+
+		auto& transform = child.GetComponent<TransformComponent>();
+		Math::DecomposeTransform(localTransform, transform.Translation, transform.Rotation, transform.Scale);
+	}
+
+	auto Scene::GetWorldTransform(Entity entity) -> glm::mat4
+	{
+		glm::mat4 world(1.0f);
+
+		// Walk child -> parent -> ... -> root, pre-multiplying each local transform.
+		// The step guard defends against a cycle in malformed serialized data (the
+		// live SetParent path already prevents cycles).
+		Entity current = entity;
+		for (size_t guard = 0; current; ++guard)
+		{
+			world = current.GetComponent<TransformComponent>().GetTransform() * world;
+
+			const UUID parentId = current.GetComponent<RelationshipComponent>().Parent;
+			if (!parentId)
+				break;
+
+			if (guard > m_EntityMap.size())
+			{
+				Log::Error("Cycle detected while composing world transform for entity '{}'; aborting walk.", entity.GetName());
+				break;
+			}
+
+			current = GetEntityByUUID(parentId);
+		}
+
+		return world;
 	}
 
 	template<typename T>
@@ -226,6 +335,9 @@ namespace Eppo
 		CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<PointLightComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
+		// Relationship links are UUID-based, so they copy verbatim: the play-mode
+		// scene reproduces the same hierarchy without any handle remapping.
+		CopyComponent<RelationshipComponent>(srcRegistry, dstRegistry, entityMap);
 
 		newScene->m_Environment = scene->m_Environment;
 
@@ -241,16 +353,19 @@ namespace Eppo
 		const auto lightView = m_Registry.view<PointLightComponent, TransformComponent>();
 		for (const auto& entity : lightView)
 		{
-			auto [transformComponent, lightComponent] = lightView.get<TransformComponent, PointLightComponent>(entity);
-			sceneRenderer->SubmitPointLight(transformComponent.Translation, lightComponent.Color, lightComponent.Intensity);
+			const auto& lightComponent = lightView.get<PointLightComponent>(entity);
+			// Light position is the translation of the composed world transform, so
+			// a parented light follows its parent.
+			const glm::vec3 worldPosition = glm::vec3(GetWorldTransform(Entity(entity, this))[3]);
+			sceneRenderer->SubmitPointLight(worldPosition, lightComponent.Color, lightComponent.Intensity);
 		}
 
 		const auto view = m_Registry.view<MeshComponent, TransformComponent>();
 		for (const auto& entity : view)
 		{
-			if (auto [transformComponent, meshComponent] = view.get<TransformComponent, MeshComponent>(entity); meshComponent.MeshHandle)
+			if (const auto& meshComponent = view.get<MeshComponent>(entity); meshComponent.MeshHandle)
 			{
-				sceneRenderer->SubmitMesh(meshComponent.MeshHandle, transformComponent.GetTransform());
+				sceneRenderer->SubmitMesh(meshComponent.MeshHandle, GetWorldTransform(Entity(entity, this)));
 			}
 		}
 	}
