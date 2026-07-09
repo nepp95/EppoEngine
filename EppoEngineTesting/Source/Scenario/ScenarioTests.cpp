@@ -182,6 +182,30 @@ SUITE(Scenario)
         CHECK(box.GetComponent<TransformComponent>().Translation.y < startY - 0.1f);
     }
 
+    // A dynamic body with no collider components must still fall: the Scene
+    // injects a default 0.5-unit box shape so gravity has mass to act on.
+    TEST(DynamicBodyFallsWithoutCollider)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        const Ref<Scene> scene = ctx.GetScene();
+
+        Entity box = scene->CreateEntity("ColliderlessBox");
+        box.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, 0.0f };
+        box.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
+        // Deliberately no collider component — Scene should inject a default.
+
+        const float startY = box.GetComponent<TransformComponent>().Translation.y;
+
+        scene->OnRuntimeStart();
+        ctx.AdvanceFrames(60, [&](float ts) { scene->OnUpdateRuntime(ts); });
+        scene->OnRuntimeStop();
+
+        CHECK(box.GetComponent<TransformComponent>().Translation.y < startY - 0.1f);
+    }
+
     // Smoke test for the point-light + gradient-sky rendering path. Constructing
     // the SceneRenderer builds both the geometry pipeline and the sky pipeline
     // (whose fullscreen triangle has a zero-attribute input layout), and each

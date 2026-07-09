@@ -73,11 +73,25 @@ namespace Eppo
 			for (const auto e : view)
 			{
 				Entity entity(e, this);
+
+				std::vector<ColliderData> colliders = GatherColliders(entity);
+				if (colliders.empty() && entity.GetComponent<RigidBodyComponent>().Type == RigidBodyComponent::BodyType::Dynamic)
+				{
+					// A dynamic body with no shapes has zero mass and ignores
+					// gravity.  Inject a unit box so it falls through space
+					// until the user adds a real collider.
+					Log::Info("Entity '{}': no collider component found; using a default 0.5-unit box so gravity acts.", entity.GetName());
+					colliders.push_back(ColliderData{});
+				}
+
+				if (colliders.empty())
+					continue;
+
 				m_PhysicsWorld->CreateBody(
 					entity.GetUUID(),
 					entity.GetComponent<RigidBodyComponent>(),
 					entity.GetComponent<TransformComponent>(),
-					GatherColliders(entity));
+					colliders);
 			}
 		}
 
