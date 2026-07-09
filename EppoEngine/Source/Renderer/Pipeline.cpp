@@ -13,6 +13,8 @@ namespace Eppo
 		nvrhi::RasterState rasterState{
 			.fillMode = m_Specification.FillMode,
 			.cullMode = m_Specification.CullMode,
+			.depthBias = m_Specification.DepthBias,
+			.slopeScaledDepthBias = m_Specification.SlopeScaledDepthBias,
 		};
 
 		nvrhi::DepthStencilState depthStencilState{
