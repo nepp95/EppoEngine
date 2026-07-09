@@ -42,7 +42,7 @@ namespace Eppo
 		auto OnRuntimeStop() -> void;
 		auto OnUpdateRuntime(float timestep) -> void;
 
-		auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera) -> void;
+		auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera, EntityHandle selectedEntity = entt::null) -> void;
 		auto OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer) -> void;
 
 		[[nodiscard]] auto GetPrimaryCameraEntity() -> Entity;

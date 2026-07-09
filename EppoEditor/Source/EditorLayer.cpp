@@ -2,6 +2,8 @@
 
 #include "Renderer/Image.h"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include "Panels/ContentBrowserPanel.h"
 #include "Panels/PropertyPanel.h"
 #include "Panels/SceneHierarchyPanel.h"
@@ -76,6 +78,12 @@ namespace Eppo
 	{
 	    EP_PROFILE_FN("EditorLayer::OnUpdate");
 
+		// Sync the selected entity from the panel manager before any rendering code
+		// reads it. The panel manager's selection is set during the previous frame's
+		// UI pass (when the user clicks in the hierarchy), so this is always one
+		// frame behind — intentional and invisible for wireframe / gizmo feedback.
+		m_SelectedEntity = m_PanelManager->GetSelectedEntity();
+
 		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 		{
 			m_EditorCamera->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
@@ -97,10 +105,10 @@ namespace Eppo
 			{
 				m_MissingPrimaryCamera = false;
 
-				if (m_ViewportFocused)
+				if (m_ViewportFocused && !ImGuizmo::IsUsing())
 					m_EditorCamera->OnUpdate(timestep);
 
-				m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera);
+				m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera, m_SelectedEntity);
 				break;
 			}
 
@@ -120,7 +128,7 @@ namespace Eppo
 				else
 				{
 					m_MissingPrimaryCamera = true;
-					m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera);
+					m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera, m_SelectedEntity);
 				}
 				break;
 			}
@@ -252,6 +260,7 @@ namespace Eppo
 			m_NewProjectPopup = false;
 		}
 
+	    // Popups
 		UI_NewProjectPopup();
 
 		// Scene render
@@ -276,25 +285,12 @@ namespace Eppo
 		const auto& finalImage = m_SceneRenderer->GetFinalImage();
 		ImGui::Image(ImGuiEx::CreateTextureRef(finalImage->GetTexture()), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)));
 
-		// Non-intrusive notice: while playing without a primary camera, the viewport
-		// shows the editor camera's view instead of the game view. A small pill in the
-		// corner explains why, so live edits still being applied don't look broken.
-		if (m_SceneState == SceneState::Play && m_MissingPrimaryCamera)
-		{
-			constexpr const char* notice = "No primary camera - showing editor view";
-			ImDrawList* drawList = ImGui::GetWindowDrawList();
-			const ImVec2 imageMin = ImGui::GetItemRectMin();
-			constexpr ImVec2 pad = { 8.0f, 5.0f };
-			const ImVec2 textPos = { imageMin.x + 10.0f, imageMin.y + 10.0f };
-			const ImVec2 textSize = ImGui::CalcTextSize(notice);
-			drawList->AddRectFilled(
-				{ textPos.x - pad.x, textPos.y - pad.y },
-				{ textPos.x + textSize.x + pad.x, textPos.y + textSize.y + pad.y },
-				IM_COL32(18, 18, 20, 205), 4.0f);
-			drawList->AddText(textPos, IM_COL32(232, 150, 60, 255), notice);
-		}
+	    // Imguizmo
+	    UpdateImGuizmo();
 
+	    // UI
 		UI_Toolbar();
+        UI_WarningNoPrimaryCamera();
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -344,6 +340,27 @@ namespace Eppo
 					SaveProject();
 				break;
 			}
+
+			case Key::W:
+			{
+				if (!alt && !control && !shift && m_SceneState == SceneState::Edit)
+					m_GizmoType = ImGuizmo::TRANSLATE;
+				break;
+			}
+
+			case Key::E:
+			{
+				if (!alt && !control && !shift && m_SceneState == SceneState::Edit)
+					m_GizmoType = ImGuizmo::ROTATE;
+				break;
+			}
+
+			case Key::R:
+			{
+				if (!alt && !control && !shift && m_SceneState == SceneState::Edit)
+					m_GizmoType = ImGuizmo::SCALE;
+				break;
+			}
 		}
 
 		return false;
@@ -367,7 +384,8 @@ namespace Eppo
 		// Re-resolve the selection by UUID in the runtime copy so the Property panel
 		// edits the entity that is actually being rendered (handles don't survive the
 		// copy, UUIDs do). Clear it if the UUID isn't present.
-		m_PanelManager->SetSelectedEntity(selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{});
+		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
+		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 
 		m_ActiveScene->OnRuntimeStart();
 	}
@@ -390,7 +408,8 @@ namespace Eppo
 		m_PanelManager->SetSceneContext(m_ActiveScene);
 
 		// Map the selection back onto the editor scene by UUID (see OnScenePlay).
-		m_PanelManager->SetSelectedEntity(selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{});
+		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
+		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 	}
 
 	auto EditorLayer::GetSelectedUUID() const -> UUID
@@ -674,7 +693,56 @@ namespace Eppo
 		return true;
 	}
 
-	auto EditorLayer::UI_Toolbar() -> void
+    auto EditorLayer::UpdateImGuizmo() -> void
+    {
+	    if (m_SceneState != SceneState::Edit)
+			return;
+
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist();
+
+        const ImVec2 imageMin = ImGui::GetItemRectMin();
+        const ImVec2 imageMax = ImGui::GetItemRectMax();
+        ImGuizmo::SetRect(imageMin.x, imageMin.y, imageMax.x - imageMin.x, imageMax.y - imageMin.y);
+
+        // Camera matrices — use the same unflipped projection the renderer uses
+        // (NVRHI flips Y at the viewport level for Vulkan; ImGuizmo expects Y-up
+        // clip space and maps it to screen coordinates internally).
+        auto& camera = *m_EditorCamera;
+        glm::mat4 view = camera.GetViewMatrix();
+        glm::mat4 proj = camera.GetProjectionMatrix();
+
+        // Entity transform gizmo
+        if (m_SelectedEntity && m_SelectedEntity.HasComponent<TransformComponent>())
+        {
+            auto& tc = m_SelectedEntity.GetComponent<TransformComponent>();
+            glm::mat4 transform = glm::translate(glm::mat4(1.0f), tc.Translation)
+                * glm::mat4_cast(glm::quat(tc.Rotation))
+                * glm::scale(glm::mat4(1.0f), tc.Scale);
+
+            ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), m_GizmoType, ImGuizmo::LOCAL, glm::value_ptr(transform), nullptr, nullptr);
+
+            if (ImGuizmo::IsUsing())
+            {
+                glm::vec3 translation, rotation, scale;
+                ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(transform), glm::value_ptr(translation), glm::value_ptr(rotation), glm::value_ptr(scale));
+
+                tc.Translation = translation;
+                tc.Rotation = glm::radians(rotation);
+                tc.Scale = scale;
+            }
+        }
+
+        // View orientation indicator in the top-right corner (display-only —
+        // interactivity would require syncing back into EditorCamera's internal
+        // position/pitch/yaw, adding fragility for little gain).
+        ImGuizmo::ViewManipulate(glm::value_ptr(view), 8.0f,
+            ImVec2(imageMax.x - 128.0f, imageMin.y),
+            ImVec2(128.0f, 128.0f),
+            0x00000000);
+    }
+
+    auto EditorLayer::UI_Toolbar() -> void
 	{
 		constexpr float buttonSize = 30.0f;
 		constexpr float rounding = 8.0f;
@@ -817,7 +885,28 @@ namespace Eppo
 		}
 	}
 
-	namespace Utils
+    auto EditorLayer::UI_WarningNoPrimaryCamera() -> void
+    {
+	    // Non-intrusive notice: while playing without a primary camera, the viewport
+	    // shows the editor camera's view instead of the game view. A small pill in the
+	    // corner explains why, so live edits still being applied don't look broken.
+	    if (m_SceneState == SceneState::Play && m_MissingPrimaryCamera)
+	    {
+	        constexpr const char* notice = "No primary camera - showing editor view";
+	        ImDrawList* drawList = ImGui::GetWindowDrawList();
+	        const ImVec2 imageMin = ImGui::GetItemRectMin();
+	        constexpr ImVec2 pad = { 8.0f, 5.0f };
+	        const ImVec2 textPos = { imageMin.x + 10.0f, imageMin.y + 10.0f };
+	        const ImVec2 textSize = ImGui::CalcTextSize(notice);
+	        drawList->AddRectFilled(
+                { textPos.x - pad.x, textPos.y - pad.y },
+                { textPos.x + textSize.x + pad.x, textPos.y + textSize.y + pad.y },
+                IM_COL32(18, 18, 20, 205), 4.0f);
+	        drawList->AddText(textPos, IM_COL32(232, 150, 60, 255), notice);
+	    }
+    }
+
+    namespace Utils
 	{
 		// Point-in-rounded-rect test. Used by the toolbar so clicks that land in the
 		// transparent corner arcs (outside the visual rounded panel but inside the
