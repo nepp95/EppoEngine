@@ -54,6 +54,10 @@
     {
       "name": "epposcriptcore",
       "version>=": "0.1.0"
+    },
+    {
+      "name": "imguizmo",
+      "version>=": "2024-05-29"
     }
   ]
 }
