@@ -404,13 +404,14 @@ namespace Eppo
 
 		switch (e.GetKeyCode())
 		{
-			case Key::N:
-			{
-				if (control)
-					m_NewProjectPopup = true;
-			}
+		    case Key::N:
+		    {
+			    if (control)
+				    m_NewProjectPopup = true;
+			    break;
+		    }
 
-			case Key::O:
+		    case Key::O:
 			{
 				if (control)
 					OpenProject();
