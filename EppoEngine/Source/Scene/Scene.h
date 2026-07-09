@@ -3,6 +3,7 @@
 #include "Asset/Asset.h"
 #include "Core/UUID.h"
 #include "Renderer/Camera/EditorCamera.h"
+#include "Scene/Components.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
@@ -42,7 +43,7 @@ namespace Eppo
 		auto OnRuntimeStop() -> void;
 		auto OnUpdateRuntime(float timestep) -> void;
 
-		auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera, EntityHandle selectedEntity = entt::null) -> void;
+		auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera) -> void;
 		auto OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer) -> void;
 
 		[[nodiscard]] auto GetPrimaryCameraEntity() -> Entity;
@@ -63,6 +64,16 @@ namespace Eppo
 		// UUID is not present in this scene. Used to remap a selection across the
 		// editor/runtime scene copies (UUIDs survive Scene::Copy, handles do not).
 		[[nodiscard]] auto GetEntityByUUID(const UUID& uuid) -> Entity;
+
+		// Invokes `func` for every entity. Used by the editor to gather debug-draw
+		// items (e.g. collider wireframes) without exposing the underlying registry.
+		template<typename Func>
+		auto ForEachEntity(Func&& func) -> void
+		{
+			// Every entity carries an IDComponent, so a view over it enumerates all.
+			for (const auto view = m_Registry.view<IDComponent>(); const auto e : view)
+				func(Entity{e, this});
+		}
 
 		template<typename T>
 		static auto TryCopyComponent(Entity srcEntity, Entity dstEntity) -> void;

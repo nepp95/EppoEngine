@@ -26,6 +26,7 @@
 
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Camera/SceneCamera.h"
+#include "Renderer/DebugRenderer.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/SceneRenderer.h"
 

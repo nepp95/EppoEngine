@@ -164,23 +164,12 @@ namespace Eppo
 		}
 	}
 
-	auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera, EntityHandle selectedEntity) -> void
+	auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera) -> void
 	{
 		EP_PROFILE_FN("Scene::OnRenderEditor");
 
 		sceneRenderer->BeginScene(camera);
 		RenderScene(sceneRenderer);
-
-		// Wireframe overlay: redraw the selected entity's mesh as wireframe.
-		// Only draws in editor mode; runtime rendering ignores selection.
-		const Entity entity = selectedEntity != entt::null ? Entity{selectedEntity, this} : Entity{};
-		if (entity && entity.HasComponent<MeshComponent>())
-		{
-			const auto& mc = entity.GetComponent<MeshComponent>();
-			if (mc.MeshHandle)
-				sceneRenderer->SubmitWireframeMesh(mc.MeshHandle, GetWorldTransform(entity));
-		}
-
 		sceneRenderer->EndScene();
 	}
 
