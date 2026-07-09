@@ -27,15 +27,16 @@ namespace Eppo
 		[[nodiscard]] auto GetFinalImage() const -> const Ref<Image>&;
 
 		auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
-		auto SubmitWireframeMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
 		auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity) -> void;
 		auto SubmitEnvironment(const EnvironmentSettings& environment) -> void;
 
 		auto Resize(uint32_t width, uint32_t height) -> void;
 
+		// The geometry framebuffer is shared by the DebugRenderer for overlay draws.
+		[[nodiscard]] auto GetGeometryFramebuffer() const -> const Ref<Framebuffer>& { return m_GeometryPipeline->GetSpecification().Framebuffer; }
+
 	private:
 		auto GeometryPass() -> void;
-		auto WireframePass() -> void;
 		auto SkyPass() -> void;
 
 	private:
@@ -43,7 +44,6 @@ namespace Eppo
 		nvrhi::CommandListHandle m_CommandList = nullptr;
 
 		RenderPass m_GeometryPass{ "Geometry" };
-		RenderPass m_WireframePass{ "Wireframe" };
 		RenderPass m_SkyPass{ "Sky" };
 
 		uint32_t m_Width = 0;
@@ -52,7 +52,6 @@ namespace Eppo
 		nvrhi::SamplerHandle m_Sampler = nullptr;
 
 		Ref<Pipeline> m_GeometryPipeline = nullptr;
-		Ref<Pipeline> m_WireframePipeline = nullptr;
 		Ref<Pipeline> m_SkyPipeline = nullptr;
 
 		struct DrawKey
@@ -74,7 +73,6 @@ namespace Eppo
 			uint32_t InstanceOffset = 0;
 		};
 		std::map<DrawKey, DrawCommand> m_DrawCommands;
-		std::map<DrawKey, DrawCommand> m_WireframeDrawCommands;
 		Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
 
 		struct CameraData
@@ -104,8 +102,6 @@ namespace Eppo
 		} m_LightData{};
 		Ref<UniformBuffer> m_LightsUB = nullptr;
 		bool m_LightOverflowWarned = false;
-
-		glm::vec4 m_WireframeColor = glm::vec4(0.91f, 0.39f, 0.11f, 1.0f); // Eppo orange
 
 		// Mirrors the Environment cbuffer. Colors padded to float4; Params.x is the
 		// ambient intensity, Params.y a 0/1 skybox flag (0 until an HDR loader lands).
