@@ -38,8 +38,10 @@ namespace Eppo
 		auto SaveScene() -> bool;
 		auto SaveSceneAs() -> bool;
 
+	    auto UpdateImGuizmo() -> void;
 		auto UI_Toolbar() -> void;
 		auto UI_NewProjectPopup() -> void;
+        auto UI_WarningNoPrimaryCamera() -> void;
 
 	private:
 		Ref<PanelManager> m_PanelManager = nullptr;
@@ -74,8 +76,13 @@ namespace Eppo
 			Play,
 		} m_SceneState = SceneState::Edit;
 
+		Entity m_SelectedEntity;
+
 		// Popups
 		bool m_NewProjectPopup = false;
+
+		// Gizmo
+		ImGuizmo::OPERATION m_GizmoType = ImGuizmo::TRANSLATE;
 	};
 
 	namespace Utils
