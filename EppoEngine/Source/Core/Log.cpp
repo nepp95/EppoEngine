@@ -7,6 +7,7 @@ namespace Eppo
 	Ref<spdlog::sinks::stdout_color_sink_mt> Log::s_ConsoleLoggerSink = nullptr;
 	Ref<spdlog::logger> Log::s_CoreLogger = nullptr;
 	Ref<spdlog::logger> Log::s_GlfwLogger = nullptr;
+    Ref<spdlog::logger> Log::s_ScriptLogger = nullptr;
 	Ref<spdlog::logger> Log::s_VulkanLogger = nullptr;
 
 	auto Log::Init() -> void
@@ -29,6 +30,8 @@ namespace Eppo
 		s_CoreLogger->set_level(spdlog::level::trace);
 		s_GlfwLogger = CreateRef<spdlog::logger>("Glfw", sinks);
 		s_GlfwLogger->set_level(spdlog::level::trace);
+	    s_ScriptLogger = CreateRef<spdlog::logger>("Script", sinks);
+	    s_ScriptLogger->set_level(spdlog::level::trace);
 		s_VulkanLogger = CreateRef<spdlog::logger>("Vulkan", sinks);
 		s_VulkanLogger->set_level(spdlog::level::trace);
 

@@ -21,9 +21,18 @@ option(BUILD_RUNTIME "Build runtime" ON)
 # Get dependencies
 include(CMake/Dependencies.cmake)
 
+# Setup global options
+message(STATUS "Target platform: ${CMAKE_SYSTEM_NAME}")
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(EP_PLATFORM EP_PLATFORM_WINDOWS)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(EP_PLATFORM EP_PLATFORM_LINUX)
+endif ()
+
 # Targets
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)
+include(CMake/Dotnet.cmake)
 
 if (BUILD_TESTING)
     enable_testing()
