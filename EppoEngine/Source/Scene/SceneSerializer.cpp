@@ -10,8 +10,6 @@ using json = nlohmann::json;
 
 namespace Eppo
 {
-	using FT = EppoScriptCore::ScriptFieldType;
-
 	namespace Utils
 	{
 		// Serializes a single script field value to JSON as its natural type.
@@ -19,48 +17,48 @@ namespace Eppo
 		{
 			switch (value.Type)
 			{
-				case FT::Float:   return value.Get<float>();
-				case FT::Double:  return value.Get<double>();
-				case FT::Bool:    return value.Get<uint8_t>() != 0;
-				case FT::Char:    return value.Get<uint16_t>();
-				case FT::Int16:   return value.Get<int16_t>();
-				case FT::Int32:   return value.Get<int32_t>();
-				case FT::Int64:   return value.Get<int64_t>();
-				case FT::Byte:    return value.Get<uint8_t>();
-				case FT::UInt16:  return value.Get<uint16_t>();
-				case FT::UInt32:  return value.Get<uint32_t>();
-				case FT::UInt64:  return value.Get<uint64_t>();
-				case FT::Vector2: return value.Get<glm::vec2>();
-				case FT::Vector3: return value.Get<glm::vec3>();
-				case FT::Vector4: return value.Get<glm::vec4>();
-				case FT::Entity:  return value.Get<uint64_t>();
+				case ScriptFieldType::Float:   return value.Get<float>();
+				case ScriptFieldType::Double:  return value.Get<double>();
+				case ScriptFieldType::Bool:    return value.Get<uint8_t>() != 0;
+				case ScriptFieldType::Char:    return value.Get<uint16_t>();
+				case ScriptFieldType::Int16:   return value.Get<int16_t>();
+				case ScriptFieldType::Int32:   return value.Get<int32_t>();
+				case ScriptFieldType::Int64:   return value.Get<int64_t>();
+				case ScriptFieldType::Byte:    return value.Get<uint8_t>();
+				case ScriptFieldType::UInt16:  return value.Get<uint16_t>();
+				case ScriptFieldType::UInt32:  return value.Get<uint32_t>();
+				case ScriptFieldType::UInt64:  return value.Get<uint64_t>();
+				case ScriptFieldType::Vector2: return value.Get<glm::vec2>();
+				case ScriptFieldType::Vector3: return value.Get<glm::vec3>();
+				case ScriptFieldType::Vector4: return value.Get<glm::vec4>();
+				case ScriptFieldType::Entity:  return value.Get<uint64_t>();
 				default:          return nullptr;
 			}
 		}
 
 		// Reads a JSON value back into a typed field buffer.
-		auto DeserializeScriptFieldData(const json& data, const FT type) -> ScriptFieldValue
+		auto DeserializeScriptFieldData(const json& data, const ScriptFieldType type) -> ScriptFieldValue
 		{
 			ScriptFieldValue value;
 			value.Type = type;
 
 			switch (type)
 			{
-				case FT::Float:   value.Set<float>(data.get<float>()); break;
-				case FT::Double:  value.Set<double>(data.get<double>()); break;
-				case FT::Bool:    value.Set<uint8_t>(data.get<bool>() ? 1 : 0); break;
-				case FT::Char:    value.Set<uint16_t>(data.get<uint16_t>()); break;
-				case FT::Int16:   value.Set<int16_t>(data.get<int16_t>()); break;
-				case FT::Int32:   value.Set<int32_t>(data.get<int32_t>()); break;
-				case FT::Int64:   value.Set<int64_t>(data.get<int64_t>()); break;
-				case FT::Byte:    value.Set<uint8_t>(data.get<uint8_t>()); break;
-				case FT::UInt16:  value.Set<uint16_t>(data.get<uint16_t>()); break;
-				case FT::UInt32:  value.Set<uint32_t>(data.get<uint32_t>()); break;
-				case FT::UInt64:  value.Set<uint64_t>(data.get<uint64_t>()); break;
-				case FT::Vector2: value.Set<glm::vec2>(data.get<glm::vec2>()); break;
-				case FT::Vector3: value.Set<glm::vec3>(data.get<glm::vec3>()); break;
-				case FT::Vector4: value.Set<glm::vec4>(data.get<glm::vec4>()); break;
-				case FT::Entity:  value.Set<uint64_t>(data.get<uint64_t>()); break;
+				case ScriptFieldType::Float:   value.Set<float>(data.get<float>()); break;
+				case ScriptFieldType::Double:  value.Set<double>(data.get<double>()); break;
+				case ScriptFieldType::Bool:    value.Set<uint8_t>(data.get<bool>() ? 1 : 0); break;
+				case ScriptFieldType::Char:    value.Set<uint16_t>(data.get<uint16_t>()); break;
+				case ScriptFieldType::Int16:   value.Set<int16_t>(data.get<int16_t>()); break;
+				case ScriptFieldType::Int32:   value.Set<int32_t>(data.get<int32_t>()); break;
+				case ScriptFieldType::Int64:   value.Set<int64_t>(data.get<int64_t>()); break;
+				case ScriptFieldType::Byte:    value.Set<uint8_t>(data.get<uint8_t>()); break;
+				case ScriptFieldType::UInt16:  value.Set<uint16_t>(data.get<uint16_t>()); break;
+				case ScriptFieldType::UInt32:  value.Set<uint32_t>(data.get<uint32_t>()); break;
+				case ScriptFieldType::UInt64:  value.Set<uint64_t>(data.get<uint64_t>()); break;
+				case ScriptFieldType::Vector2: value.Set<glm::vec2>(data.get<glm::vec2>()); break;
+				case ScriptFieldType::Vector3: value.Set<glm::vec3>(data.get<glm::vec3>()); break;
+				case ScriptFieldType::Vector4: value.Set<glm::vec4>(data.get<glm::vec4>()); break;
+				case ScriptFieldType::Entity:  value.Set<uint64_t>(data.get<uint64_t>()); break;
 				default:
 					Log::Warn("Skipping script field with unsupported type {}", static_cast<uint8_t>(type));
 					break;
@@ -265,7 +263,7 @@ namespace Eppo
 		return true;
 	}
 
-	auto SceneSerializer::SerializeEntity(nlohmann::json& data, Entity entity) const -> void
+	auto SceneSerializer::SerializeEntity(nlohmann::json& data, const Entity entity) const -> void
 	{
 		EP_PROFILE_FN("SceneSerializer::SerializeEntity");
 		EP_ASSERT(entity.HasComponent<IDComponent>() && entity.HasComponent<TagComponent>());
@@ -331,7 +329,7 @@ namespace Eppo
 			{
 				for (const auto& [name, value] : *fieldMap)
 				{
-					if (value.Type == FT::None)
+					if (value.Type == ScriptFieldType::None)
 						continue;
 
 					json field;

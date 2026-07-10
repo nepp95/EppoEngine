@@ -3,7 +3,7 @@
 
 namespace Eppo
 {
-    ScriptInstance::ScriptInstance(EppoScriptCore::Assembly& assembly, const UUID& entityId, const int32_t classIndex)
+    ScriptInstance::ScriptInstance(Assembly& assembly, const UUID& entityId, const int32_t classIndex)
         : m_Assembly(&assembly), m_EntityId(entityId), m_ClassIndex(classIndex)
     {}
 

@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Core/UUID.h"
-
-#include <EppoScriptCore.Native/Assembly.h>
+#include "Scripting/Assembly.h"
 
 namespace Eppo
 {
@@ -15,7 +14,7 @@ namespace Eppo
     class ScriptInstance
     {
     public:
-        ScriptInstance(EppoScriptCore::Assembly& assembly, const UUID& entityId, int32_t classIndex);
+        ScriptInstance(Assembly& assembly, const UUID& entityId, int32_t classIndex);
 
         auto InvokeOnCreate() const -> void;
         auto InvokeOnUpdate(float timestep) const -> void;
@@ -31,7 +30,7 @@ namespace Eppo
     private:
         // Non-owning: the Assembly outlives every instance (ScriptEngine owns both
         // and clears the registry before the assembly is torn down).
-        EppoScriptCore::Assembly* m_Assembly;
+        Assembly* m_Assembly;
         UUID m_EntityId;
         int32_t m_ClassIndex;
     };

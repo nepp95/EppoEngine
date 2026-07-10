@@ -1,27 +1,11 @@
 #include "pch.h"
 #include "Scripting/ScriptEngine.h"
 
-#include "Core/Input.h"
 #include "Scene/Components.h"
 
 namespace Eppo
 {
-    namespace
-    {
-        // EppoScriptCore's Assembly API takes .NET hostfxr `char_t` strings, which
-        // are wchar_t on Windows and char on Linux. Hand it the matching encoding
-        // for the current platform rather than hardcoding wstring().
-        auto NativePath(const std::filesystem::path& path)
-        {
-#ifdef EP_PLATFORM_WINDOWS
-            return path.wstring();
-#else
-            return path.string();
-#endif
-        }
-    }
-
-    std::unique_ptr<ScriptEngine> ScriptEngine::s_Instance = nullptr;
+    ScopedPtr<ScriptEngine> ScriptEngine::s_Instance = nullptr;
 
     ScriptEngine::~ScriptEngine()
     {
@@ -33,18 +17,14 @@ namespace Eppo
         EP_PROFILE_FN("ScriptEngine::Init");
 
         if (s_Instance)
+        {
+            Log::Warn("Trying to run ScriptEngine::Init whilst it is already initialized!");
             return true;
+        }
 
-        s_Instance = std::unique_ptr<ScriptEngine>(new ScriptEngine());
-
-        EppoScriptCore::NativeCallbacks callbacks;
-        callbacks.Log = LogCallback;
-        callbacks.InputIsKeyDown = InputIsKeyDownCallback;
-
-        s_Instance->m_CoreAssembly = std::make_unique<EppoScriptCore::Assembly>(
-            ErrorCallback,
-            NativePath(runtimeConfigPath),
-            callbacks
+        s_Instance = CreateScopedPtr<ScriptEngine>();
+        s_Instance->m_CoreAssembly = CreateScopedPtr<Assembly>(
+            EP_NativeString(runtimeConfigPath)
         );
 
         return s_Instance->IsRuntimeLoaded();
@@ -72,19 +52,17 @@ namespace Eppo
         return *s_Instance;
     }
 
-    auto ScriptEngine::LoadUserAssembly(const std::filesystem::path& path) -> void
+    auto ScriptEngine::LoadUserAssembly(const std::filesystem::path& path) const -> void
     {
         EP_PROFILE_FN("ScriptEngine::LoadUserAssembly");
 
-        m_CoreAssembly->LoadUserAssembly(NativePath(path));
+        m_CoreAssembly->LoadUserAssembly(EP_NativeString(path));
     }
 
     auto ScriptEngine::UnloadUserAssembly() -> void
     {
         EP_PROFILE_FN("ScriptEngine::UnloadUserAssembly");
 
-        // Live instances reference the assembly's managed bodies; drop the
-        // registry before those become invalid.
         m_EntityInstances.clear();
         m_CoreAssembly->UnloadUserAssembly();
     }
@@ -94,7 +72,7 @@ namespace Eppo
         return m_CoreAssembly != nullptr;
     }
 
-    auto ScriptEngine::GetClasses() const -> const std::vector<EppoScriptCore::ScriptClass>&
+    auto ScriptEngine::GetClasses() const -> const std::vector<ScriptClass>&
     {
         return m_CoreAssembly->GetClasses();
     }
@@ -214,46 +192,5 @@ namespace Eppo
     auto ScriptEngine::RemoveFieldMap(const UUID& entityId) -> void
     {
         m_FieldStorage.erase(entityId);
-    }
-
-    auto ScriptEngine::LogCallback(const uint8_t level, const char* message) -> void
-    {
-        switch (level)
-        {
-            case 0:
-            {
-                Log::Trace("{}", message);
-                break;
-            }
-
-            case 1:
-            {
-                Log::Info("{}", message);
-                break;
-            }
-
-            case 2:
-            {
-                Log::Warn("{}", message);
-                break;
-            }
-
-            case 3:
-            default:
-            {
-                Log::Error("{}", message);
-                break;
-            }
-        }
-    }
-
-    auto ScriptEngine::InputIsKeyDownCallback(const uint32_t keyCode) -> bool
-    {
-        return Input::IsKeyPressed(static_cast<KeyCode>(keyCode));
-    }
-
-    auto ScriptEngine::ErrorCallback(const std::string& message) -> void
-    {
-        Log::Error("{}", message);
     }
 }
