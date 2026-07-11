@@ -22,7 +22,9 @@ namespace Eppo
             return true;
         }
 
-        s_Instance = CreateScopedPtr<ScriptEngine>();
+        // Construct directly (not CreateScopedPtr): the constructor is private, so
+        // make_unique cannot reach it, but this static member can.
+        s_Instance = ScopedPtr<ScriptEngine>(new ScriptEngine());
         s_Instance->m_CoreAssembly = CreateScopedPtr<Assembly>(
             EP_NativeString(runtimeConfigPath)
         );

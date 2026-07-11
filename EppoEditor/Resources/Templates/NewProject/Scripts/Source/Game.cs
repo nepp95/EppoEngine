@@ -1,4 +1,4 @@
-using EppoScriptCore;
+using EppoScriptCore.Core;
 
 namespace Game
 {

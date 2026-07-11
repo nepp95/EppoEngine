@@ -32,9 +32,12 @@ endif ()
 # Targets
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)
-include(CMake/Dotnet.cmake)
 
 if (BUILD_TESTING)
     enable_testing()
     add_subdirectory(EppoEngineTesting)
 endif ()
+
+# .NET build + runtime provisioning — included last so it can attach POST_BUILD
+# steps to the editor and test targets defined above.
+include(CMake/Dotnet.cmake)
