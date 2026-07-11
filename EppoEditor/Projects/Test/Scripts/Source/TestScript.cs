@@ -1,6 +1,5 @@
-﻿using EppoScriptCore;
-using EppoScriptCore.Core;
-using EppoScriptCore.ECS;
+﻿using EppoScriptCore.Core;
+using EppoScriptCore.Scene;
 using EppoScriptCore.Math;
 
 namespace Test

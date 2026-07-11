@@ -1,4 +1,4 @@
-namespace EppoScriptCore
+namespace EppoScriptCore.Core
 {
     public enum ScriptFieldType : byte
     {

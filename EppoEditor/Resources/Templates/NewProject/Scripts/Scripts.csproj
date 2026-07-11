@@ -5,8 +5,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EppoScriptCore.Managed">
-      <HintPath>$APP_DIR$/EppoScriptCore.Managed.dll</HintPath>
+    <Reference Include="EppoScriptCore">
+      <HintPath>$APP_DIR$/EppoScriptCore.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
