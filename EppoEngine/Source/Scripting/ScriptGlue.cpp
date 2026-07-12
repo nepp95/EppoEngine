@@ -154,6 +154,18 @@ namespace Eppo
             return false;
         }
 
+        // Returns the entity's name (its TagComponent tag) to managed. The pointer
+        // is into the live component string; the managed caller copies it into a
+        // string immediately (synchronous call), so no ownership crosses the boundary.
+        auto Entity_GetName(const uint64_t id) -> const char*
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity)
+                return "";
+
+            return entity.GetName().c_str();
+        }
+
         auto TransformComponent_GetTranslation(const uint64_t id, glm::vec3* outTranslation) -> void
         {
             const Entity entity = GetEntity(id);
@@ -249,6 +261,7 @@ namespace Eppo
             { "Entity_HasComponent",               reinterpret_cast<void*>(&Entity_HasComponent)               },
             { "Entity_AddComponent",               reinterpret_cast<void*>(&Entity_AddComponent)               },
             { "Entity_RemoveComponent",            reinterpret_cast<void*>(&Entity_RemoveComponent)            },
+            { "Entity_GetName",                    reinterpret_cast<void*>(&Entity_GetName)                    },
             { "TransformComponent_GetTranslation", reinterpret_cast<void*>(&TransformComponent_GetTranslation) },
             { "TransformComponent_SetTranslation", reinterpret_cast<void*>(&TransformComponent_SetTranslation) },
             { "MeshComponent_GetMeshHandle",       reinterpret_cast<void*>(&MeshComponent_GetMeshHandle)       },

@@ -81,6 +81,14 @@ namespace EppoScriptCore.Core
             }
         }
 
+        internal static string Entity_GetName(ulong id)
+        {
+            // Native returns a pointer to a UTF-8 string it still owns; PtrToStringUTF8
+            // copies it into a managed string here, before the pointer can go stale.
+            var ptr = ((delegate* unmanaged[Cdecl]<ulong, IntPtr>)Get("Entity_GetName"))(id);
+            return Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
+        }
+
         internal static Vector3 TransformComponent_GetTranslation(ulong id)
         {
             Vector3 result = default;
