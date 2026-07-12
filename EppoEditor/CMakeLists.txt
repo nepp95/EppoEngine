@@ -7,9 +7,19 @@ set(INCLUDE_DIRS
 )
 
 add_executable(EppoEditor ${SOURCES})
-
+add_dependencies(EppoEditor EppoScriptCore)
 target_include_directories(EppoEditor PRIVATE ${INCLUDE_DIRS})
 target_link_libraries(EppoEditor PRIVATE EppoEngine)
+
+# The editor resolves its runtime data (runtimeconfig.json, EppoScriptCore.dll,
+# Resources/) relative to the working directory. Visual Studio otherwise launches
+# the debugger from the project dir, so point it at the exe output dir — matching
+# how CLion/Ninja run it — or scripting fails to load its managed core.
+set_target_properties(EppoEditor PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:EppoEditor>")
+
+# EppoScriptCore runtime
+CopyBuildScripts(EppoEditor)
 
 if (MSVC)
     target_compile_options(EppoEditor PRIVATE "/W3")
@@ -36,13 +46,3 @@ add_custom_command(
 )
 add_custom_target(EppoResources ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync")
 add_dependencies(EppoEditor EppoResources)
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    #add_custom_command(TARGET EppoEditor POST_BUILD
-    #    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/runtimeconfig.json" $<TARGET_FILE_DIR:EppoEditor>
-    #    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll" $<TARGET_FILE_DIR:EppoEditor>
-    #    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.pdb" $<TARGET_FILE_DIR:EppoEditor>
-    #    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.deps.json" $<TARGET_FILE_DIR:EppoEditor>
-    #    COMMENT "Copying EppoScriptCore runtime"
-    #)
-endif ()

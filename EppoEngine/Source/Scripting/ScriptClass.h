@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Scene/Entity.h"
 #include "Scripting/ScriptField.h"
 
 namespace Eppo
@@ -16,6 +17,8 @@ namespace Eppo
         [[nodiscard]] auto IsCore() const -> bool { return m_IsCore; }
         [[nodiscard]] auto GetFields() const -> const std::vector<ScriptField>& { return m_Fields; }
         [[nodiscard]] auto GetMethods() const -> const std::vector<ScriptMethod>& { return m_Methods; }
+        [[nodiscard]] auto GetMethod(const std::string& name) const -> const ScriptMethod*;
+        auto InvokeMethod(Entity entity, const ScriptMethod& method, const void* args = nullptr, void* ret = nullptr) const -> void;
 
     private:
         std::string m_FullName;

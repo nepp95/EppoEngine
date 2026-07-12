@@ -28,6 +28,15 @@ namespace Eppo
 		}
 
 		template<typename T, typename... Args>
+		auto TryAddComponent(Args&&... args) -> T&
+		{
+            if (HasComponent<T>())
+                return GetComponent<T>();
+            T& component = m_Scene->m_Registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
+            return component;
+		}
+
+		template<typename T, typename... Args>
 		auto AddOrReplaceComponent(Args&&... args) -> T&
 		{
 			T& component = m_Scene->m_Registry.emplace_or_replace<T>(m_EntityHandle, std::forward<Args>(args)...);
@@ -35,10 +44,13 @@ namespace Eppo
 		}
 
 		template<typename T>
-		auto RemoveComponent() const -> void
+		auto RemoveComponent() const -> bool
 		{
-			EP_ASSERT(HasComponent<T>(), "Entity does not have component!");
+            if (!HasComponent<T>())
+                return false;
+
 			m_Scene->m_Registry.remove<T>(m_EntityHandle);
+            return true;
 		}
 
 		template<typename T>

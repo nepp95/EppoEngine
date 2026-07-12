@@ -3,10 +3,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>EppoTesting.Scripts</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <!-- CoreManagedDll is passed by the editor at build time; the runtime loads
-         the core, so this project doesn't copy it. -->
+    <Compile Include="Source/**/*.cs" />
+    <!-- CMake passes CoreManagedDll; the runtime loads the core, so don't copy it. -->
     <Reference Include="EppoScriptCore">
       <HintPath>$(CoreManagedDll)</HintPath>
       <Private>false</Private>

@@ -4,13 +4,13 @@
 namespace Eppo
 {
     ScriptInstance::ScriptInstance(Assembly& assembly, const UUID& entityId, const int32_t classIndex)
-        : m_Assembly(&assembly), m_EntityId(entityId), m_ClassIndex(classIndex)
+        : m_Assembly(&assembly), m_EntityId(static_cast<uint64_t>(entityId)), m_ClassIndex(classIndex)
     {}
 
     auto ScriptInstance::InvokeOnCreate() const -> void
     {
         if (m_Assembly)
-            m_Assembly->InvokeOnCreate(static_cast<uint64_t>(m_EntityId));
+            m_Assembly->InvokeOnCreate(m_EntityId);
         else
             Log::Warn("Trying ScriptInstance::InvokeOnCreate but assembly is null!");
     }
@@ -18,7 +18,7 @@ namespace Eppo
     auto ScriptInstance::InvokeOnUpdate(const float timestep) const -> void
     {
         if (m_Assembly)
-            m_Assembly->InvokeOnUpdate(static_cast<uint64_t>(m_EntityId), timestep);
+            m_Assembly->InvokeOnUpdate(m_EntityId, timestep);
         else
             Log::Warn("Trying ScriptInstance::InvokeOnUpdate but assembly is null!");
     }

@@ -71,10 +71,17 @@ namespace Eppo
         [[nodiscard]] auto FindClassIndex(const std::string& fullName) const -> int32_t;
         [[nodiscard]] auto IsValidScriptClass(const std::string& fullName) const -> bool;
 
+        // Active runtime scene, set on play so internal calls (ScriptGlue) can
+        // resolve an entity UUID back to a live Entity/component. Null when not
+        // playing; cleared on stop and on assembly unload.
+        auto SetSceneContext(const Ref<Scene>& scene) -> void;
+        [[nodiscard]] auto GetSceneContext() const -> Ref<Scene>;
+
         // Per-entity script instance lifecycle. The scene drives these on play.
         auto OnCreateEntity(Entity entity) -> void;
         auto OnUpdateEntity(Entity entity, float timestep) -> void;
         auto OnDestroyEntity(Entity entity) -> void;
+        auto InvokeMethod(Entity entity, const ScriptMethod& method, const void* args = nullptr, void* ret = nullptr) const -> void;
 
         // The engine owns the live-instance registry: it is authoritative for
         // which entities have a running script. Returns nullptr when the entity
@@ -97,6 +104,9 @@ namespace Eppo
 
         ScopedPtr<Assembly> m_CoreAssembly = nullptr;
         std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
+
+        // Non-owning; owned by the editor/runtime. Only valid during play.
+        WeakRef<Scene> m_SceneContext;
 
         // The authoritative registry of live script instances, keyed by entity
         // UUID. Populated on play (OnCreateEntity), cleared on stop / assembly

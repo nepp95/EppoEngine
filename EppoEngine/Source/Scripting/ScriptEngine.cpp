@@ -7,6 +7,32 @@ namespace Eppo
 {
     ScopedPtr<ScriptEngine> ScriptEngine::s_Instance = nullptr;
 
+    // Marshalling width of each field type, matching the managed layout (C# char
+    // is UTF-16 → 2 bytes). Sizes field/argument buffers.
+    auto ScriptFieldTypeSize(const ScriptFieldType type) -> uint32_t
+    {
+        switch (type)
+        {
+            case ScriptFieldType::Float:   return 4;
+            case ScriptFieldType::Double:  return 8;
+            case ScriptFieldType::Bool:    return 1;
+            case ScriptFieldType::Char:    return 2;
+            case ScriptFieldType::Int16:   return 2;
+            case ScriptFieldType::Int32:   return 4;
+            case ScriptFieldType::Int64:   return 8;
+            case ScriptFieldType::Byte:    return 1;
+            case ScriptFieldType::UInt16:  return 2;
+            case ScriptFieldType::UInt32:  return 4;
+            case ScriptFieldType::UInt64:  return 8;
+            case ScriptFieldType::Vector2: return 8;
+            case ScriptFieldType::Vector3: return 12;
+            case ScriptFieldType::Vector4: return 16;
+            case ScriptFieldType::Entity:  return 8;
+            case ScriptFieldType::None:
+            default:                       return 0;
+        }
+    }
+
     ScriptEngine::~ScriptEngine()
     {
         m_CoreAssembly.reset();
@@ -69,9 +95,24 @@ namespace Eppo
         m_CoreAssembly->UnloadUserAssembly();
     }
 
+    auto ScriptEngine::SetSceneContext(const Ref<Scene>& scene) -> void
+    {
+        if (!scene)
+            m_SceneContext.reset();
+        else
+            m_SceneContext = scene;
+    }
+
+    auto ScriptEngine::GetSceneContext() const -> Ref<Scene>
+    {
+        return m_SceneContext.lock();
+    }
+
     auto ScriptEngine::IsRuntimeLoaded() const -> bool
     {
-        return m_CoreAssembly != nullptr;
+        // The assembly object can exist while its managed functions failed to bind
+        // (e.g. a bad/stale core DLL); only report loaded when scripting is usable.
+        return m_CoreAssembly != nullptr && m_CoreAssembly->IsLoaded();
     }
 
     auto ScriptEngine::GetClasses() const -> const std::vector<ScriptClass>&
@@ -163,6 +204,13 @@ namespace Eppo
         it->second.InvokeOnDestroy();
         m_CoreAssembly->DestroyInstance(static_cast<uint64_t>(uuid));
         m_EntityInstances.erase(it);
+    }
+
+    auto ScriptEngine::InvokeMethod(const Entity entity, const ScriptMethod& method, const void* args, void* ret) const -> void
+    {
+        // Pass the entity's real 64-bit id; a bare Entity would collapse through
+        // its implicit operator bool() to 0/1 and miss the managed instance.
+        m_CoreAssembly->InvokeMethod(static_cast<uint64_t>(entity.GetUUID()), method.Index, args, ret);
     }
 
     auto ScriptEngine::GetEntityInstance(const UUID& entityId) -> ScriptInstance*

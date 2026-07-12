@@ -370,6 +370,16 @@ namespace Eppo
 		m_PanelManager->SetSelectedEntity(selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{});
 
 		m_ActiveScene->OnRuntimeStart();
+
+		if (!ScriptEngine::IsInitialized() || !ScriptEngine::Get().IsRuntimeLoaded())
+		{
+            Log::Warn("Scripting backend not initialized, not running scripts.");
+		}
+		else
+		{
+            auto& scriptEngine = ScriptEngine::Get();
+            scriptEngine.SetSceneContext(m_ActiveScene);
+		}
 	}
 
 	auto EditorLayer::OnSceneStop() -> void
@@ -378,6 +388,9 @@ namespace Eppo
 
 		if (!m_ActiveScene)
 			return;
+
+		if (ScriptEngine::IsInitialized() && ScriptEngine::Get().IsRuntimeLoaded())
+            ScriptEngine::Get().SetSceneContext(nullptr);
 
 		m_ActiveScene->OnRuntimeStop();
 
@@ -449,12 +462,12 @@ namespace Eppo
 
 		// Create project directory
 		const auto projectPath = FS::GetRootDirectory() / "Projects" / name;
-		FS::CreateDirectory(projectPath);
+		FS::CreateDir(projectPath);
 
 	    // Create asset directories
-	    FS::CreateDirectory(projectPath / "Assets" / "Meshes");
-	    FS::CreateDirectory(projectPath / "Assets" / "Scenes");
-	    FS::CreateDirectory(projectPath / "Assets" / "Scripts");
+	    FS::CreateDir(projectPath / "Assets" / "Meshes");
+	    FS::CreateDir(projectPath / "Assets" / "Scenes");
+	    FS::CreateDir(projectPath / "Assets" / "Scripts");
 
 		// Copy new project template
 		FS::Copy("Resources/Templates/NewProject", projectPath);
@@ -477,12 +490,11 @@ namespace Eppo
 			FS::Move(projectPath / "project.epproj", projectPath / std::filesystem::path(name + ".epproj"));
 		}
 
-		// Replace tokens in the scripts project and rename it after the project.
+		// Rename the scripts project after the project. The EppoScriptCore
+		// reference is resolved at build time via $(CoreManagedDll) (passed by
+		// OpenProject), so there is no path to bake in here.
 		{
 			const auto templateCsproj = projectPath / "Scripts" / "Scripts.csproj";
-			auto csprojStr = FS::ReadText(templateCsproj);
-			ReplaceToken(csprojStr, "$APP_DIR$", FS::GetRootDirectory().string());
-			FS::WriteText(templateCsproj, csprojStr, true);
 			FS::Move(templateCsproj, projectPath / "Scripts" / std::filesystem::path(name + ".csproj"));
 		}
 
@@ -526,10 +538,15 @@ namespace Eppo
 			const auto scriptsProjectPath = Project::GetScriptsDirectory() / (projSpec.Name + ".csproj");
 			if (FS::Exists(scriptsProjectPath))
 			{
+				// Pass the current EppoScriptCore.dll location to the build so the
+				// project references it via $(CoreManagedDll) instead of a baked-in
+				// path that goes stale when the output layout changes.
+				const auto coreManagedDll = FS::GetRootDirectory() / "EppoScriptCore.dll";
 				const std::string command = std::format(
-					"dotnet build \"{}\" -c Debug -o \"{}\"",
+					"dotnet build \"{}\" -c Debug -o \"{}\" -p:CoreManagedDll=\"{}\"",
 					scriptsProjectPath.string(),
-					FS::GetRootDirectory().string()
+					FS::GetRootDirectory().string(),
+					coreManagedDll.string()
 				);
 				std::system(command.c_str());
 			}

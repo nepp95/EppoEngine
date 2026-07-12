@@ -21,12 +21,14 @@ namespace Eppo
     using InvokeOnCreateFn = void(*)(uint64_t entityId);
     using InvokeOnUpdateFn = void(*)(uint64_t entityId, float deltaTime);
     using InvokeOnDestroyFn = void(*)(uint64_t entityId);
+    using InvokeMethodFn = void(*)(uint64_t entityId, int32_t methodIndex, void* args, void* ret);
 
     using SetFieldValueFn = void(*)(uint64_t entityId, int32_t fieldIndex, void* data);
     using GetFieldValueFn = void(*)(uint64_t entityId, int32_t fieldIndex, void* data);
 
     using FreeStringFn = void(*)(char*);
-    using RegisterNativeCallbacksFn = void(*)(const void*);
+    // Registers a native ScriptGlue function under the name managed calls it by.
+    using RegisterInternalCallFn = void(*)(const char* name, void* function);
 
     struct ManagedFunctions
     {
@@ -48,11 +50,12 @@ namespace Eppo
         InvokeOnCreateFn InvokeOnCreate = nullptr;
         InvokeOnUpdateFn InvokeOnUpdate = nullptr;
         InvokeOnDestroyFn InvokeOnDestroy = nullptr;
+        InvokeMethodFn InvokeMethod = nullptr;
 
         SetFieldValueFn SetFieldValue = nullptr;
         GetFieldValueFn GetFieldValue = nullptr;
 
         FreeStringFn FreeString = nullptr;
-        RegisterNativeCallbacksFn RegisterNativeCallbacks = nullptr;
+        RegisterInternalCallFn RegisterInternalCall = nullptr;
     };
 }

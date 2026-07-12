@@ -5,7 +5,7 @@
 
 namespace Eppo::FS
 {
-	inline auto CreateDirectory(const std::filesystem::path& path) -> bool
+	inline auto CreateDir(const std::filesystem::path& path) -> bool
 	{
 		return std::filesystem::create_directories(path);
 	}
@@ -39,9 +39,17 @@ namespace Eppo::FS
 		return true;
 	}
 
+	// Absolute directory of the running executable. Defined in Filesystem.cpp so the
+	// platform headers it needs don't leak through this widely-included header.
+	auto GetExecutableDirectory() -> std::filesystem::path;
+
 	inline auto GetRootDirectory() -> std::filesystem::path
 	{
-		return std::filesystem::current_path();
+		// Resolve engine data (Resources/, runtimeconfig.json, EppoScriptCore.dll)
+		// relative to the executable, not the working directory — the latter differs
+		// per launcher (CLion sets it to the output dir, Visual Studio does not),
+		// which left scripting unable to find its managed core.
+		return GetExecutableDirectory();
 	}
 
 	inline auto GetResourcesDirectory() -> std::filesystem::path
@@ -54,7 +62,7 @@ namespace Eppo::FS
 		const std::filesystem::path cacheDir = GetResourcesDirectory() / "Shaders" / "Cache";
 
 		if (!Exists(cacheDir))
-			CreateDirectory(cacheDir);
+			CreateDir(cacheDir);
 
 		return cacheDir;
 	}

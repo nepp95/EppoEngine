@@ -31,7 +31,7 @@
     using EP_CharType = char;
     using EP_NativeString = std::string;
 
-    #define EP_NATIVE_STR(s) s;
+    #define EP_NATIVE_STR(s) s
     #define EP_HOSTFXR_NAME "libhostfxr.so"
 
     #include <dlfcn.h>
