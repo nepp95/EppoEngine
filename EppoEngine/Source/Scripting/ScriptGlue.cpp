@@ -72,6 +72,21 @@ namespace Eppo
             return scene->GetEntityByUUID(UUID(id));
         }
 
+        auto GetScene() -> Ref<Scene>
+        {
+            if (!ScriptEngine::IsInitialized())
+                return {};
+
+            auto scene = ScriptEngine::Get().GetSceneContext();
+            if (!scene)
+            {
+                Log::Error("Script internal call made with no active scene");
+                return nullptr;
+            }
+
+            return scene;
+        }
+
         auto Entity_HasComponent(const uint64_t id, const char* typeName) -> bool
         {
             const Entity entity = GetEntity(id);
@@ -163,7 +178,7 @@ namespace Eppo
             if (!entity || !entity.HasComponent<MeshComponent>())
                 return 0;
 
-            return entity.GetComponent<MeshComponent>().MeshHandle;
+            return static_cast<uint64_t>(entity.GetComponent<MeshComponent>().MeshHandle);
         }
 
         auto PointLightComponent_GetColor(const uint64_t id, glm::vec3* outColor) -> void
@@ -193,13 +208,32 @@ namespace Eppo
             return entity.GetComponent<PointLightComponent>().Intensity;
         }
 
-        auto PointLightComponent_SetIntensity(const uint64_t id, float intensity) -> void
+        auto PointLightComponent_SetIntensity(const uint64_t id, const float intensity) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<PointLightComponent>())
                 return;
 
             entity.GetComponent<PointLightComponent>().Intensity = intensity;
+        }
+
+        auto RelationshipComponent_GetParent(const uint64_t id) -> uint64_t
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RelationshipComponent>())
+                return 0;
+
+            return static_cast<uint64_t>(entity.GetComponent<RelationshipComponent>().Parent);
+        }
+
+        auto RelationshipComponent_SetParent(const uint64_t id, const uint64_t parent) -> void
+        {
+            const auto& scene = GetScene();
+            const Entity entity = scene->GetEntityByUUID(id);
+            if (!entity || !entity.HasComponent<RelationshipComponent>())
+                return;
+
+            scene->SetParent(entity, Entity{ static_cast<EntityHandle>(parent), scene.get() });
         }
         #pragma endregion
     }
@@ -219,6 +253,8 @@ namespace Eppo
             { "PointLightComponent_SetColor",      reinterpret_cast<void*>(&PointLightComponent_SetColor)      },
             { "PointLightComponent_GetIntensity",  reinterpret_cast<void*>(&PointLightComponent_GetIntensity)  },
             { "PointLightComponent_SetIntensity",  reinterpret_cast<void*>(&PointLightComponent_SetIntensity)  },
+            { "RelationshipComponent_GetParent",   reinterpret_cast<void*>(&RelationshipComponent_GetParent)   },
+            { "RelationshipComponent_SetParent",   reinterpret_cast<void*>(&RelationshipComponent_SetParent)   },
         };
 
         return calls;

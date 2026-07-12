@@ -41,4 +41,13 @@ namespace EppoScriptCore.Scene
             set => InternalCalls.PointLightComponent_SetIntensity(Entity.ID, value);
         }
     }
+
+    public class RelationshipComponent : Component
+    {
+        public ulong Parent
+        {
+            get => InternalCalls.RelationshipComponent_GetParent(Entity.ID);
+            set => InternalCalls.RelationshipComponent_SetParent(Entity.ID, value);
+        }
+    }
 }

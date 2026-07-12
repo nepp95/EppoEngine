@@ -121,6 +121,16 @@ namespace EppoScriptCore.Core
         {
             ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("PointLightComponent_SetIntensity"))(id, intensity);
         }
+
+        internal static ulong RelationshipComponent_GetParent(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, ulong>)Get("RelationshipComponent_GetParent"))(id);
+        }
+
+        internal static void RelationshipComponent_SetParent(ulong id, ulong parent)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, ulong, void>)Get("RelationshipComponent_SetParent"))(id, parent);
+        }
         #endregion
     }
 }

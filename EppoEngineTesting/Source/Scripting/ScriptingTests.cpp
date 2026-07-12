@@ -1,5 +1,6 @@
 #include "Support/EppoTest.h"
 
+#include "Asset/Asset.h"
 #include "Core/Input.h"
 #include "Core/KeyCodes.h"
 #include "Core/SimulatedInput.h"
@@ -68,6 +69,26 @@ SUITE(Scripting)
             entity.AddComponent<ScriptComponent>(std::string(kUserClass));
             ScriptEngine::Get().OnCreateEntity(entity);
             return entity;
+        }
+
+        // Like MakeLiveEntity, but also installs the scene as the engine's scene
+        // context so the Entity/Component internal calls (ScriptGlue) can resolve
+        // the entity's UUID back to a live entity. Needed by every script that
+        // touches the component API.
+        auto MakeContextEntity(const Ref<Scene>& scene) -> Entity
+        {
+            ScriptEngine::Get().SetSceneContext(scene);
+            return MakeLiveEntity(scene);
+        }
+
+        // Invoke a no-arg harness method returning a Vector3 (12 bytes) into out.
+        auto InvokeVec3(const Entity entity, const ScriptClass& c, const std::string& method, float out[3]) -> bool
+        {
+            const ScriptMethod* m = c.GetMethod(method);
+            if (!m)
+                return false;
+            c.InvokeMethod(entity, *m, nullptr, out);
+            return true;
         }
     }
 
@@ -450,5 +471,198 @@ SUITE(Scripting)
 
         engine.OnDestroyEntity(entity);
         CHECK(engine.GetEntityInstance(entity.GetUUID()) == nullptr);
+    }
+
+    // --- Entity/Component API (ScriptGlue internal calls). These exercise the
+    // full script -> native -> live Scene bridge: a real scene is installed as the
+    // engine's scene context, and each test asserts on native component state
+    // and/or on values the script reads back through the internal calls. ---
+
+    // A script reading its TransformComponent.Translation (via the component
+    // wrapper and via the Entity.Translation shortcut) sees what native set.
+    TEST(ScriptReadsTransformTranslationFromScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.GetComponent<TransformComponent>().Translation = glm::vec3(1.0f, 2.0f, 3.0f);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float viaComponent[3] = { 0.0f, 0.0f, 0.0f };
+        REQUIRE CHECK(InvokeVec3(entity, *c, "GetTranslationViaComponent", viaComponent));
+        CHECK_CLOSE(1.0f, viaComponent[0], 1e-5f);
+        CHECK_CLOSE(2.0f, viaComponent[1], 1e-5f);
+        CHECK_CLOSE(3.0f, viaComponent[2], 1e-5f);
+
+        float shortcut[3] = { 0.0f, 0.0f, 0.0f };
+        REQUIRE CHECK(InvokeVec3(entity, *c, "GetTranslationShortcut", shortcut));
+        CHECK_CLOSE(1.0f, shortcut[0], 1e-5f);
+        CHECK_CLOSE(2.0f, shortcut[1], 1e-5f);
+        CHECK_CLOSE(3.0f, shortcut[2], 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // A script writing its Translation (both ways) mutates the native scene.
+    TEST(ScriptWritesTransformTranslationToScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const ScriptMethod* setViaComponent = c->GetMethod("SetTranslationViaComponent");
+        REQUIRE CHECK(setViaComponent != nullptr);
+        const float in[3] = { 4.0f, 5.0f, 6.0f };
+        c->InvokeMethod(entity, *setViaComponent, in, nullptr);
+
+        const glm::vec3 t = entity.GetComponent<TransformComponent>().Translation;
+        CHECK_CLOSE(4.0f, t.x, 1e-5f);
+        CHECK_CLOSE(5.0f, t.y, 1e-5f);
+        CHECK_CLOSE(6.0f, t.z, 1e-5f);
+
+        const ScriptMethod* setShortcut = c->GetMethod("SetTranslationShortcut");
+        REQUIRE CHECK(setShortcut != nullptr);
+        const float in2[3] = { -7.0f, 8.5f, 9.0f };
+        c->InvokeMethod(entity, *setShortcut, in2, nullptr);
+
+        const glm::vec3 t2 = entity.GetComponent<TransformComponent>().Translation;
+        CHECK_CLOSE(-7.0f, t2.x, 1e-5f);
+        CHECK_CLOSE(8.5f, t2.y, 1e-5f);
+        CHECK_CLOSE(9.0f, t2.z, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // HasComponent from a script reflects the native ECS: present for the
+    // always-there TransformComponent, absent for a not-yet-added PointLight.
+    TEST(ScriptHasComponentReflectsScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const ScriptMethod* hasTransform = c->GetMethod("HasTransform");
+        const ScriptMethod* hasPointLight = c->GetMethod("HasPointLight");
+        REQUIRE CHECK(hasTransform != nullptr);
+        REQUIRE CHECK(hasPointLight != nullptr);
+
+        bool transform = false;
+        c->InvokeMethod(entity, *hasTransform, nullptr, &transform);
+        CHECK_EQUAL(true, transform);
+
+        bool pointLight = true;
+        c->InvokeMethod(entity, *hasPointLight, nullptr, &pointLight);
+        CHECK_EQUAL(false, pointLight);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // Add/RemoveComponent from a script mutate the native scene, and the script's
+    // own HasComponent read reflects the change immediately.
+    TEST(ScriptAddAndRemoveComponentMutatesScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        CHECK(!entity.HasComponent<PointLightComponent>());
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const ScriptMethod* add = c->GetMethod("AddPointLightAndReport");
+        REQUIRE CHECK(add != nullptr);
+        bool added = false;
+        c->InvokeMethod(entity, *add, nullptr, &added);
+        CHECK_EQUAL(true, added);
+        CHECK(entity.HasComponent<PointLightComponent>());
+
+        const ScriptMethod* remove = c->GetMethod("RemovePointLight");
+        REQUIRE CHECK(remove != nullptr);
+        bool removed = false;
+        c->InvokeMethod(entity, *remove, nullptr, &removed);
+        CHECK_EQUAL(true, removed);
+        CHECK(!entity.HasComponent<PointLightComponent>());
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // PointLightComponent color (Vector3) + intensity (float) round-trip: script
+    // writes them into the native component, and reads the same values back.
+    TEST(ScriptRoundTripsPointLight)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<PointLightComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        // color (12 bytes) then intensity (4 bytes), packed back-to-back.
+        const ScriptMethod* setLight = c->GetMethod("SetLight");
+        REQUIRE CHECK(setLight != nullptr);
+        const float args[4] = { 0.25f, 0.5f, 0.75f, 4.5f };
+        c->InvokeMethod(entity, *setLight, args, nullptr);
+
+        const auto& light = entity.GetComponent<PointLightComponent>();
+        CHECK_CLOSE(0.25f, light.Color.x, 1e-5f);
+        CHECK_CLOSE(0.5f, light.Color.y, 1e-5f);
+        CHECK_CLOSE(0.75f, light.Color.z, 1e-5f);
+        CHECK_CLOSE(4.5f, light.Intensity, 1e-5f);
+
+        float colorOut[3] = { 0.0f, 0.0f, 0.0f };
+        REQUIRE CHECK(InvokeVec3(entity, *c, "GetLightColor", colorOut));
+        CHECK_CLOSE(0.25f, colorOut[0], 1e-5f);
+        CHECK_CLOSE(0.5f, colorOut[1], 1e-5f);
+        CHECK_CLOSE(0.75f, colorOut[2], 1e-5f);
+
+        const ScriptMethod* getIntensity = c->GetMethod("GetLightIntensity");
+        REQUIRE CHECK(getIntensity != nullptr);
+        float intensityOut = 0.0f;
+        c->InvokeMethod(entity, *getIntensity, nullptr, &intensityOut);
+        CHECK_CLOSE(4.5f, intensityOut, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // MeshComponent.MeshHandle (a UUID, marshalled as its 8-byte id) read from a
+    // script matches what native set on the component.
+    TEST(ScriptReadsMeshHandleFromScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<MeshComponent>(AssetHandle(0x1234ull));
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const ScriptMethod* getHandle = c->GetMethod("GetMeshHandle");
+        REQUIRE CHECK(getHandle != nullptr);
+        uint64_t handle = 0;
+        c->InvokeMethod(entity, *getHandle, nullptr, &handle);
+        CHECK(handle == 0x1234ull);
+
+        engine.OnDestroyEntity(entity);
     }
 }
