@@ -28,16 +28,38 @@ namespace EppoTesting
         // Exercised by the GetMethod/InvokeMethod round-trip.
         public int Add(int a, int b) => a + b;
 
-        // Proves native callbacks route back into the engine: logs via the Log
-        // internal call and returns the Input internal call's result.
-        public int Probe()
-        {
-            Log.Info("HarnessScript.Probe: native Log callback reached from script");
-            return Input.IsKeyPressed(KeyCode.Space) ? 1 : 0;
-        }
-
-        // Exercised by ScriptExceptionDoesNotCrashHost: proves an exception thrown
-        // from user code doesn't escape the UnmanagedCallersOnly boundary and kill the host.
+        // Exercised by the exception-safety test: proves a throw from user code
+        // doesn't escape the UnmanagedCallersOnly boundary and kill the host.
         public int Throws() => throw new System.InvalidOperationException("boom from script");
+
+        // --- Internal-call forwarders (1:1 with ScriptGlue). ---
+
+        // Core. Type-name string args are baked in because a string can't cross the
+        // packed-arg C++ -> managed boundary; the id comes from ScriptBehaviour.Id.
+        public void LogMessage()
+            => InternalCalls.LogMessage((byte)LogLevel.Info, "HarnessScript.LogMessage: native Log callback reached");
+        public bool Input_IsKeyPressed() => InternalCalls.Input_IsKeyPressed((ushort)KeyCode.Space);
+
+        // Entity component registry.
+        public bool Entity_HasComponent() => InternalCalls.Entity_HasComponent(Id, "PointLightComponent");
+        public void Entity_AddComponent() => InternalCalls.Entity_AddComponent(Id, "PointLightComponent");
+        public bool Entity_RemoveComponent() => InternalCalls.Entity_RemoveComponent(Id, "PointLightComponent");
+
+        // TransformComponent.
+        public Vector3 TransformComponent_GetTranslation() => InternalCalls.TransformComponent_GetTranslation(Id);
+        public void TransformComponent_SetTranslation(Vector3 t) => InternalCalls.TransformComponent_SetTranslation(Id, ref t);
+
+        // MeshComponent.
+        public ulong MeshComponent_GetMeshHandle() => InternalCalls.MeshComponent_GetMeshHandle(Id);
+
+        // PointLightComponent.
+        public Vector3 PointLightComponent_GetColor() => InternalCalls.PointLightComponent_GetColor(Id);
+        public void PointLightComponent_SetColor(Vector3 c) => InternalCalls.PointLightComponent_SetColor(Id, ref c);
+        public float PointLightComponent_GetIntensity() => InternalCalls.PointLightComponent_GetIntensity(Id);
+        public void PointLightComponent_SetIntensity(float intensity) => InternalCalls.PointLightComponent_SetIntensity(Id, intensity);
+
+        // RelationshipComponent.
+        public ulong RelationshipComponent_GetParent() => InternalCalls.RelationshipComponent_GetParent(Id);
+        public void RelationshipComponent_SetParent(ulong parent) => InternalCalls.RelationshipComponent_SetParent(Id, parent);
     }
 }

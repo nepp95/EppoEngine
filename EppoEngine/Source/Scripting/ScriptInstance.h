@@ -31,9 +31,9 @@ namespace Eppo
         // Non-owning: the Assembly outlives every instance (ScriptEngine owns both
         // and clears the registry before the assembly is torn down).
         Assembly* m_Assembly;
-        // Stored as the raw 64-bit id the managed registry is keyed by. Keeping a
-        // UUID here would let its implicit operator bool() collapse to 0/1 when
-        // passed to the uint64_t Assembly calls below, so the cast happens once here.
+        // Stored as the raw 64-bit id the managed registry is keyed by; UUID's
+        // conversions are explicit, so the cast to uint64_t happens once here
+        // rather than at every Assembly call below.
         uint64_t m_EntityId;
         int32_t m_ClassIndex;
     };

@@ -208,8 +208,8 @@ namespace Eppo
 
     auto ScriptEngine::InvokeMethod(const Entity entity, const ScriptMethod& method, const void* args, void* ret) const -> void
     {
-        // Pass the entity's real 64-bit id; a bare Entity would collapse through
-        // its implicit operator bool() to 0/1 and miss the managed instance.
+        // Pass the entity's real 64-bit id; UUID's uint64_t conversion is explicit,
+        // so cast here rather than let a bare id slip through and miss the instance.
         m_CoreAssembly->InvokeMethod(static_cast<uint64_t>(entity.GetUUID()), method.Index, args, ret);
     }
 

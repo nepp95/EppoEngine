@@ -229,11 +229,14 @@ namespace Eppo
         auto RelationshipComponent_SetParent(const uint64_t id, const uint64_t parent) -> void
         {
             const auto& scene = GetScene();
-            const Entity entity = scene->GetEntityByUUID(id);
+            if (!scene)
+                return;
+
+            const Entity entity = scene->GetEntityByUUID(UUID(id));
             if (!entity || !entity.HasComponent<RelationshipComponent>())
                 return;
 
-            scene->SetParent(entity, Entity{ static_cast<EntityHandle>(parent), scene.get() });
+            scene->SetParent(entity, scene->GetEntityByUUID(UUID(parent)));
         }
         #pragma endregion
     }
