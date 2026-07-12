@@ -48,7 +48,8 @@ namespace Eppo
 		if (children.empty())
 			flags |= ImGuiTreeNodeFlags_Leaf;
 
-		ImGui::PushID(entity.GetUUID());
+		// Seed the ImGui ID with the full 64-bit UUID (PushID(int) would truncate).
+		ImGui::PushID(reinterpret_cast<const void*>(static_cast<uint64_t>(entity.GetUUID())));
 		const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
 
 		if (ImGui::IsItemClicked())

@@ -16,6 +16,11 @@ using namespace Eppo;
 // Boots the hosted runtime from the provisioned managed core + runtimeconfig and
 // loads the tiny user assembly (EppoTesting.Scripts.dll). CoreCLR can't be
 // re-initialised per-process, so the whole suite shares one Init + load.
+//
+// The internal-call tests invoke thin 1:1 forwarders on HarnessScript (each named
+// after the ScriptGlue internal call it forwards to) and assert only on native
+// state / returned values, so each test targets one internal call — not the
+// Entity/Component C# wrappers around it.
 SUITE(Scripting)
 {
     constexpr const char* kUserClass = "EppoTesting.HarnessScript";
@@ -92,19 +97,21 @@ SUITE(Scripting)
         }
     }
 
-    TEST(RuntimeComesUpWithClassMetadata)
+    // --- Class metadata: the runtime comes up and reflects the user class. ---
+
+    TEST(Metadata_RuntimeComesUpWithClasses)
     {
         REQUIRE CHECK(EnsureRuntime());
         CHECK(!ScriptEngine::Get().GetClasses().empty());
     }
 
-    TEST(UserAssemblyExposesItsClass)
+    TEST(Metadata_UserClassIsDiscovered)
     {
         REQUIRE CHECK(EnsureRuntime());
         CHECK(ScriptEngine::Get().IsValidScriptClass(kUserClass));
     }
 
-    TEST(ScriptClassExposesPublicFields)
+    TEST(Metadata_PublicFieldsExposed)
     {
         REQUIRE CHECK(EnsureRuntime());
         const ScriptClass* c = FindClass(kUserClass);
@@ -116,7 +123,7 @@ SUITE(Scripting)
         CHECK(speed->Type == ScriptFieldType::Float);
     }
 
-    TEST(ScriptClassExposesPublicMethods)
+    TEST(Metadata_PublicMethodsExposed)
     {
         REQUIRE CHECK(EnsureRuntime());
         const ScriptClass* c = FindClass(kUserClass);
@@ -129,121 +136,33 @@ SUITE(Scripting)
         CHECK(c->GetMethod("DoesNotExist") == nullptr);
     }
 
-    TEST(InvokeMethodRoundTripsArgsAndReturn)
+    // An entity referencing an unknown class must not instantiate, and the
+    // lifecycle calls around it must stay safe no-ops.
+    TEST(Metadata_UnknownClassProducesNoInstance)
     {
         REQUIRE CHECK(EnsureRuntime());
 
-        const Ref<Scene> scene = CreateRef<Scene>();
-        Entity entity = scene->CreateEntity("Scripted");
-        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
-
         auto& engine = ScriptEngine::Get();
-        engine.OnCreateEntity(entity);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* add = c->GetMethod("Add");
-        REQUIRE CHECK(add != nullptr);
-
-        const int32_t args[2] = { 20, 22 }; // packed back-to-back
-        int32_t result = 0;
-        c->InvokeMethod(entity, *add, args, &result);
-        CHECK_EQUAL(42, result);
-
-        engine.OnDestroyEntity(entity);
-    }
-
-    TEST(ScriptCallbacksRouteBackIntoTheEngine)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        // The default Input backend needs a live Application; install a simulated
-        // one. Space is pressed, so a returned 1 proves the Input internal call
-        // routed to native (a null/unregistered pointer would report 0).
-        SimulatedInput input;
-        input.PressKey(Key::Space);
-        Input::SetBackend(&input);
+        CHECK(!engine.IsValidScriptClass("EppoTesting.NoSuchClass"));
+        CHECK_EQUAL(-1, engine.FindClassIndex("EppoTesting.NoSuchClass"));
 
         const Ref<Scene> scene = CreateRef<Scene>();
-        Entity entity = scene->CreateEntity("Scripted");
-        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
+        Entity entity = scene->CreateEntity("Bad");
+        entity.AddComponent<ScriptComponent>(std::string("EppoTesting.NoSuchClass"));
 
-        auto& engine = ScriptEngine::Get();
         engine.OnCreateEntity(entity);
+        CHECK(engine.GetEntityInstance(entity.GetUUID()) == nullptr);
 
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* probe = c->GetMethod("Probe");
-        REQUIRE CHECK(probe != nullptr);
-
-        int32_t result = -1;
-        c->InvokeMethod(entity, *probe, nullptr, &result);
-        CHECK_EQUAL(1, result);
-
-        engine.OnDestroyEntity(entity);
-        Input::SetBackend(nullptr);
-    }
-
-    TEST(LiveInstanceFieldValueRoundTrips)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        Entity entity = scene->CreateEntity("Scripted");
-        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
-
-        auto& engine = ScriptEngine::Get();
-        engine.OnCreateEntity(entity);
-
-        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
-        REQUIRE CHECK(instance != nullptr);
-
-        // Find the index of the int field "Count" on the class.
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const auto& fields = c->GetFields();
-        int32_t countIndex = -1;
-        for (int32_t i = 0; i < static_cast<int32_t>(fields.size()); i++)
-            if (fields[i].Name == "Count") countIndex = i;
-        REQUIRE CHECK(countIndex >= 0);
-
-        int32_t value = 99;
-        instance->SetFieldValue(countIndex, &value);
-        int32_t readBack = 0;
-        instance->GetFieldValue(countIndex, &readBack);
-        CHECK_EQUAL(99, readBack);
-
-        engine.OnDestroyEntity(entity);
-    }
-
-    TEST(ScriptExceptionDoesNotCrashHost)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        Entity entity = scene->CreateEntity("Scripted");
-        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
-
-        auto& engine = ScriptEngine::Get();
-        engine.OnCreateEntity(entity);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* throws = c->GetMethod("Throws");
-        REQUIRE CHECK(throws != nullptr);
-
-        int32_t result = -1;
-        c->InvokeMethod(entity, *throws, nullptr, &result);
-
-        // Reaching here proves the managed exception did not fail-fast the host process.
+        engine.OnUpdateEntity(entity, 0.016f); // no live instance: safe no-op
+        engine.OnDestroyEntity(entity);        // no live instance: safe no-op
         CHECK(true);
-
-        engine.OnDestroyEntity(entity);
     }
+
+    // --- Instance lifecycle (ScriptGlue create/update/destroy). ---
 
     // OnCreate sets Created=1 and OnUpdate accumulates deltaTime on the harness;
     // reading those fields back proves both lifecycle calls ran managed code.
-    TEST(LifecycleCreateAndUpdateRunManagedCode)
+    TEST(Lifecycle_OnCreateAndUpdateRunManagedCode)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -270,9 +189,195 @@ SUITE(Scripting)
         engine.OnDestroyEntity(entity);
     }
 
+    // Stopping play (OnDestroyEntity) must remove the entity from the live
+    // registry so GetEntityInstance no longer returns a handle.
+    TEST(Lifecycle_DestroyUnregistersInstance)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+        CHECK(engine.GetEntityInstance(entity.GetUUID()) != nullptr);
+
+        engine.OnDestroyEntity(entity);
+        CHECK(engine.GetEntityInstance(entity.GetUUID()) == nullptr);
+    }
+
+    // --- Method invocation marshalling (ScriptGlue InvokeMethod). ---
+
+    TEST(Method_InvokeRoundTripsArgsAndReturn)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Scripted");
+        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
+
+        auto& engine = ScriptEngine::Get();
+        engine.OnCreateEntity(entity);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* add = c->GetMethod("Add");
+        REQUIRE CHECK(add != nullptr);
+
+        const int32_t args[2] = { 20, 22 }; // packed back-to-back
+        int32_t result = 0;
+        c->InvokeMethod(entity, *add, args, &result);
+        CHECK_EQUAL(42, result);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // A managed exception thrown from user code must not escape the
+    // UnmanagedCallersOnly boundary and fail-fast the host process.
+    TEST(Method_ExceptionDoesNotCrashHost)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Scripted");
+        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
+
+        auto& engine = ScriptEngine::Get();
+        engine.OnCreateEntity(entity);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* throws = c->GetMethod("Throws");
+        REQUIRE CHECK(throws != nullptr);
+
+        int32_t result = -1;
+        c->InvokeMethod(entity, *throws, nullptr, &result);
+
+        // Reaching here proves the managed exception did not fail-fast the host process.
+        CHECK(true);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // --- Field marshalling (ScriptGlue Get/SetFieldValue). ---
+
+    TEST(Field_ValueRoundTrips)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+
+        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
+        REQUIRE CHECK(instance != nullptr);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const int32_t countIndex = FieldIndex(*c, "Count");
+        REQUIRE CHECK(countIndex >= 0);
+
+        int32_t value = 99;
+        instance->SetFieldValue(countIndex, &value);
+        int32_t readBack = 0;
+        instance->GetFieldValue(countIndex, &readBack);
+        CHECK_EQUAL(99, readBack);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // A Vector3 field must be reported with its real type (not None) and marshal
+    // its 12 bytes both ways — regression cover for ManagedTypeToFieldType.
+    TEST(Field_VectorIsTypedAndRoundTrips)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const int32_t posIndex = FieldIndex(*c, "Position");
+        REQUIRE CHECK(posIndex >= 0);
+        CHECK(c->GetFields()[posIndex].Type == ScriptFieldType::Vector3);
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
+        REQUIRE CHECK(instance != nullptr);
+
+        const float in[3] = { 1.5f, -2.0f, 3.25f };
+        instance->SetFieldValue(posIndex, in);
+        float out[3] = { 0.0f, 0.0f, 0.0f };
+        instance->GetFieldValue(posIndex, out);
+        CHECK_CLOSE(1.5f, out[0], 1e-5f);
+        CHECK_CLOSE(-2.0f, out[1], 1e-5f);
+        CHECK_CLOSE(3.25f, out[2], 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // An Entity field (a managed reference type) must be typed as Entity and
+    // marshal as its 8-byte id both ways.
+    TEST(Field_EntityIsTypedAndRoundTrips)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const int32_t targetIndex = FieldIndex(*c, "Target");
+        REQUIRE CHECK(targetIndex >= 0);
+        CHECK(c->GetFields()[targetIndex].Type == ScriptFieldType::Entity);
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
+        REQUIRE CHECK(instance != nullptr);
+
+        const uint64_t id = 0xABCDEF0123456789ull;
+        instance->SetFieldValue(targetIndex, &id);
+        uint64_t back = 0;
+        instance->GetFieldValue(targetIndex, &back);
+        CHECK(back == id);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // bool and double fields round-trip through the marshalling layer intact.
+    TEST(Field_BoolAndDoubleRoundTrip)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const int32_t enabledIndex = FieldIndex(*c, "Enabled");
+        const int32_t ratioIndex = FieldIndex(*c, "Ratio");
+        REQUIRE CHECK(enabledIndex >= 0);
+        REQUIRE CHECK(ratioIndex >= 0);
+        CHECK(c->GetFields()[enabledIndex].Type == ScriptFieldType::Bool);
+        CHECK(c->GetFields()[ratioIndex].Type == ScriptFieldType::Double);
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
+        REQUIRE CHECK(instance != nullptr);
+
+        bool enabled = false;
+        instance->SetFieldValue(enabledIndex, &enabled);
+        bool enabledBack = true;
+        instance->GetFieldValue(enabledIndex, &enabledBack);
+        CHECK_EQUAL(false, enabledBack);
+
+        double ratio = 2.75;
+        instance->SetFieldValue(ratioIndex, &ratio);
+        double ratioBack = 0.0;
+        instance->GetFieldValue(ratioIndex, &ratioBack);
+        CHECK_CLOSE(2.75, ratioBack, 1e-9);
+
+        engine.OnDestroyEntity(entity);
+    }
+
     // Editor-time field values in the side table must be pushed into the fresh
     // managed instance when the entity's script is created on play.
-    TEST(EditorFieldsPushedIntoLiveInstanceOnCreate)
+    TEST(Field_EditorValuesPushedOnCreate)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -303,7 +408,7 @@ SUITE(Scripting)
 
     // Editing a field during play mutates the live instance directly and bypasses
     // the side table, so stopping and replaying restores the editor-time value.
-    TEST(LiveEditsAreDiscardedOnReplay)
+    TEST(Field_LiveEditsDiscardedOnReplay)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -345,142 +450,125 @@ SUITE(Scripting)
         engine.RemoveFieldMap(entity.GetUUID());
     }
 
-    // A Vector3 field must be reported with its real type (not None) and marshal
-    // its 12 bytes both ways — regression cover for ManagedTypeToFieldType.
-    TEST(VectorFieldIsTypedAndRoundTrips)
+    // --- Internal calls (ScriptGlue): each test invokes the 1:1 harness forwarder
+    // for one internal call and asserts on native state / the returned value. ---
+    TEST(Input_IsKeyPressed_ReturnsNativeState)
     {
         REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
 
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
-        const int32_t posIndex = FieldIndex(*c, "Position");
-        REQUIRE CHECK(posIndex >= 0);
-        CHECK(c->GetFields()[posIndex].Type == ScriptFieldType::Vector3);
+        const ScriptMethod* isKeyPressed = c->GetMethod("Input_IsKeyPressed");
+        REQUIRE CHECK(isKeyPressed != nullptr);
+
+        SimulatedInput pressed;
+        pressed.PressKey(Key::Space);
+        Input::SetBackend(&pressed);
+        bool down = false;
+        c->InvokeMethod(entity, *isKeyPressed, nullptr, &down);
+        CHECK_EQUAL(true, down);
+
+        SimulatedInput released; // nothing pressed
+        Input::SetBackend(&released);
+        bool up = true;
+        c->InvokeMethod(entity, *isKeyPressed, nullptr, &up);
+        CHECK_EQUAL(false, up);
+
+        Input::SetBackend(nullptr);
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(LogMessage_DoesNotCrashHost)
+    {
+        REQUIRE CHECK(EnsureRuntime());
 
         const Ref<Scene> scene = CreateRef<Scene>();
         auto& engine = ScriptEngine::Get();
         Entity entity = MakeLiveEntity(scene);
-        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
-        REQUIRE CHECK(instance != nullptr);
-
-        const float in[3] = { 1.5f, -2.0f, 3.25f };
-        instance->SetFieldValue(posIndex, in);
-        float out[3] = { 0.0f, 0.0f, 0.0f };
-        instance->GetFieldValue(posIndex, out);
-        CHECK_CLOSE(1.5f, out[0], 1e-5f);
-        CHECK_CLOSE(-2.0f, out[1], 1e-5f);
-        CHECK_CLOSE(3.25f, out[2], 1e-5f);
-
-        engine.OnDestroyEntity(entity);
-    }
-
-    // An Entity field (a managed reference type) must be typed as Entity and
-    // marshal as its 8-byte id both ways.
-    TEST(EntityFieldIsTypedAndRoundTrips)
-    {
-        REQUIRE CHECK(EnsureRuntime());
 
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
-        const int32_t targetIndex = FieldIndex(*c, "Target");
-        REQUIRE CHECK(targetIndex >= 0);
-        CHECK(c->GetFields()[targetIndex].Type == ScriptFieldType::Entity);
+        const ScriptMethod* logMessage = c->GetMethod("LogMessage");
+        REQUIRE CHECK(logMessage != nullptr);
 
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
-        REQUIRE CHECK(instance != nullptr);
-
-        const uint64_t id = 0xABCDEF0123456789ull;
-        instance->SetFieldValue(targetIndex, &id);
-        uint64_t back = 0;
-        instance->GetFieldValue(targetIndex, &back);
-        CHECK(back == id);
+        c->InvokeMethod(entity, *logMessage, nullptr, nullptr);
+        CHECK(true); // reached here: the native Log callback did not fault
 
         engine.OnDestroyEntity(entity);
     }
 
-    // bool and double fields round-trip through the marshalling layer intact.
-    TEST(BoolAndDoubleFieldsRoundTrip)
+    TEST(Entity_HasComponent_ReflectsScene)
     {
         REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
 
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
-        const int32_t enabledIndex = FieldIndex(*c, "Enabled");
-        const int32_t ratioIndex = FieldIndex(*c, "Ratio");
-        REQUIRE CHECK(enabledIndex >= 0);
-        REQUIRE CHECK(ratioIndex >= 0);
-        CHECK(c->GetFields()[enabledIndex].Type == ScriptFieldType::Bool);
-        CHECK(c->GetFields()[ratioIndex].Type == ScriptFieldType::Double);
+        const ScriptMethod* hasComponent = c->GetMethod("Entity_HasComponent");
+        REQUIRE CHECK(hasComponent != nullptr);
 
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-        ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
-        REQUIRE CHECK(instance != nullptr);
+        bool before = true;
+        c->InvokeMethod(entity, *hasComponent, nullptr, &before);
+        CHECK_EQUAL(false, before);
 
-        bool enabled = false;
-        instance->SetFieldValue(enabledIndex, &enabled);
-        bool enabledBack = true;
-        instance->GetFieldValue(enabledIndex, &enabledBack);
-        CHECK_EQUAL(false, enabledBack);
-
-        double ratio = 2.75;
-        instance->SetFieldValue(ratioIndex, &ratio);
-        double ratioBack = 0.0;
-        instance->GetFieldValue(ratioIndex, &ratioBack);
-        CHECK_CLOSE(2.75, ratioBack, 1e-9);
+        entity.AddComponent<PointLightComponent>();
+        bool after = false;
+        c->InvokeMethod(entity, *hasComponent, nullptr, &after);
+        CHECK_EQUAL(true, after);
 
         engine.OnDestroyEntity(entity);
     }
 
-    // An entity referencing an unknown class must not instantiate, and the
-    // lifecycle calls around it must stay safe no-ops.
-    TEST(UnknownScriptClassProducesNoInstance)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        auto& engine = ScriptEngine::Get();
-        CHECK(!engine.IsValidScriptClass("EppoTesting.NoSuchClass"));
-        CHECK_EQUAL(-1, engine.FindClassIndex("EppoTesting.NoSuchClass"));
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        Entity entity = scene->CreateEntity("Bad");
-        entity.AddComponent<ScriptComponent>(std::string("EppoTesting.NoSuchClass"));
-
-        engine.OnCreateEntity(entity);
-        CHECK(engine.GetEntityInstance(entity.GetUUID()) == nullptr);
-
-        engine.OnUpdateEntity(entity, 0.016f); // no live instance: safe no-op
-        engine.OnDestroyEntity(entity);        // no live instance: safe no-op
-        CHECK(true);
-    }
-
-    // Stopping play (OnDestroyEntity) must remove the entity from the live
-    // registry so GetEntityInstance no longer returns a handle.
-    TEST(DestroyUnregistersLiveInstance)
+    TEST(Entity_AddComponent_AddsToScene)
     {
         REQUIRE CHECK(EnsureRuntime());
 
         const Ref<Scene> scene = CreateRef<Scene>();
         auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-        CHECK(engine.GetEntityInstance(entity.GetUUID()) != nullptr);
+        Entity entity = MakeContextEntity(scene);
+        CHECK(!entity.HasComponent<PointLightComponent>());
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* addComponent = c->GetMethod("Entity_AddComponent");
+        REQUIRE CHECK(addComponent != nullptr);
+
+        c->InvokeMethod(entity, *addComponent, nullptr, nullptr);
+        CHECK(entity.HasComponent<PointLightComponent>());
 
         engine.OnDestroyEntity(entity);
-        CHECK(engine.GetEntityInstance(entity.GetUUID()) == nullptr);
     }
 
-    // --- Entity/Component API (ScriptGlue internal calls). These exercise the
-    // full script -> native -> live Scene bridge: a real scene is installed as the
-    // engine's scene context, and each test asserts on native component state
-    // and/or on values the script reads back through the internal calls. ---
+    TEST(Entity_RemoveComponent_RemovesFromScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
 
-    // A script reading its TransformComponent.Translation (via the component
-    // wrapper and via the Entity.Translation shortcut) sees what native set.
-    TEST(ScriptReadsTransformTranslationFromScene)
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<PointLightComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* removeComponent = c->GetMethod("Entity_RemoveComponent");
+        REQUIRE CHECK(removeComponent != nullptr);
+
+        bool removed = false;
+        c->InvokeMethod(entity, *removeComponent, nullptr, &removed);
+        CHECK_EQUAL(true, removed);
+        CHECK(!entity.HasComponent<PointLightComponent>());
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(TransformComponent_GetTranslation_ReturnsSceneValue)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -492,23 +580,16 @@ SUITE(Scripting)
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
 
-        float viaComponent[3] = { 0.0f, 0.0f, 0.0f };
-        REQUIRE CHECK(InvokeVec3(entity, *c, "GetTranslationViaComponent", viaComponent));
-        CHECK_CLOSE(1.0f, viaComponent[0], 1e-5f);
-        CHECK_CLOSE(2.0f, viaComponent[1], 1e-5f);
-        CHECK_CLOSE(3.0f, viaComponent[2], 1e-5f);
-
-        float shortcut[3] = { 0.0f, 0.0f, 0.0f };
-        REQUIRE CHECK(InvokeVec3(entity, *c, "GetTranslationShortcut", shortcut));
-        CHECK_CLOSE(1.0f, shortcut[0], 1e-5f);
-        CHECK_CLOSE(2.0f, shortcut[1], 1e-5f);
-        CHECK_CLOSE(3.0f, shortcut[2], 1e-5f);
+        float out[3] = { 0.0f, 0.0f, 0.0f };
+        REQUIRE CHECK(InvokeVec3(entity, *c, "TransformComponent_GetTranslation", out));
+        CHECK_CLOSE(1.0f, out[0], 1e-5f);
+        CHECK_CLOSE(2.0f, out[1], 1e-5f);
+        CHECK_CLOSE(3.0f, out[2], 1e-5f);
 
         engine.OnDestroyEntity(entity);
     }
 
-    // A script writing its Translation (both ways) mutates the native scene.
-    TEST(ScriptWritesTransformTranslationToScene)
+    TEST(TransformComponent_SetTranslation_MutatesScene)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -518,134 +599,21 @@ SUITE(Scripting)
 
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setTranslation = c->GetMethod("TransformComponent_SetTranslation");
+        REQUIRE CHECK(setTranslation != nullptr);
 
-        const ScriptMethod* setViaComponent = c->GetMethod("SetTranslationViaComponent");
-        REQUIRE CHECK(setViaComponent != nullptr);
         const float in[3] = { 4.0f, 5.0f, 6.0f };
-        c->InvokeMethod(entity, *setViaComponent, in, nullptr);
+        c->InvokeMethod(entity, *setTranslation, in, nullptr);
 
         const glm::vec3 t = entity.GetComponent<TransformComponent>().Translation;
         CHECK_CLOSE(4.0f, t.x, 1e-5f);
         CHECK_CLOSE(5.0f, t.y, 1e-5f);
         CHECK_CLOSE(6.0f, t.z, 1e-5f);
 
-        const ScriptMethod* setShortcut = c->GetMethod("SetTranslationShortcut");
-        REQUIRE CHECK(setShortcut != nullptr);
-        const float in2[3] = { -7.0f, 8.5f, 9.0f };
-        c->InvokeMethod(entity, *setShortcut, in2, nullptr);
-
-        const glm::vec3 t2 = entity.GetComponent<TransformComponent>().Translation;
-        CHECK_CLOSE(-7.0f, t2.x, 1e-5f);
-        CHECK_CLOSE(8.5f, t2.y, 1e-5f);
-        CHECK_CLOSE(9.0f, t2.z, 1e-5f);
-
         engine.OnDestroyEntity(entity);
     }
 
-    // HasComponent from a script reflects the native ECS: present for the
-    // always-there TransformComponent, absent for a not-yet-added PointLight.
-    TEST(ScriptHasComponentReflectsScene)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeContextEntity(scene);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-
-        const ScriptMethod* hasTransform = c->GetMethod("HasTransform");
-        const ScriptMethod* hasPointLight = c->GetMethod("HasPointLight");
-        REQUIRE CHECK(hasTransform != nullptr);
-        REQUIRE CHECK(hasPointLight != nullptr);
-
-        bool transform = false;
-        c->InvokeMethod(entity, *hasTransform, nullptr, &transform);
-        CHECK_EQUAL(true, transform);
-
-        bool pointLight = true;
-        c->InvokeMethod(entity, *hasPointLight, nullptr, &pointLight);
-        CHECK_EQUAL(false, pointLight);
-
-        engine.OnDestroyEntity(entity);
-    }
-
-    // Add/RemoveComponent from a script mutate the native scene, and the script's
-    // own HasComponent read reflects the change immediately.
-    TEST(ScriptAddAndRemoveComponentMutatesScene)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeContextEntity(scene);
-        CHECK(!entity.HasComponent<PointLightComponent>());
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-
-        const ScriptMethod* add = c->GetMethod("AddPointLightAndReport");
-        REQUIRE CHECK(add != nullptr);
-        bool added = false;
-        c->InvokeMethod(entity, *add, nullptr, &added);
-        CHECK_EQUAL(true, added);
-        CHECK(entity.HasComponent<PointLightComponent>());
-
-        const ScriptMethod* remove = c->GetMethod("RemovePointLight");
-        REQUIRE CHECK(remove != nullptr);
-        bool removed = false;
-        c->InvokeMethod(entity, *remove, nullptr, &removed);
-        CHECK_EQUAL(true, removed);
-        CHECK(!entity.HasComponent<PointLightComponent>());
-
-        engine.OnDestroyEntity(entity);
-    }
-
-    // PointLightComponent color (Vector3) + intensity (float) round-trip: script
-    // writes them into the native component, and reads the same values back.
-    TEST(ScriptRoundTripsPointLight)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeContextEntity(scene);
-        entity.AddComponent<PointLightComponent>();
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-
-        // color (12 bytes) then intensity (4 bytes), packed back-to-back.
-        const ScriptMethod* setLight = c->GetMethod("SetLight");
-        REQUIRE CHECK(setLight != nullptr);
-        const float args[4] = { 0.25f, 0.5f, 0.75f, 4.5f };
-        c->InvokeMethod(entity, *setLight, args, nullptr);
-
-        const auto& light = entity.GetComponent<PointLightComponent>();
-        CHECK_CLOSE(0.25f, light.Color.x, 1e-5f);
-        CHECK_CLOSE(0.5f, light.Color.y, 1e-5f);
-        CHECK_CLOSE(0.75f, light.Color.z, 1e-5f);
-        CHECK_CLOSE(4.5f, light.Intensity, 1e-5f);
-
-        float colorOut[3] = { 0.0f, 0.0f, 0.0f };
-        REQUIRE CHECK(InvokeVec3(entity, *c, "GetLightColor", colorOut));
-        CHECK_CLOSE(0.25f, colorOut[0], 1e-5f);
-        CHECK_CLOSE(0.5f, colorOut[1], 1e-5f);
-        CHECK_CLOSE(0.75f, colorOut[2], 1e-5f);
-
-        const ScriptMethod* getIntensity = c->GetMethod("GetLightIntensity");
-        REQUIRE CHECK(getIntensity != nullptr);
-        float intensityOut = 0.0f;
-        c->InvokeMethod(entity, *getIntensity, nullptr, &intensityOut);
-        CHECK_CLOSE(4.5f, intensityOut, 1e-5f);
-
-        engine.OnDestroyEntity(entity);
-    }
-
-    // MeshComponent.MeshHandle (a UUID, marshalled as its 8-byte id) read from a
-    // script matches what native set on the component.
-    TEST(ScriptReadsMeshHandleFromScene)
+    TEST(MeshComponent_GetMeshHandle_ReturnsSceneValue)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -656,13 +624,147 @@ SUITE(Scripting)
 
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
-
-        const ScriptMethod* getHandle = c->GetMethod("GetMeshHandle");
+        const ScriptMethod* getHandle = c->GetMethod("MeshComponent_GetMeshHandle");
         REQUIRE CHECK(getHandle != nullptr);
+
         uint64_t handle = 0;
         c->InvokeMethod(entity, *getHandle, nullptr, &handle);
         CHECK(handle == 0x1234ull);
 
         engine.OnDestroyEntity(entity);
+    }
+
+    TEST(PointLightComponent_SetColor_MutatesScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<PointLightComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setColor = c->GetMethod("PointLightComponent_SetColor");
+        REQUIRE CHECK(setColor != nullptr);
+
+        const float color[3] = { 0.25f, 0.5f, 0.75f };
+        c->InvokeMethod(entity, *setColor, color, nullptr);
+
+        const glm::vec3 stored = entity.GetComponent<PointLightComponent>().Color;
+        CHECK_CLOSE(0.25f, stored.x, 1e-5f);
+        CHECK_CLOSE(0.5f, stored.y, 1e-5f);
+        CHECK_CLOSE(0.75f, stored.z, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(PointLightComponent_GetColor_ReturnsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<PointLightComponent>().Color = glm::vec3(0.1f, 0.2f, 0.3f);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float out[3] = { 0.0f, 0.0f, 0.0f };
+        REQUIRE CHECK(InvokeVec3(entity, *c, "PointLightComponent_GetColor", out));
+        CHECK_CLOSE(0.1f, out[0], 1e-5f);
+        CHECK_CLOSE(0.2f, out[1], 1e-5f);
+        CHECK_CLOSE(0.3f, out[2], 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(PointLightComponent_SetIntensity_MutatesScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<PointLightComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setIntensity = c->GetMethod("PointLightComponent_SetIntensity");
+        REQUIRE CHECK(setIntensity != nullptr);
+
+        const float intensity = 4.5f;
+        c->InvokeMethod(entity, *setIntensity, &intensity, nullptr);
+        CHECK_CLOSE(4.5f, entity.GetComponent<PointLightComponent>().Intensity, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(PointLightComponent_GetIntensity_ReturnsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<PointLightComponent>().Intensity = 7.25f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getIntensity = c->GetMethod("PointLightComponent_GetIntensity");
+        REQUIRE CHECK(getIntensity != nullptr);
+
+        float intensity = 0.0f;
+        c->InvokeMethod(entity, *getIntensity, nullptr, &intensity);
+        CHECK_CLOSE(7.25f, intensity, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(RelationshipComponent_SetParent_MutatesScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity parent = MakeContextEntity(scene);
+        Entity child = MakeContextEntity(scene); // CreateEntity gives it a RelationshipComponent
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setParent = c->GetMethod("RelationshipComponent_SetParent");
+        REQUIRE CHECK(setParent != nullptr);
+
+        const uint64_t parentId = static_cast<uint64_t>(parent.GetUUID());
+        c->InvokeMethod(child, *setParent, &parentId, nullptr);
+
+        CHECK(child.GetComponent<RelationshipComponent>().Parent == parent.GetUUID());
+
+        engine.OnDestroyEntity(child);
+        engine.OnDestroyEntity(parent);
+    }
+
+    TEST(RelationshipComponent_GetParent_ReturnsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity parent = MakeContextEntity(scene);
+        Entity child = MakeContextEntity(scene);
+        scene->SetParent(child, parent);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getParent = c->GetMethod("RelationshipComponent_GetParent");
+        REQUIRE CHECK(getParent != nullptr);
+
+        uint64_t parentId = 0;
+        c->InvokeMethod(child, *getParent, nullptr, &parentId);
+        CHECK(parentId == static_cast<uint64_t>(parent.GetUUID()));
+
+        engine.OnDestroyEntity(child);
+        engine.OnDestroyEntity(parent);
     }
 }

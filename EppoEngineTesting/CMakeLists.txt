@@ -72,6 +72,7 @@ function(AddTestingSuite name label)
     set_tests_properties(${name} PROPERTIES LABELS "${label}")
 endfunction()
 
+AddTestingSuite(UUID unit)
 AddTestingSuite(Smoke unit)
 AddTestingSuite(ScriptMarshalling unit)
 AddTestingSuite(Scripting scripting)

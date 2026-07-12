@@ -14,7 +14,7 @@ namespace Eppo
 
 		[[nodiscard]] auto IsValid() const -> bool
 		{
-			return Handle;
+			return static_cast<bool>(Handle);
 		}
 
 		[[nodiscard]] auto GetName() const -> std::string
