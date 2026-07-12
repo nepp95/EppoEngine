@@ -11,4 +11,9 @@
 		<Folder Include="Source\Math\" />
 		<Folder Include="Source\Scene\" />
     </ItemGroup>
+    <ItemGroup>
+		<!-- The test harness forwards straight to InternalCalls so tests target the
+		     native internal call, not the Entity/Component wrappers around it. -->
+		<InternalsVisibleTo Include="EppoTesting.Scripts" />
+    </ItemGroup>
 </Project>

@@ -6,7 +6,9 @@ namespace EppoScriptCore.Scene
     public class Entity
     {
         public readonly ulong ID;
-        public string Name { get; }
+
+        // Live view of the entity's name (its native TagComponent tag).
+        public string Name => InternalCalls.Entity_GetName(ID);
 
         public Entity(ulong id)
         {

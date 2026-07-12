@@ -45,6 +45,11 @@ namespace EppoTesting
         public void Entity_AddComponent() => InternalCalls.Entity_AddComponent(Id, "PointLightComponent");
         public bool Entity_RemoveComponent() => InternalCalls.Entity_RemoveComponent(Id, "PointLightComponent");
 
+        // Proves the C++ -> managed string round-trip: a string return can't cross the
+        // packed InvokeMethod boundary, so compare here against the name the C++ test
+        // gives the entity and return the (marshallable) bool result.
+        public bool Entity_GetName_Matches() => InternalCalls.Entity_GetName(Id) == "NamedEntity";
+
         // TransformComponent.
         public Vector3 TransformComponent_GetTranslation() => InternalCalls.TransformComponent_GetTranslation(Id);
         public void TransformComponent_SetTranslation(Vector3 t) => InternalCalls.TransformComponent_SetTranslation(Id, ref t);

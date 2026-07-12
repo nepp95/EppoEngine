@@ -568,6 +568,35 @@ SUITE(Scripting)
         engine.OnDestroyEntity(entity);
     }
 
+    TEST(Entity_GetName_MarshalsStringToManaged)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        // The harness forwarder compares the native name against this exact string.
+        entity.GetComponent<TagComponent>().Tag = "NamedEntity";
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getName = c->GetMethod("Entity_GetName_Matches");
+        REQUIRE CHECK(getName != nullptr);
+
+        bool matches = false;
+        c->InvokeMethod(entity, *getName, nullptr, &matches);
+        CHECK_EQUAL(true, matches);
+
+        // Negative case: a different name must decode differently, proving the
+        // forwarder returns the real marshalled string rather than a constant.
+        entity.GetComponent<TagComponent>().Tag = "Other";
+        bool mismatches = true;
+        c->InvokeMethod(entity, *getName, nullptr, &mismatches);
+        CHECK_EQUAL(false, mismatches);
+
+        engine.OnDestroyEntity(entity);
+    }
+
     TEST(TransformComponent_GetTranslation_ReturnsSceneValue)
     {
         REQUIRE CHECK(EnsureRuntime());
