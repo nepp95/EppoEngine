@@ -3,8 +3,12 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <!-- Calls native engine services through C# unmanaged function pointers. -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     <ItemGroup>
-      <Folder Include="Source\Math\" />
+		<Folder Include="Source\Core\" />
+		<Folder Include="Source\Math\" />
+		<Folder Include="Source\Scene\" />
     </ItemGroup>
 </Project>

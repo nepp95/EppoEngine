@@ -53,15 +53,44 @@ namespace EppoScriptCore.Core
         private static readonly Dictionary<ulong, InstanceRecord> s_Instances = new();
         private static UserAssemblyLoadContext? s_UserContext;
 
-        [UnmanagedCallersOnly(EntryPoint = "Bootstrap")]
-        public static void Boostrap()
+        // User code, reflection and IO run behind [UnmanagedCallersOnly] boundaries;
+        // an exception escaping one fail-fasts the host process. Contain and report
+        // it here so a throwing script can't take the engine down with it.
+        private static void Guard(string context, Action action)
         {
-            s_CoreClasses.Clear();
-            s_UserClasses.Clear();
-            s_Instances.Clear();
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                var inner = (exception as TargetInvocationException)?.InnerException ?? exception;
+                var message = $"[Script] {context} threw: {inner}";
+                try
+                {
+                    Log.Error(message);
+                }
+                catch
+                {
+                    // The native Log callback may not be registered yet (Bootstrap
+                    // runs before it); fall back to stderr so it is never silent.
+                    Console.Error.WriteLine(message);
+                }
+            }
+        }
 
-            var assembly = Assembly.GetExecutingAssembly();
-            ScanAssembly(assembly, s_CoreClasses);
+        [UnmanagedCallersOnly(EntryPoint = "Bootstrap")]
+        public static void Bootstrap()
+        {
+            Guard("Bootstrap", () =>
+            {
+                s_CoreClasses.Clear();
+                s_UserClasses.Clear();
+                s_Instances.Clear();
+
+                var assembly = Assembly.GetExecutingAssembly();
+                ScanAssembly(assembly, s_CoreClasses);
+            });
         }
 
         private static int TotalClassCount => s_CoreClasses.Count + s_UserClasses.Count;
@@ -206,14 +235,17 @@ namespace EppoScriptCore.Core
             if (path is null)
                 return;
 
-            UnloadUserAssemblyInternal();
-            s_UserContext = new UserAssemblyLoadContext();
+            Guard("LoadUserAssembly", () =>
+            {
+                UnloadUserAssemblyInternal();
+                s_UserContext = new UserAssemblyLoadContext();
 
-            var bytes = File.ReadAllBytes(path);
-            using var stream = new MemoryStream(bytes);
-            var assembly = s_UserContext.LoadFromStream(stream);
+                var bytes = File.ReadAllBytes(path);
+                using var stream = new MemoryStream(bytes);
+                var assembly = s_UserContext.LoadFromStream(stream);
 
-            ScanAssembly(assembly, s_UserClasses);
+                ScanAssembly(assembly, s_UserClasses);
+            });
         }
 
         [UnmanagedCallersOnly(EntryPoint = "UnloadUserAssembly")]
@@ -244,21 +276,26 @@ namespace EppoScriptCore.Core
         [UnmanagedCallersOnly(EntryPoint = "CreateInstance")]
         public static int CreateInstance(int classIndex, ulong entityId)
         {
-            var descriptor = GetDescriptor(classIndex);
-            if (descriptor is null)
-                return 0;
-
-            if (Activator.CreateInstance(descriptor.Type) is not ScriptBehaviour instance)
-                return 0;
-
-            instance.Id = entityId;
-            s_Instances[entityId] = new InstanceRecord
+            var created = 0;
+            Guard("CreateInstance", () =>
             {
-                Instance = instance,
-                Descriptor = descriptor,
-            };
+                var descriptor = GetDescriptor(classIndex);
+                if (descriptor is null)
+                    return;
 
-            return 1;
+                if (Activator.CreateInstance(descriptor.Type) is not ScriptBehaviour instance)
+                    return;
+
+                instance.Id = entityId;
+                s_Instances[entityId] = new InstanceRecord
+                {
+                    Instance = instance,
+                    Descriptor = descriptor,
+                };
+
+                created = 1;
+            });
+            return created;
         }
 
         [UnmanagedCallersOnly(EntryPoint = "DestroyInstance")]
@@ -270,67 +307,119 @@ namespace EppoScriptCore.Core
         [UnmanagedCallersOnly(EntryPoint = "InvokeOnCreate")]
         public static void InvokeOnCreate(ulong entityId)
         {
-            if (s_Instances.TryGetValue(entityId, out var record))
-                record.Instance.OnCreate();
+            Guard("InvokeOnCreate", () =>
+            {
+                if (s_Instances.TryGetValue(entityId, out var record))
+                    record.Instance.OnCreate();
+            });
         }
 
         [UnmanagedCallersOnly(EntryPoint = "InvokeOnUpdate")]
         public static void InvokeOnUpdate(ulong entityId, float timestep)
         {
-            if (s_Instances.TryGetValue(entityId, out var record))
-                record.Instance.OnUpdate(timestep);
+            Guard("InvokeOnUpdate", () =>
+            {
+                if (s_Instances.TryGetValue(entityId, out var record))
+                    record.Instance.OnUpdate(timestep);
+            });
         }
 
         [UnmanagedCallersOnly(EntryPoint = "InvokeOnDestroy")]
         public static void InvokeOnDestroy(ulong entityId)
         {
-            if (s_Instances.TryGetValue(entityId, out var record))
-                record.Instance.OnDestroy();
+            Guard("InvokeOnDestroy", () =>
+            {
+                if (s_Instances.TryGetValue(entityId, out var record))
+                    record.Instance.OnDestroy();
+            });
         }
 
         [UnmanagedCallersOnly(EntryPoint = "SetFieldValue")]
         public static void SetFieldValue(ulong entityId, int fieldIndex, IntPtr data)
         {
-            if (data == IntPtr.Zero)
-                return;
+            Guard("SetFieldValue", () =>
+            {
+                if (data == IntPtr.Zero)
+                    return;
 
-            if (!s_Instances.TryGetValue(entityId, out var record))
-                return;
+                if (!s_Instances.TryGetValue(entityId, out var record))
+                    return;
 
-            var fields = record.Descriptor.Fields;
-            if (fieldIndex < 0 || fieldIndex >= fields.Count)
-                return;
+                var fields = record.Descriptor.Fields;
+                if (fieldIndex < 0 || fieldIndex >= fields.Count)
+                    return;
 
-            var field = fields[fieldIndex];
-            var value = ReadFieldValue(data, field.Type);
-            if (value is not null)
-                field.Info.SetValue(record.Instance, value);
+                var field = fields[fieldIndex];
+                var value = ReadFieldValue(data, field.Type);
+                if (value is not null)
+                    field.Info.SetValue(record.Instance, value);
+            });
         }
 
         [UnmanagedCallersOnly(EntryPoint = "GetFieldValue")]
         public static void GetFieldValue(ulong entityId, int fieldIndex, IntPtr data)
         {
-            if (data == IntPtr.Zero)
-                return;
+            Guard("GetFieldValue", () =>
+            {
+                if (data == IntPtr.Zero)
+                    return;
 
-            if (!s_Instances.TryGetValue(entityId, out var record))
-                return;
+                if (!s_Instances.TryGetValue(entityId, out var record))
+                    return;
 
-            var fields = record.Descriptor.Fields;
-            if (fieldIndex < 0 || fieldIndex >= fields.Count)
-                return;
+                var fields = record.Descriptor.Fields;
+                if (fieldIndex < 0 || fieldIndex >= fields.Count)
+                    return;
 
-            var field = fields[fieldIndex];
-            var value = field.Info.GetValue(record.Instance);
-            if (value is not null)
-                WriteFieldValue(data, field.Type, value);
+                var field = fields[fieldIndex];
+                var value = field.Info.GetValue(record.Instance);
+                if (value is not null)
+                    WriteFieldValue(data, field.Type, value);
+            });
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "InvokeMethod")]
+        public static void InvokeMethod(ulong entityId, int methodIndex, IntPtr args, IntPtr ret)
+        {
+            Guard("InvokeMethod", () =>
+            {
+                if (!s_Instances.TryGetValue(entityId, out var record))
+                    return;
+
+                var methods = record.Descriptor.Methods;
+                if (methodIndex < 0 || methodIndex >= methods.Count)
+                    return;
+
+                var method = methods[methodIndex];
+                var parameters = method.Info.GetParameters();
+
+                // Args are tightly packed back-to-back with no padding/alignment;
+                // the native caller must pack identically (see ScriptFieldTypeSize).
+                var boxedArgs = new object?[parameters.Length];
+                var cursor = args;
+                for (var i = 0; i < parameters.Length; i++)
+                {
+                    var fieldType = ManagedTypeToFieldType(parameters[i].ParameterType);
+                    boxedArgs[i] = ReadFieldValue(cursor, fieldType);
+                    cursor += (int)FieldTypeSize(fieldType);
+                }
+
+                var result = method.Info.Invoke(record.Instance, boxedArgs);
+                if (ret != IntPtr.Zero && method.Info.ReturnType != typeof(void) && result is not null)
+                    WriteFieldValue(ret, ManagedTypeToFieldType(method.Info.ReturnType), result);
+            });
         }
 
         [UnmanagedCallersOnly(EntryPoint = "FreeString")]
         public static void FreeString(IntPtr ptr) => Marshal.FreeCoTaskMem(ptr);
 
-        [UnmanagedCallersOnly(EntryPoint = "RegisterNativeCallbacks")]
-        public static void RegisterNativeCallbacks(IntPtr callbacks) => NativeCallbacks.Register(callbacks);
+        [UnmanagedCallersOnly(EntryPoint = "RegisterInternalCall")]
+        public static void RegisterInternalCall(IntPtr namePtr, IntPtr function)
+        {
+            var name = Marshal.PtrToStringUTF8(namePtr);
+            if (name is not null)
+                InternalCalls.Register(name, function);
+        }
 
         private static object? ReadFieldValue(IntPtr data, ScriptFieldType type)
         {
@@ -350,7 +439,8 @@ namespace EppoScriptCore.Core
                 case ScriptFieldType.Vector2: return Marshal.PtrToStructure<Math.Vector2>(data);
                 case ScriptFieldType.Vector3: return Marshal.PtrToStructure<Math.Vector3>(data);
                 case ScriptFieldType.Vector4: return Marshal.PtrToStructure<Math.Vector4>(data);
-                case ScriptFieldType.Entity: return Marshal.PtrToStructure<Scene.Entity>(data);
+                // Entity is a reference type marshalled as its 8-byte id, not a blittable struct.
+                case ScriptFieldType.Entity: return new Scene.Entity((ulong)Marshal.ReadInt64(data));
                 default: return null;
             }
         }
@@ -373,10 +463,32 @@ namespace EppoScriptCore.Core
                 case ScriptFieldType.Vector2: Marshal.StructureToPtr((Math.Vector2)value, data, false); break;
                 case ScriptFieldType.Vector3: Marshal.StructureToPtr((Math.Vector3)value, data, false); break;
                 case ScriptFieldType.Vector4: Marshal.StructureToPtr((Math.Vector4)value, data, false); break;
-                case ScriptFieldType.Entity: Marshal.StructureToPtr((Scene.Entity)value, data, false); break;
+                // Entity is a reference type marshalled as its 8-byte id, not a blittable struct.
+                case ScriptFieldType.Entity: Marshal.WriteInt64(data, (long)((Scene.Entity)value).ID); break;
                 default: break;
             }
         }
+
+        // Marshalling width of each field type, matching native ScriptFieldTypeSize.
+        private static uint FieldTypeSize(ScriptFieldType type) => type switch
+        {
+            ScriptFieldType.Float => 4,
+            ScriptFieldType.Double => 8,
+            ScriptFieldType.Bool => 1,
+            ScriptFieldType.Char => 2,
+            ScriptFieldType.Int16 => 2,
+            ScriptFieldType.Int32 => 4,
+            ScriptFieldType.Int64 => 8,
+            ScriptFieldType.Byte => 1,
+            ScriptFieldType.UInt16 => 2,
+            ScriptFieldType.UInt32 => 4,
+            ScriptFieldType.UInt64 => 8,
+            ScriptFieldType.Vector2 => 8,
+            ScriptFieldType.Vector3 => 12,
+            ScriptFieldType.Vector4 => 16,
+            ScriptFieldType.Entity => 8,
+            _ => 0,
+        };
 
         private static IEnumerable<Type?> SafeGetTypes(Assembly assembly)
         {
@@ -403,6 +515,10 @@ namespace EppoScriptCore.Core
             if (type == typeof(ushort)) return ScriptFieldType.UInt16;
             if (type == typeof(uint)) return ScriptFieldType.UInt32;
             if (type == typeof(ulong)) return ScriptFieldType.UInt64;
+            if (type == typeof(Math.Vector2)) return ScriptFieldType.Vector2;
+            if (type == typeof(Math.Vector3)) return ScriptFieldType.Vector3;
+            if (type == typeof(Math.Vector4)) return ScriptFieldType.Vector4;
+            if (type == typeof(Scene.Entity)) return ScriptFieldType.Entity;
 
             return ScriptFieldType.None;
         }

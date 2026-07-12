@@ -252,7 +252,7 @@ namespace Eppo
 						for (auto& field : c["Fields"])
 						{
 							const auto name = field["Name"].get<std::string>();
-							const auto type = static_cast<FT>(field["Type"].get<uint8_t>());
+							const auto type = static_cast<ScriptFieldType>(field["Type"].get<uint8_t>());
 							fieldMap[name] = Utils::DeserializeScriptFieldData(field["Data"], type);
 						}
 					}

@@ -22,5 +22,6 @@ namespace Eppo
     struct ScriptMethod
     {
         std::string Name;
+        int32_t Index = -1;
     };
 }

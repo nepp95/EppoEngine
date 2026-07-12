@@ -30,6 +30,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif ()
 
 # Targets
+include(CMake/Dotnet.cmake)
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)
 
@@ -37,7 +38,3 @@ if (BUILD_TESTING)
     enable_testing()
     add_subdirectory(EppoEngineTesting)
 endif ()
-
-# .NET build + runtime provisioning — included last so it can attach POST_BUILD
-# steps to the editor and test targets defined above.
-include(CMake/Dotnet.cmake)

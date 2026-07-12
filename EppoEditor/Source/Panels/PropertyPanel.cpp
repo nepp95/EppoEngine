@@ -20,7 +20,7 @@ namespace Eppo
 		// buffer in place. ImGui reads/writes the typed value directly. Returns
 		// true on the frames the user changes the value, so the caller can push
 		// the edit to a live script instance during play.
-		static auto DrawScriptField(const EppoScriptCore::ScriptField& field, ScriptFieldValue& value) -> bool
+		static auto DrawScriptField(const ScriptField& field, ScriptFieldValue& value) -> bool
 		{
 			using FT = EppoScriptCore::ScriptFieldType;
 
@@ -308,7 +308,7 @@ namespace Eppo
 				for (int32_t i = 0; i < static_cast<int32_t>(fields.size()); i++)
 				{
 					const auto& field = fields[i];
-					if (field.Type == EppoScriptCore::ScriptFieldType::None)
+					if (field.Type == ScriptFieldType::None)
 						continue;
 
 					auto& stored = fieldMap[field.Name];

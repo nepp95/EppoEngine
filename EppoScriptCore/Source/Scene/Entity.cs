@@ -1,18 +1,53 @@
-﻿namespace EppoScriptCore.Scene
+﻿using EppoScriptCore.Core;
+using EppoScriptCore.Math;
+
+namespace EppoScriptCore.Scene
 {
-    public struct Entity
+    public class Entity
     {
-        public ulong Id { get; internal set; }
+        public readonly ulong ID;
+        public string Name { get; }
 
-        public Entity(ulong id) => Id = id;
-        public static Entity Null => new(0);
+        public Entity(ulong id)
+        {
+            ID = id;
+        }
 
-        public readonly bool IsValid => Id != 0;
-        public override readonly string ToString() => $"Entity({Id})";
+        // Convenience shortcut to the entity's TransformComponent translation;
+        // routes through the same internal calls as TransformComponent.Translation.
+        public Vector3 Translation
+        {
+            get => InternalCalls.TransformComponent_GetTranslation(ID);
+            set => InternalCalls.TransformComponent_SetTranslation(ID, ref value);
+        }
 
-        public static bool operator ==(Entity lhs, Entity rhs) => lhs.Id == rhs.Id;
-        public static bool operator !=(Entity lhs, Entity rhs) => lhs.Id != rhs.Id;
-        public override bool Equals(object? obj) => obj is Entity other && Id == other.Id;
-        public override int GetHashCode() => Id.GetHashCode();
+        public bool HasComponent<T>() where T : Component, new()
+            => InternalCalls.Entity_HasComponent(ID, typeof(T).Name);
+
+        public T AddComponent<T>() where T : Component, new()
+        {
+            if (HasComponent<T>())
+                return GetComponent<T>();
+
+            InternalCalls.Entity_AddComponent(ID, typeof(T).Name);
+            return new T { Entity = this };
+        }
+
+        public T GetComponent<T>() where T : Component, new()
+        {
+            if (!HasComponent<T>())
+                return null;
+
+            return new T { Entity = this };
+        }
+
+        public bool RemoveComponent<T>() where T : Component, new()
+            => InternalCalls.Entity_RemoveComponent(ID, typeof(T).Name);
+
+        public override string ToString() => $"Entity({ID})";
+        public static bool operator ==(Entity lhs, Entity rhs) => lhs.ID == rhs.ID;
+        public static bool operator !=(Entity lhs, Entity rhs) => lhs.ID != rhs.ID;
+        public override bool Equals(object? obj) => obj is Entity other && ID == other.ID;
+        public override int GetHashCode() => ID.GetHashCode();
     }
 }

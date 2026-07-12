@@ -1,18 +1,17 @@
 #pragma once
 
+#include <span>
+
 namespace Eppo
 {
-    struct NativeCallbacks;
-
+    // Native engine services callable from managed scripts (logging, input, later
+    // component access). Each is a plain native function handed to the runtime as
+    // a raw pointer during bootstrap; managed calls it by its registered name. To
+    // add one: write the function in ScriptGlue.cpp and add a GetInternalCalls() entry.
     class ScriptGlue
     {
     public:
-        static auto GetNativeCallbacks() -> NativeCallbacks*;
-
-        static auto Log(uint8_t level, const char* message) -> void;
-        static auto Input_IsKeyPressed(uint16_t keyCode) -> bool;
-
-    private:
-        static NativeCallbacks* s_NativeCallbacks;
+        struct InternalCall { const char* Name; void* Function; };
+        [[nodiscard]] static auto GetInternalCalls() -> std::span<const InternalCall>;
     };
 }
