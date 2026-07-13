@@ -111,10 +111,6 @@ SUITE(Scripting)
         CHECK(ScriptEngine::Get().IsValidScriptClass(kUserClass));
     }
 
-    // The base Entity is now the script base class, but must not itself be
-    // enumerated as a user script (the scan filter is a strict subclass check).
-    // Locks in that collapsing ScriptBehaviour into Entity didn't make the base
-    // instantiable as a script.
     TEST(Metadata_EntityBaseNotRegisteredAsScript)
     {
         REQUIRE CHECK(EnsureRuntime());
@@ -268,9 +264,6 @@ SUITE(Scripting)
         engine.OnDestroyEntity(entity);
     }
 
-    // Entity's == / != operators must be null-safe now that Entity is the script
-    // base and appears as nullable script fields (HarnessScript.Target). Comparing
-    // a null field against null previously threw an NRE inside the operator.
     TEST(Method_EntityNullEqualityIsSafe)
     {
         REQUIRE CHECK(EnsureRuntime());

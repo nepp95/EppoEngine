@@ -13,8 +13,6 @@ namespace EppoScriptCore.Scene
         // Settable only within this assembly: the runtime writes the owning
         // entity's id after construction, user scripts read it.
         public ulong ID { get; internal set; }
-
-        // Live view of the entity's name (its native TagComponent tag).
         public string Name => InternalCalls.Entity_GetName(ID);
 
         // For the runtime's Activator.CreateInstance on user script subclasses;
@@ -28,8 +26,6 @@ namespace EppoScriptCore.Scene
             ID = id;
         }
 
-        // Lifecycle hooks driven by the scene on play (via ScriptGlue). No-ops by
-        // default so a script overrides only what it needs.
         public virtual void OnCreate()
         {
         }
@@ -73,10 +69,6 @@ namespace EppoScriptCore.Scene
         public bool RemoveComponent<T>() where T : Component, new()
             => InternalCalls.Entity_RemoveComponent(ID, typeof(T).Name);
 
-        public override string ToString() => $"Entity({ID})";
-
-        // Null-safe value equality by id: comparing an entity (or a nullable script
-        // field) against null must not dereference a null operand.
         public static bool operator ==(Entity? lhs, Entity? rhs)
         {
             if (ReferenceEquals(lhs, rhs))
@@ -89,5 +81,6 @@ namespace EppoScriptCore.Scene
         public static bool operator !=(Entity? lhs, Entity? rhs) => !(lhs == rhs);
         public override bool Equals(object? obj) => obj is Entity other && ID == other.ID;
         public override int GetHashCode() => ID.GetHashCode();
+        public override string ToString() => $"Entity({ID})";
     }
 }
