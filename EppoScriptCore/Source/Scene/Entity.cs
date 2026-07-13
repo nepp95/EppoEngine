@@ -3,16 +3,43 @@ using EppoScriptCore.Math;
 
 namespace EppoScriptCore.Scene
 {
+    // The base class every user script inherits: it is both the live handle to a
+    // native entity (id + component access) and the behaviour host (lifecycle
+    // virtuals). The runtime instantiates a subclass via the parameterless ctor
+    // and assigns ID before OnCreate; component/field marshalling constructs bare
+    // handles via Entity(ulong id).
     public class Entity
     {
-        public readonly ulong ID;
+        // Settable only within this assembly: the runtime writes the owning
+        // entity's id after construction, user scripts read it.
+        public ulong ID { get; internal set; }
 
         // Live view of the entity's name (its native TagComponent tag).
         public string Name => InternalCalls.Entity_GetName(ID);
 
+        // For the runtime's Activator.CreateInstance on user script subclasses;
+        // ID is assigned immediately after, before any lifecycle call.
+        protected Entity()
+        {
+        }
+
         public Entity(ulong id)
         {
             ID = id;
+        }
+
+        // Lifecycle hooks driven by the scene on play (via ScriptGlue). No-ops by
+        // default so a script overrides only what it needs.
+        public virtual void OnCreate()
+        {
+        }
+
+        public virtual void OnUpdate(float timestep)
+        {
+        }
+
+        public virtual void OnDestroy()
+        {
         }
 
         // Convenience shortcut to the entity's TransformComponent translation;
@@ -47,8 +74,19 @@ namespace EppoScriptCore.Scene
             => InternalCalls.Entity_RemoveComponent(ID, typeof(T).Name);
 
         public override string ToString() => $"Entity({ID})";
-        public static bool operator ==(Entity lhs, Entity rhs) => lhs.ID == rhs.ID;
-        public static bool operator !=(Entity lhs, Entity rhs) => lhs.ID != rhs.ID;
+
+        // Null-safe value equality by id: comparing an entity (or a nullable script
+        // field) against null must not dereference a null operand.
+        public static bool operator ==(Entity? lhs, Entity? rhs)
+        {
+            if (ReferenceEquals(lhs, rhs))
+                return true;
+            if (lhs is null || rhs is null)
+                return false;
+            return lhs.ID == rhs.ID;
+        }
+
+        public static bool operator !=(Entity? lhs, Entity? rhs) => !(lhs == rhs);
         public override bool Equals(object? obj) => obj is Entity other && ID == other.ID;
         public override int GetHashCode() => ID.GetHashCode();
     }

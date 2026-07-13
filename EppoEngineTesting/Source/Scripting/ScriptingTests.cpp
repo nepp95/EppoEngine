@@ -111,6 +111,17 @@ SUITE(Scripting)
         CHECK(ScriptEngine::Get().IsValidScriptClass(kUserClass));
     }
 
+    // The base Entity is now the script base class, but must not itself be
+    // enumerated as a user script (the scan filter is a strict subclass check).
+    // Locks in that collapsing ScriptBehaviour into Entity didn't make the base
+    // instantiable as a script.
+    TEST(Metadata_EntityBaseNotRegisteredAsScript)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+        CHECK(!ScriptEngine::Get().IsValidScriptClass("EppoScriptCore.Scene.Entity"));
+        CHECK_EQUAL(-1, ScriptEngine::Get().FindClassIndex("EppoScriptCore.Scene.Entity"));
+    }
+
     TEST(Metadata_PublicFieldsExposed)
     {
         REQUIRE CHECK(EnsureRuntime());
@@ -253,6 +264,32 @@ SUITE(Scripting)
 
         // Reaching here proves the managed exception did not fail-fast the host process.
         CHECK(true);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // Entity's == / != operators must be null-safe now that Entity is the script
+    // base and appears as nullable script fields (HarnessScript.Target). Comparing
+    // a null field against null previously threw an NRE inside the operator.
+    TEST(Method_EntityNullEqualityIsSafe)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Scripted");
+        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
+
+        auto& engine = ScriptEngine::Get();
+        engine.OnCreateEntity(entity);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* nullSafe = c->GetMethod("NullEqualityIsSafe");
+        REQUIRE CHECK(nullSafe != nullptr);
+
+        bool safe = false;
+        c->InvokeMethod(entity, *nullSafe, nullptr, &safe);
+        CHECK_EQUAL(true, safe);
 
         engine.OnDestroyEntity(entity);
     }

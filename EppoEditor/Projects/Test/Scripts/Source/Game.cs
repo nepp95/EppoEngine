@@ -3,7 +3,7 @@ using EppoScriptCore.Scene;
 
 namespace Test
 {
-    public class Player : ScriptBehaviour
+    public class Player : Entity
     {
         public float Speed = 5.0f;
         public Entity Target;
