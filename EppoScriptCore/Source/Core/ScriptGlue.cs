@@ -27,7 +27,7 @@ namespace EppoScriptCore.Core
 
     internal sealed class InstanceRecord
     {
-        public ScriptBehaviour Instance;
+        public Scene.Entity Instance;
         public ClassDescriptor Descriptor;
     }
 
@@ -39,7 +39,7 @@ namespace EppoScriptCore.Core
 
         protected override Assembly? Load(AssemblyName assemblyName)
         {
-            var coreAssembly = typeof(ScriptBehaviour).Assembly;
+            var coreAssembly = typeof(Scene.Entity).Assembly;
             if (assemblyName.Name == coreAssembly.GetName().Name)
                 return coreAssembly;
             return null;
@@ -117,7 +117,7 @@ namespace EppoScriptCore.Core
                 if (type is null || !type.IsPublic || type.IsAbstract)
                     continue;
 
-                if (!type.IsSubclassOf(typeof(ScriptBehaviour)))
+                if (!type.IsSubclassOf(typeof(Scene.Entity)))
                     continue;
 
                 target.Add(BuildDescriptor(type));
@@ -283,10 +283,10 @@ namespace EppoScriptCore.Core
                 if (descriptor is null)
                     return;
 
-                if (Activator.CreateInstance(descriptor.Type) is not ScriptBehaviour instance)
+                if (Activator.CreateInstance(descriptor.Type) is not Scene.Entity instance)
                     return;
 
-                instance.Id = entityId;
+                instance.ID = entityId;
                 s_Instances[entityId] = new InstanceRecord
                 {
                     Instance = instance,

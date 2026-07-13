@@ -111,6 +111,13 @@ SUITE(Scripting)
         CHECK(ScriptEngine::Get().IsValidScriptClass(kUserClass));
     }
 
+    TEST(Metadata_EntityBaseNotRegisteredAsScript)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+        CHECK(!ScriptEngine::Get().IsValidScriptClass("EppoScriptCore.Scene.Entity"));
+        CHECK_EQUAL(-1, ScriptEngine::Get().FindClassIndex("EppoScriptCore.Scene.Entity"));
+    }
+
     TEST(Metadata_PublicFieldsExposed)
     {
         REQUIRE CHECK(EnsureRuntime());
@@ -253,6 +260,29 @@ SUITE(Scripting)
 
         // Reaching here proves the managed exception did not fail-fast the host process.
         CHECK(true);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(Method_EntityNullEqualityIsSafe)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Scripted");
+        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
+
+        auto& engine = ScriptEngine::Get();
+        engine.OnCreateEntity(entity);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* nullSafe = c->GetMethod("NullEqualityIsSafe");
+        REQUIRE CHECK(nullSafe != nullptr);
+
+        bool safe = false;
+        c->InvokeMethod(entity, *nullSafe, nullptr, &safe);
+        CHECK_EQUAL(true, safe);
 
         engine.OnDestroyEntity(entity);
     }
