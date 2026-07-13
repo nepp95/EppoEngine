@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "Scripting/ScriptEngine.h"
 
-#include "Scene/Components.h"
-
 namespace Eppo
 {
     ScopedPtr<ScriptEngine> ScriptEngine::s_Instance = nullptr;

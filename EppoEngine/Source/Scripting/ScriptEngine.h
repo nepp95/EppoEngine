@@ -8,6 +8,8 @@
 
 namespace Eppo
 {
+    class PhysicsWorld;
+
     // Editor-time value of a single script field. Buffer is sized to the widest
     // field type (Vector4 = 16 bytes) so any field fits without allocation.
     struct ScriptFieldValue
@@ -34,17 +36,9 @@ namespace Eppo
         }
     };
 
-    // Field values for one entity's script, keyed by field name so they survive
-    // reordering/recompilation of the user assembly.
     using ScriptFieldMap = std::unordered_map<std::string, ScriptFieldValue>;
-
-    // Number of bytes a field type occupies in the marshalling buffer.
     [[nodiscard]] auto ScriptFieldTypeSize(ScriptFieldType type) -> uint32_t;
 
-    // The script engine owns itself between Init() and Shutdown(): Init creates
-    // the single instance and Shutdown destroys it. Everything else is an
-    // instance method, reached through Get() once the engine is initialized —
-    // so the .NET runtime and field storage are plain members, not statics.
     class ScriptEngine
     {
     public:
@@ -83,12 +77,11 @@ namespace Eppo
         auto OnDestroyEntity(Entity entity) -> void;
         auto InvokeMethod(Entity entity, const ScriptMethod& method, const void* args = nullptr, void* ret = nullptr) const -> void;
 
-        // The engine owns the live-instance registry: it is authoritative for
-        // which entities have a running script. Returns nullptr when the entity
-        // has no live instance (not playing, or its script failed to instantiate).
-        // Editing fields through the returned handle mutates the running script
-        // directly and deliberately bypasses the serialized side table, so
-        // stopping play restores the editor-time values.
+        // The physics world the script physics callbacks act on. Held weakly: it
+        // expires when the scene drops the world on stop, so callbacks no-op safely.
+        [[nodiscard]] auto GetActivePhysicsWorld() const -> Ref<PhysicsWorld> { return m_ActivePhysicsWorld.lock(); }
+        auto SetActivePhysicsWorld(const Ref<PhysicsWorld>& world) -> void { m_ActivePhysicsWorld = world; }
+
         [[nodiscard]] auto GetEntityInstance(const UUID& entityId) -> ScriptInstance*;
 
         // Editor-time field storage (side table keyed by entity UUID). This is
@@ -103,15 +96,12 @@ namespace Eppo
         ScriptEngine() = default;
 
         ScopedPtr<Assembly> m_CoreAssembly = nullptr;
-        std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
 
-        // Non-owning; owned by the editor/runtime. Only valid during play.
+        WeakRef<PhysicsWorld> m_ActivePhysicsWorld;
         WeakRef<Scene> m_SceneContext;
 
-        // The authoritative registry of live script instances, keyed by entity
-        // UUID. Populated on play (OnCreateEntity), cleared on stop / assembly
-        // unload. The managed runtime only holds the object bodies.
         std::unordered_map<UUID, ScriptInstance> m_EntityInstances;
+        std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
 
         static ScopedPtr<ScriptEngine> s_Instance;
     };

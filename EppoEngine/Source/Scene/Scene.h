@@ -12,6 +12,7 @@ namespace Eppo
 	using EntityHandle = entt::entity;
 	class Entity;
 	class SceneRenderer;
+	class PhysicsWorld;
 
 	// Scene-level lighting environment. Without a skybox image the renderer
 	// shades the background and the ambient term from these three colors (a
@@ -84,6 +85,7 @@ namespace Eppo
 		entt::registry m_Registry;
 		std::unordered_map<UUID, EntityHandle> m_EntityMap;
 		EnvironmentSettings m_Environment;
+		Ref<PhysicsWorld> m_PhysicsWorld;
 
 		friend class Entity;
 		friend class SceneHierarchyPanel;

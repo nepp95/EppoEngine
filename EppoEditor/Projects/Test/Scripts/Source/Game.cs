@@ -1,4 +1,5 @@
 ﻿using EppoScriptCore.Core;
+using EppoScriptCore.Math;
 using EppoScriptCore.Scene;
 
 namespace Test
@@ -11,11 +12,17 @@ namespace Test
         public override void OnCreate()
         {
             Log.Info("Player::OnCreate");
+            Physics.ApplyLinearImpulse(this, new Vector3(0.0f, 5.0f, 0.0f));
         }
 
         public override void OnUpdate(float deltaTime)
         {
-            // Basic movement stub for testing
+            if (Input.IsKeyDown(KeyCode.Space))
+            {
+                RigidBodyComponent body = GetComponent<RigidBodyComponent>();
+                Vector3 velocity = body.LinearVelocity;
+                body.LinearVelocity = new Vector3(velocity.X, 8.0f, velocity.Z);
+            }
         }
 
         public override void OnDestroy()

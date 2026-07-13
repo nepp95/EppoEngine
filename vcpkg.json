@@ -2,6 +2,10 @@
   "builtin-baseline": "89dd0f4d241136b843fb55813b2f0fa6448c204d",
   "dependencies": [
     {
+      "name": "box3d",
+      "version>=": "0.1.0"
+    },
+    {
       "name": "entt",
       "version>=": "3.16.0"
     },

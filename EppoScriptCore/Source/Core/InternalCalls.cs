@@ -41,6 +41,27 @@ namespace EppoScriptCore.Core
             => ((delegate* unmanaged[Cdecl]<ushort, byte>)Get("Input_IsKeyPressed"))(key) != 0;
         #endregion
 
+        #region Physics
+        internal static void Physics_ApplyLinearImpulse(ulong id, ref Vector3 impulse)
+        {
+            fixed (Vector3* ptr = &impulse)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("Physics_ApplyLinearImpulse"))(id, ptr);
+        }
+
+        internal static void Physics_GetLinearVelocity(ulong id, out Vector3 velocity)
+        {
+            velocity = default;
+            fixed (Vector3* ptr = &velocity)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("Physics_GetLinearVelocity"))(id, ptr);
+        }
+
+        internal static void Physics_SetLinearVelocity(ulong id, ref Vector3 velocity)
+        {
+            fixed (Vector3* ptr = &velocity)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("Physics_SetLinearVelocity"))(id, ptr);
+        }
+        #endregion
+
         #region Scene
         internal static bool Entity_HasComponent(ulong id, string typeName)
         {
@@ -138,6 +159,188 @@ namespace EppoScriptCore.Core
         internal static void RelationshipComponent_SetParent(ulong id, ulong parent)
         {
             ((delegate* unmanaged[Cdecl]<ulong, ulong, void>)Get("RelationshipComponent_SetParent"))(id, parent);
+        }
+
+        internal static byte RigidBodyComponent_GetType(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, byte>)Get("RigidBodyComponent_GetType"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetType(ulong id, byte type)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, byte, void>)Get("RigidBodyComponent_SetType"))(id, type);
+        }
+
+        internal static Vector3 BoxColliderComponent_GetHalfSize(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("BoxColliderComponent_GetHalfSize"))(id, &result);
+            return result;
+        }
+
+        internal static void BoxColliderComponent_SetHalfSize(ulong id, ref Vector3 halfSize)
+        {
+            fixed (Vector3* ptr = &halfSize)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("BoxColliderComponent_SetHalfSize"))(id, ptr);
+        }
+
+        internal static Vector3 BoxColliderComponent_GetOffset(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("BoxColliderComponent_GetOffset"))(id, &result);
+            return result;
+        }
+
+        internal static void BoxColliderComponent_SetOffset(ulong id, ref Vector3 offset)
+        {
+            fixed (Vector3* ptr = &offset)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("BoxColliderComponent_SetOffset"))(id, ptr);
+        }
+
+        internal static float BoxColliderComponent_GetDensity(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("BoxColliderComponent_GetDensity"))(id);
+        }
+
+        internal static void BoxColliderComponent_SetDensity(ulong id, float density)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("BoxColliderComponent_SetDensity"))(id, density);
+        }
+
+        internal static float BoxColliderComponent_GetFriction(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("BoxColliderComponent_GetFriction"))(id);
+        }
+
+        internal static void BoxColliderComponent_SetFriction(ulong id, float friction)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("BoxColliderComponent_SetFriction"))(id, friction);
+        }
+
+        internal static float BoxColliderComponent_GetRestitution(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("BoxColliderComponent_GetRestitution"))(id);
+        }
+
+        internal static void BoxColliderComponent_SetRestitution(ulong id, float restitution)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("BoxColliderComponent_SetRestitution"))(id, restitution);
+        }
+
+        internal static float SphereColliderComponent_GetRadius(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("SphereColliderComponent_GetRadius"))(id);
+        }
+
+        internal static void SphereColliderComponent_SetRadius(ulong id, float radius)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("SphereColliderComponent_SetRadius"))(id, radius);
+        }
+
+        internal static Vector3 SphereColliderComponent_GetOffset(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("SphereColliderComponent_GetOffset"))(id, &result);
+            return result;
+        }
+
+        internal static void SphereColliderComponent_SetOffset(ulong id, ref Vector3 offset)
+        {
+            fixed (Vector3* ptr = &offset)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("SphereColliderComponent_SetOffset"))(id, ptr);
+        }
+
+        internal static float SphereColliderComponent_GetDensity(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("SphereColliderComponent_GetDensity"))(id);
+        }
+
+        internal static void SphereColliderComponent_SetDensity(ulong id, float density)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("SphereColliderComponent_SetDensity"))(id, density);
+        }
+
+        internal static float SphereColliderComponent_GetFriction(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("SphereColliderComponent_GetFriction"))(id);
+        }
+
+        internal static void SphereColliderComponent_SetFriction(ulong id, float friction)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("SphereColliderComponent_SetFriction"))(id, friction);
+        }
+
+        internal static float SphereColliderComponent_GetRestitution(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("SphereColliderComponent_GetRestitution"))(id);
+        }
+
+        internal static void SphereColliderComponent_SetRestitution(ulong id, float restitution)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("SphereColliderComponent_SetRestitution"))(id, restitution);
+        }
+
+        internal static float CapsuleColliderComponent_GetRadius(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CapsuleColliderComponent_GetRadius"))(id);
+        }
+
+        internal static void CapsuleColliderComponent_SetRadius(ulong id, float radius)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CapsuleColliderComponent_SetRadius"))(id, radius);
+        }
+
+        internal static float CapsuleColliderComponent_GetHeight(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CapsuleColliderComponent_GetHeight"))(id);
+        }
+
+        internal static void CapsuleColliderComponent_SetHeight(ulong id, float height)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CapsuleColliderComponent_SetHeight"))(id, height);
+        }
+
+        internal static Vector3 CapsuleColliderComponent_GetOffset(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("CapsuleColliderComponent_GetOffset"))(id, &result);
+            return result;
+        }
+
+        internal static void CapsuleColliderComponent_SetOffset(ulong id, ref Vector3 offset)
+        {
+            fixed (Vector3* ptr = &offset)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("CapsuleColliderComponent_SetOffset"))(id, ptr);
+        }
+
+        internal static float CapsuleColliderComponent_GetDensity(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CapsuleColliderComponent_GetDensity"))(id);
+        }
+
+        internal static void CapsuleColliderComponent_SetDensity(ulong id, float density)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CapsuleColliderComponent_SetDensity"))(id, density);
+        }
+
+        internal static float CapsuleColliderComponent_GetFriction(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CapsuleColliderComponent_GetFriction"))(id);
+        }
+
+        internal static void CapsuleColliderComponent_SetFriction(ulong id, float friction)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CapsuleColliderComponent_SetFriction"))(id, friction);
+        }
+
+        internal static float CapsuleColliderComponent_GetRestitution(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CapsuleColliderComponent_GetRestitution"))(id);
+        }
+
+        internal static void CapsuleColliderComponent_SetRestitution(ulong id, float restitution)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CapsuleColliderComponent_SetRestitution"))(id, restitution);
         }
         #endregion
     }
