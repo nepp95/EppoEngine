@@ -203,7 +203,7 @@ namespace Eppo
 		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
-		// Update descriptor table
+		// --- Geometry pass descriptor table ---
 		const auto& descriptorTable = m_GeometryPipeline->GetSpecification().Shader->GetDescriptorTable();
 
 		// Resize descriptor table
@@ -213,7 +213,7 @@ namespace Eppo
 
 		device->resizeDescriptorTable(descriptorTable, imageCount, false);
 
-		// Write descriptor table and gather instance transforms
+		// Write descriptor table and gather instance transforms.
 		uint32_t imageOffset = 0;
 		std::vector<glm::mat4> instanceTransforms;
 
@@ -251,7 +251,7 @@ namespace Eppo
 		GeometryPass();
 		SkyPass();
 
-		// Both pass command lists have been executed; read their GPU timers back.
+		// All pass command lists have been executed; read their GPU timers back.
 		m_GeometryPass.Readback(frameIndex);
 		m_SkyPass.Readback(frameIndex);
 	}
