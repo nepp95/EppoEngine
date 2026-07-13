@@ -32,6 +32,9 @@ namespace Eppo
 
 		auto Resize(uint32_t width, uint32_t height) -> void;
 
+		// The geometry framebuffer is shared by the DebugRenderer for overlay draws.
+		[[nodiscard]] auto GetGeometryFramebuffer() const -> const Ref<Framebuffer>& { return m_GeometryPipeline->GetSpecification().Framebuffer; }
+
 	private:
 		auto GeometryPass() -> void;
 		auto SkyPass() -> void;
