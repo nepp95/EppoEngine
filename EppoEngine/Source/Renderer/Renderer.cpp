@@ -8,6 +8,7 @@ namespace Eppo
 		m_ShaderLibrary.Load("geometry");
 		m_ShaderLibrary.Load("skybox");
 		m_ShaderLibrary.Load("imgui");
+		m_ShaderLibrary.Load("wireframe");
 	}
 
 	auto Renderer::GetShader(const std::string& name) const -> Ref<Shader>

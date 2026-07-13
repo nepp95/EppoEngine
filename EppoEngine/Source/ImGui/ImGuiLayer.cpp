@@ -10,6 +10,7 @@
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
+#include <ImGuizmo.h>
 
 namespace Eppo
 {
@@ -173,6 +174,7 @@ namespace Eppo
 
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		ImGuizmo::BeginFrame();
 	}
 
 	auto ImGuiLayer::Render() -> void
