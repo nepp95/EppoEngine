@@ -4,7 +4,7 @@ using EppoScriptCore.Math;
 
 namespace Test
 {
-    public class TestScript : ScriptBehaviour
+    public class TestScript : Entity
     {
         // All supported field types for discovery testing
         public int IntField = 42;
