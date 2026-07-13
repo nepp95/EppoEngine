@@ -34,7 +34,7 @@ target_compile_definitions(EppoEngine PUBLIC
     $<$<CONFIG:Debug>:TRACY_ENABLE> $<$<CONFIG:RelWithDebInfo>:TRACY_ENABLE>
 )
 target_include_directories(EppoEngine PUBLIC ${INCLUDE_DIRS})
-target_link_libraries(EppoEngine PUBLIC EnTT::EnTT glm::glm imgui::imgui nfd::nfd nvrhi spdlog::spdlog Tracy::TracyClient Vulkan::Vulkan)
+target_link_libraries(EppoEngine PUBLIC box3d::box3d EnTT::EnTT glm::glm imgui::imgui nfd::nfd nvrhi spdlog::spdlog Tracy::TracyClient Vulkan::Vulkan)
 target_link_libraries(EppoEngine PRIVATE
     glfw
     Vulkan::dxc_lib

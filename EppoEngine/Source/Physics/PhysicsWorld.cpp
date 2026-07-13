@@ -1,0 +1,168 @@
+#include "pch.h"
+#include "Physics/PhysicsWorld.h"
+
+#include "Physics/PhysicsTypes.h"
+#include "Scene/Components.h"
+
+#include <box3d/box3d.h>
+
+namespace Eppo
+{
+	namespace Utils
+	{
+		static auto ToB3BodyType(RigidBodyComponent::BodyType type) -> b3BodyType
+		{
+			switch (type)
+			{
+				case RigidBodyComponent::BodyType::Static:    return b3_staticBody;
+				case RigidBodyComponent::BodyType::Kinematic: return b3_kinematicBody;
+				case RigidBodyComponent::BodyType::Dynamic:   return b3_dynamicBody;
+			}
+
+			EP_ASSERT(false, "Unknown body type!");
+			return b3_staticBody;
+		}
+	}
+
+	PhysicsWorld::PhysicsWorld(const glm::vec3& gravity)
+	{
+		b3WorldDef worldDef = b3DefaultWorldDef();
+		worldDef.gravity = Utils::ToB3(gravity);
+		m_WorldId = b3CreateWorld(&worldDef);
+	}
+
+	PhysicsWorld::~PhysicsWorld()
+	{
+		b3DestroyWorld(m_WorldId);
+	}
+
+	auto PhysicsWorld::CreateBody(const UUID entityId, const RigidBodyComponent& rigidBody, const TransformComponent& transform,
+		const std::vector<ColliderData>& colliders) -> void
+	{
+		b3BodyDef bodyDef = b3DefaultBodyDef();
+		bodyDef.type = Utils::ToB3BodyType(rigidBody.Type);
+		bodyDef.position = Utils::ToB3(transform.Translation);
+		bodyDef.rotation = Utils::ToB3(glm::quat(transform.Rotation));
+		bodyDef.gravityScale = rigidBody.GravityScale;
+		bodyDef.linearDamping = rigidBody.LinearDamping;
+		bodyDef.angularDamping = rigidBody.AngularDamping;
+
+		const b3BodyId body = b3CreateBody(m_WorldId, &bodyDef);
+		for (const ColliderData& collider : colliders)
+			AttachCollider(body, collider);
+
+		m_Bodies[entityId] = body;
+	}
+
+	auto PhysicsWorld::AttachCollider(const b3BodyId body, const ColliderData& collider) const -> void
+	{
+		b3ShapeDef shapeDef = b3DefaultShapeDef();
+		shapeDef.density = collider.Density;
+		shapeDef.baseMaterial.friction = collider.Friction;
+		shapeDef.baseMaterial.restitution = collider.Restitution;
+
+		switch (collider.Shape)
+		{
+			case ColliderShape::Box:
+			{
+				b3BoxHull hull = b3MakeOffsetBoxHull(collider.HalfExtents.x, collider.HalfExtents.y, collider.HalfExtents.z, Utils::ToB3(collider.Offset));
+				b3CreateHullShape(body, &shapeDef, &hull.base);
+				break;
+			}
+
+			case ColliderShape::Sphere:
+			{
+				const b3Sphere sphere{ Utils::ToB3(collider.Offset), collider.Radius };
+				b3CreateSphereShape(body, &shapeDef, &sphere);
+				break;
+			}
+
+			case ColliderShape::Capsule:
+			{
+				// Aligned to local Y; Height is the distance between hemisphere centers.
+				const float halfHeight = collider.Height * 0.5f;
+				const b3Capsule capsule{
+					Utils::ToB3(collider.Offset - glm::vec3(0.0f, halfHeight, 0.0f)),
+					Utils::ToB3(collider.Offset + glm::vec3(0.0f, halfHeight, 0.0f)),
+					collider.Radius
+				};
+				b3CreateCapsuleShape(body, &shapeDef, &capsule);
+				break;
+			}
+		}
+	}
+
+	auto PhysicsWorld::Step(const float timestep, const int subStepCount) -> void
+	{
+		b3World_Step(m_WorldId, timestep, subStepCount);
+	}
+
+	auto PhysicsWorld::TryGetBody(const UUID entityId, b3BodyId& outBody) const -> bool
+	{
+		const auto it = m_Bodies.find(entityId);
+		if (it == m_Bodies.end())
+			return false;
+
+		outBody = it->second;
+		return true;
+	}
+
+	auto PhysicsWorld::HasBody(const UUID entityId) const -> bool
+	{
+		return m_Bodies.contains(entityId);
+	}
+
+	auto PhysicsWorld::GetPosition(const UUID entityId) const -> glm::vec3
+	{
+		b3BodyId body;
+		if (!TryGetBody(entityId, body))
+			return glm::vec3(0.0f);
+
+		return Utils::FromB3(b3Body_GetPosition(body));
+	}
+
+	auto PhysicsWorld::GetRotation(const UUID entityId) const -> glm::quat
+	{
+		b3BodyId body;
+		if (!TryGetBody(entityId, body))
+			return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+
+		return Utils::FromB3(b3Body_GetRotation(body));
+	}
+
+	auto PhysicsWorld::ApplyLinearImpulse(const UUID entityId, const glm::vec3& impulse) -> void
+	{
+		b3BodyId body;
+		if (!TryGetBody(entityId, body))
+		{
+			Log::Warn("Physics: ApplyLinearImpulse on entity {} which has no physics body.", static_cast<uint64_t>(entityId));
+			return;
+		}
+
+		b3Body_ApplyLinearImpulseToCenter(body, Utils::ToB3(impulse), true);
+	}
+
+	auto PhysicsWorld::GetLinearVelocity(const UUID entityId) const -> glm::vec3
+	{
+		b3BodyId body;
+		if (!TryGetBody(entityId, body))
+		{
+			Log::Warn("Physics: GetLinearVelocity on entity {} which has no physics body.", static_cast<uint64_t>(entityId));
+			return glm::vec3(0.0f);
+		}
+
+		return Utils::FromB3(b3Body_GetLinearVelocity(body));
+	}
+
+	auto PhysicsWorld::SetLinearVelocity(const UUID entityId, const glm::vec3& velocity) -> void
+	{
+		b3BodyId body;
+		if (!TryGetBody(entityId, body))
+		{
+			Log::Warn("Physics: SetLinearVelocity on entity {} which has no physics body.", static_cast<uint64_t>(entityId));
+			return;
+		}
+
+		b3Body_SetLinearVelocity(body, Utils::ToB3(velocity));
+	}
+}

@@ -114,4 +114,58 @@ namespace Eppo
 		RelationshipComponent() = default;
 		RelationshipComponent(const RelationshipComponent&) = default;
 	};
+
+	// Turns an entity into a physics body simulated in play mode. The live body
+	// handle lives in PhysicsWorld (keyed by UUID), not here.
+	struct RigidBodyComponent
+	{
+		enum class BodyType : uint8_t { Static = 0, Kinematic, Dynamic };
+
+		BodyType Type = BodyType::Static;
+		float GravityScale = 1.0f;
+		float LinearDamping = 0.0f;
+		float AngularDamping = 0.0f;
+
+		RigidBodyComponent() = default;
+		RigidBodyComponent(const RigidBodyComponent&) = default;
+	};
+
+	// Box collider (a Box3D convex hull). Local-space half-extents/offset.
+	struct BoxColliderComponent
+	{
+        glm::vec3 HalfSize = glm::vec3(0.5f);
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		BoxColliderComponent() = default;
+		BoxColliderComponent(const BoxColliderComponent&) = default;
+	};
+
+	struct SphereColliderComponent
+	{
+		float Radius = 0.5f;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		SphereColliderComponent() = default;
+		SphereColliderComponent(const SphereColliderComponent&) = default;
+	};
+
+	// Capsule aligned to local Y; Height is the gap between hemisphere centers.
+	struct CapsuleColliderComponent
+	{
+		float Radius = 0.5f;
+		float Height = 1.0f;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		CapsuleColliderComponent() = default;
+		CapsuleColliderComponent(const CapsuleColliderComponent&) = default;
+	};
 }
