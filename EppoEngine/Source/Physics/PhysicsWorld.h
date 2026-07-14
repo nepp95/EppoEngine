@@ -33,9 +33,6 @@ namespace Eppo
 		float Height = 1.0f;                     // Capsule
 	};
 
-	// RAII wrapper around a Box3D world; owns the world and the UUID->body map so
-	// the rest of the engine never touches Box3D handles (as Platform/Vulkan does
-	// for NVRHI). Lives only during play.
 	class PhysicsWorld
 	{
 	public:

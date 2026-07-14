@@ -110,7 +110,7 @@ namespace Eppo
 				m_MissingPrimaryCamera = false;
 
 				if (m_ViewportFocused && !ImGuizmo::IsUsing())
-					m_EditorCamera->OnUpdate(timestep);
+					m_EditorCamera.OnUpdate(timestep);
 
 				m_ActiveScene->OnRenderEditor(m_SceneRenderer, m_EditorCamera);
 				break;
@@ -438,12 +438,6 @@ namespace Eppo
 		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 	}
 
-	auto EditorLayer::GetSelectedUUID() const -> UUID
-	{
-		const Entity selected = m_PanelManager->GetSelectedEntity();
-		return selected ? selected.GetUUID() : UUID(0);
-	}
-
 	auto EditorLayer::RestoreDefaultLayout() -> void
 	{
 		const auto path = FS::GetResourcesDirectory() / "Layouts" / "DefaultLayout.ini";
@@ -738,9 +732,8 @@ namespace Eppo
         // Camera matrices — use the same unflipped projection the renderer uses
         // (NVRHI flips Y at the viewport level for Vulkan; ImGuizmo expects Y-up
         // clip space and maps it to screen coordinates internally).
-        auto& camera = *m_EditorCamera;
-        glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 proj = camera.GetProjectionMatrix();
+        glm::mat4 view = m_EditorCamera.GetViewMatrix();
+        glm::mat4 proj = m_EditorCamera.GetProjectionMatrix();
 
         // Entity transform gizmo
         if (m_SelectedEntity && m_SelectedEntity.HasComponent<TransformComponent>())

@@ -20,6 +20,7 @@ namespace Eppo
 		Cube = 2,
 		Cylinder = 3,
 		Sphere = 4,
+		Capsule = 5,
 	};
 
 	struct Material

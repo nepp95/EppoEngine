@@ -88,4 +88,7 @@ and if you must drop a step, say so and substitute a non-committing equivalent
 6. **Code review** once at the end via the `code-reviewer` subagent — not at intervals.
 
 Other skills: `using-git-worktrees`, `writing-skills`, `requesting-`/`receiving-code-review`.
-Durable repo facts live in `.claude/memory/` (indexed in `.claude/memory/MEMORY.md`).
+Durable, always-loaded memories live in the harness's project-scoped memory folder
+(`~/.claude/projects/<encoded-project-path>/memory/`, indexed by its `MEMORY.md`) — NOT
+in a `.claude/memory/` inside the repo, which nothing auto-loads. Write memories only to
+the folder the session loads at startup.

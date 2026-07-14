@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Camera/Camera.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Pipeline.h"
@@ -27,7 +28,8 @@ namespace Eppo
 
 		auto RenderGui() const -> void;
 
-		auto BeginScene(const ScopedPtr<EditorCamera>& camera) -> void;
+		auto BeginScene(const EditorCamera& camera) -> void;
+		auto BeginScene(const SceneCamera& camera, const glm::mat4& transform) -> void;
 		auto EndScene() -> void;
 
 		[[nodiscard]] auto GetFinalImage() const -> const Ref<Image>&;
@@ -43,15 +45,18 @@ namespace Eppo
         [[nodiscard]] auto IsDebugRenderingEnabled() const -> bool { return m_DebugRenderingEnabled; }
 
 	private:
+        auto BeginSceneInternal() -> void;
+
 		auto GeometryPass() -> void;
 		auto SkyPass() -> void;
-        auto WireframePass() -> void;
+		auto WireframePass() -> void;
 
 	private:
 		Ref<Scene> m_Scene = nullptr;
 		nvrhi::CommandListHandle m_CommandList = nullptr;
 
 		bool m_DebugRenderingEnabled = false;
+		Entity m_HighlightedEntity;
 
 		RenderPass m_GeometryPass{ "Geometry" };
 		RenderPass m_SkyPass{ "Sky" };
@@ -102,9 +107,10 @@ namespace Eppo
 		{
 			struct PointLight
 			{
-				glm::vec4 Position{ 0.0f };
-				glm::vec4 Color{ 0.0f }; // rgb = color, a = intensity
+				glm::vec4 Position = glm::vec4(1.0f);
+				glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
 			};
+
 			std::array<PointLight, MaxPointLights> Lights{};
 			uint32_t NumLights = 0;
 			float _pad[3]{};
@@ -113,10 +119,10 @@ namespace Eppo
 
 		struct EnvironmentData
 		{
-			glm::vec4 ZenithColor{ 0.0f };
-			glm::vec4 HorizonColor{ 0.0f };
-			glm::vec4 GroundColor{ 0.0f };
-			glm::vec4 Params{ 1.0f, 0.0f, 0.0f, 0.0f };
+            glm::vec4 ZenithColor = glm::vec4(0.0f);
+            glm::vec4 HorizonColor = glm::vec4(0.0f);
+            glm::vec4 GroundColor = glm::vec4(0.0f);
+            glm::vec4 Params = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
 		} m_EnvironmentData{};
 		Ref<UniformBuffer> m_EnvironmentUB = nullptr;
 	};
