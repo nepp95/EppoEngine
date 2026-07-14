@@ -238,6 +238,44 @@ namespace Eppo
 
 				return CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
 			}
+
+			case MeshPrimitiveType::Capsule:
+			{
+				constexpr uint32_t sectors = 36; // Longitude
+				constexpr uint32_t hemiStacks = 8; // Latitude rings per hemisphere
+				constexpr float radius = 1.0f;
+				constexpr float halfHeight = 1.0f; // Half the cylinder segment; hemisphere centers sit at +-halfHeight.
+				constexpr float pi = 3.14159265358979323846f;
+
+				std::vector<Vertex> vertices;
+				vertices.reserve(2 * (hemiStacks + 1) * (sectors + 1));
+
+				// Surface of revolution built north->south so winding matches Sphere: a
+				// hemisphere cap, the shared cylinder wall (the two equator rings), then
+				// the other cap. The equator rings (lat 0) carry the cylinder's normals.
+				const auto addRing = [&vertices](const float centerY, const float lat)
+				{
+					const float ringY = centerY + radius * glm::sin(lat);
+					const float ringR = radius * glm::cos(lat);
+					for (uint32_t j = 0; j <= sectors; j++)
+					{
+						const float sector = static_cast<float>(j) * (2.0f * pi / sectors);
+						const float cx = glm::cos(sector);
+						const float sz = glm::sin(sector);
+						const glm::vec3 position = { ringR * cx, ringY, ringR * sz };
+						const glm::vec3 normal = glm::normalize(glm::vec3(glm::cos(lat) * cx, glm::sin(lat), glm::cos(lat) * sz));
+						vertices.emplace_back(Vertex{ position, normal });
+					}
+				};
+
+				for (uint32_t i = 0; i <= hemiStacks; i++) // Top hemisphere: lat +PI/2 -> 0
+					addRing(halfHeight, pi / 2.0f - static_cast<float>(i) * (pi / 2.0f / hemiStacks));
+
+				for (uint32_t i = 0; i <= hemiStacks; i++) // Bottom hemisphere: lat 0 -> -PI/2
+					addRing(-halfHeight, -static_cast<float>(i) * (pi / 2.0f / hemiStacks));
+
+				return CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
+			}
 		}
 	}
 }

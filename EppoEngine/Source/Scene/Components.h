@@ -64,9 +64,6 @@ namespace Eppo
 		{}
 	};
 
-	// Turns an entity into a camera. On play, the scene renders through the
-	// primary camera entity, using its TransformComponent for the view. Primary
-	// selects which camera is used when several exist (first primary wins).
 	struct CameraComponent
 	{
 		SceneCamera Camera;
@@ -76,9 +73,6 @@ namespace Eppo
 		CameraComponent(const CameraComponent&) = default;
 	};
 
-	// Turns an entity into a point light. Position comes from the entity's
-	// TransformComponent; the scene submits these to the SceneRenderer each
-	// frame. Intensity scales the radiance before inverse-square attenuation.
 	struct PointLightComponent
 	{
 		glm::vec3 Color = glm::vec3(1.0f);
@@ -88,10 +82,6 @@ namespace Eppo
 		PointLightComponent(const PointLightComponent&) = default;
 	};
 
-	// Attaches a user script class to an entity. Kept intentionally small: it
-	// only names the class. The per-instance field values live in a side table
-	// owned by ScriptEngine (keyed by entity UUID), so this component stays
-	// cheap to store and copy in the registry.
 	struct ScriptComponent
 	{
 		std::string ClassName;
@@ -102,10 +92,6 @@ namespace Eppo
 		{}
 	};
 
-	// Places an entity in the transform hierarchy. Links are stable UUIDs (not
-	// handles) so they survive Scene::Copy and serialization. Parent == 0 is a root;
-	// transforms are local, composed via Scene::GetWorldTransform. Every entity
-	// carries one (added in CreateEntityWithUUID).
 	struct RelationshipComponent
 	{
 		UUID Parent = 0;
@@ -115,8 +101,6 @@ namespace Eppo
 		RelationshipComponent(const RelationshipComponent&) = default;
 	};
 
-	// Turns an entity into a physics body simulated in play mode. The live body
-	// handle lives in PhysicsWorld (keyed by UUID), not here.
 	struct RigidBodyComponent
 	{
 		enum class BodyType : uint8_t { Static = 0, Kinematic, Dynamic };
@@ -130,7 +114,6 @@ namespace Eppo
 		RigidBodyComponent(const RigidBodyComponent&) = default;
 	};
 
-	// Box collider (a Box3D convex hull). Local-space half-extents/offset.
 	struct BoxColliderComponent
 	{
         glm::vec3 HalfSize = glm::vec3(0.5f);
@@ -155,7 +138,6 @@ namespace Eppo
 		SphereColliderComponent(const SphereColliderComponent&) = default;
 	};
 
-	// Capsule aligned to local Y; Height is the gap between hemisphere centers.
 	struct CapsuleColliderComponent
 	{
 		float Radius = 0.5f;

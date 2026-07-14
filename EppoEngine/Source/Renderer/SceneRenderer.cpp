@@ -159,20 +159,40 @@ namespace Eppo
 		ImGui::End();
 	}
 
-	auto SceneRenderer::BeginScene(const ScopedPtr<EditorCamera>& camera) -> void
+	auto SceneRenderer::BeginScene(const EditorCamera& camera) -> void
+	{
+        EP_PROFILE_FN("SceneRenderer::BeginScene")
+
+		m_CameraData.View = camera.GetViewMatrix();
+        m_CameraData.Projection = camera.GetProjectionMatrix();
+        m_CameraData.ViewProjection = camera.GetViewProjection();
+        m_CameraData.Position = glm::vec4(camera.GetPosition(), 0.0f);
+
+		BeginSceneInternal();
+	}
+
+	auto SceneRenderer::BeginScene(const SceneCamera& camera, const glm::mat4& transform) -> void
 	{
 		EP_PROFILE_FN("SceneRenderer::BeginScene")
 
-		m_DrawCommands.clear();
+		m_CameraData.View = glm::inverse(transform);
+        m_CameraData.Projection = camera.GetProjectionMatrix();
+        m_CameraData.ViewProjection = m_CameraData.Projection * m_CameraData.View;
+        m_CameraData.Position = glm::vec4(glm::vec3(transform[3]), 0.0f);
 
-		m_LightData.NumLights = 0;
+		BeginSceneInternal();
+	}
 
-		m_CameraData.View = camera->GetViewMatrix();
-		m_CameraData.Projection = camera->GetProjectionMatrix();
-		m_CameraData.ViewProjection = camera->GetViewProjection();
-		m_CameraData.Position = glm::vec4(camera->GetPosition(), 0.0f);
+	auto SceneRenderer::BeginSceneInternal() -> void
+	{
+        m_DrawCommands.clear();
+        m_LightData.NumLights = 0;
+
 		m_CameraData.InverseViewProjection = glm::inverse(m_CameraData.ViewProjection);
-		m_CameraUB->SetData(&m_CameraData, sizeof(CameraData));
+
+        m_CameraUB->SetData(&m_CameraData, sizeof(CameraData));
+        m_LightsUB->SetData(&m_LightData, sizeof(LightData));
+        m_EnvironmentUB->SetData(&m_EnvironmentData, sizeof(EnvironmentData));
 	}
 
 	auto SceneRenderer::SubmitPointLight(const glm::vec3& position, const glm::vec3& color, const float intensity) -> void
@@ -247,19 +267,14 @@ namespace Eppo
 
 		m_InstanceTransformsSB->SetData(instanceTransforms.data(), requiredSize);
 
-		// Upload per-frame lighting/environment state gathered via Submit*.
-		m_LightsUB->SetData(&m_LightData, sizeof(LightData));
-		m_EnvironmentUB->SetData(&m_EnvironmentData, sizeof(EnvironmentData));
-
 		GeometryPass();
 		SkyPass();
-        WireframePass();
+		WireframePass();
 
 		// All pass command lists have been executed; read their GPU timers back.
 		m_GeometryPass.Readback(frameIndex);
 		m_SkyPass.Readback(frameIndex);
 	    m_WireframePass.Readback(frameIndex);
-	}
 	}
 
 	auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
@@ -344,7 +359,7 @@ namespace Eppo
 		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
 		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
 
-		// Push constants forward decl
+		// Push constants
 		struct PushConstants
 		{
 			glm::mat4 Transform;

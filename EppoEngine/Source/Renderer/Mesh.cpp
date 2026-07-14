@@ -62,6 +62,8 @@ namespace Eppo
 				return "Cylinder";
 			if (type == MeshPrimitiveType::Sphere)
 				return "Sphere";
+			if (type == MeshPrimitiveType::Capsule)
+				return "Capsule";
 			return "Unknown";
 		};
 

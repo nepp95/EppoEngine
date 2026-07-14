@@ -21,7 +21,6 @@ namespace Eppo
 
 		auto OnScenePlay() -> void;
 		auto OnSceneStop() -> void;
-		[[nodiscard]] auto GetSelectedUUID() const -> UUID;
 
 		auto RestoreDefaultLayout() -> void;
 
@@ -51,7 +50,7 @@ namespace Eppo
 		Ref<SceneRenderer> m_SceneRenderer = nullptr;
 		std::filesystem::path m_ActiveScenePath;
 
-		ScopedPtr<EditorCamera> m_EditorCamera = nullptr;
+		EditorCamera m_EditorCamera;
 
 		Ref<Image> m_PlayIcon = nullptr;
 		Ref<Image> m_StopIcon = nullptr;

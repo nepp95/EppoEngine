@@ -164,7 +164,7 @@ namespace Eppo
 		}
 	}
 
-	auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera) -> void
+	auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& camera) -> void
 	{
 		EP_PROFILE_FN("Scene::OnRenderEditor");
 
@@ -184,12 +184,7 @@ namespace Eppo
 		const auto& camera = cameraEntity.GetComponent<CameraComponent>().Camera;
 		const auto& transform = cameraEntity.GetComponent<TransformComponent>();
 
-		// Derive the view from translation + rotation only; a scaled camera entity
-		// must not distort the view, so scale is intentionally ignored here.
-		const glm::mat4 cameraTransform = glm::translate(glm::mat4(1.0f), transform.Translation)
-			* glm::mat4_cast(glm::quat(transform.Rotation));
-
-		sceneRenderer->BeginScene(glm::inverse(cameraTransform), camera.GetProjectionMatrix(), transform.Translation);
+		sceneRenderer->BeginScene(camera, transform.GetTransform());
 		RenderScene(sceneRenderer);
 		sceneRenderer->EndScene();
 	}
