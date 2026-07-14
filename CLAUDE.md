@@ -60,7 +60,32 @@ Renderer classes (`Shader`, `Pipeline`, `Framebuffer`, buffers, `Image`, `Mesh`)
 
 `ScriptEngine` is our authority class for the DotNet integration wrapping `EppoScriptCore`, which hosts .NET — it owns itself between `Init(runtimeConfigPath)` and `Shutdown()`, reached via `Get()` (guard with `IsInitialized()`). `LoadUserAssembly` loads user C# assemblies; engine callbacks (logging, input) are registered into the managed side. Per-entity scripting: the scene drives `OnCreateEntity`/`OnUpdateEntity`/`OnDestroyEntity` on play; `ScriptEngine` owns the live-instance registry (`GetEntityInstance`, UUID-keyed `ScriptInstance`s) and the editor-time field storage (`ScriptFieldMap` side table, serialized with the scene and pushed into instances on create). Editing fields during play mutates the live instance directly and bypasses the side table, so stopping restores editor-time values. On Windows, the editor build also runs `dotnet build` on `EppoScriptCore.Managed.csproj` (C# sources from the port) and copies the DLL + `runtimeconfig.json` beside the editor exe.
 
-## General Workflow
-Make use of the following skills: systematic-debugging, verification-before-completion, using-git-worktrees, test-driven-development and writing-skills.
-Before you start working, make a thorough plan after investigating both the relevant source and the topic in general. Verify key decisions with me at that moment, taking away any possible doubt.
-After we made the plan, go to work using the skills I mentioned above. After you are done and used verification-before-completion, please use the code-reviewer to verify your work from a different perspective. Do not launch the code reviewer at regular intervals, just at the end is fine.
+## Workflow
+
+**Before writing or editing any code, read [`.claude/code-conventions.md`](.claude/code-conventions.md).**
+It holds the house style (spaces-not-tabs, comments, APIs, includes, error paths,
+tests, CMake) that `clang-format`/`clang-tidy` don't fully enforce. This reference is
+load-bearing — do not skip it, regardless of context compaction.
+
+Follow these gates every task; don't skip them. A narrow user constraint ("don't
+commit", "don't do X") cancels **only X** — keep following the rest of the process,
+and if you must drop a step, say so and substitute a non-committing equivalent
+(e.g. end at a verify checkpoint instead of a commit).
+
+1. **Investigate** the relevant source and the topic before proposing anything.
+2. **Plan** anything non-trivial and get agreement before writing code — especially
+   at a design fork (where state/responsibility lives, duplicate vs. single source of
+   truth). Prefer a single source of truth; check whether an existing layer already
+   holds a truth before adding a flag/table/bool. Use `systematic-debugging` when
+   chasing a bug and `test-driven-development` for features/fixes.
+3. **Verify key decisions with me at plan time** — naming, layout, API shape — even
+   small-looking choices that lock in architecture.
+4. **Implement** per `code-conventions.md`, test-first.
+5. **Verify before claiming done** (`verification-before-completion`): run the build +
+   tests and show output. A green build is the floor, not proof — for editor/UI/
+   interactive changes, state plainly what was and wasn't exercised at runtime; never
+   call GUI work "working" off a compile alone.
+6. **Code review** once at the end via the `code-reviewer` subagent — not at intervals.
+
+Other skills: `using-git-worktrees`, `writing-skills`, `requesting-`/`receiving-code-review`.
+Durable repo facts live in `.claude/memory/` (indexed in `.claude/memory/MEMORY.md`).

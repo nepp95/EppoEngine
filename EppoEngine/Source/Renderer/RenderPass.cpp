@@ -28,7 +28,7 @@ namespace Eppo
 		commandList->beginMarker(marker.empty() ? m_Name.c_str() : marker.c_str());
 	}
 
-	auto RenderPass::End(const nvrhi::CommandListHandle& commandList, const uint32_t frameIndex) -> void
+	auto RenderPass::End(const nvrhi::CommandListHandle& commandList, const uint32_t frameIndex) const -> void
 	{
 		EP_ASSERT(frameIndex < m_TimerQueries.size());
 

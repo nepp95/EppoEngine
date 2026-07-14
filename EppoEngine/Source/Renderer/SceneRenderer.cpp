@@ -10,8 +10,8 @@
 
 namespace Eppo
 {
-	SceneRenderer::SceneRenderer(const Ref<Scene>& scene, uint32_t width, uint32_t height)
-		: m_Scene(scene), m_Width(width), m_Height(height)
+	SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
+		: m_Scene(scene), m_DebugRenderingEnabled(specification.EnableDebugRendering), m_Width(specification.Width), m_Height(specification.Height)
 	{
 		EP_PROFILE_FN("SceneRenderer::SceneRenderer")
 
@@ -59,9 +59,6 @@ namespace Eppo
 		}
 
 		// Sky Pipeline
-		// Renders a fullscreen triangle into the geometry framebuffer AFTER the
-		// meshes, filling only background pixels (depth == far). Shares the geometry
-		// framebuffer so it resizes with it and composites in the same pass target.
 		{
 			PipelineSpecification pipelineSpec{
 				.Shader = renderer->GetShader("skybox"),
@@ -75,6 +72,25 @@ namespace Eppo
 			};
 
 			m_SkyPipeline = CreateRef<Pipeline>(pipelineSpec);
+		}
+
+	    // Wireframe pipeline
+		{
+		    PipelineSpecification pipelineSpec{
+		        .Shader = renderer->GetShader("wireframe"),
+		        .Framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer,
+		        .Width = m_Width,
+		        .Height = m_Height,
+		        .CullMode = nvrhi::RasterCullMode::None,
+                .FillMode = nvrhi::RasterFillMode::Wireframe,
+                .DepthTestEnable = true,
+                .DepthWriteEnable = false,
+                .DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
+                .DepthBias = -1,
+                .SlopeScaledDepthBias = -1.0f,
+		    };
+
+		    m_WireframePipeline = CreateRef<Pipeline>(pipelineSpec);
 		}
 
 		// Uniform buffers
@@ -116,10 +132,12 @@ namespace Eppo
 		ImGui::SeparatorText("Scene");
 		renderPass(m_GeometryPass);
 		renderPass(m_SkyPass);
+	    renderPass(m_WireframePass);
 
 		PassStatistics sceneStats;
 		sceneStats += m_GeometryPass.GetStats();
 		sceneStats += m_SkyPass.GetStats();
+	    sceneStats += m_WireframePass.GetStats();
 		const float sceneTime = m_GeometryPass.GetTimeMs(frameIndex) + m_SkyPass.GetTimeMs(frameIndex);
 		ImGui::Text("Scene total: %u draw calls, %.2fms", sceneStats.DrawCalls, sceneTime);
 
@@ -131,11 +149,7 @@ namespace Eppo
 		ImGui::Text("Vertices: %u", uiStats.Vertices);
 		ImGui::Text("Indices: %u", uiStats.Indices);
 
-		// Everything on screen: scene passes plus UI. Note the UI stats lag by a
-		// frame — this panel is part of the UI draw data being built now, so the UI
-		// counts reflect the previous frame's Render, whereas the scene counts are
-		// this frame's. Close enough for an at-a-glance readout, not a coherent snapshot.
-		// SeparatorText takes only a label, so format the total time into it first.
+		// Everything on screen: scene passes plus UI.
 		const std::string totalLabel = std::format("Total: {:.2f}ms", sceneTime + imguiRenderer->GetGPUTime(frameIndex));
 		ImGui::SeparatorText(totalLabel.c_str());
 		ImGui::Text("Draw calls: %u", sceneStats.DrawCalls + uiStats.DrawCalls);
@@ -147,22 +161,16 @@ namespace Eppo
 
 	auto SceneRenderer::BeginScene(const ScopedPtr<EditorCamera>& camera) -> void
 	{
-		BeginScene(camera->GetViewMatrix(), camera->GetProjectionMatrix(), camera->GetPosition());
-	}
-
-	auto SceneRenderer::BeginScene(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& position) -> void
-	{
 		EP_PROFILE_FN("SceneRenderer::BeginScene")
 
-		// Reset (per-pass draw stats are reset in each RenderPass::Begin)
 		m_DrawCommands.clear();
+
 		m_LightData.NumLights = 0;
 
-		// Set uniforms
-		m_CameraData.View = view;
-		m_CameraData.Projection = projection;
-		m_CameraData.ViewProjection = projection * view;
-		m_CameraData.Position = glm::vec4(position, 0.0f);
+		m_CameraData.View = camera->GetViewMatrix();
+		m_CameraData.Projection = camera->GetProjectionMatrix();
+		m_CameraData.ViewProjection = camera->GetViewProjection();
+		m_CameraData.Position = glm::vec4(camera->GetPosition(), 0.0f);
 		m_CameraData.InverseViewProjection = glm::inverse(m_CameraData.ViewProjection);
 		m_CameraUB->SetData(&m_CameraData, sizeof(CameraData));
 	}
@@ -171,18 +179,15 @@ namespace Eppo
 	{
 		if (m_LightData.NumLights >= MaxPointLights)
 		{
-			// Warn once per overflow rather than every submit, but never drop silently.
-			if (!m_LightOverflowWarned)
-			{
-				Log::Warn("Scene has more than {} point lights; extra lights are ignored.", MaxPointLights);
-				m_LightOverflowWarned = true;
-			}
+			Log::Warn("Scene has more than {} point lights; extra lights are ignored.", MaxPointLights);
 			return;
 		}
 
-		auto& light = m_LightData.Lights[m_LightData.NumLights++];
+		auto& light = m_LightData.Lights.at(m_LightData.NumLights);
 		light.Position = glm::vec4(position, 1.0f);
 		light.Color = glm::vec4(color, intensity);
+
+	    m_LightData.NumLights++;
 	}
 
 	auto SceneRenderer::SubmitEnvironment(const EnvironmentSettings& environment) -> void
@@ -203,12 +208,11 @@ namespace Eppo
 		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
-		// --- Geometry pass descriptor table ---
 		const auto& descriptorTable = m_GeometryPipeline->GetSpecification().Shader->GetDescriptorTable();
 
 		// Resize descriptor table
 		uint32_t imageCount = 0;
-		for (const auto& [key, drawCmd] : m_DrawCommands)
+		for (const auto& drawCmd : m_DrawCommands | std::views::values)
 			imageCount += drawCmd.ImageCount;
 
 		device->resizeDescriptorTable(descriptorTable, imageCount, false);
@@ -216,8 +220,7 @@ namespace Eppo
 		// Write descriptor table and gather instance transforms.
 		uint32_t imageOffset = 0;
 		std::vector<glm::mat4> instanceTransforms;
-
-		for (auto& [key, drawCmd] : m_DrawCommands)
+		for (auto& drawCmd : m_DrawCommands | std::views::values)
 		{
 			// Mesh textures
 			const auto& images = drawCmd.Mesh->GetImages();
@@ -250,10 +253,13 @@ namespace Eppo
 
 		GeometryPass();
 		SkyPass();
+        WireframePass();
 
 		// All pass command lists have been executed; read their GPU timers back.
 		m_GeometryPass.Readback(frameIndex);
 		m_SkyPass.Readback(frameIndex);
+	    m_WireframePass.Readback(frameIndex);
+	}
 	}
 
 	auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
@@ -309,7 +315,7 @@ namespace Eppo
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
 		m_CommandList->open();
-		m_GeometryPass.Begin(m_CommandList, frameIndex, "Geometry Pass");
+		m_GeometryPass.Begin(m_CommandList, frameIndex);
 		PassStatistics& stats = m_GeometryPass.GetStats();
 
 		// Clear framebuffer if needed
@@ -438,7 +444,7 @@ namespace Eppo
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
 		m_CommandList->open();
-		m_SkyPass.Begin(m_CommandList, frameIndex, "Sky Pass");
+		m_SkyPass.Begin(m_CommandList, frameIndex);
 
 		// Draw into the geometry framebuffer without clearing: the fullscreen
 		// triangle only survives where geometry left the depth at the far plane,
@@ -479,5 +485,119 @@ namespace Eppo
 		m_SkyPass.End(m_CommandList, frameIndex);
 		m_CommandList->close();
 		device->executeCommandList(m_CommandList);
+	}
+
+    auto SceneRenderer::WireframePass() -> void
+	{
+	    EP_PROFILE_FN("SceneRenderer::SkyPass")
+
+	    constexpr auto wireframeColor = glm::vec4(0.2f, 0.8f, 0.3f, 1.0f);
+
+        const auto& dm = DeviceManager::Get();
+	    const auto device = dm->GetDevice();
+	    const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
+	    EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
+
+	    m_CommandList->open();
+	    m_WireframePass.Begin(m_CommandList, frameIndex);
+	    PassStatistics& stats = m_WireframePass.GetStats();
+
+	    // Clear framebuffer if needed
+	    const auto& framebuffer = m_WireframePipeline->GetSpecification().Framebuffer;
+
+	    if (framebuffer->GetSpecification().ClearColorOnLoad)
+	    {
+	        const auto& clearColor = framebuffer->GetSpecification().ClearColor;
+	        for (uint32_t i = 0; i < framebuffer->GetFramebuffer()->getDesc().colorAttachments.size(); i++)
+	            nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer->GetFramebuffer(), i, nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a));
+	    }
+
+	    if (framebuffer->GetSpecification().ClearDepthOnLoad)
+	    {
+	        const auto& spec = framebuffer->GetSpecification();
+	        nvrhi::utils::ClearDepthStencilAttachment(m_CommandList, framebuffer->GetFramebuffer(), spec.DepthClearValue, spec.StencilClearValue);
+	    }
+
+	    // Setup graphics state
+	    nvrhi::GraphicsState state{
+	        .pipeline = m_WireframePipeline->GetPipeline(),
+            .framebuffer = framebuffer->GetFramebuffer(),
+        };
+
+	    // Viewport and scissor
+	    state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
+	    state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
+
+	    // Push constants forward decl
+	    struct PushConstants
+	    {
+	        glm::mat4 Transform;
+	        glm::vec4 Color;
+	        uint32_t InstanceOffset;
+	    } pushConstants{ .Color = wireframeColor };
+
+	    // Binding sets
+	    const auto& bindingLayouts = m_GeometryPipeline->GetSpecification().Shader->GetBindingLayouts();
+
+	    // Set 0
+	    nvrhi::BindingSetDesc desc{};
+	    desc.bindings = {
+	        nvrhi::BindingSetItem::PushConstants(0, sizeof(PushConstants)),
+            nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
+            nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_InstanceTransformsSB->GetBuffer())
+        };
+
+	    const auto bindingSet = device->createBindingSet(desc, bindingLayouts.at(0));
+	    state.addBindingSet(bindingSet);
+
+	    for (const auto& drawCmd : m_DrawCommands | std::views::values)
+	    {
+            if (const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size()); instanceCount == 0)
+	            continue;
+
+	        for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+	        {
+	            const nvrhi::VertexBufferBinding vtxBufBinding{
+	                .buffer = submesh.VertexBuffer->GetBuffer(),
+                    .slot = 0,
+                    .offset = 0,
+                };
+
+	            state.vertexBuffers.resize(1);
+	            state.vertexBuffers[0] = vtxBufBinding;
+	            state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+	            state.indexBuffer.format = nvrhi::Format::R32_UINT;
+	            state.indexBuffer.offset = 0;
+	            m_CommandList->setGraphicsState(state);
+
+	            pushConstants.Transform = submesh.LocalTransform;
+	            pushConstants.InstanceOffset = drawCmd.InstanceOffset;
+
+	            for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+	            {
+	                m_CommandList->setPushConstants(&pushConstants, sizeof(PushConstants));
+
+	                nvrhi::DrawArguments drawArgs{
+	                    .vertexCount = static_cast<uint32_t>(indexCount),
+                        .instanceCount = 1,
+                        .startIndexLocation = firstIndex,
+                        .startVertexLocation = firstVertex,
+                    };
+
+	                m_CommandList->drawIndexed(drawArgs);
+
+	                stats.DrawCalls++;
+	                stats.Vertices += vertexCount;
+	                stats.Indices += indexCount;
+	            }
+	            stats.Submeshes++;
+	        }
+	        stats.Meshes++;
+	        stats.Instances++;
+	    }
+
+	    m_WireframePass.End(m_CommandList, frameIndex);
+	    m_CommandList->close();
+	    device->executeCommandList(m_CommandList);
 	}
 }

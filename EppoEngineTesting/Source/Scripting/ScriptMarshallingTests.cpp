@@ -9,7 +9,7 @@ using namespace Eppo;
 // the widths must agree byte-for-byte or field/argument marshalling corrupts data.
 SUITE(ScriptMarshalling)
 {
-    TEST(FieldTypeSizesMatchManagedLayout)
+    TEST(ScriptFieldTypeSize_AllTypes_MatchManagedLayout)
     {
         CHECK_EQUAL(4u,  ScriptFieldTypeSize(ScriptFieldType::Float));
         CHECK_EQUAL(8u,  ScriptFieldTypeSize(ScriptFieldType::Double));
@@ -31,7 +31,7 @@ SUITE(ScriptMarshalling)
 
     // Every field type must fit in the editor-time side-table buffer, and the
     // typed Get/Set round-trip must be value-preserving.
-    TEST(ScriptFieldValueRoundTripsTypedValues)
+    TEST(ScriptFieldValue_TypedGetSet_PreservesValue)
     {
         ScriptFieldValue value;
         value.Set(3.5f);
