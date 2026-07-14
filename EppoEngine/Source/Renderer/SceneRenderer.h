@@ -13,15 +13,21 @@
 
 namespace Eppo
 {
+	struct SceneRendererSpecification
+	{
+		uint32_t Width = 0;
+		uint32_t Height = 0;
+		bool EnableDebugRendering = false;
+	};
+
 	class SceneRenderer
 	{
 	public:
-		SceneRenderer(const Ref<Scene>& scene, uint32_t width = 0, uint32_t height = 0);
+		explicit SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification);
 
 		auto RenderGui() const -> void;
 
 		auto BeginScene(const ScopedPtr<EditorCamera>& camera) -> void;
-		auto BeginScene(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& position) -> void;
 		auto EndScene() -> void;
 
 		[[nodiscard]] auto GetFinalImage() const -> const Ref<Image>&;
@@ -32,19 +38,24 @@ namespace Eppo
 
 		auto Resize(uint32_t width, uint32_t height) -> void;
 
-		// The geometry framebuffer is shared by the DebugRenderer for overlay draws.
-		[[nodiscard]] auto GetGeometryFramebuffer() const -> const Ref<Framebuffer>& { return m_GeometryPipeline->GetSpecification().Framebuffer; }
+		// Submit debug primitives through the getter between BeginScene and EndScene.
+        auto SetDebugRenderingEnabled(const bool enabled) -> void { m_DebugRenderingEnabled = enabled; }
+        [[nodiscard]] auto IsDebugRenderingEnabled() const -> bool { return m_DebugRenderingEnabled; }
 
 	private:
 		auto GeometryPass() -> void;
 		auto SkyPass() -> void;
+        auto WireframePass() -> void;
 
 	private:
 		Ref<Scene> m_Scene = nullptr;
 		nvrhi::CommandListHandle m_CommandList = nullptr;
 
+		bool m_DebugRenderingEnabled = false;
+
 		RenderPass m_GeometryPass{ "Geometry" };
 		RenderPass m_SkyPass{ "Sky" };
+	    RenderPass m_WireframePass{ "Wireframe" };
 
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
@@ -53,6 +64,7 @@ namespace Eppo
 
 		Ref<Pipeline> m_GeometryPipeline = nullptr;
 		Ref<Pipeline> m_SkyPipeline = nullptr;
+	    Ref<Pipeline> m_WireframePipeline = nullptr;
 
 		struct DrawKey
 		{
@@ -85,9 +97,6 @@ namespace Eppo
 		} m_CameraData{};
 		Ref<UniformBuffer> m_CameraUB = nullptr;
 
-		// Matches the geometry/skybox shaders' cbuffer layout. Each light is two
-		// float4s (Position.xyz, Color.rgb + intensity in Color.a); NumLights caps
-		// the shader loop so unused slots cost nothing.
 		static constexpr uint32_t MaxPointLights = 32;
 		struct LightData
 		{
@@ -101,10 +110,7 @@ namespace Eppo
 			float _pad[3]{};
 		} m_LightData{};
 		Ref<UniformBuffer> m_LightsUB = nullptr;
-		bool m_LightOverflowWarned = false;
 
-		// Mirrors the Environment cbuffer. Colors padded to float4; Params.x is the
-		// ambient intensity, Params.y a 0/1 skybox flag (0 until an HDR loader lands).
 		struct EnvironmentData
 		{
 			glm::vec4 ZenithColor{ 0.0f };

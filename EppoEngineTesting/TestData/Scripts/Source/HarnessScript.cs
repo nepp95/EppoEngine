@@ -1,5 +1,6 @@
 using EppoScriptCore.Core;
 using EppoScriptCore.Math;
+using EppoScriptCore.Physics;
 using EppoScriptCore.Scene;
 
 namespace EppoTesting
@@ -55,5 +56,46 @@ namespace EppoTesting
         public void PointLightComponent_SetIntensity(float intensity) => InternalCalls.PointLightComponent_SetIntensity(ID, intensity);
         public ulong RelationshipComponent_GetParent() => InternalCalls.RelationshipComponent_GetParent(ID);
         public void RelationshipComponent_SetParent(ulong parent) => InternalCalls.RelationshipComponent_SetParent(ID, parent);
+
+        public byte RigidBodyComponent_GetType() => InternalCalls.RigidBodyComponent_GetType(ID);
+        public void RigidBodyComponent_SetType(byte type) => InternalCalls.RigidBodyComponent_SetType(ID, type);
+        public Vector3 RigidBodyComponent_GetLinearVelocity() => GetComponent<RigidBodyComponent>().LinearVelocity;
+        public void RigidBodyComponent_SetLinearVelocity(Vector3 v) => GetComponent<RigidBodyComponent>().LinearVelocity = v;
+        public void Physics_ApplyLinearImpulseUp() => Physics.ApplyLinearImpulse(this, new Vector3(0.0f, 5.0f, 0.0f));
+
+        public Vector3 BoxColliderComponent_GetHalfSize() => InternalCalls.BoxColliderComponent_GetHalfSize(ID);
+        public void BoxColliderComponent_SetHalfSize(Vector3 v) => InternalCalls.BoxColliderComponent_SetHalfSize(ID, ref v);
+        public Vector3 BoxColliderComponent_GetOffset() => InternalCalls.BoxColliderComponent_GetOffset(ID);
+        public void BoxColliderComponent_SetOffset(Vector3 v) => InternalCalls.BoxColliderComponent_SetOffset(ID, ref v);
+        public float BoxColliderComponent_GetDensity() => InternalCalls.BoxColliderComponent_GetDensity(ID);
+        public void BoxColliderComponent_SetDensity(float v) => InternalCalls.BoxColliderComponent_SetDensity(ID, v);
+        public float BoxColliderComponent_GetFriction() => InternalCalls.BoxColliderComponent_GetFriction(ID);
+        public void BoxColliderComponent_SetFriction(float v) => InternalCalls.BoxColliderComponent_SetFriction(ID, v);
+        public float BoxColliderComponent_GetRestitution() => InternalCalls.BoxColliderComponent_GetRestitution(ID);
+        public void BoxColliderComponent_SetRestitution(float v) => InternalCalls.BoxColliderComponent_SetRestitution(ID, v);
+
+        public float SphereColliderComponent_GetRadius() => InternalCalls.SphereColliderComponent_GetRadius(ID);
+        public void SphereColliderComponent_SetRadius(float v) => InternalCalls.SphereColliderComponent_SetRadius(ID, v);
+        public Vector3 SphereColliderComponent_GetOffset() => InternalCalls.SphereColliderComponent_GetOffset(ID);
+        public void SphereColliderComponent_SetOffset(Vector3 v) => InternalCalls.SphereColliderComponent_SetOffset(ID, ref v);
+        public float SphereColliderComponent_GetDensity() => InternalCalls.SphereColliderComponent_GetDensity(ID);
+        public void SphereColliderComponent_SetDensity(float v) => InternalCalls.SphereColliderComponent_SetDensity(ID, v);
+        public float SphereColliderComponent_GetFriction() => InternalCalls.SphereColliderComponent_GetFriction(ID);
+        public void SphereColliderComponent_SetFriction(float v) => InternalCalls.SphereColliderComponent_SetFriction(ID, v);
+        public float SphereColliderComponent_GetRestitution() => InternalCalls.SphereColliderComponent_GetRestitution(ID);
+        public void SphereColliderComponent_SetRestitution(float v) => InternalCalls.SphereColliderComponent_SetRestitution(ID, v);
+
+        public float CapsuleColliderComponent_GetRadius() => InternalCalls.CapsuleColliderComponent_GetRadius(ID);
+        public void CapsuleColliderComponent_SetRadius(float v) => InternalCalls.CapsuleColliderComponent_SetRadius(ID, v);
+        public float CapsuleColliderComponent_GetHeight() => InternalCalls.CapsuleColliderComponent_GetHeight(ID);
+        public void CapsuleColliderComponent_SetHeight(float v) => InternalCalls.CapsuleColliderComponent_SetHeight(ID, v);
+        public Vector3 CapsuleColliderComponent_GetOffset() => InternalCalls.CapsuleColliderComponent_GetOffset(ID);
+        public void CapsuleColliderComponent_SetOffset(Vector3 v) => InternalCalls.CapsuleColliderComponent_SetOffset(ID, ref v);
+        public float CapsuleColliderComponent_GetDensity() => InternalCalls.CapsuleColliderComponent_GetDensity(ID);
+        public void CapsuleColliderComponent_SetDensity(float v) => InternalCalls.CapsuleColliderComponent_SetDensity(ID, v);
+        public float CapsuleColliderComponent_GetFriction() => InternalCalls.CapsuleColliderComponent_GetFriction(ID);
+        public void CapsuleColliderComponent_SetFriction(float v) => InternalCalls.CapsuleColliderComponent_SetFriction(ID, v);
+        public float CapsuleColliderComponent_GetRestitution() => InternalCalls.CapsuleColliderComponent_GetRestitution(ID);
+        public void CapsuleColliderComponent_SetRestitution(float v) => InternalCalls.CapsuleColliderComponent_SetRestitution(ID, v);
     }
 }

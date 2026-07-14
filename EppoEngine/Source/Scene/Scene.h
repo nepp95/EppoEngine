@@ -65,16 +65,6 @@ namespace Eppo
 		// editor/runtime scene copies (UUIDs survive Scene::Copy, handles do not).
 		[[nodiscard]] auto GetEntityByUUID(const UUID& uuid) -> Entity;
 
-		// Invokes `func` for every entity. Used by the editor to gather debug-draw
-		// items (e.g. collider wireframes) without exposing the underlying registry.
-		template<typename Func>
-		auto ForEachEntity(Func&& func) -> void
-		{
-			// Every entity carries an IDComponent, so a view over it enumerates all.
-			for (const auto view = m_Registry.view<IDComponent>(); const auto e : view)
-				func(Entity{e, this});
-		}
-
 		template<typename T>
 		static auto TryCopyComponent(Entity srcEntity, Entity dstEntity) -> void;
 

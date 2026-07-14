@@ -54,11 +54,21 @@ namespace EppoScriptCore.Scene
     public class RigidBodyComponent : Component
     {
         public enum BodyType : byte { Static = 0, Kinematic, Dynamic };
-        
+
         public BodyType Type
         {
             get => (BodyType)InternalCalls.RigidBodyComponent_GetType(Entity.ID);
             set => InternalCalls.RigidBodyComponent_SetType(Entity.ID, (byte)value);
+        }
+
+        public Vector3 LinearVelocity
+        {
+            get
+            {
+                InternalCalls.Physics_GetLinearVelocity(Entity.ID, out Vector3 velocity);
+                return velocity;
+            }
+            set => InternalCalls.Physics_SetLinearVelocity(Entity.ID, ref value);
         }
     }
 

@@ -65,11 +65,11 @@ namespace Eppo
 			m_PanelManager->SetSceneContext(m_ActiveScene);
 		}
 
-		m_SceneRenderer = CreateRef<SceneRenderer>(m_ActiveScene, m_ViewportWidth, m_ViewportHeight);
-
-		// Debug overlays (selection wireframe, collider shapes) draw into the scene's
-		// geometry framebuffer, so it is shared with the DebugRenderer.
-		m_DebugRenderer = CreateRef<DebugRenderer>(m_ViewportWidth, m_ViewportHeight, m_SceneRenderer->GetGeometryFramebuffer());
+		m_SceneRenderer = CreateRef<SceneRenderer>(m_ActiveScene, SceneRendererSpecification{
+			.Width = m_ViewportWidth,
+			.Height = m_ViewportHeight,
+			.EnableDebugRenderer = true,
+		});
 	}
 
 	auto EditorLayer::OnDetach() -> void
@@ -137,76 +137,6 @@ namespace Eppo
 				break;
 			}
 		}
-
-		RenderDebugOverlays();
-	}
-
-	auto EditorLayer::RenderDebugOverlays() -> void
-	{
-		EP_PROFILE_FN("EditorLayer::RenderDebugOverlays");
-
-		// Pick the camera the scene was rendered with so debug overlays line up.
-		glm::mat4 view;
-		glm::mat4 projection;
-		glm::vec3 position;
-		if (m_SceneState == SceneState::Play && m_ActiveScene->GetPrimaryCameraEntity())
-		{
-			const auto& camEntity = m_ActiveScene->GetPrimaryCameraEntity();
-			const auto& cc = camEntity.GetComponent<CameraComponent>();
-			const auto& tc = camEntity.GetComponent<TransformComponent>();
-			const glm::mat4 camTransform = glm::translate(glm::mat4(1.0f), tc.Translation) * glm::mat4_cast(glm::quat(tc.Rotation));
-			view = glm::inverse(camTransform);
-			projection = cc.Camera.GetProjectionMatrix();
-			position = tc.Translation;
-		}
-		else
-		{
-			view = m_EditorCamera->GetViewMatrix();
-			projection = m_EditorCamera->GetProjectionMatrix();
-			position = m_EditorCamera->GetPosition();
-		}
-
-		m_DebugRenderer->Begin();
-		m_DebugRenderer->SetCamera(view, projection, position);
-
-		// Selected-entity highlight (editor mode only, matching the old behaviour).
-		if (m_SceneState == SceneState::Edit && m_SelectedEntity && m_SelectedEntity.HasComponent<MeshComponent>())
-		{
-			const auto& mc = m_SelectedEntity.GetComponent<MeshComponent>();
-			if (mc.MeshHandle)
-			{
-				const auto& mesh = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Mesh>(mc.MeshHandle);
-				m_DebugRenderer->DrawMesh(mesh, m_ActiveScene->GetWorldTransform(m_SelectedEntity), glm::vec4(0.91f, 0.39f, 0.11f, 1.0f));
-			}
-		}
-
-		// Collider wireframes for every entity that has a collider component.
-		if (m_ShowColliders)
-		{
-			m_ActiveScene->ForEachEntity([this](Entity entity)
-			{
-				const glm::mat4 world = m_ActiveScene->GetWorldTransform(entity);
-
-				if (entity.HasComponent<BoxColliderComponent>())
-				{
-					const auto& c = entity.GetComponent<BoxColliderComponent>();
-					m_DebugRenderer->DrawBox(glm::translate(world, c.Offset), c.HalfExtents, glm::vec4(0.2f, 0.8f, 0.3f, 1.0f));
-				}
-				else if (entity.HasComponent<SphereColliderComponent>())
-				{
-					const auto& c = entity.GetComponent<SphereColliderComponent>();
-					m_DebugRenderer->DrawSphere(glm::translate(world, c.Offset), c.Radius, glm::vec4(0.2f, 0.8f, 0.3f, 1.0f));
-				}
-				else if (entity.HasComponent<CapsuleColliderComponent>())
-				{
-					const auto& c = entity.GetComponent<CapsuleColliderComponent>();
-					m_DebugRenderer->DrawCapsule(glm::translate(world, c.Offset), c.Radius, c.Height, glm::vec4(0.2f, 0.8f, 0.3f, 1.0f));
-				}
-			});
-		}
-
-		const auto& dm = DeviceManager::Get();
-		m_DebugRenderer->Render(dm->GetCurrentBackBufferIndex());
 	}
 
 	auto EditorLayer::OnUIRender() -> void
@@ -304,6 +234,14 @@ namespace Eppo
 				ImGui::EndMenu();
 			}
 
+			if (ImGui::BeginMenu("Debug"))
+            {
+                if (ImGui::MenuItem("Enable Debug Rendering", nullptr, m_SceneRenderer->IsDebugRenderingEnabled()))
+                    m_SceneRenderer->SetDebugRenderingEnabled(!m_SceneRenderer->IsDebugRenderingEnabled());
+
+                ImGui::EndMenu();
+            }
+
 			if (ImGui::BeginMenu("Window"))
 			{
 				if (ImGui::MenuItem("Content Browser", nullptr, m_PanelManager->IsPanelOpen(CONTENT_BROWSER_PANEL)))
@@ -319,14 +257,6 @@ namespace Eppo
 
 				if (ImGui::MenuItem("Restore window layout"))
 					m_RestoreLayoutRequested = true;
-
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("View"))
-			{
-				if (ImGui::MenuItem("Show Colliders", nullptr, m_ShowColliders))
-					m_ShowColliders = !m_ShowColliders;
 
 				ImGui::EndMenu();
 			}
@@ -347,7 +277,6 @@ namespace Eppo
 
 	// Scene render
 	m_SceneRenderer->RenderGui();
-		m_DebugRenderer->RenderGui(DeviceManager::Get()->GetCurrentBackBufferIndex());
 
 		// Panels
 		m_PanelManager->RenderGui();

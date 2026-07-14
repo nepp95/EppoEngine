@@ -4,15 +4,15 @@ using EppoScriptCore.Scene;
 
 namespace EppoScriptCore.Physics
 {
-    public class Physics
+    public static class Physics
     {
-        public void ApplyLinearImpulse(Entity entity, Vector3 impulse)
+        public static void ApplyLinearImpulse(Entity entity, Vector3 impulse)
         {
             if (entity.HasComponent<RigidBodyComponent>())
                 InternalCalls.Physics_ApplyLinearImpulse(entity.ID, ref impulse);
         }
 
-        public Vector3 GetLinearVelocity(Entity entity)
+        public static Vector3 GetLinearVelocity(Entity entity)
         {
             if (entity.HasComponent<RigidBodyComponent>())
             {
@@ -24,7 +24,7 @@ namespace EppoScriptCore.Physics
             return Vector3.Zero;
         }
 
-        public void SetLinearVelocity(Entity entity, Vector3 velocity)
+        public static void SetLinearVelocity(Entity entity, Vector3 velocity)
         {
             if (entity.HasComponent<RigidBodyComponent>())
                 InternalCalls.Physics_SetLinearVelocity(entity.ID, ref velocity);

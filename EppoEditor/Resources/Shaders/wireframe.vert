@@ -11,8 +11,8 @@ struct Input
 struct PushConstants
 {
 	float4x4 Transform;
-	uint InstanceOffset;
 	float4 WireframeColor;
+	uint InstanceOffset;
 };
 PUSH_CONSTANTS
 ConstantBuffer<PushConstants> uPC : register(b0, space0);

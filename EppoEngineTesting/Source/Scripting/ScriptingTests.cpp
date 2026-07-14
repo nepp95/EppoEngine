@@ -1,9 +1,11 @@
 #include "Support/EppoTest.h"
+#include "Support/GlmCheck.h"
 
 #include "Asset/Asset.h"
 #include "Core/Input.h"
 #include "Core/KeyCodes.h"
 #include "Core/SimulatedInput.h"
+#include "Physics/PhysicsWorld.h"
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
@@ -85,40 +87,30 @@ SUITE(Scripting)
             ScriptEngine::Get().SetSceneContext(scene);
             return MakeLiveEntity(scene);
         }
-
-        // Invoke a no-arg harness method returning a Vector3 (12 bytes) into out.
-        auto InvokeVec3(const Entity entity, const ScriptClass& c, const std::string& method, float out[3]) -> bool
-        {
-            const ScriptMethod* m = c.GetMethod(method);
-            if (!m)
-                return false;
-            c.InvokeMethod(entity, *m, nullptr, out);
-            return true;
-        }
     }
 
     // --- Class metadata: the runtime comes up and reflects the user class. ---
 
-    TEST(Metadata_RuntimeComesUpWithClasses)
+    TEST(ScriptEngine_Init_DiscoversClasses)
     {
         REQUIRE CHECK(EnsureRuntime());
         CHECK(!ScriptEngine::Get().GetClasses().empty());
     }
 
-    TEST(Metadata_UserClassIsDiscovered)
+    TEST(ScriptEngine_UserClass_IsDiscovered)
     {
         REQUIRE CHECK(EnsureRuntime());
         CHECK(ScriptEngine::Get().IsValidScriptClass(kUserClass));
     }
 
-    TEST(Metadata_EntityBaseNotRegisteredAsScript)
+    TEST(ScriptEngine_EntityBaseClass_NotRegistered)
     {
         REQUIRE CHECK(EnsureRuntime());
         CHECK(!ScriptEngine::Get().IsValidScriptClass("EppoScriptCore.Scene.Entity"));
         CHECK_EQUAL(-1, ScriptEngine::Get().FindClassIndex("EppoScriptCore.Scene.Entity"));
     }
 
-    TEST(Metadata_PublicFieldsExposed)
+    TEST(ScriptClass_PublicFields_AreReflected)
     {
         REQUIRE CHECK(EnsureRuntime());
         const ScriptClass* c = FindClass(kUserClass);
@@ -130,7 +122,7 @@ SUITE(Scripting)
         CHECK(speed->Type == ScriptFieldType::Float);
     }
 
-    TEST(Metadata_PublicMethodsExposed)
+    TEST(ScriptClass_PublicMethods_AreReflected)
     {
         REQUIRE CHECK(EnsureRuntime());
         const ScriptClass* c = FindClass(kUserClass);
@@ -145,7 +137,7 @@ SUITE(Scripting)
 
     // An entity referencing an unknown class must not instantiate, and the
     // lifecycle calls around it must stay safe no-ops.
-    TEST(Metadata_UnknownClassProducesNoInstance)
+    TEST(ScriptEngine_UnknownClass_ProducesNoInstance)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -169,7 +161,7 @@ SUITE(Scripting)
 
     // OnCreate sets Created=1 and OnUpdate accumulates deltaTime on the harness;
     // reading those fields back proves both lifecycle calls ran managed code.
-    TEST(Lifecycle_OnCreateAndUpdateRunManagedCode)
+    TEST(ScriptEngine_CreateAndUpdate_RunManagedCode)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -198,7 +190,7 @@ SUITE(Scripting)
 
     // Stopping play (OnDestroyEntity) must remove the entity from the live
     // registry so GetEntityInstance no longer returns a handle.
-    TEST(Lifecycle_DestroyUnregistersInstance)
+    TEST(ScriptEngine_DestroyEntity_UnregistersInstance)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -213,7 +205,7 @@ SUITE(Scripting)
 
     // --- Method invocation marshalling (ScriptGlue InvokeMethod). ---
 
-    TEST(Method_InvokeRoundTripsArgsAndReturn)
+    TEST(ScriptClass_InvokeMethod_MarshalsArgsAndReturn)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -239,7 +231,7 @@ SUITE(Scripting)
 
     // A managed exception thrown from user code must not escape the
     // UnmanagedCallersOnly boundary and fail-fast the host process.
-    TEST(Method_ExceptionDoesNotCrashHost)
+    TEST(ScriptClass_ManagedException_DoesNotCrashHost)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -264,7 +256,7 @@ SUITE(Scripting)
         engine.OnDestroyEntity(entity);
     }
 
-    TEST(Method_EntityNullEqualityIsSafe)
+    TEST(Entity_NullEquality_IsSafe)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -289,7 +281,7 @@ SUITE(Scripting)
 
     // --- Field marshalling (ScriptGlue Get/SetFieldValue). ---
 
-    TEST(Field_ValueRoundTrips)
+    TEST(ScriptInstance_IntField_MarshalsValue)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -316,7 +308,7 @@ SUITE(Scripting)
 
     // A Vector3 field must be reported with its real type (not None) and marshal
     // its 12 bytes both ways — regression cover for ManagedTypeToFieldType.
-    TEST(Field_VectorIsTypedAndRoundTrips)
+    TEST(ScriptInstance_Vector3Field_IsTypedAndMarshals)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -345,7 +337,7 @@ SUITE(Scripting)
 
     // An Entity field (a managed reference type) must be typed as Entity and
     // marshal as its 8-byte id both ways.
-    TEST(Field_EntityIsTypedAndRoundTrips)
+    TEST(ScriptInstance_EntityField_IsTypedAndMarshals)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -371,7 +363,7 @@ SUITE(Scripting)
     }
 
     // bool and double fields round-trip through the marshalling layer intact.
-    TEST(Field_BoolAndDoubleRoundTrip)
+    TEST(ScriptInstance_BoolAndDoubleFields_Marshal)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -407,7 +399,7 @@ SUITE(Scripting)
 
     // Editor-time field values in the side table must be pushed into the fresh
     // managed instance when the entity's script is created on play.
-    TEST(Field_EditorValuesPushedOnCreate)
+    TEST(ScriptEngine_EditorFieldValues_PushedOnCreate)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -438,7 +430,7 @@ SUITE(Scripting)
 
     // Editing a field during play mutates the live instance directly and bypasses
     // the side table, so stopping and replaying restores the editor-time value.
-    TEST(Field_LiveEditsDiscardedOnReplay)
+    TEST(ScriptEngine_LiveFieldEdits_DiscardedOnReplay)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -512,7 +504,7 @@ SUITE(Scripting)
         engine.OnDestroyEntity(entity);
     }
 
-    TEST(LogMessage_DoesNotCrashHost)
+    TEST(LogMessage_NativeCallback_DoesNotCrashHost)
     {
         REQUIRE CHECK(EnsureRuntime());
 
@@ -638,12 +630,12 @@ SUITE(Scripting)
 
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getTranslation = c->GetMethod("TransformComponent_GetTranslation");
+        REQUIRE CHECK(getTranslation != nullptr);
 
-        float out[3] = { 0.0f, 0.0f, 0.0f };
-        REQUIRE CHECK(InvokeVec3(entity, *c, "TransformComponent_GetTranslation", out));
-        CHECK_CLOSE(1.0f, out[0], 1e-5f);
-        CHECK_CLOSE(2.0f, out[1], 1e-5f);
-        CHECK_CLOSE(3.0f, out[2], 1e-5f);
+        glm::vec3 translation{};
+        c->InvokeMethod(entity, *getTranslation, nullptr, &translation);
+        CHECK_VEC3_CLOSE(glm::vec3(1.0f, 2.0f, 3.0f), translation, 1e-5f);
 
         engine.OnDestroyEntity(entity);
     }
@@ -729,12 +721,12 @@ SUITE(Scripting)
 
         const ScriptClass* c = FindClass(kUserClass);
         REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getColor = c->GetMethod("PointLightComponent_GetColor");
+        REQUIRE CHECK(getColor != nullptr);
 
-        float out[3] = { 0.0f, 0.0f, 0.0f };
-        REQUIRE CHECK(InvokeVec3(entity, *c, "PointLightComponent_GetColor", out));
-        CHECK_CLOSE(0.1f, out[0], 1e-5f);
-        CHECK_CLOSE(0.2f, out[1], 1e-5f);
-        CHECK_CLOSE(0.3f, out[2], 1e-5f);
+        glm::vec3 color{};
+        c->InvokeMethod(entity, *getColor, nullptr, &color);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), color, 1e-5f);
 
         engine.OnDestroyEntity(entity);
     }
@@ -825,5 +817,427 @@ SUITE(Scripting)
 
         engine.OnDestroyEntity(child);
         engine.OnDestroyEntity(parent);
+    }
+
+    TEST(RigidBodyComponent_GetType_ReturnsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Kinematic;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getType = c->GetMethod("RigidBodyComponent_GetType");
+        REQUIRE CHECK(getType != nullptr);
+
+        uint8_t got = 0;
+        c->InvokeMethod(entity, *getType, nullptr, &got);
+        CHECK_EQUAL(static_cast<int>(RigidBodyComponent::BodyType::Kinematic), static_cast<int>(got));
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(RigidBodyComponent_SetType_MutatesScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.Type = RigidBodyComponent::BodyType::Kinematic;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setType = c->GetMethod("RigidBodyComponent_SetType");
+        REQUIRE CHECK(setType != nullptr);
+
+        const uint8_t dynamic = static_cast<uint8_t>(RigidBodyComponent::BodyType::Dynamic);
+        c->InvokeMethod(entity, *setType, &dynamic, nullptr);
+        CHECK(rb.Type == RigidBodyComponent::BodyType::Dynamic);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(BoxColliderComponent_Getters_ReturnSceneValues)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& box = entity.AddComponent<BoxColliderComponent>();
+        box.HalfSize = glm::vec3(1.0f, 2.0f, 3.0f);
+        box.Offset = glm::vec3(0.1f, 0.2f, 0.3f);
+        box.Density = 2.0f;
+        box.Friction = 0.25f;
+        box.Restitution = 0.1f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        glm::vec3 halfSize{};
+        const ScriptMethod* getHalfSize = c->GetMethod("BoxColliderComponent_GetHalfSize");
+        REQUIRE CHECK(getHalfSize != nullptr);
+        c->InvokeMethod(entity, *getHalfSize, nullptr, &halfSize);
+        CHECK_VEC3_CLOSE(glm::vec3(1.0f, 2.0f, 3.0f), halfSize, 1e-5f);
+
+        glm::vec3 offset{};
+        const ScriptMethod* getOffset = c->GetMethod("BoxColliderComponent_GetOffset");
+        REQUIRE CHECK(getOffset != nullptr);
+        c->InvokeMethod(entity, *getOffset, nullptr, &offset);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), offset, 1e-5f);
+
+        float density = 0.0f;
+        const ScriptMethod* getDensity = c->GetMethod("BoxColliderComponent_GetDensity");
+        REQUIRE CHECK(getDensity != nullptr);
+        c->InvokeMethod(entity, *getDensity, nullptr, &density);
+        CHECK_CLOSE(2.0f, density, 1e-5f);
+
+        float friction = 0.0f;
+        const ScriptMethod* getFriction = c->GetMethod("BoxColliderComponent_GetFriction");
+        REQUIRE CHECK(getFriction != nullptr);
+        c->InvokeMethod(entity, *getFriction, nullptr, &friction);
+        CHECK_CLOSE(0.25f, friction, 1e-5f);
+
+        float restitution = 0.0f;
+        const ScriptMethod* getRestitution = c->GetMethod("BoxColliderComponent_GetRestitution");
+        REQUIRE CHECK(getRestitution != nullptr);
+        c->InvokeMethod(entity, *getRestitution, nullptr, &restitution);
+        CHECK_CLOSE(0.1f, restitution, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(BoxColliderComponent_Setters_MutateScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& box = entity.AddComponent<BoxColliderComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const glm::vec3 halfSize(4.0f, 5.0f, 6.0f);
+        const ScriptMethod* setHalfSize = c->GetMethod("BoxColliderComponent_SetHalfSize");
+        REQUIRE CHECK(setHalfSize != nullptr);
+        c->InvokeMethod(entity, *setHalfSize, &halfSize, nullptr);
+        CHECK_VEC3_CLOSE(halfSize, box.HalfSize, 1e-5f);
+
+        const glm::vec3 offset(0.4f, 0.5f, 0.6f);
+        const ScriptMethod* setOffset = c->GetMethod("BoxColliderComponent_SetOffset");
+        REQUIRE CHECK(setOffset != nullptr);
+        c->InvokeMethod(entity, *setOffset, &offset, nullptr);
+        CHECK_VEC3_CLOSE(offset, box.Offset, 1e-5f);
+
+        const float density = 3.0f;
+        const ScriptMethod* setDensity = c->GetMethod("BoxColliderComponent_SetDensity");
+        REQUIRE CHECK(setDensity != nullptr);
+        c->InvokeMethod(entity, *setDensity, &density, nullptr);
+        CHECK_CLOSE(3.0f, box.Density, 1e-5f);
+
+        const float friction = 0.75f;
+        const ScriptMethod* setFriction = c->GetMethod("BoxColliderComponent_SetFriction");
+        REQUIRE CHECK(setFriction != nullptr);
+        c->InvokeMethod(entity, *setFriction, &friction, nullptr);
+        CHECK_CLOSE(0.75f, box.Friction, 1e-5f);
+
+        const float restitution = 0.9f;
+        const ScriptMethod* setRestitution = c->GetMethod("BoxColliderComponent_SetRestitution");
+        REQUIRE CHECK(setRestitution != nullptr);
+        c->InvokeMethod(entity, *setRestitution, &restitution, nullptr);
+        CHECK_CLOSE(0.9f, box.Restitution, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(SphereColliderComponent_Getters_ReturnSceneValues)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& sphere = entity.AddComponent<SphereColliderComponent>();
+        sphere.Radius = 1.5f;
+        sphere.Offset = glm::vec3(0.1f, 0.2f, 0.3f);
+        sphere.Density = 2.0f;
+        sphere.Friction = 0.25f;
+        sphere.Restitution = 0.1f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float radius = 0.0f;
+        const ScriptMethod* getRadius = c->GetMethod("SphereColliderComponent_GetRadius");
+        REQUIRE CHECK(getRadius != nullptr);
+        c->InvokeMethod(entity, *getRadius, nullptr, &radius);
+        CHECK_CLOSE(1.5f, radius, 1e-5f);
+
+        glm::vec3 offset{};
+        const ScriptMethod* getOffset = c->GetMethod("SphereColliderComponent_GetOffset");
+        REQUIRE CHECK(getOffset != nullptr);
+        c->InvokeMethod(entity, *getOffset, nullptr, &offset);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), offset, 1e-5f);
+
+        float density = 0.0f;
+        const ScriptMethod* getDensity = c->GetMethod("SphereColliderComponent_GetDensity");
+        REQUIRE CHECK(getDensity != nullptr);
+        c->InvokeMethod(entity, *getDensity, nullptr, &density);
+        CHECK_CLOSE(2.0f, density, 1e-5f);
+
+        float friction = 0.0f;
+        const ScriptMethod* getFriction = c->GetMethod("SphereColliderComponent_GetFriction");
+        REQUIRE CHECK(getFriction != nullptr);
+        c->InvokeMethod(entity, *getFriction, nullptr, &friction);
+        CHECK_CLOSE(0.25f, friction, 1e-5f);
+
+        float restitution = 0.0f;
+        const ScriptMethod* getRestitution = c->GetMethod("SphereColliderComponent_GetRestitution");
+        REQUIRE CHECK(getRestitution != nullptr);
+        c->InvokeMethod(entity, *getRestitution, nullptr, &restitution);
+        CHECK_CLOSE(0.1f, restitution, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(SphereColliderComponent_Setters_MutateScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& sphere = entity.AddComponent<SphereColliderComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const float radius = 2.5f;
+        const ScriptMethod* setRadius = c->GetMethod("SphereColliderComponent_SetRadius");
+        REQUIRE CHECK(setRadius != nullptr);
+        c->InvokeMethod(entity, *setRadius, &radius, nullptr);
+        CHECK_CLOSE(2.5f, sphere.Radius, 1e-5f);
+
+        const glm::vec3 offset(0.4f, 0.5f, 0.6f);
+        const ScriptMethod* setOffset = c->GetMethod("SphereColliderComponent_SetOffset");
+        REQUIRE CHECK(setOffset != nullptr);
+        c->InvokeMethod(entity, *setOffset, &offset, nullptr);
+        CHECK_VEC3_CLOSE(offset, sphere.Offset, 1e-5f);
+
+        const float density = 3.0f;
+        const ScriptMethod* setDensity = c->GetMethod("SphereColliderComponent_SetDensity");
+        REQUIRE CHECK(setDensity != nullptr);
+        c->InvokeMethod(entity, *setDensity, &density, nullptr);
+        CHECK_CLOSE(3.0f, sphere.Density, 1e-5f);
+
+        const float friction = 0.75f;
+        const ScriptMethod* setFriction = c->GetMethod("SphereColliderComponent_SetFriction");
+        REQUIRE CHECK(setFriction != nullptr);
+        c->InvokeMethod(entity, *setFriction, &friction, nullptr);
+        CHECK_CLOSE(0.75f, sphere.Friction, 1e-5f);
+
+        const float restitution = 0.9f;
+        const ScriptMethod* setRestitution = c->GetMethod("SphereColliderComponent_SetRestitution");
+        REQUIRE CHECK(setRestitution != nullptr);
+        c->InvokeMethod(entity, *setRestitution, &restitution, nullptr);
+        CHECK_CLOSE(0.9f, sphere.Restitution, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(CapsuleColliderComponent_Getters_ReturnSceneValues)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& capsule = entity.AddComponent<CapsuleColliderComponent>();
+        capsule.Radius = 1.5f;
+        capsule.Height = 3.0f;
+        capsule.Offset = glm::vec3(0.1f, 0.2f, 0.3f);
+        capsule.Density = 2.0f;
+        capsule.Friction = 0.25f;
+        capsule.Restitution = 0.1f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float radius = 0.0f;
+        const ScriptMethod* getRadius = c->GetMethod("CapsuleColliderComponent_GetRadius");
+        REQUIRE CHECK(getRadius != nullptr);
+        c->InvokeMethod(entity, *getRadius, nullptr, &radius);
+        CHECK_CLOSE(1.5f, radius, 1e-5f);
+
+        float height = 0.0f;
+        const ScriptMethod* getHeight = c->GetMethod("CapsuleColliderComponent_GetHeight");
+        REQUIRE CHECK(getHeight != nullptr);
+        c->InvokeMethod(entity, *getHeight, nullptr, &height);
+        CHECK_CLOSE(3.0f, height, 1e-5f);
+
+        glm::vec3 offset{};
+        const ScriptMethod* getOffset = c->GetMethod("CapsuleColliderComponent_GetOffset");
+        REQUIRE CHECK(getOffset != nullptr);
+        c->InvokeMethod(entity, *getOffset, nullptr, &offset);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), offset, 1e-5f);
+
+        float density = 0.0f;
+        const ScriptMethod* getDensity = c->GetMethod("CapsuleColliderComponent_GetDensity");
+        REQUIRE CHECK(getDensity != nullptr);
+        c->InvokeMethod(entity, *getDensity, nullptr, &density);
+        CHECK_CLOSE(2.0f, density, 1e-5f);
+
+        float friction = 0.0f;
+        const ScriptMethod* getFriction = c->GetMethod("CapsuleColliderComponent_GetFriction");
+        REQUIRE CHECK(getFriction != nullptr);
+        c->InvokeMethod(entity, *getFriction, nullptr, &friction);
+        CHECK_CLOSE(0.25f, friction, 1e-5f);
+
+        float restitution = 0.0f;
+        const ScriptMethod* getRestitution = c->GetMethod("CapsuleColliderComponent_GetRestitution");
+        REQUIRE CHECK(getRestitution != nullptr);
+        c->InvokeMethod(entity, *getRestitution, nullptr, &restitution);
+        CHECK_CLOSE(0.1f, restitution, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(CapsuleColliderComponent_Setters_MutateScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& capsule = entity.AddComponent<CapsuleColliderComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const float radius = 2.5f;
+        const ScriptMethod* setRadius = c->GetMethod("CapsuleColliderComponent_SetRadius");
+        REQUIRE CHECK(setRadius != nullptr);
+        c->InvokeMethod(entity, *setRadius, &radius, nullptr);
+        CHECK_CLOSE(2.5f, capsule.Radius, 1e-5f);
+
+        const float height = 4.0f;
+        const ScriptMethod* setHeight = c->GetMethod("CapsuleColliderComponent_SetHeight");
+        REQUIRE CHECK(setHeight != nullptr);
+        c->InvokeMethod(entity, *setHeight, &height, nullptr);
+        CHECK_CLOSE(4.0f, capsule.Height, 1e-5f);
+
+        const glm::vec3 offset(0.4f, 0.5f, 0.6f);
+        const ScriptMethod* setOffset = c->GetMethod("CapsuleColliderComponent_SetOffset");
+        REQUIRE CHECK(setOffset != nullptr);
+        c->InvokeMethod(entity, *setOffset, &offset, nullptr);
+        CHECK_VEC3_CLOSE(offset, capsule.Offset, 1e-5f);
+
+        const float density = 3.0f;
+        const ScriptMethod* setDensity = c->GetMethod("CapsuleColliderComponent_SetDensity");
+        REQUIRE CHECK(setDensity != nullptr);
+        c->InvokeMethod(entity, *setDensity, &density, nullptr);
+        CHECK_CLOSE(3.0f, capsule.Density, 1e-5f);
+
+        const float friction = 0.75f;
+        const ScriptMethod* setFriction = c->GetMethod("CapsuleColliderComponent_SetFriction");
+        REQUIRE CHECK(setFriction != nullptr);
+        c->InvokeMethod(entity, *setFriction, &friction, nullptr);
+        CHECK_CLOSE(0.75f, capsule.Friction, 1e-5f);
+
+        const float restitution = 0.9f;
+        const ScriptMethod* setRestitution = c->GetMethod("CapsuleColliderComponent_SetRestitution");
+        REQUIRE CHECK(setRestitution != nullptr);
+        c->InvokeMethod(entity, *setRestitution, &restitution, nullptr);
+        CHECK_CLOSE(0.9f, capsule.Restitution, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // LinearVelocity routes through the active physics world rather than the component.
+    TEST(RigidBodyComponent_GetLinearVelocity_ReturnsWorldValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.Type = RigidBodyComponent::BodyType::Dynamic;
+
+        const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f)); // gravity-free
+        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        world->SetLinearVelocity(entity.GetUUID(), glm::vec3(1.0f, 2.0f, 3.0f));
+        engine.SetActivePhysicsWorld(world);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getVelocity = c->GetMethod("RigidBodyComponent_GetLinearVelocity");
+        REQUIRE CHECK(getVelocity != nullptr);
+
+        glm::vec3 velocity{};
+        c->InvokeMethod(entity, *getVelocity, nullptr, &velocity);
+        CHECK_VEC3_CLOSE(glm::vec3(1.0f, 2.0f, 3.0f), velocity, 1e-4f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(RigidBodyComponent_SetLinearVelocity_MutatesWorld)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.Type = RigidBodyComponent::BodyType::Dynamic;
+
+        const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
+        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        engine.SetActivePhysicsWorld(world);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setVelocity = c->GetMethod("RigidBodyComponent_SetLinearVelocity");
+        REQUIRE CHECK(setVelocity != nullptr);
+
+        const glm::vec3 velocity(1.0f, 2.0f, 3.0f);
+        c->InvokeMethod(entity, *setVelocity, &velocity, nullptr);
+        CHECK_VEC3_CLOSE(velocity, world->GetLinearVelocity(entity.GetUUID()), 1e-4f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // Physics.ApplyLinearImpulse (static) drives the body via the active world.
+    TEST(Physics_ApplyLinearImpulse_AddsVelocity)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.Type = RigidBodyComponent::BodyType::Dynamic;
+
+        const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
+        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        engine.SetActivePhysicsWorld(world);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* impulse = c->GetMethod("Physics_ApplyLinearImpulseUp");
+        REQUIRE CHECK(impulse != nullptr);
+
+        c->InvokeMethod(entity, *impulse, nullptr, nullptr);
+        world->Step(1.0f / 60.0f);
+        CHECK(world->GetLinearVelocity(entity.GetUUID()).y > 0.0f);
+
+        engine.OnDestroyEntity(entity);
     }
 }

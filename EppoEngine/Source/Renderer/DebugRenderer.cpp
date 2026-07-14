@@ -120,36 +120,7 @@ namespace Eppo
 	}
 
 	DebugRenderer::DebugRenderer(const uint32_t width, const uint32_t height, const Ref<Framebuffer>& targetFramebuffer)
-		: m_TargetFramebuffer(targetFramebuffer), m_Width(width), m_Height(height)
 	{
-		EP_PROFILE_FN("DebugRenderer::DebugRenderer")
-
-		const auto& dm = DeviceManager::Get();
-		const auto device = dm->GetDevice();
-		const auto& renderer = dm->GetRenderer();
-
-		m_CommandList = device->createCommandList();
-
-		// Shares the scene's geometry framebuffer; draws wireframe overlays with
-		// depth test on / write off so edges sit on visible surfaces, biased
-		// slightly toward the camera to avoid z-fighting with the solid mesh.
-		PipelineSpecification pipelineSpec{
-			.Shader = renderer->GetShader("wireframe"),
-			.Framebuffer = m_TargetFramebuffer,
-			.Width = m_Width,
-			.Height = m_Height,
-			.CullMode = nvrhi::RasterCullMode::None,
-			.FillMode = nvrhi::RasterFillMode::Wireframe,
-			.DepthTestEnable = true,
-			.DepthWriteEnable = false,
-			.DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
-			.DepthBias = -1,
-			.SlopeScaledDepthBias = -1.0f,
-		};
-
-		m_Pipeline = CreateRef<Pipeline>(pipelineSpec);
-		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Debug Camera");
-
 		CreatePrimitives();
 	}
 
@@ -167,21 +138,6 @@ namespace Eppo
 		m_SphereGeometry = toGeometry(Mesh::CreateMeshPrimitive(MeshPrimitiveType::Sphere));
 		m_CapsuleGeometry = BuildCapsuleGeometry();
 		m_LineGeometry = BuildLineGeometry();
-	}
-
-	auto DebugRenderer::SetCamera(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& position) -> void
-	{
-		m_CameraData.View = view;
-		m_CameraData.Projection = projection;
-		m_CameraData.ViewProjection = projection * view;
-		m_CameraData.Position = glm::vec4(position, 0.0f);
-		m_CameraData.InverseViewProjection = glm::inverse(m_CameraData.ViewProjection);
-		m_CameraUB->SetData(&m_CameraData, sizeof(CameraData));
-	}
-
-	auto DebugRenderer::Begin() -> void
-	{
-		m_Draws.clear();
 	}
 
 	auto DebugRenderer::DrawMesh(const Ref<Mesh>& mesh, const glm::mat4& transform, const glm::vec4& color) -> void
@@ -212,128 +168,5 @@ namespace Eppo
 	{
 		const glm::mat4 transform = glm::translate(glm::mat4(1.0f), start) * glm::scale(glm::mat4(1.0f), end - start);
 		m_Draws.push_back({ m_LineGeometry, transform, color });
-	}
-
-	auto DebugRenderer::Render(const uint32_t frameIndex) -> void
-	{
-		EP_PROFILE_FN("DebugRenderer::Render")
-
-		if (m_Draws.empty())
-			return;
-
-		const auto& dm = DeviceManager::Get();
-		const auto device = dm->GetDevice();
-
-		// Draw into whatever size the shared framebuffer currently is.
-		m_Width = m_TargetFramebuffer->GetWidth();
-		m_Height = m_TargetFramebuffer->GetHeight();
-
-		// Gather one instance transform per draw; the shader indexes it by offset.
-		std::vector<glm::mat4> instanceTransforms;
-		instanceTransforms.reserve(m_Draws.size());
-		for (auto& draw : m_Draws)
-		{
-			draw.InstanceOffset = static_cast<uint32_t>(instanceTransforms.size());
-			instanceTransforms.push_back(draw.Transform);
-		}
-
-		const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
-		if (!m_InstanceTransformsSB)
-			m_InstanceTransformsSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), requiredSize, "StorageBuffer Debug Instance Transforms");
-		m_InstanceTransformsSB->SetData(instanceTransforms.data(), requiredSize);
-
-		m_CommandList->open();
-		m_Pass.Begin(m_CommandList, frameIndex, "Debug Pass");
-		PassStatistics& stats = m_Pass.GetStats();
-
-		nvrhi::GraphicsState state{
-			.pipeline = m_Pipeline->GetPipeline(),
-			.framebuffer = m_TargetFramebuffer->GetFramebuffer(),
-		};
-		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
-		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
-
-		PushConstants pushConstants{};
-		const auto& bindingLayouts = m_Pipeline->GetSpecification().Shader->GetBindingLayouts();
-
-		nvrhi::BindingSetDesc desc{};
-		desc.bindings = {
-			nvrhi::BindingSetItem::PushConstants(0, sizeof(PushConstants)),
-			nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
-			nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_InstanceTransformsSB->GetBuffer()),
-		};
-
-		const auto bindingSet = device->createBindingSet(desc, bindingLayouts.at(0));
-		state.addBindingSet(bindingSet);
-
-		for (const auto& draw : m_Draws)
-		{
-			const nvrhi::VertexBufferBinding vtxBufBinding{
-				.buffer = draw.Geometry.VertexBuffer->GetBuffer(),
-				.slot = 0,
-				.offset = 0,
-			};
-
-			state.vertexBuffers.resize(1);
-			state.vertexBuffers[0] = vtxBufBinding;
-			state.indexBuffer.buffer = draw.Geometry.IndexBuffer->GetBuffer();
-			state.indexBuffer.format = nvrhi::Format::R32_UINT;
-			state.indexBuffer.offset = 0;
-			m_CommandList->setGraphicsState(state);
-
-			pushConstants.Transform = draw.Geometry.LocalTransform;
-			pushConstants.InstanceOffset = draw.InstanceOffset;
-			pushConstants.Color = draw.Color;
-
-			for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : draw.Geometry.Primitives)
-			{
-				m_CommandList->setPushConstants(&pushConstants, sizeof(PushConstants));
-
-				nvrhi::DrawArguments drawArgs{
-					.vertexCount = static_cast<uint32_t>(indexCount),
-					.instanceCount = 1,
-					.startIndexLocation = firstIndex,
-					.startVertexLocation = firstVertex,
-				};
-
-				m_CommandList->drawIndexed(drawArgs);
-
-				stats.DrawCalls++;
-				stats.Vertices += static_cast<uint32_t>(vertexCount);
-				stats.Indices += static_cast<uint32_t>(indexCount);
-			}
-			stats.Submeshes++;
-			stats.Meshes++;
-			stats.Instances++;
-		}
-
-		m_Pass.End(m_CommandList, frameIndex);
-		m_CommandList->close();
-		device->executeCommandList(m_CommandList);
-
-		// Read the GPU timer back once the pass' command list has executed.
-		m_Pass.Readback(frameIndex);
-	}
-
-	auto DebugRenderer::RenderGui(const uint32_t frameIndex) const -> void
-	{
-		EP_PROFILE_FN("DebugRenderer::RenderGui")
-
-		const auto& imguiRenderer = Application::Get().GetImGuiLayer()->GetMainImGuiRenderer();
-
-		ImGui::Begin("Debug Renderer");
-		const PassStatistics& stats = m_Pass.GetStats();
-		if (ImGui::TreeNodeEx(m_Pass.GetName().c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s: %.2fms", m_Pass.GetName().c_str(), m_Pass.GetTimeMs(frameIndex)))
-		{
-			ImGui::Text("Draw calls: %u", stats.DrawCalls);
-			ImGui::Text("Meshes: %u", stats.Meshes);
-			ImGui::Text("Submeshes: %u", stats.Submeshes);
-			ImGui::Text("Instances: %u", stats.Instances);
-			ImGui::Text("Vertices: %u", stats.Vertices);
-			ImGui::Text("Indices: %u", stats.Indices);
-			ImGui::TreePop();
-		}
-		ImGui::Text("UI: %.2fms", imguiRenderer->GetGPUTime(frameIndex));
-		ImGui::End();
 	}
 }

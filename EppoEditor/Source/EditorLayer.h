@@ -39,7 +39,6 @@ namespace Eppo
 		auto SaveSceneAs() -> bool;
 
 	    auto UpdateImGuizmo() -> void;
-		auto RenderDebugOverlays() -> void;
 		auto UI_Toolbar() -> void;
 		auto UI_NewProjectPopup() -> void;
         auto UI_WarningNoPrimaryCamera() -> void;
@@ -50,7 +49,6 @@ namespace Eppo
 		Ref<Scene> m_ActiveScene = nullptr;
 		Ref<Scene> m_EditorScene = nullptr;
 		Ref<SceneRenderer> m_SceneRenderer = nullptr;
-		Ref<DebugRenderer> m_DebugRenderer = nullptr;
 		std::filesystem::path m_ActiveScenePath;
 
 		ScopedPtr<EditorCamera> m_EditorCamera = nullptr;
@@ -64,12 +62,7 @@ namespace Eppo
 		uint32_t m_ViewportWidth = 1600;
 		uint32_t m_ViewportHeight = 900;
 
-		// Set while playing when the runtime scene has no primary camera: the play
-		// view falls back to the editor camera and a non-intrusive notice is shown.
 		bool m_MissingPrimaryCamera = false;
-
-		// Restoring the docking layout must happen before any window Begin this
-		// frame, so the menu item just raises this and OnUIRender services it early.
 		bool m_RestoreLayoutRequested = false;
 
 		enum class SceneState
@@ -79,10 +72,6 @@ namespace Eppo
 		} m_SceneState = SceneState::Edit;
 
 		Entity m_SelectedEntity;
-
-		// Debug overlays: when on, every entity with a collider is drawn as a
-		// wireframe shape (box/sphere/capsule) in the viewport.
-		bool m_ShowColliders = true;
 
 		// Popups
 		bool m_NewProjectPopup = false;

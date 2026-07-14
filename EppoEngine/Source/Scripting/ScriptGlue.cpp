@@ -148,6 +148,14 @@ namespace Eppo
                 return entity.HasComponent<ScriptComponent>();
             if (name == "RelationshipComponent")
                 return entity.HasComponent<RelationshipComponent>();
+            if (name == "RigidBodyComponent")
+                return entity.HasComponent<RigidBodyComponent>();
+            if (name == "BoxColliderComponent")
+                return entity.HasComponent<BoxColliderComponent>();
+            if (name == "SphereColliderComponent")
+                return entity.HasComponent<SphereColliderComponent>();
+            if (name == "CapsuleColliderComponent")
+                return entity.HasComponent<CapsuleColliderComponent>();
 
             return false;
         }
@@ -171,6 +179,14 @@ namespace Eppo
                 entity.TryAddComponent<ScriptComponent>();
             if (name == "RelationshipComponent")
                 entity.TryAddComponent<RelationshipComponent>();
+            if (name == "RigidBodyComponent")
+                entity.TryAddComponent<RigidBodyComponent>();
+            if (name == "BoxColliderComponent")
+                entity.TryAddComponent<BoxColliderComponent>();
+            if (name == "SphereColliderComponent")
+                entity.TryAddComponent<SphereColliderComponent>();
+            if (name == "CapsuleColliderComponent")
+                entity.TryAddComponent<CapsuleColliderComponent>();
         }
 
         auto Entity_RemoveComponent(const uint64_t id, const char* typeName) -> bool
@@ -192,6 +208,14 @@ namespace Eppo
                 return entity.RemoveComponent<ScriptComponent>();
             if (name == "RelationshipComponent")
                 return entity.RemoveComponent<RelationshipComponent>();
+            if (name == "RigidBodyComponent")
+                return entity.RemoveComponent<RigidBodyComponent>();
+            if (name == "BoxColliderComponent")
+                return entity.RemoveComponent<BoxColliderComponent>();
+            if (name == "SphereColliderComponent")
+                return entity.RemoveComponent<SphereColliderComponent>();
+            if (name == "CapsuleColliderComponent")
+                return entity.RemoveComponent<CapsuleColliderComponent>();
 
             return false;
         }
@@ -400,6 +424,204 @@ namespace Eppo
 
             entity.GetComponent<BoxColliderComponent>().Restitution = restitution;
         }
+
+        auto SphereColliderComponent_GetRadius(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<SphereColliderComponent>().Radius;
+        }
+
+        auto SphereColliderComponent_SetRadius(const uint64_t id, const float radius) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return;
+
+            entity.GetComponent<SphereColliderComponent>().Radius = radius;
+        }
+
+        auto SphereColliderComponent_GetOffset(const uint64_t id, glm::vec3* outOffset) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return;
+
+            *outOffset = entity.GetComponent<SphereColliderComponent>().Offset;
+        }
+
+        auto SphereColliderComponent_SetOffset(const uint64_t id, const glm::vec3* offset) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return;
+
+            entity.GetComponent<SphereColliderComponent>().Offset = *offset;
+        }
+
+        auto SphereColliderComponent_GetDensity(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<SphereColliderComponent>().Density;
+        }
+
+        auto SphereColliderComponent_SetDensity(const uint64_t id, const float density) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return;
+
+            entity.GetComponent<SphereColliderComponent>().Density = density;
+        }
+
+        auto SphereColliderComponent_GetFriction(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<SphereColliderComponent>().Friction;
+        }
+
+        auto SphereColliderComponent_SetFriction(const uint64_t id, const float friction) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return;
+
+            entity.GetComponent<SphereColliderComponent>().Friction = friction;
+        }
+
+        auto SphereColliderComponent_GetRestitution(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<SphereColliderComponent>().Restitution;
+        }
+
+        auto SphereColliderComponent_SetRestitution(const uint64_t id, const float restitution) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<SphereColliderComponent>())
+                return;
+
+            entity.GetComponent<SphereColliderComponent>().Restitution = restitution;
+        }
+
+        auto CapsuleColliderComponent_GetRadius(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CapsuleColliderComponent>().Radius;
+        }
+
+        auto CapsuleColliderComponent_SetRadius(const uint64_t id, const float radius) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return;
+
+            entity.GetComponent<CapsuleColliderComponent>().Radius = radius;
+        }
+
+        auto CapsuleColliderComponent_GetHeight(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CapsuleColliderComponent>().Height;
+        }
+
+        auto CapsuleColliderComponent_SetHeight(const uint64_t id, const float height) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return;
+
+            entity.GetComponent<CapsuleColliderComponent>().Height = height;
+        }
+
+        auto CapsuleColliderComponent_GetOffset(const uint64_t id, glm::vec3* outOffset) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return;
+
+            *outOffset = entity.GetComponent<CapsuleColliderComponent>().Offset;
+        }
+
+        auto CapsuleColliderComponent_SetOffset(const uint64_t id, const glm::vec3* offset) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return;
+
+            entity.GetComponent<CapsuleColliderComponent>().Offset = *offset;
+        }
+
+        auto CapsuleColliderComponent_GetDensity(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CapsuleColliderComponent>().Density;
+        }
+
+        auto CapsuleColliderComponent_SetDensity(const uint64_t id, const float density) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return;
+
+            entity.GetComponent<CapsuleColliderComponent>().Density = density;
+        }
+
+        auto CapsuleColliderComponent_GetFriction(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CapsuleColliderComponent>().Friction;
+        }
+
+        auto CapsuleColliderComponent_SetFriction(const uint64_t id, const float friction) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return;
+
+            entity.GetComponent<CapsuleColliderComponent>().Friction = friction;
+        }
+
+        auto CapsuleColliderComponent_GetRestitution(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CapsuleColliderComponent>().Restitution;
+        }
+
+        auto CapsuleColliderComponent_SetRestitution(const uint64_t id, const float restitution) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CapsuleColliderComponent>())
+                return;
+
+            entity.GetComponent<CapsuleColliderComponent>().Restitution = restitution;
+        }
         #pragma endregion
     }
 
@@ -436,6 +658,28 @@ namespace Eppo
             { "BoxColliderComponent_SetFriction",  reinterpret_cast<void*>(&BoxColliderComponent_SetFriction)  },
             { "BoxColliderComponent_GetRestitution", reinterpret_cast<void*>(&BoxColliderComponent_GetRestitution) },
             { "BoxColliderComponent_SetRestitution", reinterpret_cast<void*>(&BoxColliderComponent_SetRestitution) },
+            { "SphereColliderComponent_GetRadius",      reinterpret_cast<void*>(&SphereColliderComponent_GetRadius)      },
+            { "SphereColliderComponent_SetRadius",      reinterpret_cast<void*>(&SphereColliderComponent_SetRadius)      },
+            { "SphereColliderComponent_GetOffset",      reinterpret_cast<void*>(&SphereColliderComponent_GetOffset)      },
+            { "SphereColliderComponent_SetOffset",      reinterpret_cast<void*>(&SphereColliderComponent_SetOffset)      },
+            { "SphereColliderComponent_GetDensity",     reinterpret_cast<void*>(&SphereColliderComponent_GetDensity)     },
+            { "SphereColliderComponent_SetDensity",     reinterpret_cast<void*>(&SphereColliderComponent_SetDensity)     },
+            { "SphereColliderComponent_GetFriction",    reinterpret_cast<void*>(&SphereColliderComponent_GetFriction)    },
+            { "SphereColliderComponent_SetFriction",    reinterpret_cast<void*>(&SphereColliderComponent_SetFriction)    },
+            { "SphereColliderComponent_GetRestitution", reinterpret_cast<void*>(&SphereColliderComponent_GetRestitution) },
+            { "SphereColliderComponent_SetRestitution", reinterpret_cast<void*>(&SphereColliderComponent_SetRestitution) },
+            { "CapsuleColliderComponent_GetRadius",      reinterpret_cast<void*>(&CapsuleColliderComponent_GetRadius)      },
+            { "CapsuleColliderComponent_SetRadius",      reinterpret_cast<void*>(&CapsuleColliderComponent_SetRadius)      },
+            { "CapsuleColliderComponent_GetHeight",      reinterpret_cast<void*>(&CapsuleColliderComponent_GetHeight)      },
+            { "CapsuleColliderComponent_SetHeight",      reinterpret_cast<void*>(&CapsuleColliderComponent_SetHeight)      },
+            { "CapsuleColliderComponent_GetOffset",      reinterpret_cast<void*>(&CapsuleColliderComponent_GetOffset)      },
+            { "CapsuleColliderComponent_SetOffset",      reinterpret_cast<void*>(&CapsuleColliderComponent_SetOffset)      },
+            { "CapsuleColliderComponent_GetDensity",     reinterpret_cast<void*>(&CapsuleColliderComponent_GetDensity)     },
+            { "CapsuleColliderComponent_SetDensity",     reinterpret_cast<void*>(&CapsuleColliderComponent_SetDensity)     },
+            { "CapsuleColliderComponent_GetFriction",    reinterpret_cast<void*>(&CapsuleColliderComponent_GetFriction)    },
+            { "CapsuleColliderComponent_SetFriction",    reinterpret_cast<void*>(&CapsuleColliderComponent_SetFriction)    },
+            { "CapsuleColliderComponent_GetRestitution", reinterpret_cast<void*>(&CapsuleColliderComponent_GetRestitution) },
+            { "CapsuleColliderComponent_SetRestitution", reinterpret_cast<void*>(&CapsuleColliderComponent_SetRestitution) },
         };
 
         return calls;

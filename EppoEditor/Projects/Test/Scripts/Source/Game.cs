@@ -1,5 +1,6 @@
 ﻿using EppoScriptCore.Core;
 using EppoScriptCore.Math;
+using EppoScriptCore.Physics;
 using EppoScriptCore.Scene;
 
 namespace Test
@@ -17,7 +18,7 @@ namespace Test
 
         public override void OnUpdate(float deltaTime)
         {
-            if (Input.IsKeyDown(KeyCode.Space))
+            if (Input.IsKeyPressed(KeyCode.Space))
             {
                 RigidBodyComponent body = GetComponent<RigidBodyComponent>();
                 Vector3 velocity = body.LinearVelocity;

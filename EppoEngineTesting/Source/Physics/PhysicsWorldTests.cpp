@@ -1,16 +1,20 @@
 #include "Support/EppoTest.h"
+#include "Support/GlmCheck.h"
+#include "Support/TempDir.h"
 
-#include "Core/UUID.h"
 #include "Physics/PhysicsWorld.h"
 #include "Scene/Components.h"
+#include "Scene/Entity.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneSerializer.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
 using namespace Eppo;
 
-// PhysicsWorld wraps Box3D directly (no scene/ECS, no GPU), so this is a cheap
-// 'unit' suite: build a world, create bodies, step, assert poses/velocities.
+// Box3D world in isolation, plus scene-runtime physics and component
+// serialization further down — all headless ('unit' suite).
 SUITE(Physics)
 {
     namespace
@@ -30,9 +34,16 @@ SUITE(Physics)
         {
             MakeBody(world, id, RigidBodyComponent::BodyType::Dynamic, position);
         }
+
+        // Steps a scene's runtime physics for a fixed number of frames.
+        auto StepScene(const Ref<Scene>& scene, const int frames) -> void
+        {
+            for (int i = 0; i < frames; ++i)
+                scene->OnUpdateRuntime(1.0f / 60.0f);
+        }
     }
 
-    TEST(DynamicBodyFallsUnderGravity)
+    TEST(PhysicsWorld_DynamicBody_FallsUnderGravity)
     {
         PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
 
@@ -46,7 +57,7 @@ SUITE(Physics)
         CHECK(world.GetPosition(id).y < startY - 0.1f);
     }
 
-    TEST(ApplyLinearImpulseAddsVelocity)
+    TEST(PhysicsWorld_ApplyLinearImpulse_AddsVelocity)
     {
         PhysicsWorld world({ 0.0f, 0.0f, 0.0f }); // gravity-free so only the impulse acts
 
@@ -59,18 +70,7 @@ SUITE(Physics)
         CHECK(world.GetLinearVelocity(id).x > 0.0f);
     }
 
-    TEST(SetLinearVelocityRoundTrips)
-    {
-        PhysicsWorld world({ 0.0f, 0.0f, 0.0f });
-
-        const UUID id;
-        MakeDynamic(world, id, glm::vec3(0.0f));
-
-        world.SetLinearVelocity(id, { 0.0f, 0.0f, 3.0f });
-        CHECK_CLOSE(3.0f, world.GetLinearVelocity(id).z, 0.001f);
-    }
-
-    TEST(StaticBodyDoesNotMove)
+    TEST(PhysicsWorld_StaticBody_DoesNotMove)
     {
         PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
 
@@ -83,7 +83,7 @@ SUITE(Physics)
         CHECK_CLOSE(5.0f, world.GetPosition(id).y, 0.001f);
     }
 
-    TEST(UnknownEntityAccessorsAreSafe)
+    TEST(PhysicsWorld_UnknownEntity_AccessorsAreSafe)
     {
         PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
 
@@ -94,7 +94,7 @@ SUITE(Physics)
         CHECK_CLOSE(0.0f, world.GetLinearVelocity(missing).x, 0.001f);
     }
 
-    TEST(SphereColliderFallsUnderGravity)
+    TEST(PhysicsWorld_SphereCollider_FallsUnderGravity)
     {
         PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
 
@@ -120,7 +120,7 @@ SUITE(Physics)
         CHECK(world.GetPosition(id).y < startY - 0.1f);
     }
 
-    TEST(CapsuleColliderFallsUnderGravity)
+    TEST(PhysicsWorld_CapsuleCollider_FallsUnderGravity)
     {
         PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
 
@@ -147,7 +147,7 @@ SUITE(Physics)
         CHECK(world.GetPosition(id).y < startY - 0.1f);
     }
 
-    TEST(RotationPreservedUnderGravity)
+    TEST(PhysicsWorld_Rotation_PreservedUnderGravity)
     {
         // A dynamic body with centered collider under gravity alone must not
         // accumulate spurious rotation. This guards against integration drift and
@@ -181,7 +181,7 @@ SUITE(Physics)
         CHECK_CLOSE(1.0f, dot, 0.001f);
     }
 
-    TEST(MultipleCollidersOnOneBody)
+    TEST(PhysicsWorld_MultipleColliders_BodyFallsUnderGravity)
     {
         // A single body carrying both a box and a sphere collider must still
         // respond to gravity and produce a non-zero velocity after stepping.
@@ -214,7 +214,7 @@ SUITE(Physics)
         CHECK(world.GetLinearVelocity(id).y < -1.0f);
     }
 
-    TEST(KinematicBodyMovesWithSetVelocity)
+    TEST(PhysicsWorld_KinematicBody_MovesWithSetVelocity)
     {
         PhysicsWorld world({ 0.0f, 0.0f, 0.0f }); // gravity-free
 
@@ -231,7 +231,7 @@ SUITE(Physics)
         CHECK_CLOSE(2.0f, world.GetLinearVelocity(id).x, 0.01f);
     }
 
-    TEST(GravityScaleAffectsFallSpeed)
+    TEST(PhysicsWorld_GravityScale_AffectsFallSpeed)
     {
         PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
 
@@ -267,7 +267,7 @@ SUITE(Physics)
         CHECK(heavyY < lightY - 0.1f);
     }
 
-    TEST(DynamicBodyWithDampingStopsEventually)
+    TEST(PhysicsWorld_LinearDamping_StopsBodyEventually)
     {
         PhysicsWorld world({ 0.0f, 0.0f, 0.0f }); // gravity-free
 
@@ -292,5 +292,120 @@ SUITE(Physics)
         CHECK_CLOSE(0.0f, world.GetLinearVelocity(id).x, 0.01f);
         // The body should have moved but settled at a final position.
         CHECK(world.GetPosition(id).x > 0.0f);
+    }
+
+    TEST(Scene_RuntimeDynamicBody_FallsUnderGravity)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Falling");
+        entity.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, 0.0f };
+        entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
+        entity.AddComponent<BoxColliderComponent>();
+
+        scene->OnRuntimeStart();
+        StepScene(scene, 30);
+        const float y = entity.GetComponent<TransformComponent>().Translation.y;
+        scene->OnRuntimeStop();
+
+        CHECK(y < 10.0f - 0.1f);
+    }
+
+    TEST(Scene_RuntimeStaticBody_StaysPut)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Ground");
+        entity.GetComponent<TransformComponent>().Translation = { 0.0f, 5.0f, 0.0f };
+        entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Static;
+        entity.AddComponent<BoxColliderComponent>();
+
+        scene->OnRuntimeStart();
+        StepScene(scene, 30);
+        const float y = entity.GetComponent<TransformComponent>().Translation.y;
+        scene->OnRuntimeStop();
+
+        CHECK_CLOSE(5.0f, y, 0.001f);
+    }
+
+    TEST(Scene_RuntimeBodyWithoutCollider_StillFalls)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("NoCollider");
+        entity.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, 0.0f };
+        entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
+
+        scene->OnRuntimeStart();
+        StepScene(scene, 30);
+        const float y = entity.GetComponent<TransformComponent>().Translation.y;
+        scene->OnRuntimeStop();
+
+        CHECK(y < 10.0f - 0.1f);
+    }
+
+    TEST(SceneSerializer_PhysicsComponents_SurviveSaveAndLoad)
+    {
+        const UUID id;
+        const Ref<Scene> scene = CreateRef<Scene>();
+        {
+            Entity entity = scene->CreateEntityWithUUID(id, "Body");
+
+            auto& rb = entity.AddComponent<RigidBodyComponent>();
+            rb.Type = RigidBodyComponent::BodyType::Dynamic;
+            rb.GravityScale = 2.0f;
+            rb.LinearDamping = 0.3f;
+            rb.AngularDamping = 0.4f;
+
+            auto& box = entity.AddComponent<BoxColliderComponent>();
+            box.HalfSize = { 1.0f, 2.0f, 3.0f };
+            box.Offset = { 0.1f, 0.2f, 0.3f };
+            box.Density = 1.5f; box.Friction = 0.25f; box.Restitution = 0.6f;
+
+            auto& sphere = entity.AddComponent<SphereColliderComponent>();
+            sphere.Radius = 0.75f;
+            sphere.Offset = { 0.4f, 0.5f, 0.6f };
+            sphere.Density = 2.5f; sphere.Friction = 0.35f; sphere.Restitution = 0.7f;
+
+            auto& capsule = entity.AddComponent<CapsuleColliderComponent>();
+            capsule.Radius = 0.9f; capsule.Height = 1.8f;
+            capsule.Offset = { 0.7f, 0.8f, 0.9f };
+            capsule.Density = 3.5f; capsule.Friction = 0.45f; capsule.Restitution = 0.8f;
+        }
+
+        const Testing::TempDir dir;
+        const auto path = dir.File("physics.epscene");
+        REQUIRE CHECK(SceneSerializer(scene).Serialize(path));
+
+        const Ref<Scene> loaded = CreateRef<Scene>();
+        REQUIRE CHECK(SceneSerializer(loaded).Deserialize(path));
+
+        Entity entity = loaded->GetEntityByUUID(id);
+        REQUIRE CHECK(static_cast<bool>(entity));
+
+        const auto& rb = entity.GetComponent<RigidBodyComponent>();
+        CHECK(rb.Type == RigidBodyComponent::BodyType::Dynamic);
+        CHECK_CLOSE(2.0f, rb.GravityScale, 1e-5f);
+        CHECK_CLOSE(0.3f, rb.LinearDamping, 1e-5f);
+        CHECK_CLOSE(0.4f, rb.AngularDamping, 1e-5f);
+
+        const auto& box = entity.GetComponent<BoxColliderComponent>();
+        CHECK_VEC3_CLOSE(glm::vec3(1.0f, 2.0f, 3.0f), box.HalfSize, 1e-5f);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), box.Offset, 1e-5f);
+        CHECK_CLOSE(1.5f, box.Density, 1e-5f);
+        CHECK_CLOSE(0.25f, box.Friction, 1e-5f);
+        CHECK_CLOSE(0.6f, box.Restitution, 1e-5f);
+
+        const auto& sphere = entity.GetComponent<SphereColliderComponent>();
+        CHECK_CLOSE(0.75f, sphere.Radius, 1e-5f);
+        CHECK_VEC3_CLOSE(glm::vec3(0.4f, 0.5f, 0.6f), sphere.Offset, 1e-5f);
+        CHECK_CLOSE(2.5f, sphere.Density, 1e-5f);
+        CHECK_CLOSE(0.35f, sphere.Friction, 1e-5f);
+        CHECK_CLOSE(0.7f, sphere.Restitution, 1e-5f);
+
+        const auto& capsule = entity.GetComponent<CapsuleColliderComponent>();
+        CHECK_CLOSE(0.9f, capsule.Radius, 1e-5f);
+        CHECK_CLOSE(1.8f, capsule.Height, 1e-5f);
+        CHECK_VEC3_CLOSE(glm::vec3(0.7f, 0.8f, 0.9f), capsule.Offset, 1e-5f);
+        CHECK_CLOSE(3.5f, capsule.Density, 1e-5f);
+        CHECK_CLOSE(0.45f, capsule.Friction, 1e-5f);
+        CHECK_CLOSE(0.8f, capsule.Restitution, 1e-5f);
     }
 }

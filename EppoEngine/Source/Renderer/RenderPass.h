@@ -47,7 +47,7 @@ namespace Eppo
 		// name in the capture (used for ImGui's per-viewport markers).
 		auto Begin(const nvrhi::CommandListHandle& commandList, uint32_t frameIndex, const std::string& marker = "") -> void;
 		// Close the debug marker and end the GPU timer.
-		auto End(const nvrhi::CommandListHandle& commandList, uint32_t frameIndex) -> void;
+		auto End(const nvrhi::CommandListHandle& commandList, uint32_t frameIndex) const -> void;
 		// Read the timer back and reset the query. Call after the command list that
 		// wrapped Begin/End has been executed.
 		auto Readback(uint32_t frameIndex) -> void;
