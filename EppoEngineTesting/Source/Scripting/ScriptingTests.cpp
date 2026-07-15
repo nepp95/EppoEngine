@@ -1,6 +1,5 @@
 #include "Support/EppoTest.h"
 #include "Support/GlmCheck.h"
-
 #include "Asset/Asset.h"
 #include "Core/Input.h"
 #include "Core/KeyCodes.h"
@@ -12,6 +11,7 @@
 #include "Scripting/ScriptEngine.h"
 
 #include <algorithm>
+#include <ranges>
 
 using namespace Eppo;
 

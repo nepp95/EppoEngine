@@ -14,12 +14,11 @@ namespace Eppo
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetStyle().IndentSpacing * 0.5f);
 
 		// Roots only; children are drawn by recursion in DrawEntityNode.
-		for (const auto e : scene->m_Registry.view<entt::entity>())
+		scene->ForEachEntity([&](Entity entity)
 		{
-			const Entity entity(e, scene.get());
 			if (!entity.GetComponent<RelationshipComponent>().Parent)
 				DrawEntityNode(entity);
-		}
+		});
 
 		ImGui::PopStyleVar();
 

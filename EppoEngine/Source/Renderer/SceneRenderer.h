@@ -40,9 +40,21 @@ namespace Eppo
 
 		auto Resize(uint32_t width, uint32_t height) -> void;
 
-		// Submit debug primitives through the getter between BeginScene and EndScene.
-        auto SetDebugRenderingEnabled(const bool enabled) -> void { m_DebugRenderingEnabled = enabled; }
-        [[nodiscard]] auto IsDebugRenderingEnabled() const -> bool { return m_DebugRenderingEnabled; }
+		auto SetDebugRenderingEnabled(const bool enabled) -> void { m_DebugRenderingEnabled = enabled; }
+		[[nodiscard]] auto IsDebugRenderingEnabled() const -> bool { return m_DebugRenderingEnabled; }
+
+		// Colliders are a debug sub-feature: only drawn when debug rendering is on,
+		// but the toggle is persisted on the renderer so re-enabling debug rendering
+		// remembers whether colliders should come back.
+		auto SetShowColliders(const bool enabled) -> void { m_ShowColliders = enabled; }
+		[[nodiscard]] auto IsShowColliders() const -> bool { return m_ShowColliders; }
+
+		auto SetHighlightedEntity(const Entity entity) -> void { m_HighlightedEntity = entity; }
+
+		// Keep the renderer's scene reference in sync with the editor's active scene.
+		// m_Scene is set once at construction and goes stale across play/stop (the
+		// editor swaps m_ActiveScene to a runtime copy); call this every frame.
+		auto SetScene(const Ref<Scene>& scene) -> void { m_Scene = scene; }
 
 	private:
         auto BeginSceneInternal() -> void;
@@ -56,6 +68,7 @@ namespace Eppo
 		nvrhi::CommandListHandle m_CommandList = nullptr;
 
 		bool m_DebugRenderingEnabled = false;
+		bool m_ShowColliders = true;
 		Entity m_HighlightedEntity;
 
 		RenderPass m_GeometryPass{ "Geometry" };
@@ -92,6 +105,11 @@ namespace Eppo
 		std::map<DrawKey, DrawCommand> m_DrawCommands;
 		Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
 
+		// WireframePass owns its own instance buffer (collider/highlight draws are
+		// separate from geometry instances). Collider primitive meshes are fetched
+		// from the AssetManager on demand, so they share its lazy cache.
+		Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
+
 		struct CameraData
 		{
 			glm::mat4 View;
@@ -113,7 +131,6 @@ namespace Eppo
 
 			std::array<PointLight, MaxPointLights> Lights{};
 			uint32_t NumLights = 0;
-			float _pad[3]{};
 		} m_LightData{};
 		Ref<UniformBuffer> m_LightsUB = nullptr;
 

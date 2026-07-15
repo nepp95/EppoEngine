@@ -66,7 +66,11 @@ namespace Eppo
 		[[nodiscard]] constexpr auto GetImages() const -> const std::vector<Ref<Image>>& { return m_Images; }
 		[[nodiscard]] auto GetImage(uint32_t imageIndex) const -> const Ref<Image>& { return m_Images.at(imageIndex); }
 
-		static auto CreateMeshPrimitive(MeshPrimitiveType type) -> Ref<Mesh>;
+		// Procedurally builds a Mesh for the given primitive shape. Called by the
+		// AssetManager to materialize a primitive asset on first request; subsequent
+		// requests are served from the AssetManager's cache, so this only runs once
+		// per type. Use AssetManager::GetOrLoadAsset to obtain primitive meshes.
+		static auto GenerateMeshPrimitive(MeshPrimitiveType type) -> Ref<Mesh>;
 
 	private:
 		auto ProcessNode(const tg3_model& model, const tg3_node& node) -> void;

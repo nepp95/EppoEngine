@@ -6,7 +6,11 @@
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Renderer.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <nvrhi/utils.h>
+
+#include <ranges>
 
 namespace Eppo
 {
@@ -138,7 +142,7 @@ namespace Eppo
 		sceneStats += m_GeometryPass.GetStats();
 		sceneStats += m_SkyPass.GetStats();
 	    sceneStats += m_WireframePass.GetStats();
-		const float sceneTime = m_GeometryPass.GetTimeMs(frameIndex) + m_SkyPass.GetTimeMs(frameIndex);
+		const float sceneTime = m_GeometryPass.GetTimeMs(frameIndex) + m_SkyPass.GetTimeMs(frameIndex) + m_WireframePass.GetTimeMs(frameIndex);
 		ImGui::Text("Scene total: %u draw calls, %.2fms", sceneStats.DrawCalls, sceneTime);
 
 		// UI is tracked and reported separately from the scene.
@@ -502,117 +506,173 @@ namespace Eppo
 		device->executeCommandList(m_CommandList);
 	}
 
-    auto SceneRenderer::WireframePass() -> void
+	auto SceneRenderer::WireframePass() -> void
 	{
-	    EP_PROFILE_FN("SceneRenderer::SkyPass")
+		EP_PROFILE_FN("SceneRenderer::WireframePass")
 
-	    constexpr auto wireframeColor = glm::vec4(0.2f, 0.8f, 0.3f, 1.0f);
+		// Debug overlays are opt-in; bail before touching any GPU state.
+		if (!m_DebugRenderingEnabled)
+			return;
 
-        const auto& dm = DeviceManager::Get();
-	    const auto device = dm->GetDevice();
-	    const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-	    EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
+		constexpr auto colliderColor = glm::vec4(0.2f, 0.8f, 0.3f, 1.0f);
+		constexpr auto highlightColor = glm::vec4(0.91f, 0.39f, 0.11f, 1.0f); // Eppo orange
 
-	    m_CommandList->open();
-	    m_WireframePass.Begin(m_CommandList, frameIndex);
-	    PassStatistics& stats = m_WireframePass.GetStats();
+		// Gather this frame's wireframe draws. Each is a mesh + world transform +
+		// color; the unit collider primitives carry the collider's size in the
+		// transform scale. Wireframes are sourced from the scene, not the geometry
+		// draw list: that list is batched by mesh asset (no entity to recover) and
+		// misses collider-only entities entirely. An entity may carry more than one
+		// collider, so each type is checked independently (matching GatherColliders).
+		struct WireframeDraw
+		{
+			Ref<Mesh> Mesh = nullptr;
+			glm::mat4 Transform = glm::mat4(1.0f);
+			glm::vec4 Color = glm::vec4(1.0f);
+		};
+		std::vector<WireframeDraw> wireframes;
 
-	    // Clear framebuffer if needed
-	    const auto& framebuffer = m_WireframePipeline->GetSpecification().Framebuffer;
+		if (m_ShowColliders)
+		{
+			// Unit collider primitives from the AssetManager (lazy-cached there).
+			// Dimensions match the scale math below: cube half-extent 1, sphere
+			// radius 1, capsule radius 1 / total height 2 (so Height maps to Height/2).
+			const auto& assetManager = Project::GetActive()->GetAssetManager();
+			const auto boxMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+			const auto sphereMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
+			const auto capsuleMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
 
-	    if (framebuffer->GetSpecification().ClearColorOnLoad)
-	    {
-	        const auto& clearColor = framebuffer->GetSpecification().ClearColor;
-	        for (uint32_t i = 0; i < framebuffer->GetFramebuffer()->getDesc().colorAttachments.size(); i++)
-	            nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer->GetFramebuffer(), i, nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a));
-	    }
+			m_Scene->ForEachEntity([&](Entity entity)
+			{
+				const glm::mat4 world = m_Scene->GetWorldTransform(entity);
 
-	    if (framebuffer->GetSpecification().ClearDepthOnLoad)
-	    {
-	        const auto& spec = framebuffer->GetSpecification();
-	        nvrhi::utils::ClearDepthStencilAttachment(m_CommandList, framebuffer->GetFramebuffer(), spec.DepthClearValue, spec.StencilClearValue);
-	    }
+				if (entity.HasComponent<BoxColliderComponent>())
+				{
+					const auto& c = entity.GetComponent<BoxColliderComponent>();
+					wireframes.push_back({ boxMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor });
+				}
 
-	    // Setup graphics state
-	    nvrhi::GraphicsState state{
-	        .pipeline = m_WireframePipeline->GetPipeline(),
-            .framebuffer = framebuffer->GetFramebuffer(),
-        };
+				if (entity.HasComponent<SphereColliderComponent>())
+				{
+					const auto& c = entity.GetComponent<SphereColliderComponent>();
+					wireframes.push_back({ sphereMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius)), colliderColor });
+				}
 
-	    // Viewport and scissor
-	    state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
-	    state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
+				if (entity.HasComponent<CapsuleColliderComponent>())
+				{
+					const auto& c = entity.GetComponent<CapsuleColliderComponent>();
+					// Unit capsule: radius 1, hemisphere centers at +-1, so height maps to Height/2.
+					wireframes.push_back({ capsuleMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor });
+				}
+			});
+		}
 
-	    // Push constants forward decl
-	    struct PushConstants
-	    {
-	        glm::mat4 Transform;
-	        glm::vec4 Color;
-	        uint32_t InstanceOffset;
-	    } pushConstants{ .Color = wireframeColor };
+		// Selection highlight: outline the highlighted entity's own mesh.
+		if (m_HighlightedEntity && m_HighlightedEntity.HasComponent<MeshComponent>())
+		{
+			if (const auto& mc = m_HighlightedEntity.GetComponent<MeshComponent>(); mc.MeshHandle)
+			{
+				const auto mesh = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Mesh>(mc.MeshHandle);
+				wireframes.push_back({ mesh, m_Scene->GetWorldTransform(m_HighlightedEntity), highlightColor });
+			}
+		}
 
-	    // Binding sets
-	    const auto& bindingLayouts = m_GeometryPipeline->GetSpecification().Shader->GetBindingLayouts();
+		if (wireframes.empty())
+			return;
 
-	    // Set 0
-	    nvrhi::BindingSetDesc desc{};
-	    desc.bindings = {
-	        nvrhi::BindingSetItem::PushConstants(0, sizeof(PushConstants)),
-            nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
-            nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_InstanceTransformsSB->GetBuffer())
-        };
+		const auto& dm = DeviceManager::Get();
+		const auto device = dm->GetDevice();
+		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
+		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
-	    const auto bindingSet = device->createBindingSet(desc, bindingLayouts.at(0));
-	    state.addBindingSet(bindingSet);
+		// One instance transform per draw; the shader indexes it by InstanceOffset.
+		std::vector<glm::mat4> instanceTransforms;
+		instanceTransforms.reserve(wireframes.size());
+		for (const auto& draw : wireframes)
+			instanceTransforms.push_back(draw.Transform);
 
-	    for (const auto& drawCmd : m_DrawCommands | std::views::values)
-	    {
-            if (const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size()); instanceCount == 0)
-	            continue;
+		const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
+		if (!m_WireframeInstanceSB)
+			m_WireframeInstanceSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), requiredSize, "StorageBuffer Wireframe Instance Transforms");
+		m_WireframeInstanceSB->SetData(instanceTransforms.data(), requiredSize);
 
-	        for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
-	        {
-	            const nvrhi::VertexBufferBinding vtxBufBinding{
-	                .buffer = submesh.VertexBuffer->GetBuffer(),
-                    .slot = 0,
-                    .offset = 0,
-                };
+		m_CommandList->open();
+		m_WireframePass.Begin(m_CommandList, frameIndex);
+		PassStatistics& stats = m_WireframePass.GetStats();
 
-	            state.vertexBuffers.resize(1);
-	            state.vertexBuffers[0] = vtxBufBinding;
-	            state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
-	            state.indexBuffer.format = nvrhi::Format::R32_UINT;
-	            state.indexBuffer.offset = 0;
-	            m_CommandList->setGraphicsState(state);
+		const auto& framebuffer = m_WireframePipeline->GetSpecification().Framebuffer;
 
-	            pushConstants.Transform = submesh.LocalTransform;
-	            pushConstants.InstanceOffset = drawCmd.InstanceOffset;
+		nvrhi::GraphicsState state{
+			.pipeline = m_WireframePipeline->GetPipeline(),
+			.framebuffer = framebuffer->GetFramebuffer(),
+		};
+		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
+		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
 
-	            for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
-	            {
-	                m_CommandList->setPushConstants(&pushConstants, sizeof(PushConstants));
+		// Matches wireframe.vert: { Transform, WireframeColor, InstanceOffset }.
+		struct PushConstants
+		{
+			glm::mat4 Transform;
+			glm::vec4 Color;
+			uint32_t InstanceOffset;
+		} pushConstants{};
 
-	                nvrhi::DrawArguments drawArgs{
-	                    .vertexCount = static_cast<uint32_t>(indexCount),
-                        .instanceCount = 1,
-                        .startIndexLocation = firstIndex,
-                        .startVertexLocation = firstVertex,
-                    };
+		const auto& bindingLayouts = m_WireframePipeline->GetSpecification().Shader->GetBindingLayouts();
 
-	                m_CommandList->drawIndexed(drawArgs);
+		nvrhi::BindingSetDesc desc{};
+		desc.bindings = {
+			nvrhi::BindingSetItem::PushConstants(0, sizeof(PushConstants)),
+			nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
+			nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_WireframeInstanceSB->GetBuffer()),
+		};
+		state.addBindingSet(device->createBindingSet(desc, bindingLayouts.at(0)));
 
-	                stats.DrawCalls++;
-	                stats.Vertices += vertexCount;
-	                stats.Indices += indexCount;
-	            }
-	            stats.Submeshes++;
-	        }
-	        stats.Meshes++;
-	        stats.Instances++;
-	    }
+		for (uint32_t drawIndex = 0; const auto& draw : wireframes)
+		{
+			for (const auto& submesh : draw.Mesh->GetSubmeshes())
+			{
+				const nvrhi::VertexBufferBinding vtxBufBinding{
+					.buffer = submesh.VertexBuffer->GetBuffer(),
+					.slot = 0,
+					.offset = 0,
+				};
 
-	    m_WireframePass.End(m_CommandList, frameIndex);
-	    m_CommandList->close();
-	    device->executeCommandList(m_CommandList);
+				state.vertexBuffers.resize(1);
+				state.vertexBuffers[0] = vtxBufBinding;
+				state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+				state.indexBuffer.format = nvrhi::Format::R32_UINT;
+				state.indexBuffer.offset = 0;
+				m_CommandList->setGraphicsState(state);
+
+				pushConstants.Transform = submesh.LocalTransform;
+				pushConstants.Color = draw.Color;
+				pushConstants.InstanceOffset = drawIndex;
+
+				for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+				{
+					m_CommandList->setPushConstants(&pushConstants, sizeof(PushConstants));
+
+					nvrhi::DrawArguments drawArgs{
+						.vertexCount = static_cast<uint32_t>(indexCount),
+						.instanceCount = 1,
+						.startIndexLocation = firstIndex,
+						.startVertexLocation = firstVertex,
+					};
+
+					m_CommandList->drawIndexed(drawArgs);
+
+					stats.DrawCalls++;
+					stats.Vertices += static_cast<uint32_t>(vertexCount);
+					stats.Indices += static_cast<uint32_t>(indexCount);
+				}
+				stats.Submeshes++;
+			}
+			stats.Meshes++;
+			stats.Instances++;
+			++drawIndex;
+		}
+
+		m_WireframePass.End(m_CommandList, frameIndex);
+		m_CommandList->close();
+		device->executeCommandList(m_CommandList);
 	}
 }

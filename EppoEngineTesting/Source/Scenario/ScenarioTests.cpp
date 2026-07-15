@@ -146,7 +146,7 @@ SUITE(Scenario)
         scene->GetEnvironment().AmbientIntensity = 0.75f;
 
         const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
-        const ScopedPtr<EditorCamera> camera = CreateScopedPtr<EditorCamera>(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
+        const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
 
         // Render across several real frames to cycle the frames-in-flight indices.
         ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });

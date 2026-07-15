@@ -74,9 +74,9 @@ namespace Eppo
 		m_Buffer = buffer;
 	}
 
-	auto IndexBuffer::CreateMeshPrimitive(const MeshPrimitiveType type) -> Ref<IndexBuffer>
+	auto IndexBuffer::GeneratePrimitive(const MeshPrimitiveType type) -> Ref<IndexBuffer>
 	{
-		EP_PROFILE_FN("IndexBuffer::CreateMeshPrimitive");
+		EP_PROFILE_FN("IndexBuffer::GeneratePrimitive");
 
 		switch (type)
 		{

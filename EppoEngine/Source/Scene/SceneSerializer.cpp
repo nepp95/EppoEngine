@@ -92,22 +92,12 @@ namespace Eppo
 
 		auto entities = json::array();
 
-		m_SceneContext->m_Registry.sort<IDComponent>(
-			[](const auto& lhs, const auto& rhs) 
-			{
-				return lhs.ID < rhs.ID;
-			}
-		);
-		
-		const auto view = m_SceneContext->m_Registry.view<IDComponent>();
-		for (const auto e : view)
-		{
-			const Entity entity(e, m_SceneContext.get());
-			if (!entity)
-				continue;
+		m_SceneContext->SortEntitiesByID();
 
+		m_SceneContext->ForEachEntity([&](Entity entity)
+		{
 			SerializeEntity(entities, entity);
-		}
+		});
 
 		data["Scene"]["Entities"] = entities;
 		FS::WriteText(path, data.dump(4), true);

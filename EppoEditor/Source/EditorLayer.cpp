@@ -31,7 +31,7 @@ namespace Eppo
 		m_PanelManager->GetPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL)
 			->SetOpenSceneCallback([this](AssetHandle handle) { OpenScene(handle); });
 
-		m_EditorCamera = CreateScopedPtr<EditorCamera>(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
+		m_EditorCamera = EditorCamera(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
 
 		const auto loadIcon = [](const char* fileName) -> Ref<Image>
 		{
@@ -68,7 +68,7 @@ namespace Eppo
 		m_SceneRenderer = CreateRef<SceneRenderer>(m_ActiveScene, SceneRendererSpecification{
 			.Width = m_ViewportWidth,
 			.Height = m_ViewportHeight,
-			.EnableDebugRenderer = true,
+			.EnableDebugRendering = true,
 		});
 	}
 
@@ -90,7 +90,7 @@ namespace Eppo
 
 		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 		{
-			m_EditorCamera->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
+			m_EditorCamera.SetViewportSize(m_ViewportWidth, m_ViewportHeight);
 			m_ActiveScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
 			m_EditorScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
 			m_SceneRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
@@ -102,6 +102,10 @@ namespace Eppo
 		// name never drives the scene. m_ViewportFocused is from last frame's UI pass,
 		// which is close enough and avoids a one-frame input spill.
 		Input::SetViewportInputEnabled(m_ViewportFocused);
+
+		// Outline the selection in edit mode only; clear it while playing.
+		m_SceneRenderer->SetScene(m_ActiveScene);
+		m_SceneRenderer->SetHighlightedEntity(m_SceneState == SceneState::Edit ? m_SelectedEntity : Entity{});
 
 		switch (m_SceneState)
 		{
@@ -238,6 +242,14 @@ namespace Eppo
             {
                 if (ImGui::MenuItem("Enable Debug Rendering", nullptr, m_SceneRenderer->IsDebugRenderingEnabled()))
                     m_SceneRenderer->SetDebugRenderingEnabled(!m_SceneRenderer->IsDebugRenderingEnabled());
+
+                // Sub-toggles are only operative while debug rendering is on, but
+                // their state lives on the renderer so re-enabling the master toggle
+                // restores them. Greyed out to signal they have no effect while off.
+                ImGui::BeginDisabled(!m_SceneRenderer->IsDebugRenderingEnabled());
+                if (ImGui::MenuItem("Show Colliders", nullptr, m_SceneRenderer->IsShowColliders()))
+                    m_SceneRenderer->SetShowColliders(!m_SceneRenderer->IsShowColliders());
+                ImGui::EndDisabled();
 
                 ImGui::EndMenu();
             }
@@ -386,18 +398,14 @@ namespace Eppo
 		if (!m_EditorScene)
 			return;
 
-		// Capture the selection's UUID before switching scenes; the handle is only
-		// valid in the editor registry, but the UUID survives Scene::Copy.
-		const UUID selectedUUID = GetSelectedUUID();
+		// Since we copy the scene, selected entity may invalidate. Read it and then reassign.
+        m_SelectedEntity = m_PanelManager->GetSelectedEntity();
 
 		m_SceneState = SceneState::Play;
 		m_ActiveScene = Scene::Copy(m_EditorScene);
 		m_PanelManager->SetSceneContext(m_ActiveScene);
 
-		// Re-resolve the selection by UUID in the runtime copy so the Property panel
-		// edits the entity that is actually being rendered (handles don't survive the
-		// copy, UUIDs do). Clear it if the UUID isn't present.
-		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
+		m_SelectedEntity = m_ActiveScene->GetEntityByUUID(m_SelectedEntity.GetUUID());
 		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 
 		m_ActiveScene->OnRuntimeStart();
@@ -425,16 +433,14 @@ namespace Eppo
 
 		m_ActiveScene->OnRuntimeStop();
 
-		// Read the selection's UUID while the runtime scene it points at is still
-		// alive (it is dropped by the assignment below).
-		const UUID selectedUUID = GetSelectedUUID();
+		// Since we revert the copy of the scene, selected entity may invalidate. Read it and then reassign.
+		m_SelectedEntity = m_PanelManager->GetSelectedEntity();
 
 		m_SceneState = SceneState::Edit;
 		m_ActiveScene = m_EditorScene;
 		m_PanelManager->SetSceneContext(m_ActiveScene);
 
-		// Map the selection back onto the editor scene by UUID (see OnScenePlay).
-		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
+		m_SelectedEntity = m_ActiveScene->GetEntityByUUID(m_SelectedEntity.GetUUID());
 		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 	}
 

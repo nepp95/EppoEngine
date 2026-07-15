@@ -77,9 +77,9 @@ namespace Eppo
 		m_Buffer = buffer;
 	}
 
-	auto VertexBuffer::CreateMeshPrimitive(const MeshPrimitiveType type) -> Ref<VertexBuffer>
+	auto VertexBuffer::GeneratePrimitive(const MeshPrimitiveType type) -> Ref<VertexBuffer>
 	{
-		EP_PROFILE_FN("VertexBuffer::CreateMeshPrimitive");
+		EP_PROFILE_FN("VertexBuffer::GeneratePrimitive");
 
 		switch (type)
 		{
