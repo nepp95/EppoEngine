@@ -49,6 +49,12 @@ namespace Eppo
 		auto SetShowColliders(const bool enabled) -> void { m_ShowColliders = enabled; }
 		[[nodiscard]] auto IsShowColliders() const -> bool { return m_ShowColliders; }
 
+		// Mesh wireframes are a debug sub-feature: overlays every entity's mesh as
+		// a wireframe outline when debug rendering is on. Same persistence pattern
+		// as ShowColliders.
+		auto SetShowWireframes(const bool enabled) -> void { m_ShowWireframes = enabled; }
+		[[nodiscard]] auto IsShowWireframes() const -> bool { return m_ShowWireframes; }
+
 		auto SetHighlightedEntity(const Entity entity) -> void { m_HighlightedEntity = entity; }
 
 		// Keep the renderer's scene reference in sync with the editor's active scene.
@@ -69,6 +75,7 @@ namespace Eppo
 
 		bool m_DebugRenderingEnabled = false;
 		bool m_ShowColliders = true;
+		bool m_ShowWireframes = true;
 		Entity m_HighlightedEntity;
 
 		RenderPass m_GeometryPass{ "Geometry" };

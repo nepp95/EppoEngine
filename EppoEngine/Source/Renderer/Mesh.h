@@ -8,6 +8,8 @@
 
 #include <glm/glm.hpp>
 
+#include <limits>
+
 struct tg3_mesh;
 struct tg3_model;
 struct tg3_node;
@@ -21,6 +23,26 @@ namespace Eppo
 		Cylinder = 3,
 		Sphere = 4,
 		Capsule = 5,
+	};
+
+	// Axis-aligned bounding box in the mesh's local space — the space the entity's
+	// world transform maps from. Computed once at load time (vertices are uploaded
+	// to GPU and not retained on CPU), so the renderer can size a selection box
+	// without reading back vertex data.
+	struct AABB
+	{
+		glm::vec3 Min{ std::numeric_limits<float>::max() };
+		glm::vec3 Max{ std::numeric_limits<float>::lowest() };
+
+		auto Expand(const glm::vec3& p) -> void
+		{
+			Min = glm::min(Min, p);
+			Max = glm::max(Max, p);
+		}
+
+		[[nodiscard]] auto GetCenter() const -> glm::vec3 { return (Min + Max) * 0.5f; }
+		[[nodiscard]] auto GetHalfExtent() const -> glm::vec3 { return (Max - Min) * 0.5f; }
+		[[nodiscard]] auto IsValid() const -> bool { return Min.x <= Max.x; }
 	};
 
 	struct Material
@@ -65,6 +87,7 @@ namespace Eppo
 		[[nodiscard]] auto GetMaterial(uint32_t materialIndex) const -> const Ref<Material>& { return m_Materials.at(materialIndex); }
 		[[nodiscard]] constexpr auto GetImages() const -> const std::vector<Ref<Image>>& { return m_Images; }
 		[[nodiscard]] auto GetImage(uint32_t imageIndex) const -> const Ref<Image>& { return m_Images.at(imageIndex); }
+		[[nodiscard]] constexpr auto GetBounds() const -> const AABB& { return m_Bounds; }
 
 		// Procedurally builds a Mesh for the given primitive shape. Called by the
 		// AssetManager to materialize a primitive asset on first request; subsequent
@@ -83,5 +106,6 @@ namespace Eppo
 		std::vector<Submesh> m_Submeshes;
 		std::vector<Ref<Material>> m_Materials;
 		std::vector<Ref<Image>> m_Images;
+		AABB m_Bounds;
 	};
 }

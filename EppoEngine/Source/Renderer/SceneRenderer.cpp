@@ -516,6 +516,7 @@ namespace Eppo
 
 		constexpr auto colliderColor = glm::vec4(0.2f, 0.8f, 0.3f, 1.0f);
 		constexpr auto highlightColor = glm::vec4(0.91f, 0.39f, 0.11f, 1.0f); // Eppo orange
+		constexpr auto meshWireframeColor = glm::vec4(0.45f, 0.63f, 0.95f, 1.0f); // Soft blue
 
 		// Gather this frame's wireframe draws. Each is a mesh + world transform +
 		// color; the unit collider primitives carry the collider's size in the
@@ -531,12 +532,13 @@ namespace Eppo
 		};
 		std::vector<WireframeDraw> wireframes;
 
+		const auto& assetManager = Project::GetActive()->GetAssetManager();
+
 		if (m_ShowColliders)
 		{
 			// Unit collider primitives from the AssetManager (lazy-cached there).
 			// Dimensions match the scale math below: cube half-extent 1, sphere
 			// radius 1, capsule radius 1 / total height 2 (so Height maps to Height/2).
-			const auto& assetManager = Project::GetActive()->GetAssetManager();
 			const auto boxMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
 			const auto sphereMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
 			const auto capsuleMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
@@ -566,13 +568,40 @@ namespace Eppo
 			});
 		}
 
-		// Selection highlight: outline the highlighted entity's own mesh.
+		// Mesh wireframe overlay: every entity with a MeshComponent gets its full
+		// mesh drawn as a wireframe outline. Gives a scene-wide wireframe debug view
+		// independent of colliders or selection.
+		if (m_ShowWireframes)
+		{
+			m_Scene->ForEachEntity([&](Entity entity)
+			{
+				if (entity.HasComponent<MeshComponent>())
+				{
+					if (const auto& mc = entity.GetComponent<MeshComponent>(); mc.MeshHandle)
+					{
+						const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
+						const glm::mat4 world = m_Scene->GetWorldTransform(entity);
+						wireframes.push_back({ mesh, world, meshWireframeColor });
+					}
+				}
+			});
+		}
+
+		// Selection highlight: a wireframe box around the entity's mesh AABB.
+		// Uses the unit cube (vertices at +-1) scaled to the mesh's local-space
+		// half-extent and centered at the AABB center, then transformed to world.
 		if (m_HighlightedEntity && m_HighlightedEntity.HasComponent<MeshComponent>())
 		{
 			if (const auto& mc = m_HighlightedEntity.GetComponent<MeshComponent>(); mc.MeshHandle)
 			{
-				const auto mesh = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Mesh>(mc.MeshHandle);
-				wireframes.push_back({ mesh, m_Scene->GetWorldTransform(m_HighlightedEntity), highlightColor });
+				const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
+				if (const auto& bounds = mesh->GetBounds(); bounds.IsValid())
+				{
+					const auto boxMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+					const glm::mat4 world = m_Scene->GetWorldTransform(m_HighlightedEntity);
+					const glm::mat4 boxTransform = glm::scale(glm::translate(world, bounds.GetCenter()), bounds.GetHalfExtent());
+					wireframes.push_back({ boxMesh, boxTransform, highlightColor });
+				}
 			}
 		}
 
@@ -624,7 +653,9 @@ namespace Eppo
 			nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
 			nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_WireframeInstanceSB->GetBuffer()),
 		};
-		state.addBindingSet(device->createBindingSet(desc, bindingLayouts.at(0)));
+
+		const auto bindingSet = device->createBindingSet(desc, bindingLayouts.at(0));
+		state.addBindingSet(bindingSet);
 
 		for (uint32_t drawIndex = 0; const auto& draw : wireframes)
 		{

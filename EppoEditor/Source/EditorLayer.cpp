@@ -249,6 +249,8 @@ namespace Eppo
                 ImGui::BeginDisabled(!m_SceneRenderer->IsDebugRenderingEnabled());
                 if (ImGui::MenuItem("Show Colliders", nullptr, m_SceneRenderer->IsShowColliders()))
                     m_SceneRenderer->SetShowColliders(!m_SceneRenderer->IsShowColliders());
+                if (ImGui::MenuItem("Show Wireframes", nullptr, m_SceneRenderer->IsShowWireframes()))
+                    m_SceneRenderer->SetShowWireframes(!m_SceneRenderer->IsShowWireframes());
                 ImGui::EndDisabled();
 
                 ImGui::EndMenu();
@@ -398,14 +400,16 @@ namespace Eppo
 		if (!m_EditorScene)
 			return;
 
-		// Since we copy the scene, selected entity may invalidate. Read it and then reassign.
-        m_SelectedEntity = m_PanelManager->GetSelectedEntity();
+		// Capture the UUID while the current scene is still alive. Scene::Copy
+		// creates a new registry (handles don't survive), but UUIDs do.
+		const UUID selectedUUID = m_PanelManager->GetSelectedEntity()
+			? m_PanelManager->GetSelectedEntity().GetUUID() : UUID{};
 
 		m_SceneState = SceneState::Play;
 		m_ActiveScene = Scene::Copy(m_EditorScene);
 		m_PanelManager->SetSceneContext(m_ActiveScene);
 
-		m_SelectedEntity = m_ActiveScene->GetEntityByUUID(m_SelectedEntity.GetUUID());
+		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
 		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 
 		m_ActiveScene->OnRuntimeStart();
@@ -433,14 +437,17 @@ namespace Eppo
 
 		m_ActiveScene->OnRuntimeStop();
 
-		// Since we revert the copy of the scene, selected entity may invalidate. Read it and then reassign.
-		m_SelectedEntity = m_PanelManager->GetSelectedEntity();
+		// Capture the UUID while the play scene is still alive. The Entity's
+		// raw Scene* becomes dangling as soon as we drop the Ref below, so we
+		// must extract the UUID value now and re-resolve it in the editor scene.
+		const UUID selectedUUID = m_PanelManager->GetSelectedEntity()
+			? m_PanelManager->GetSelectedEntity().GetUUID() : UUID{};
 
 		m_SceneState = SceneState::Edit;
 		m_ActiveScene = m_EditorScene;
 		m_PanelManager->SetSceneContext(m_ActiveScene);
 
-		m_SelectedEntity = m_ActiveScene->GetEntityByUUID(m_SelectedEntity.GetUUID());
+		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
 		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 	}
 

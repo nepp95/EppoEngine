@@ -93,6 +93,16 @@ namespace Eppo
 		mesh->m_Materials.emplace_back(material);
 		mesh->m_Name = MeshPrimitiveTypeToString(type);
 
+		// Unit primitives: all fit within a ±1 cube except the capsule, whose
+		// hemispheres extend to ±2 on Y (radius 1, hemisphere centers at ±1).
+		mesh->m_Bounds.Min = glm::vec3(-1.0f);
+		mesh->m_Bounds.Max = glm::vec3(1.0f);
+		if (type == MeshPrimitiveType::Capsule)
+		{
+			mesh->m_Bounds.Min.y = -2.0f;
+			mesh->m_Bounds.Max.y = 2.0f;
+		}
+
 		return mesh;
 	}
 
@@ -223,6 +233,13 @@ namespace Eppo
 		
 		data.VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), static_cast<uint64_t>(vertices.size() * sizeof(Vertex)));
 		data.IndexBuffer = CreateRef<IndexBuffer>(indices.data(), static_cast<uint64_t>(indices.size() * sizeof(uint32_t)));
+
+		// Accumulate mesh-local bounds: vertices are in submesh space, so
+		// transform by the submesh's LocalTransform to reach the space the
+		// entity's world transform maps from.
+		for (const auto& v : vertices)
+			m_Bounds.Expand(glm::vec3(localTransform * glm::vec4(v.Position, 1.0f)));
+
 		m_Submeshes.emplace_back(std::move(data));
 	}
 
