@@ -14,18 +14,25 @@
 
 namespace Eppo
 {
-	namespace
+	SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
+		: m_Scene(scene), m_DebugRenderingEnabled(specification.EnableDebugRendering)
 	{
-		// Pipeline factories used in the member initializer list — the passes own
-		// their pipelines and are constructed before the constructor body runs.
+		EP_PROFILE_FN("SceneRenderer::SceneRenderer")
 
-		auto MakeGeometryPipeline(const uint32_t width, const uint32_t height) -> Ref<Pipeline>
+		const auto& dm = DeviceManager::Get();
+		auto device = dm->GetDevice();
+		const auto& renderer = dm->GetRenderer();
+		m_CommandList = device->createCommandList();
+
+		m_Width = specification.Width == 0 ? Application::Get().GetWindow()->GetWidth() : specification.Width;
+		m_Height = specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height;
+
+		// Create render passes
+		// Geometry
 		{
-			const auto& renderer = DeviceManager::Get()->GetRenderer();
-
 			FramebufferSpecification framebufferSpec{
-				.Width = width,
-				.Height = height,
+				.Width = m_Width,
+				.Height = m_Height,
 				.Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
 				.ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
 				.ClearColorOnLoad = true,
@@ -36,43 +43,55 @@ namespace Eppo
 			PipelineSpecification pipelineSpec{
 				.Shader = renderer->GetShader("geometry"),
 				.Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-				.Width = width,
-				.Height = height,
+				.Width = m_Width,
+				.Height = m_Height,
 				.CullMode = nvrhi::RasterCullMode::Front,
 				.DepthTestEnable = true,
 				.DepthWriteEnable = true,
 			};
 
-			return CreateRef<Pipeline>(pipelineSpec);
+			auto pipeline = CreateRef<Pipeline>(pipelineSpec);
+
+			RenderPassSpecification renderPassSpec{
+				.Name = "Geometry",
+				.Pipeline = pipeline,
+				.ClearColor = true,
+				.ClearDepth = true,
+			};
+
+			m_GeometryPass = RenderPass(renderPassSpec);
 		}
 
-		auto MakeSkyPipeline(const Ref<Pipeline>& geometryPipeline, const uint32_t width, const uint32_t height) -> Ref<Pipeline>
+		// Skybox
 		{
-			const auto& renderer = DeviceManager::Get()->GetRenderer();
-
 			PipelineSpecification pipelineSpec{
 				.Shader = renderer->GetShader("skybox"),
-				.Framebuffer = geometryPipeline->GetSpecification().Framebuffer,
-				.Width = width,
-				.Height = height,
+				.Framebuffer = m_GeometryPass.GetPipeline()->GetSpecification().Framebuffer,
+				.Width = m_Width,
+				.Height = m_Height,
 				.CullMode = nvrhi::RasterCullMode::None,
 				.DepthTestEnable = true,
 				.DepthWriteEnable = false,
 				.DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
 			};
 
-			return CreateRef<Pipeline>(pipelineSpec);
+			auto pipeline = CreateRef<Pipeline>(pipelineSpec);
+
+			RenderPassSpecification renderPassSpec{
+				.Name = "Skybox",
+				.Pipeline = pipeline,
+			};
+
+			m_SkyPass = RenderPass(renderPassSpec);
 		}
 
-		auto MakeWireframePipeline(const Ref<Pipeline>& geometryPipeline, const uint32_t width, const uint32_t height) -> Ref<Pipeline>
+		// Wireframes
 		{
-			const auto& renderer = DeviceManager::Get()->GetRenderer();
-
 			PipelineSpecification pipelineSpec{
 				.Shader = renderer->GetShader("wireframe"),
-				.Framebuffer = geometryPipeline->GetSpecification().Framebuffer,
-				.Width = width,
-				.Height = height,
+				.Framebuffer = m_GeometryPass.GetPipeline()->GetSpecification().Framebuffer,
+				.Width = m_Width,
+				.Height = m_Height,
 				.CullMode = nvrhi::RasterCullMode::None,
 				.FillMode = nvrhi::RasterFillMode::Wireframe,
 				.DepthTestEnable = true,
@@ -82,35 +101,15 @@ namespace Eppo
 				.SlopeScaledDepthBias = -1.0f,
 			};
 
-			return CreateRef<Pipeline>(pipelineSpec);
+			auto pipeline = CreateRef<Pipeline>(pipelineSpec);
+
+			RenderPassSpecification renderPassSpec{
+				.Name = "Wireframes",
+				.Pipeline = pipeline,
+			};
+
+			m_WireframePass = RenderPass(renderPassSpec);
 		}
-	}
-
-	SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
-		: m_Scene(scene), m_DebugRenderingEnabled(specification.EnableDebugRendering)
-		, m_Width(specification.Width == 0 ? Application::Get().GetWindow()->GetWidth() : specification.Width)
-		, m_Height(specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height)
-		, m_GeometryPass(RenderPassSpecification{
-			.Name = "Geometry",
-			.Pipeline = MakeGeometryPipeline(m_Width, m_Height),
-			.ClearColor = true,
-			.ClearDepth = true,
-		})
-		, m_SkyPass(RenderPassSpecification{
-			.Name = "Sky",
-			.Pipeline = MakeSkyPipeline(m_GeometryPass.GetPipeline(), m_Width, m_Height),
-		})
-		, m_WireframePass(RenderPassSpecification{
-			.Name = "Wireframe",
-			.Pipeline = MakeWireframePipeline(m_GeometryPass.GetPipeline(), m_Width, m_Height),
-		})
-	{
-		EP_PROFILE_FN("SceneRenderer::SceneRenderer")
-
-		const auto& dm = DeviceManager::Get();
-		auto device = dm->GetDevice();
-
-		m_CommandList = device->createCommandList();
 
 		nvrhi::SamplerDesc samplerDesc{};
 		samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);

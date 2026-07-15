@@ -48,13 +48,16 @@ namespace Eppo
 	class RenderPass
 	{
 	public:
+		RenderPass() = default;
 		explicit RenderPass(RenderPassSpecification spec);
 
 		// Owns per-frame GPU timer queries; copying would silently share them
-		// between two logical passes. Non-copyable (and non-movable — instances
-		// live as members, never reseated).
+		// between two logical passes. Non-copyable; movable so SceneRenderer can
+		// assign passes in its constructor body.
 		RenderPass(const RenderPass&) = delete;
 		auto operator=(const RenderPass&) -> RenderPass& = delete;
+		RenderPass(RenderPass&&) noexcept = default;
+		auto operator=(RenderPass&&) noexcept -> RenderPass& = default;
 
 		auto Begin(const nvrhi::CommandListHandle& commandList) -> nvrhi::GraphicsState;
 		auto End(const nvrhi::CommandListHandle& commandList) -> void;

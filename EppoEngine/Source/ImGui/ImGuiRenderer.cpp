@@ -121,8 +121,7 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiRenderer::Render")
 
-		const std::string marker = std::format("ImGui (Viewport: {})", viewport == ImGui::GetMainViewport() ? "Main" : std::to_string(reinterpret_cast<uint64_t>(viewport)));
-		nvrhi::GraphicsState state = m_Pass.Begin(m_CommandList, marker);
+		nvrhi::GraphicsState state = m_Pass.Begin(m_CommandList);
 		PassStatistics& stats = m_Pass.GetStats();
 
 		const auto& framebuffer = pipeline->GetSpecification().Framebuffer->GetFramebuffer();
