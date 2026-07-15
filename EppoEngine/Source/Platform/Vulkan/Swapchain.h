@@ -3,6 +3,8 @@
 #include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/DeviceManager.h"
 
+#include <queue>
+
 namespace Eppo
 {
 	struct SwapchainSupportDetails

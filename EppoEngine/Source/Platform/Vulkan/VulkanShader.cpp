@@ -10,6 +10,8 @@
 #endif
 
 #include <dxc/dxcapi.h>
+
+#include <ranges>
 #include <nvrhi/utils.h>
 #include <spirv_cross/spirv_cross.hpp>
 

@@ -1,9 +1,9 @@
 ---
-Checks:
-  'bugprone-*',
-  'clang-diagnostic-*',
-  'clang-analyzer-*',
-  'cppcoreguidelines-*',
-  'modernize-*',
-  'misc-use-anonymous-namespace',
-  'misc-const-correctness'
+Checks: >
+  bugprone-*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  misc-use-anonymous-namespace,
+  misc-const-correctness

@@ -8,6 +8,8 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
+#include <functional>
+
 namespace Eppo
 {
 	using EntityHandle = entt::entity;
@@ -60,6 +62,15 @@ namespace Eppo
 		// Composes an entity's world transform from its parent chain.
 		[[nodiscard]] auto GetWorldTransform(Entity entity) -> glm::mat4;
 
+		// Enumerate every entity in creation order, handing each to `func`. Every
+		// entity carries an IDComponent, so a view over it covers the whole scene.
+		// Use this instead of reaching into the registry for all-entity iteration.
+		auto ForEachEntity(const std::function<void(Entity)>& func) -> void;
+
+		// Sort entities by UUID for deterministic iteration (e.g. serialization).
+		// Subsequent ForEachEntity calls visit them in this order.
+		auto SortEntitiesByID() -> void;
+
 		// Resolve an entity by its stable UUID. Returns an invalid Entity if the
 		// UUID is not present in this scene. Used to remap a selection across the
 		// editor/runtime scene copies (UUIDs survive Scene::Copy, handles do not).
@@ -89,7 +100,5 @@ namespace Eppo
 		Ref<PhysicsWorld> m_PhysicsWorld;
 
 		friend class Entity;
-		friend class SceneHierarchyPanel;
-		friend class SceneSerializer;
 	};
 }

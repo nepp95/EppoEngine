@@ -1,0 +1,71 @@
+# AGENTS.md
+
+Compact guide for OpenCode agents working in this repo. Read before editing.
+
+## Project
+
+EppoEngine — a C++20 cross-platform (Windows/Linux) game engine + editor with C# scripting via CoreCLR (.NET 10) and Vulkan rendering through NVRHI. Built with CMake + vcpkg (manifest mode).
+
+## Prerequisites (all required, enforced by `CMake/Dependencies.cmake`)
+
+- **Vulkan SDK** with `dxc` (`find_package(Vulkan REQUIRED COMPONENTS dxc)`). Set `VULKAN_SDK`.
+- **vcpkg** with `VCPKG_ROOT` set and on PATH. Manifest mode; overlay ports in `CMake/Ports` (box3d, nvrhi, epposcriptcore).
+- **.NET SDK 10** with `DOTNET_ROOT` set. Managed scripting core targets `net10.0`.
+- **clang**: Windows presets pin `clang-cl`; Linux presets pin `clang/clang++`. MSVC alone is not used.
+- Linux also needs X11/Wayland/GL dev libs (see `README.md`).
+
+## Commands
+
+Presets are platform-prefixed: `windows-debug` / `linux-debug` (Debug), `*-release` (RelWithDebInfo), `*-dist` (Release). Binary dirs: `build/debug`, `build/release`, `build/dist`.
+
+```bash
+cmake --preset windows-debug                                       # configure (linux-debug on Linux)
+cmake --build --preset windows-debug                               # build everything
+cmake --build --preset windows-debug --target EppoEngineTesting    # test runner only (fastest; what CI builds)
+ctest --test-dir build/debug --output-on-failure                   # all suites
+ctest --test-dir build/debug --label-exclude graphical             # headless only (what CI runs)
+ctest --test-dir build/debug -R Scripting                          # one suite by name
+```
+
+Run a suite directly from the exe output dir (see Gotchas): `./EppoEngineTesting Scripting`.
+Suite names: `Physics`, `Scripting`, `ScriptMarshalling`, `UUID`, `App`, `Scenario`. Labels: `unit`, `scripting`, `core`, `graphical`.
+
+Required order: **configure -> build -> test**. After editing C# only, rebuild the `EppoEngineTesting` (or `EppoEditor`) target so the dotnet custom commands re-run and DLLs are re-copied.
+
+## Layout
+
+- `EppoEngine/` — static library, the engine. `Source/` modules: `Asset`, `Core`, `Event`, `ImGui`, `Physics`, `Platform`, `Project`, `Renderer`, `Scene`, `Scripting`, `Utility`. Public umbrella header `Source/EppoEngine.h`. PCH: `Source/pch.h`.
+- `EppoEditor/` — editor executable (`EppoEditor.cpp` -> `EditorLayer`). Depends on `EppoEngine` + `EppoScriptCore`. Owns `Resources/` and `runtimeconfig.json`.
+- `EppoScriptCore/` — C# class library (net10.0) built by `dotnet` via `CMake/Dotnet.cmake` (not msbuild). Produces `EppoScriptCore.dll` at the binary root.
+- `EppoEngineTesting/` — UnitTest++ test runner. `Source/` suites mirror engine modules; `Support/` has `AppHarness` (graphical) and `TestContext` (scenarios). `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites registered via `AddTestingSuite` in its `CMakeLists.txt`.
+- `EppoRuntime/` — scaffolded, currently **not wired into the top-level build** (no `add_subdirectory`); `BUILD_RUNTIME` option is unused.
+- `CMake/` — `Dependencies.cmake`, `Dotnet.cmake` (managed-core build + `CopyBuildScripts` helper), `Ports/` vcpkg overlays.
+
+## Gotchas
+
+- **Run editor/tests from the exe output dir.** They resolve `runtimeconfig.json`, `EppoScriptCore.dll`, and `Resources/` relative to the working directory. `VS_DEBUGGER_WORKING_DIRECTORY` is set accordingly; from a terminal, `cd` to the exe dir first or scripting fails to load.
+- **Managed core is built by CMake, not your IDE.** `EppoScriptCore.dll` + `EppoTesting.Scripts.dll` are produced by `dotnet` custom commands and copied beside the exes (`CopyBuildScripts`, `_HarnessDeploy`). A plain `dotnet build` won't wire them into the C++ build.
+- **Graphical suites (`App`, `Scenario`) need a real display + GPU.** They early-return if `AppHarness` can't boot. On headless/CI, always use `--label-exclude graphical`.
+- **CoreCLR initializes once per process.** The Scripting suite shares one `ScriptEngine::Init` + user-assembly load; do not re-init the runtime per test.
+- **clangd** reads `build/clangd` for `compile_commands.json` (`.clangd`), but presets emit it at `build/<preset>` (e.g. `build/debug`). Symlink/copy `build/debug/compile_commands.json` to `build/clangd` for clangd to work.
+- **Platform/config macros:** `EP_PLATFORM_WINDOWS`/`EP_PLATFORM_LINUX`; `EP_DEBUG`/`EP_RELEASE`/`EP_DIST`; `TRACY_ENABLE` in Debug and RelWithDebInfo. Linux defines `__EMULATE_UUID` (DXC cross-platform UUID path).
+
+## Style
+
+- `.clang-format`: 4-space indent, 140-col limit, Allman braces (custom `BraceWrapping`), pointer left (`int* p`), `SortIncludes: Never`, namespace indentation `All`. Run clang-format before committing.
+- `.clang-tidy`: `bugprone-*`, `clang-diagnostic-*`, `clang-analyzer-*`, `cppcoreguidelines-*`, `modernize-*`, `misc-use-anonymous-namespace`, `misc-const-correctness`.
+- Existing code carries concise "why" comments (see `.gitlab-ci.yml`, `CMakeLists.txt`). Match that — explain intent, not what.
+
+## CI
+
+GitLab CI (`.gitlab-ci.yml`): runs on MRs, `master`, `develop`, and `feature/*` + `test/*` branches. `build-and-test` configures `linux-debug`, builds only the `EppoEngineTesting` target, runs `ctest --label-exclude graphical`, publishes JUnit. Toolchain baked in `.gitlab/ci/Dockerfile` (clang, CMake >= 3.31, Ninja, vcpkg, Vulkan SDK, .NET 10). vcpkg binary cache keyed on `vcpkg.json` + `CMakePresets.json`.
+
+## Workflow rules (required)
+
+- **Plan before code.** For anything beyond a trivial change, write a plan first, verify it works end-to-end, and confirm key decisions with the user. Do not write any implementation code until the plan covers the entire task.
+- **Test-driven development.** Write/shape the test first, then implement. New behavior gets a test in the matching `EppoEngineTesting/Source/<module>/` suite, or a new suite via `AddTestingSuite` in `EppoEngineTesting/CMakeLists.txt`.
+- **Regression tests for critical bugs.** When fixing a critical bug, add a test that would have caught it, when logical to do so.
+- **Systematic debugging.** Find the root cause before attempting a fix. Do not patch symptoms; no fix until the root cause is identified.
+- **Code review after big tasks.** Review the diff before considering a substantial change done.
+- **Git worktrees.** Use git worktrees for isolated feature work where applicable. You may be asked to work directly on existing working changes instead — handle those in place.
+- **Verify before claiming done.** Run the relevant build + `ctest` (or the targeted suite) and confirm it passes before declaring success.

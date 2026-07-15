@@ -10,6 +10,8 @@
 #include <stb_image.h>
 #include <tiny_gltf_v3.h>
 
+#include <execution>
+
 namespace Eppo
 {
 	Mesh::Mesh(std::string_view path)
@@ -50,7 +52,7 @@ namespace Eppo
 		tg3_error_stack_free(&errors);
 	}
 
-	auto Mesh::CreateMeshPrimitive(const MeshPrimitiveType type) -> Ref<Mesh>
+	auto Mesh::GenerateMeshPrimitive(const MeshPrimitiveType type) -> Ref<Mesh>
 	{
 		constexpr auto MeshPrimitiveTypeToString = [](const MeshPrimitiveType type) -> std::string
 		{
@@ -67,8 +69,8 @@ namespace Eppo
 			return "Unknown";
 		};
 
-		const auto vb = VertexBuffer::CreateMeshPrimitive(type);
-		const auto ib = IndexBuffer::CreateMeshPrimitive(type);
+		const auto vb = VertexBuffer::GeneratePrimitive(type);
+		const auto ib = IndexBuffer::GeneratePrimitive(type);
 
 		Ref<Material> material = CreateRef<Material>();
 

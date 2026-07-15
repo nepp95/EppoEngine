@@ -12,13 +12,10 @@
 
 namespace Eppo
 {
-	// Scene-global gravity (m/s^2); per-body scaling via RigidBodyComponent::GravityScale.
 	static constexpr glm::vec3 s_DefaultGravity = { 0.0f, -9.81f, 0.0f };
 
 	namespace
 	{
-		// Collects an entity's collider components into the shape-agnostic list
-		// PhysicsWorld consumes. Adding a collider type touches only this function.
 		auto GatherColliders(Entity entity) -> std::vector<ColliderData>
 		{
 			std::vector<ColliderData> colliders;
@@ -366,6 +363,21 @@ namespace Eppo
 		}
 
 		return world;
+	}
+
+	auto Scene::ForEachEntity(const std::function<void(Entity)>& func) -> void
+	{
+		// Every entity carries an IDComponent, so a view over it enumerates all.
+		for (const auto view = m_Registry.view<IDComponent>(); const auto e : view)
+			func(Entity{ e, this });
+	}
+
+	auto Scene::SortEntitiesByID() -> void
+	{
+		m_Registry.sort<IDComponent>([](const IDComponent& lhs, const IDComponent& rhs)
+		{
+			return lhs.ID < rhs.ID;
+		});
 	}
 
 	template<typename T>
