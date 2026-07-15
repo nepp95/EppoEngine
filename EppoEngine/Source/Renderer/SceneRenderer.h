@@ -78,18 +78,16 @@ namespace Eppo
 		bool m_ShowWireframes = true;
 		Entity m_HighlightedEntity;
 
-		RenderPass m_GeometryPass{ "Geometry" };
-		RenderPass m_SkyPass{ "Sky" };
-	    RenderPass m_WireframePass{ "Wireframe" };
-
+		// Dimensions precede the passes: the passes are constructed in the
+		// member initializer list and their pipelines derive from m_Width/m_Height.
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
 
-		nvrhi::SamplerHandle m_Sampler = nullptr;
+		RenderPass m_GeometryPass;
+		RenderPass m_SkyPass;
+		RenderPass m_WireframePass;
 
-		Ref<Pipeline> m_GeometryPipeline = nullptr;
-		Ref<Pipeline> m_SkyPipeline = nullptr;
-	    Ref<Pipeline> m_WireframePipeline = nullptr;
+		nvrhi::SamplerHandle m_Sampler = nullptr;
 
 		struct DrawKey
 		{

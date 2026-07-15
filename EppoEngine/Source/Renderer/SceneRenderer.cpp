@@ -14,88 +14,108 @@
 
 namespace Eppo
 {
-	SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
-		: m_Scene(scene), m_DebugRenderingEnabled(specification.EnableDebugRendering), m_Width(specification.Width), m_Height(specification.Height)
+	namespace
 	{
-		EP_PROFILE_FN("SceneRenderer::SceneRenderer")
+		// Pipeline factories used in the member initializer list — the passes own
+		// their pipelines and are constructed before the constructor body runs.
 
-		const auto& dm = DeviceManager::Get();
-		auto device = dm->GetDevice();
-		const auto& renderer = dm->GetRenderer();
-
-		m_CommandList = device->createCommandList();
-
-		if (m_Width == 0 || m_Height == 0)
+		auto MakeGeometryPipeline(const uint32_t width, const uint32_t height) -> Ref<Pipeline>
 		{
-			const auto& app = Application::Get();
-			m_Width = app.GetWindow()->GetWidth();
-			m_Height = app.GetWindow()->GetHeight();
-		}
+			const auto& renderer = DeviceManager::Get()->GetRenderer();
 
-		nvrhi::SamplerDesc samplerDesc{};
-		samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);
-		samplerDesc.setAllFilters(true);
-		m_Sampler = device->createSampler(samplerDesc);
-
-		// Geometry Pipeline
-		{
 			FramebufferSpecification framebufferSpec{
-				.Width = m_Width,
-				.Height = m_Height,
+				.Width = width,
+				.Height = height,
 				.Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
 				.ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
 				.ClearColorOnLoad = true,
 				.ClearDepthOnLoad = true,
 				.DebugName = "Framebuffer Geometry",
 			};
-			
+
 			PipelineSpecification pipelineSpec{
 				.Shader = renderer->GetShader("geometry"),
 				.Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-				.Width = m_Width,
-				.Height = m_Height,
+				.Width = width,
+				.Height = height,
 				.CullMode = nvrhi::RasterCullMode::Front,
 				.DepthTestEnable = true,
 				.DepthWriteEnable = true,
 			};
 
-			m_GeometryPipeline = CreateRef<Pipeline>(pipelineSpec);
+			return CreateRef<Pipeline>(pipelineSpec);
 		}
 
-		// Sky Pipeline
+		auto MakeSkyPipeline(const Ref<Pipeline>& geometryPipeline, const uint32_t width, const uint32_t height) -> Ref<Pipeline>
 		{
+			const auto& renderer = DeviceManager::Get()->GetRenderer();
+
 			PipelineSpecification pipelineSpec{
 				.Shader = renderer->GetShader("skybox"),
-				.Framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer,
-				.Width = m_Width,
-				.Height = m_Height,
+				.Framebuffer = geometryPipeline->GetSpecification().Framebuffer,
+				.Width = width,
+				.Height = height,
 				.CullMode = nvrhi::RasterCullMode::None,
 				.DepthTestEnable = true,
 				.DepthWriteEnable = false,
 				.DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
 			};
 
-			m_SkyPipeline = CreateRef<Pipeline>(pipelineSpec);
+			return CreateRef<Pipeline>(pipelineSpec);
 		}
 
-	    // Wireframe pipeline
+		auto MakeWireframePipeline(const Ref<Pipeline>& geometryPipeline, const uint32_t width, const uint32_t height) -> Ref<Pipeline>
 		{
-		    PipelineSpecification pipelineSpec{
-		        .Shader = renderer->GetShader("wireframe"),
-		        .Framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer,
-		        .Width = m_Width,
-		        .Height = m_Height,
-		        .CullMode = nvrhi::RasterCullMode::None,
-                .FillMode = nvrhi::RasterFillMode::Wireframe,
-                .DepthTestEnable = true,
-                .DepthWriteEnable = false,
-                .DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
-                .DepthBias = -1,
-                .SlopeScaledDepthBias = -1.0f,
-		    };
+			const auto& renderer = DeviceManager::Get()->GetRenderer();
 
-		    m_WireframePipeline = CreateRef<Pipeline>(pipelineSpec);
+			PipelineSpecification pipelineSpec{
+				.Shader = renderer->GetShader("wireframe"),
+				.Framebuffer = geometryPipeline->GetSpecification().Framebuffer,
+				.Width = width,
+				.Height = height,
+				.CullMode = nvrhi::RasterCullMode::None,
+				.FillMode = nvrhi::RasterFillMode::Wireframe,
+				.DepthTestEnable = true,
+				.DepthWriteEnable = false,
+				.DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
+				.DepthBias = -1,
+				.SlopeScaledDepthBias = -1.0f,
+			};
+
+			return CreateRef<Pipeline>(pipelineSpec);
 		}
+	}
+
+	SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
+		: m_Scene(scene), m_DebugRenderingEnabled(specification.EnableDebugRendering)
+		, m_Width(specification.Width == 0 ? Application::Get().GetWindow()->GetWidth() : specification.Width)
+		, m_Height(specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height)
+		, m_GeometryPass(RenderPassSpecification{
+			.Name = "Geometry",
+			.Pipeline = MakeGeometryPipeline(m_Width, m_Height),
+			.ClearColor = true,
+			.ClearDepth = true,
+		})
+		, m_SkyPass(RenderPassSpecification{
+			.Name = "Sky",
+			.Pipeline = MakeSkyPipeline(m_GeometryPass.GetPipeline(), m_Width, m_Height),
+		})
+		, m_WireframePass(RenderPassSpecification{
+			.Name = "Wireframe",
+			.Pipeline = MakeWireframePipeline(m_GeometryPass.GetPipeline(), m_Width, m_Height),
+		})
+	{
+		EP_PROFILE_FN("SceneRenderer::SceneRenderer")
+
+		const auto& dm = DeviceManager::Get();
+		auto device = dm->GetDevice();
+
+		m_CommandList = device->createCommandList();
+
+		nvrhi::SamplerDesc samplerDesc{};
+		samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);
+		samplerDesc.setAllFilters(true);
+		m_Sampler = device->createSampler(samplerDesc);
 
 		// Uniform buffers
 		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Camera");
@@ -232,7 +252,7 @@ namespace Eppo
 		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
 		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
 
-		const auto& descriptorTable = m_GeometryPipeline->GetSpecification().Shader->GetDescriptorTable();
+		const auto& descriptorTable = m_GeometryPass.GetPipeline()->GetSpecification().Shader->GetDescriptorTable();
 
 		// Resize descriptor table
 		uint32_t imageCount = 0;
@@ -274,16 +294,11 @@ namespace Eppo
 		GeometryPass();
 		SkyPass();
 		WireframePass();
-
-		// All pass command lists have been executed; read their GPU timers back.
-		m_GeometryPass.Readback(frameIndex);
-		m_SkyPass.Readback(frameIndex);
-	    m_WireframePass.Readback(frameIndex);
 	}
 
 	auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
 	{
-		return m_GeometryPipeline->GetSpecification().Framebuffer->GetFinalImage();
+		return m_GeometryPass.GetPipeline()->GetSpecification().Framebuffer->GetFinalImage();
 	}
 
 	auto SceneRenderer::SubmitMesh(const AssetHandle meshHandle, const glm::mat4& transform) -> void
@@ -321,47 +336,17 @@ namespace Eppo
 		m_Width = width;
 		m_Height = height;
 
-		m_GeometryPipeline->Resize(m_Width, m_Height);
+		m_GeometryPass.Resize(m_Width, m_Height);
 	}
 
 	auto SceneRenderer::GeometryPass() -> void
 	{
 		EP_PROFILE_FN("SceneRenderer::GeometryPass")
 
-		const auto& dm = DeviceManager::Get();
-		auto device = dm->GetDevice();
-		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
+		const auto device = DeviceManager::Get()->GetDevice();
 
-		m_CommandList->open();
-		m_GeometryPass.Begin(m_CommandList, frameIndex);
+		nvrhi::GraphicsState state = m_GeometryPass.Begin(m_CommandList);
 		PassStatistics& stats = m_GeometryPass.GetStats();
-
-		// Clear framebuffer if needed
-		const auto& framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer;
-
-		if (framebuffer->GetSpecification().ClearColorOnLoad)
-		{
-			const auto& clearColor = framebuffer->GetSpecification().ClearColor;
-			for (uint32_t i = 0; i < framebuffer->GetFramebuffer()->getDesc().colorAttachments.size(); i++)
-				nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer->GetFramebuffer(), i, nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a));
-		}
-
-		if (framebuffer->GetSpecification().ClearDepthOnLoad)
-		{
-			const auto& spec = framebuffer->GetSpecification();
-			nvrhi::utils::ClearDepthStencilAttachment(m_CommandList, framebuffer->GetFramebuffer(), spec.DepthClearValue, spec.StencilClearValue);
-		}
-
-		// Setup graphics state
-		nvrhi::GraphicsState state{
-			.pipeline = m_GeometryPipeline->GetPipeline(),
-			.framebuffer = framebuffer->GetFramebuffer(),
-		};
-
-		// Viewport and scissor
-		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
-		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
 
 		// Push constants
 		struct PushConstants
@@ -376,7 +361,8 @@ namespace Eppo
 		} pushConstants{};
 
 		// Binding sets
-		const auto& bindingLayouts = m_GeometryPipeline->GetSpecification().Shader->GetBindingLayouts();
+		const auto& pipeline = m_GeometryPass.GetPipeline();
+		const auto& bindingLayouts = pipeline->GetSpecification().Shader->GetBindingLayouts();
 
 		// Set 0
 		nvrhi::BindingSetDesc desc{};
@@ -391,9 +377,9 @@ namespace Eppo
 
 		const auto bindingSet = device->createBindingSet(desc, bindingLayouts.at(0));
 		state.addBindingSet(bindingSet);
-		
+
 		// Set 1
-		const auto& descriptorTable = m_GeometryPipeline->GetSpecification().Shader->GetDescriptorTable();
+		const auto& descriptorTable = pipeline->GetSpecification().Shader->GetDescriptorTable();
 		state.addBindingSet(descriptorTable);
 
 		for (const auto& drawCmd : m_DrawCommands | std::views::values)
@@ -448,36 +434,23 @@ namespace Eppo
 			stats.Meshes++;
 		}
 
-		m_GeometryPass.End(m_CommandList, frameIndex);
-		m_CommandList->close();
-		device->executeCommandList(m_CommandList);
+		m_GeometryPass.End(m_CommandList);
+		m_GeometryPass.Submit(m_CommandList);
 	}
 
 	auto SceneRenderer::SkyPass() -> void
 	{
 		EP_PROFILE_FN("SceneRenderer::SkyPass")
 
-		const auto& dm = DeviceManager::Get();
-        const auto device = dm->GetDevice();
-		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
-
-		m_CommandList->open();
-		m_SkyPass.Begin(m_CommandList, frameIndex);
+		const auto device = DeviceManager::Get()->GetDevice();
 
 		// Draw into the geometry framebuffer without clearing: the fullscreen
 		// triangle only survives where geometry left the depth at the far plane,
 		// so it fills the background and leaves lit meshes untouched.
-		const auto& framebuffer = m_GeometryPipeline->GetSpecification().Framebuffer;
+		nvrhi::GraphicsState state = m_SkyPass.Begin(m_CommandList);
 
-		nvrhi::GraphicsState state{
-			.pipeline = m_SkyPipeline->GetPipeline(),
-			.framebuffer = framebuffer->GetFramebuffer(),
-		};
-		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
-		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
-
-		const auto& bindingLayouts = m_SkyPipeline->GetSpecification().Shader->GetBindingLayouts();
+		const auto& pipeline = m_SkyPass.GetPipeline();
+		const auto& bindingLayouts = pipeline->GetSpecification().Shader->GetBindingLayouts();
 
 		nvrhi::BindingSetDesc desc{};
 		desc.bindings = {
@@ -501,9 +474,8 @@ namespace Eppo
 		stats.DrawCalls++;
 		stats.Vertices += drawArgs.vertexCount;
 
-		m_SkyPass.End(m_CommandList, frameIndex);
-		m_CommandList->close();
-		device->executeCommandList(m_CommandList);
+		m_SkyPass.End(m_CommandList);
+		m_SkyPass.Submit(m_CommandList);
 	}
 
 	auto SceneRenderer::WireframePass() -> void
@@ -608,10 +580,7 @@ namespace Eppo
 		if (wireframes.empty())
 			return;
 
-		const auto& dm = DeviceManager::Get();
-		const auto device = dm->GetDevice();
-		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
+		const auto device = DeviceManager::Get()->GetDevice();
 
 		// One instance transform per draw; the shader indexes it by InstanceOffset.
 		std::vector<glm::mat4> instanceTransforms;
@@ -624,18 +593,8 @@ namespace Eppo
 			m_WireframeInstanceSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), requiredSize, "StorageBuffer Wireframe Instance Transforms");
 		m_WireframeInstanceSB->SetData(instanceTransforms.data(), requiredSize);
 
-		m_CommandList->open();
-		m_WireframePass.Begin(m_CommandList, frameIndex);
+		nvrhi::GraphicsState state = m_WireframePass.Begin(m_CommandList);
 		PassStatistics& stats = m_WireframePass.GetStats();
-
-		const auto& framebuffer = m_WireframePipeline->GetSpecification().Framebuffer;
-
-		nvrhi::GraphicsState state{
-			.pipeline = m_WireframePipeline->GetPipeline(),
-			.framebuffer = framebuffer->GetFramebuffer(),
-		};
-		state.viewport.viewports = { nvrhi::Viewport(static_cast<float>(m_Width), static_cast<float>(m_Height)) };
-		state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(m_Width), static_cast<int>(m_Height)) };
 
 		// Matches wireframe.vert: { Transform, WireframeColor, InstanceOffset }.
 		struct PushConstants
@@ -645,7 +604,8 @@ namespace Eppo
 			uint32_t InstanceOffset;
 		} pushConstants{};
 
-		const auto& bindingLayouts = m_WireframePipeline->GetSpecification().Shader->GetBindingLayouts();
+		const auto& pipeline = m_WireframePass.GetPipeline();
+		const auto& bindingLayouts = pipeline->GetSpecification().Shader->GetBindingLayouts();
 
 		nvrhi::BindingSetDesc desc{};
 		desc.bindings = {
@@ -702,8 +662,7 @@ namespace Eppo
 			++drawIndex;
 		}
 
-		m_WireframePass.End(m_CommandList, frameIndex);
-		m_CommandList->close();
-		device->executeCommandList(m_CommandList);
+		m_WireframePass.End(m_CommandList);
+		m_WireframePass.Submit(m_CommandList);
 	}
 }

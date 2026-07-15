@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Core/Base.h"
+#include "Renderer/Pipeline.h"
+
 #include <nvrhi/nvrhi.h>
 
 namespace Eppo
@@ -27,14 +30,25 @@ namespace Eppo
 		}
 	};
 
-	// Bundles the GPU timer-query lifecycle (one query per frame-in-flight) and
-	// the draw statistics for a single render pass, centralizing the boilerplate
-	// that SceneRenderer and ImGuiRenderer previously each duplicated. Construct
-	// one per logical pass; drive it from the pass' command list.
+	// Construction parameters for a RenderPass. The pipeline is optional: scene
+	// passes own one (RenderPass derives viewport/scissor/clear from it), while
+	// ImGuiRenderer passes have no single pipeline and build state per-draw.
+	struct RenderPassSpecification
+	{
+		std::string Name;
+		Ref<Pipeline> Pipeline = nullptr;
+		bool ClearColor = false;
+		bool ClearDepth = false;
+	};
+
+	// Owns the GPU timer-query lifecycle, draw statistics, debug markers, and —
+	// when a pipeline is provided — the base GraphicsState (pipeline, framebuffer,
+	// viewport, scissor) and optional framebuffer clear for a single render pass.
+	// Drive it with Begin/End/Submit around the pass' command list.
 	class RenderPass
 	{
 	public:
-		explicit RenderPass(std::string name);
+		explicit RenderPass(RenderPassSpecification spec);
 
 		// Owns per-frame GPU timer queries; copying would silently share them
 		// between two logical passes. Non-copyable (and non-movable — instances
@@ -42,24 +56,30 @@ namespace Eppo
 		RenderPass(const RenderPass&) = delete;
 		auto operator=(const RenderPass&) -> RenderPass& = delete;
 
-		// Reset the stats, begin the GPU timer and open a debug marker on the
-		// (already-open) command list. Pass a non-empty marker to override the pass
-		// name in the capture (used for ImGui's per-viewport markers).
-		auto Begin(const nvrhi::CommandListHandle& commandList, uint32_t frameIndex, const std::string& marker = "") -> void;
+		// Open the command list, begin the GPU timer and open a debug marker.
+		// When a pipeline is set, clear the framebuffer (if flagged) and return
+		// the base GraphicsState (pipeline + framebuffer + viewport + scissor
+		// derived from the pipeline dimensions). Without a pipeline the returned
+		// state is default-constructed; the caller builds its own. Pass a non-empty
+		// marker to override the pass name in the capture.
+		auto Begin(const nvrhi::CommandListHandle& commandList, const std::string& marker = "") -> nvrhi::GraphicsState;
 		// Close the debug marker and end the GPU timer.
-		auto End(const nvrhi::CommandListHandle& commandList, uint32_t frameIndex) const -> void;
-		// Read the timer back and reset the query. Call after the command list that
-		// wrapped Begin/End has been executed.
-		auto Readback(uint32_t frameIndex) -> void;
+		auto End(const nvrhi::CommandListHandle& commandList) -> void;
+		// Close the command list, execute it, and read back the GPU timer.
+		auto Submit(const nvrhi::CommandListHandle& commandList) -> void;
 
+		auto Resize(uint32_t width, uint32_t height) const -> void;
+
+		[[nodiscard]] auto GetSpecification() const -> const RenderPassSpecification& { return m_Specification; }
+		[[nodiscard]] auto GetPipeline() const -> const Ref<Pipeline>& { return m_Specification.Pipeline; }
 		[[nodiscard]] auto GetStats() -> PassStatistics& { return m_Statistics; }
 		[[nodiscard]] auto GetStats() const -> const PassStatistics& { return m_Statistics; }
 		[[nodiscard]] auto GetTime(const uint32_t frameIndex) const -> float { return m_Timestamps.at(frameIndex); }
-		[[nodiscard]] auto GetTimeMs(const uint32_t frameIndex) const -> float { return m_Timestamps.at(frameIndex) * 1000.0f;}
-		[[nodiscard]] auto GetName() const -> const std::string& { return m_Name; }
+		[[nodiscard]] auto GetTimeMs(const uint32_t frameIndex) const -> float { return m_Timestamps.at(frameIndex) * 1000.0f; }
+		[[nodiscard]] auto GetName() const -> const std::string& { return m_Specification.Name; }
 
 	private:
-		std::string m_Name;
+		RenderPassSpecification m_Specification;
 		std::vector<nvrhi::TimerQueryHandle> m_TimerQueries;
 		std::vector<float> m_Timestamps;
 		PassStatistics m_Statistics;

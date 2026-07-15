@@ -32,7 +32,8 @@ namespace Eppo
 
 		const auto& shader = renderer->GetShader("imgui");
 
-		// Render state
+		// Alpha blending for UI compositing. The template has no framebuffer —
+		// GetOrCreatePipeline clones it per swapchain and fills that in.
 		nvrhi::BlendState blendState;
 		blendState.targets[0].blendEnable = true;
 		blendState.targets[0].srcBlend = nvrhi::BlendFactor::SrcAlpha;
@@ -40,36 +41,19 @@ namespace Eppo
 		blendState.targets[0].srcBlendAlpha = nvrhi::BlendFactor::One;
 		blendState.targets[0].destBlendAlpha = nvrhi::BlendFactor::InvSrcAlpha;
 
-		nvrhi::RasterState rasterState{
-			.fillMode = nvrhi::RasterFillMode::Solid,
-			.cullMode = nvrhi::RasterCullMode::None,
-			.depthClipEnable = true,
-			.scissorEnable = true,
+		m_PipelineSpecTemplate = PipelineSpecification{
+			.Shader = shader,
+			.CullMode = nvrhi::RasterCullMode::None,
+			.FillMode = nvrhi::RasterFillMode::Solid,
+			.DepthTestEnable = false,
+			.DepthWriteEnable = true,
+			.DepthFunc = nvrhi::ComparisonFunc::Always,
+			.BlendState = blendState,
 		};
-
-		nvrhi::DepthStencilState depthStencilState{
-			.depthTestEnable = false,
-			.depthWriteEnable = true,
-			.depthFunc = nvrhi::ComparisonFunc::Always,
-			.stencilEnable = false,
-		};
-
-		nvrhi::RenderState renderState{
-			.blendState = blendState,
-			.depthStencilState = depthStencilState,
-			.rasterState = rasterState,
-		};
-
-		// Pipeline
-		m_PipelineDesc.inputLayout = shader->GetInputLayout();
-		m_PipelineDesc.VS = shader->GetShaderHandle(nvrhi::ShaderType::Vertex);
-		m_PipelineDesc.PS = shader->GetShaderHandle(nvrhi::ShaderType::Pixel);
-		m_PipelineDesc.renderState = renderState;
 
 		// We know we only have one binding layout
 		const auto& bindingLayouts = shader->GetBindingLayouts();
 		m_BindingSetLayout = bindingLayouts.at(0);
-		m_PipelineDesc.addBindingLayout(m_BindingSetLayout);
 
 		// Sampler
 		nvrhi::SamplerDesc samplerDesc{};
@@ -130,24 +114,18 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain")
 
-		Render(viewport, GetOrCreatePipeline(swapchain), swapchain->GetCurrentSwapchainImage().Framebuffer->GetFramebuffer());
+		Render(viewport, GetOrCreatePipeline(swapchain));
 	}
 
-	auto ImGuiRenderer::Render(ImGuiViewport* viewport, const nvrhi::GraphicsPipelineHandle& pipeline, const nvrhi::FramebufferHandle& framebuffer) -> void
+	auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline) -> void
 	{
 		EP_PROFILE_FN("ImGuiRenderer::Render")
 
-		const auto& dm = DeviceManager::Get();
-		const auto device = dm->GetDevice();
-		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-		EP_ASSERT(frameIndex < dm->GetParams().MaxFramesInFlight);
-
-		m_CommandList->open();
-
 		const std::string marker = std::format("ImGui (Viewport: {})", viewport == ImGui::GetMainViewport() ? "Main" : std::to_string(reinterpret_cast<uint64_t>(viewport)));
-		m_Pass.Begin(m_CommandList, frameIndex, marker);
+		nvrhi::GraphicsState state = m_Pass.Begin(m_CommandList, marker);
 		PassStatistics& stats = m_Pass.GetStats();
 
+		const auto& framebuffer = pipeline->GetSpecification().Framebuffer->GetFramebuffer();
 		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
 
 		// Update geometry
@@ -172,10 +150,8 @@ namespace Eppo
 		float fbWidth = drawData->DisplaySize.x * drawData->FramebufferScale.x;
 		float fbHeight = drawData->DisplaySize.y * drawData->FramebufferScale.y;
 
-		nvrhi::GraphicsState state{
-			.pipeline = pipeline,
-			.framebuffer = framebuffer,
-		};
+		state.pipeline = pipeline->GetPipeline();
+		state.framebuffer = framebuffer;
 
 		state.viewport.addViewport(nvrhi::Viewport(fbWidth, fbHeight));
 		state.viewport.scissorRects.resize(1);
@@ -254,11 +230,8 @@ namespace Eppo
 		stats.Vertices += static_cast<uint32_t>(drawData->TotalVtxCount);
 		stats.Indices += static_cast<uint32_t>(drawData->TotalIdxCount);
 
-		m_Pass.End(m_CommandList, frameIndex);
-		m_CommandList->close();
-
-		device->executeCommandList(m_CommandList);
-		m_Pass.Readback(frameIndex);
+		m_Pass.End(m_CommandList);
+		m_Pass.Submit(m_CommandList);
 	}
 
 	auto ImGuiRenderer::GetOwnGPUTime(uint32_t frameIndex) const -> float
@@ -354,7 +327,7 @@ namespace Eppo
 		return device->createBuffer(bufferDesc);
 	}
 
-	auto ImGuiRenderer::GetOrCreatePipeline(const ScopedPtr<Swapchain>& swapchain) -> nvrhi::GraphicsPipelineHandle
+	auto ImGuiRenderer::GetOrCreatePipeline(const ScopedPtr<Swapchain>& swapchain) -> const Ref<Pipeline>&
 	{
 		EP_PROFILE_FN("ImGuiRenderer::GetOrCreatePipeline")
 
@@ -362,16 +335,19 @@ namespace Eppo
 		auto& pipelineCache = m_PipelineCache[swapchain.get()];
 
         const nvrhi::FramebufferHandle targetFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer->GetFramebuffer();
-		nvrhi::GraphicsPipelineHandle pipeline = pipelineCache.Pipelines.at(framebufferIndex);
+		Ref<Pipeline>& pipeline = pipelineCache.Pipelines.at(framebufferIndex);
 
 		bool invalidate = !pipeline || pipelineCache.Framebuffers.at(framebufferIndex) != targetFramebuffer;
 		if (invalidate)
 		{
-			const auto& dm = DeviceManager::Get();
-			const auto device = dm->GetDevice();
+			const auto& swapchainFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer;
 
-			pipeline = device->createGraphicsPipeline(m_PipelineDesc, targetFramebuffer->getFramebufferInfo());
-			pipelineCache.Pipelines.at(framebufferIndex) = pipeline;
+			PipelineSpecification spec = m_PipelineSpecTemplate;
+			spec.Framebuffer = swapchainFramebuffer;
+			spec.Width = swapchainFramebuffer->GetWidth();
+			spec.Height = swapchainFramebuffer->GetHeight();
+
+			pipeline = CreateRef<Pipeline>(spec);
 			pipelineCache.Framebuffers.at(framebufferIndex) = targetFramebuffer;
 		}
 

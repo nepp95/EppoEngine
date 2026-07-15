@@ -22,6 +22,10 @@ namespace Eppo
 		bool DepthWriteEnable = false;
 		nvrhi::ComparisonFunc DepthFunc = nvrhi::ComparisonFunc::Less;
 
+		// Blend state. Defaults to no blending (opaque scene passes); ImGuiRenderer
+		// sets alpha blending here instead of building a raw nvrhi::GraphicsPipelineDesc.
+		nvrhi::BlendState BlendState{};
+
 		// Depth bias (polygon offset), in Vulkan units — pulls geometry toward
 		// (negative) or away from (positive) the camera to resolve z-fighting.
 		int DepthBias = 0;
