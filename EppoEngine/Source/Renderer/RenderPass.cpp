@@ -31,7 +31,7 @@ namespace Eppo
 		m_Statistics = {};
 		commandList->open();
 		commandList->beginTimerQuery(m_TimerQueries.at(frameIndex));
-		commandList->beginMarker(m_Specification.Name.empty() ? m_Specification.Name.c_str() : "RenderPass");
+		commandList->beginMarker(m_Specification.Name.c_str());
 
 		nvrhi::GraphicsState state{};
 
