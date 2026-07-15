@@ -98,4 +98,5 @@ AddTestingSuite(UUID core)
 # Graphical suites: boot the real Application (need a display + GPU). Excluded on
 # headless CI via `ctest --label-exclude graphical`.
 AddTestingSuite(App graphical)
+AddTestingSuite(Renderer graphical)
 AddTestingSuite(Scenario graphical)

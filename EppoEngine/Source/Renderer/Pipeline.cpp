@@ -24,7 +24,7 @@ namespace Eppo
 		};
 
 		nvrhi::RenderState renderState{
-			.blendState = nvrhi::BlendState(),
+			.blendState = m_Specification.BlendState,
 			.depthStencilState = depthStencilState,
 			.rasterState = rasterState,
 		};
