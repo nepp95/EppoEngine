@@ -22,7 +22,7 @@ namespace Eppo
 			m_TimerQueries[i] = device->createTimerQuery();
 	}
 
-	auto RenderPass::Begin(const nvrhi::CommandListHandle& commandList, const std::string& marker) -> nvrhi::GraphicsState
+	auto RenderPass::Begin(const nvrhi::CommandListHandle& commandList) -> nvrhi::GraphicsState
 	{
 		const auto& dm = DeviceManager::Get();
 		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
@@ -31,7 +31,7 @@ namespace Eppo
 		m_Statistics = {};
 		commandList->open();
 		commandList->beginTimerQuery(m_TimerQueries.at(frameIndex));
-		commandList->beginMarker(marker.empty() ? m_Specification.Name.c_str() : marker.c_str());
+		commandList->beginMarker(m_Specification.Name.empty() ? m_Specification.Name.c_str() : "RenderPass");
 
 		nvrhi::GraphicsState state{};
 

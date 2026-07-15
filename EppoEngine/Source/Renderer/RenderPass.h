@@ -56,16 +56,8 @@ namespace Eppo
 		RenderPass(const RenderPass&) = delete;
 		auto operator=(const RenderPass&) -> RenderPass& = delete;
 
-		// Open the command list, begin the GPU timer and open a debug marker.
-		// When a pipeline is set, clear the framebuffer (if flagged) and return
-		// the base GraphicsState (pipeline + framebuffer + viewport + scissor
-		// derived from the pipeline dimensions). Without a pipeline the returned
-		// state is default-constructed; the caller builds its own. Pass a non-empty
-		// marker to override the pass name in the capture.
-		auto Begin(const nvrhi::CommandListHandle& commandList, const std::string& marker = "") -> nvrhi::GraphicsState;
-		// Close the debug marker and end the GPU timer.
+		auto Begin(const nvrhi::CommandListHandle& commandList) -> nvrhi::GraphicsState;
 		auto End(const nvrhi::CommandListHandle& commandList) -> void;
-		// Close the command list, execute it, and read back the GPU timer.
 		auto Submit(const nvrhi::CommandListHandle& commandList) -> void;
 
 		auto Resize(uint32_t width, uint32_t height) const -> void;

@@ -78,8 +78,6 @@ namespace Eppo
 		bool m_ShowWireframes = true;
 		Entity m_HighlightedEntity;
 
-		// Dimensions precede the passes: the passes are constructed in the
-		// member initializer list and their pipelines derive from m_Width/m_Height.
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
 
