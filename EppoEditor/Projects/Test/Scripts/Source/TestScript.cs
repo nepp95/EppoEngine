@@ -11,7 +11,7 @@ namespace Test
         public float FloatField = 3.14f;
         public bool BoolField = true;
         public double DoubleField = 2.71828;
-        public Entity EntityField;
+        public Entity? EntityField;
         public char CharField = 'A';
         public short Int16Field = -32768;
         public long Int64Field = 9223372036854775807;

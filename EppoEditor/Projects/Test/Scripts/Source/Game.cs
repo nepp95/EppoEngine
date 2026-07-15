@@ -8,7 +8,7 @@ namespace Test
     public class Player : Entity
     {
         public float Speed = 5.0f;
-        public Entity Target;
+        public Entity? Target;
 
         public override void OnCreate()
         {
