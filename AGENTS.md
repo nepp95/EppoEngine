@@ -54,7 +54,7 @@ Required order: **configure -> build -> test**. After editing C# only, rebuild t
 
 - `.clang-format`: 4-space indent, 140-col limit, Allman braces (custom `BraceWrapping`), pointer left (`int* p`), `SortIncludes: Never`, namespace indentation `All`. Run clang-format before committing.
 - `.clang-tidy`: `bugprone-*`, `clang-diagnostic-*`, `clang-analyzer-*`, `cppcoreguidelines-*`, `modernize-*`, `misc-use-anonymous-namespace`, `misc-const-correctness`.
-- Existing code carries concise "why" comments (see `.gitlab-ci.yml`, `CMakeLists.txt`). Match that — explain intent, not what.
+- Comments: concise or none. Max 1 line, only when it explains a non-obvious "why." Zero is the default — a getter obviously returns the thing you're getting; commenting that is noise. Never restate what the code does.
 
 ## CI
 
@@ -63,9 +63,10 @@ GitLab CI (`.gitlab-ci.yml`): runs on MRs, `master`, `develop`, and `feature/*` 
 ## Workflow rules (required)
 
 - **Plan before code.** For anything beyond a trivial change, write a plan first, verify it works end-to-end, and confirm key decisions with the user. Do not write any implementation code until the plan covers the entire task.
-- **Test-driven development.** Write/shape the test first, then implement. New behavior gets a test in the matching `EppoEngineTesting/Source/<module>/` suite, or a new suite via `AddTestingSuite` in `EppoEngineTesting/CMakeLists.txt`.
+- **Test-driven development.** Write the test first, then implement. New behavior gets a test in the matching `EppoEngineTesting/Source/<module>/` suite, or a new suite via `AddTestingSuite` in `EppoEngineTesting/CMakeLists.txt`. Follow the `test-driven-development` skill — it defines the full workflow (exhaustive enumeration, naming, falsifiable assertions, no "smoke tests").
 - **Regression tests for critical bugs.** When fixing a critical bug, add a test that would have caught it, when logical to do so.
 - **Systematic debugging.** Find the root cause before attempting a fix. Do not patch symptoms; no fix until the root cause is identified.
-- **Code review after big tasks.** Review the diff before considering a substantial change done.
+- **Code review via subagent.** After completing a substantial change, dispatch a fresh `general` subagent to review the diff. Follow the `requesting-code-review` skill — it defines the full workflow (subagent dispatch, template, acting on feedback). Do NOT review your own work.
+- **No formatting changes to existing code.** Do not reformat, reindent, or "clean up" code you are not otherwise editing. Formatting is not your job. If you touch a line for a semantic reason, match the surrounding whitespace exactly — do not "fix" it. Never run clang-format on files you didn't create. If `.clang-format` conflicts with the repo's actual style (e.g. tabs vs spaces), match the repo, not the config.
 - **Git worktrees.** Use git worktrees for isolated feature work where applicable. You may be asked to work directly on existing working changes instead — handle those in place.
 - **Verify before claiming done.** Run the relevant build + `ctest` (or the targeted suite) and confirm it passes before declaring success.
