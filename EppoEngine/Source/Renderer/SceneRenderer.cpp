@@ -32,10 +32,7 @@ namespace Eppo
 			m_Height = app.GetWindow()->GetHeight();
 		}
 
-		nvrhi::SamplerDesc samplerDesc{};
-		samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);
-		samplerDesc.setAllFilters(true);
-		m_Sampler = device->createSampler(samplerDesc);
+		m_Sampler = CreateRef<Sampler>();
 
 		// Geometry Pipeline
 		{
@@ -385,7 +382,7 @@ namespace Eppo
 			nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
 			nvrhi::BindingSetItem::ConstantBuffer(2, m_LightsUB->GetBuffer()),
 			nvrhi::BindingSetItem::ConstantBuffer(3, m_EnvironmentUB->GetBuffer()),
-			nvrhi::BindingSetItem::Sampler(0, m_Sampler),
+			nvrhi::BindingSetItem::Sampler(0, m_Sampler->GetSampler()),
 			nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_InstanceTransformsSB->GetBuffer())
 		};
 

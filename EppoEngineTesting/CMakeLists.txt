@@ -22,6 +22,10 @@ if (WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:EppoEngineTesting> $<TARGET_RUNTIME_DLLS:EppoEngineTesting>
         COMMAND_EXPAND_LISTS
     )
+
+    add_custom_command(TARGET EppoEngineTesting POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$ENV{VULKAN_SDK}/Bin/dxcompiler.dll" $<TARGET_FILE_DIR:EppoEngineTesting>
+    )
 endif ()
 
 # --- Test user-script assembly ---------------------------------------------
@@ -98,4 +102,5 @@ AddTestingSuite(UUID core)
 # Graphical suites: boot the real Application (need a display + GPU). Excluded on
 # headless CI via `ctest --label-exclude graphical`.
 AddTestingSuite(App graphical)
+AddTestingSuite(Renderer graphical)
 AddTestingSuite(Scenario graphical)
