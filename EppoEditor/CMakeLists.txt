@@ -33,6 +33,10 @@ add_custom_command(TARGET EppoEditor POST_BUILD
     COMMAND_EXPAND_LISTS
 )
 
+add_custom_command(TARGET EppoEditor POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$ENV{VULKAN_SDK}/Bin/dxcompiler.dll" $<TARGET_FILE_DIR:EppoEditor>
+)
+
 # Copy resources incrementally — only re-copies when files change
 file(GLOB_RECURSE RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Resources/*")
 add_custom_command(

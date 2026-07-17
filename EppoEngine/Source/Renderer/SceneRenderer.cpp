@@ -27,6 +27,8 @@ namespace Eppo
 		m_Width = specification.Width == 0 ? Application::Get().GetWindow()->GetWidth() : specification.Width;
 		m_Height = specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height;
 
+		m_Sampler = CreateRef<Sampler>();
+
 		// Create render passes
 		// Geometry
 		{
@@ -110,11 +112,6 @@ namespace Eppo
 
 			m_WireframePass = RenderPass(renderPassSpec);
 		}
-
-		nvrhi::SamplerDesc samplerDesc{};
-		samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);
-		samplerDesc.setAllFilters(true);
-		m_Sampler = device->createSampler(samplerDesc);
 
 		// Uniform buffers
 		m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Camera");
@@ -370,7 +367,7 @@ namespace Eppo
 			nvrhi::BindingSetItem::ConstantBuffer(1, m_CameraUB->GetBuffer()),
 			nvrhi::BindingSetItem::ConstantBuffer(2, m_LightsUB->GetBuffer()),
 			nvrhi::BindingSetItem::ConstantBuffer(3, m_EnvironmentUB->GetBuffer()),
-			nvrhi::BindingSetItem::Sampler(0, m_Sampler),
+			nvrhi::BindingSetItem::Sampler(0, m_Sampler->GetSampler()),
 			nvrhi::BindingSetItem::StructuredBuffer_SRV(0, m_InstanceTransformsSB->GetBuffer())
 		};
 
