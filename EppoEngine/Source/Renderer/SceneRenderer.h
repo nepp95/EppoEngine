@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Renderer/Camera/Camera.h"
 #include "Renderer/Camera/EditorCamera.h"
+#include "Renderer/Camera/SceneCamera.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderPass.h"
+#include "Renderer/Sampler.h"
 #include "Renderer/StorageBuffer.h"
 #include "Renderer/UniformBuffer.h"
 #include "Scene/Entity.h"
@@ -85,7 +86,7 @@ namespace Eppo
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
 
-		nvrhi::SamplerHandle m_Sampler = nullptr;
+		Ref<Sampler> m_Sampler = nullptr;
 
 		Ref<Pipeline> m_GeometryPipeline = nullptr;
 		Ref<Pipeline> m_SkyPipeline = nullptr;

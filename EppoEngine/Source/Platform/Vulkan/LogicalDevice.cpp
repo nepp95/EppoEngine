@@ -34,14 +34,27 @@ namespace Eppo
 		// Create device
 		auto& deviceFeatures = physicalDevice->GetDeviceFeatures();
 
+		VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT featuresMutable{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+			.mutableDescriptorType = VK_TRUE,
+		};
+
 		VkPhysicalDeviceVulkan11Features features11{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+			.pNext = &featuresMutable,
 		};
 
 		VkPhysicalDeviceVulkan12Features features12{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 			.pNext = &features11,
 			.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+			.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingUniformTexelBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageTexelBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingUpdateUnusedWhilePending = VK_TRUE,
 			.descriptorBindingPartiallyBound = VK_TRUE,
 			.runtimeDescriptorArray = VK_TRUE,
 			.timelineSemaphore = VK_TRUE,
