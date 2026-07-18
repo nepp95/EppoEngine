@@ -20,10 +20,8 @@ namespace Eppo
 		// buffer in place. ImGui reads/writes the typed value directly. Returns
 		// true on the frames the user changes the value, so the caller can push
 		// the edit to a live script instance during play.
-		static auto DrawScriptField(const EppoScriptCore::ScriptField& field, ScriptFieldValue& value) -> bool
+		static auto DrawScriptField(const ScriptField& field, ScriptFieldValue& value) -> bool
 		{
-			using FT = EppoScriptCore::ScriptFieldType;
-
 			const std::string label = "##" + field.Name;
 			void* data = value.Buffer.data();
 
@@ -34,21 +32,21 @@ namespace Eppo
 
 			switch (field.Type)
 			{
-				case FT::Float:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_Float, data, 0.1f);
-				case FT::Double:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_Double, data);
-				case FT::Bool:    return ImGui::Checkbox(label.c_str(), reinterpret_cast<bool*>(data));
-				case FT::Char:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
-				case FT::Int16:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S16, data);
-				case FT::Int32:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_S32, data);
-				case FT::Int64:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, data);
-				case FT::Byte:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U8, data);
-				case FT::UInt16:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
-				case FT::UInt32:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U32, data);
-				case FT::UInt64:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
-				case FT::Vector2: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 2, 0.1f);
-				case FT::Vector3: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 3, 0.1f);
-				case FT::Vector4: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 4, 0.1f);
-				case FT::Entity:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
+				case ScriptFieldType::Float:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_Float, data, 0.1f);
+				case ScriptFieldType::Double:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_Double, data);
+				case ScriptFieldType::Bool:    return ImGui::Checkbox(label.c_str(), reinterpret_cast<bool*>(data));
+				case ScriptFieldType::Char:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
+				case ScriptFieldType::Int16:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S16, data);
+				case ScriptFieldType::Int32:   return ImGui::DragScalar(label.c_str(), ImGuiDataType_S32, data);
+				case ScriptFieldType::Int64:   return ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, data);
+				case ScriptFieldType::Byte:    return ImGui::InputScalar(label.c_str(), ImGuiDataType_U8, data);
+				case ScriptFieldType::UInt16:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U16, data);
+				case ScriptFieldType::UInt32:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U32, data);
+				case ScriptFieldType::UInt64:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
+				case ScriptFieldType::Vector2: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 2, 0.1f);
+				case ScriptFieldType::Vector3: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 3, 0.1f);
+				case ScriptFieldType::Vector4: return ImGui::DragScalarN(label.c_str(), ImGuiDataType_Float, data, 4, 0.1f);
+				case ScriptFieldType::Entity:  return ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, data);
 				default:          ImGui::TextDisabled("(unsupported type)"); return false;
 			}
 		}
@@ -78,6 +76,10 @@ namespace Eppo
 			DrawAddComponentEntry<CameraComponent>("Camera");
 			DrawAddComponentEntry<PointLightComponent>("Point Light");
 			DrawAddComponentEntry<ScriptComponent>("Script");
+			DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
+			DrawAddComponentEntry<BoxColliderComponent>("Box Collider");
+			DrawAddComponentEntry<SphereColliderComponent>("Sphere Collider");
+			DrawAddComponentEntry<CapsuleColliderComponent>("Capsule Collider");
 
 			ImGui::EndPopup();
 		}
@@ -308,7 +310,7 @@ namespace Eppo
 				for (int32_t i = 0; i < static_cast<int32_t>(fields.size()); i++)
 				{
 					const auto& field = fields[i];
-					if (field.Type == EppoScriptCore::ScriptFieldType::None)
+					if (field.Type == ScriptFieldType::None)
 						continue;
 
 					auto& stored = fieldMap[field.Name];
@@ -340,6 +342,46 @@ namespace Eppo
 
 				ImGui::EndTable();
 			}
+		});
+
+		DrawComponent<RigidBodyComponent>(entity, [](auto& component)
+		{
+			const char* types[] = { "Static", "Kinematic", "Dynamic" };
+			int current = static_cast<int>(component.Type);
+			if (ImGui::Combo("Body Type", &current, types, IM_ARRAYSIZE(types)))
+				component.Type = static_cast<RigidBodyComponent::BodyType>(current);
+
+			ImGui::DragFloat("Gravity Scale", &component.GravityScale, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Linear Damping", &component.LinearDamping, 0.01f, 0.0f, 0.0f);
+			ImGui::DragFloat("Angular Damping", &component.AngularDamping, 0.01f, 0.0f, 0.0f);
+		});
+
+		DrawComponent<BoxColliderComponent>(entity, [](auto& component)
+		{
+			ImGui::DragFloat3("Half Size", &component.HalfSize.x, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat3("Offset", &component.Offset.x, 0.05f);
+			ImGui::DragFloat("Density", &component.Density, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
+			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
+		});
+
+		DrawComponent<SphereColliderComponent>(entity, [](auto& component)
+		{
+			ImGui::DragFloat("Radius", &component.Radius, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat3("Offset", &component.Offset.x, 0.05f);
+			ImGui::DragFloat("Density", &component.Density, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
+			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
+		});
+
+		DrawComponent<CapsuleColliderComponent>(entity, [](auto& component)
+		{
+			ImGui::DragFloat("Radius", &component.Radius, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Height", &component.Height, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat3("Offset", &component.Offset.x, 0.05f);
+			ImGui::DragFloat("Density", &component.Density, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
+			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
 		});
 	}
 

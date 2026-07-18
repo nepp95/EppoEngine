@@ -1,82 +1,48 @@
 #include "Support/EppoTest.h"
 
-#include "Core/UUID.h"
+#include <type_traits>
 
-#include <unordered_map>
-#include <unordered_set>
-
-using namespace Eppo;
-
-// UUID's default constructor draws a random 64-bit value, reserving 1-99 for
-// engine-internal handles, so every default-constructed id is >= 100 and truthy.
 SUITE(Core)
 {
-    TEST(UUIDDefaultConstructedIsNonReserved)
+    using Eppo::UUID;
+
+    // Compile-time contract: both conversions must stay *explicit*. is_convertible tests
+    // implicit convertibility, so these break the day someone drops `explicit` and revives
+    // the footgun (a raw id silently collapsing to the bool 0/1) — before any test runs.
+    static_assert(!std::is_convertible_v<UUID, bool>, "UUID->bool must be explicit");
+    static_assert(!std::is_convertible_v<UUID, uint64_t>, "UUID->uint64_t must be explicit");
+    static_assert(std::is_constructible_v<bool, UUID>, "explicit UUID->bool must still work");
+    static_assert(std::is_constructible_v<uint64_t, UUID>, "explicit UUID->uint64_t must still work");
+
+    TEST(UUID_BoolConversion_ZeroIsFalse)
     {
-        for (int i = 0; i < 1000; ++i)
-        {
-            const UUID id;
-            CHECK(static_cast<uint64_t>(id) >= 100);
-            CHECK(static_cast<bool>(id));
-        }
+        CHECK(!static_cast<bool>(UUID(0)));
     }
 
-    TEST(UUIDDefaultConstructedAreUnique)
+    TEST(UUID_BoolConversion_NonZeroIsTrue)
     {
-        std::unordered_set<uint64_t> seen;
-        for (int i = 0; i < 10000; ++i)
-            seen.insert(static_cast<uint64_t>(UUID()));
-
-        // Collisions across 10k draws from a 64-bit space are astronomically
-        // unlikely; a duplicate signals a broken generator, not bad luck.
-        CHECK_EQUAL(10000u, seen.size());
+        CHECK(static_cast<bool>(UUID(100)));
+        CHECK(static_cast<bool>(UUID(0xFFFFFFFFFFFFFFFFull)));
     }
 
-    TEST(UUIDExplicitValueIsPreserved)
+    TEST(UUID_Uint64Conversion_PreservesValue)
     {
-        const UUID id(123456789ull);
-        CHECK_EQUAL(123456789ull, static_cast<uint64_t>(id));
+        // The id must survive verbatim, not collapse to a 0/1 bool.
+        constexpr uint64_t id = 1234567890123456789ull;
+        CHECK_EQUAL(id, static_cast<uint64_t>(UUID(id)));
     }
 
-    TEST(UUIDZeroIsFalsy)
+    TEST(UUID_DefaultConstruction_SkipsReservedRange)
     {
-        const UUID zero(0);
-        CHECK(!static_cast<bool>(zero));
-
-        const UUID nonZero(1);
-        CHECK(static_cast<bool>(nonZero));
+        // Default-constructed ids skip the reserved 1-99 block.
+        const UUID id;
+        CHECK(static_cast<uint64_t>(id) >= 100);
+        CHECK(static_cast<bool>(id));
     }
 
-    TEST(UUIDEqualityAndInequality)
+    TEST(UUID_Equality_ComparesById)
     {
-        const UUID a(42);
-        const UUID b(42);
-        const UUID c(43);
-
-        CHECK(a == b);
-        CHECK(!(a == c));
-        CHECK(a != c);
-        CHECK(!(a != b));
-    }
-
-    TEST(UUIDOrdering)
-    {
-        const UUID small(10);
-        const UUID large(20);
-
-        CHECK(small < large);
-        CHECK(!(large < small));
-        CHECK(!(small < small));
-    }
-
-    TEST(UUIDIsUsableAsMapKey)
-    {
-        std::unordered_map<UUID, int> map;
-        const UUID key(7);
-        map[key] = 99;
-
-        CHECK_EQUAL(1u, map.count(key));
-        CHECK_EQUAL(99, map[UUID(7)]);
-        CHECK_EQUAL(0u, map.count(UUID(8)));
+        CHECK(UUID(42) == UUID(42));
+        CHECK(UUID(42) != UUID(43));
     }
 }

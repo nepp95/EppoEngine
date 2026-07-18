@@ -9,9 +9,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Source/**/*.cs" />
-    <!-- CoreManagedDll is passed by CMake; the built core assembly is not copied
-         to output (Private=false) because the runtime loads it as the core. -->
-    <Reference Include="EppoScriptCore.Managed">
+    <!-- CMake passes CoreManagedDll; the runtime loads the core, so don't copy it. -->
+    <Reference Include="EppoScriptCore">
       <HintPath>$(CoreManagedDll)</HintPath>
       <Private>false</Private>
     </Reference>

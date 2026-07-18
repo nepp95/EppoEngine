@@ -16,11 +16,12 @@ namespace Eppo
 
 	constexpr uint32_t g_MaxFramesInFlight = 2;
 	constexpr std::array g_ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-	constexpr std::array g_DeviceExtensions = { 
+	constexpr std::array g_DeviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_KHR_MAINTENANCE_1_EXTENSION_NAME,
 		VK_GOOGLE_HLSL_FUNCTIONALITY_1_EXTENSION_NAME,
-		VK_GOOGLE_USER_TYPE_EXTENSION_NAME
+		VK_GOOGLE_USER_TYPE_EXTENSION_NAME,
+		VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME
 	};
 
 	[[maybe_unused]]

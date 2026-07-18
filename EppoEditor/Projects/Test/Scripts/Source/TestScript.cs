@@ -1,18 +1,17 @@
-﻿using EppoScriptCore;
-using EppoScriptCore.Core;
-using EppoScriptCore.ECS;
+﻿using EppoScriptCore.Core;
+using EppoScriptCore.Scene;
 using EppoScriptCore.Math;
 
 namespace Test
 {
-    public class TestScript : ScriptBehaviour
+    public class TestScript : Entity
     {
         // All supported field types for discovery testing
         public int IntField = 42;
         public float FloatField = 3.14f;
         public bool BoolField = true;
         public double DoubleField = 2.71828;
-        public Entity EntityField;
+        public Entity? EntityField;
         public char CharField = 'A';
         public short Int16Field = -32768;
         public long Int64Field = 9223372036854775807;

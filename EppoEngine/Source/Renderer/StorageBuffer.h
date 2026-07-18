@@ -9,6 +9,7 @@ namespace Eppo
 	public:
 		StorageBuffer(uint32_t structStride, uint64_t initialSize = 0, std::string debugName = "StorageBuffer");
 
+		auto SetData(const nvrhi::CommandListHandle& cmdList, const void* data, uint64_t size, uint64_t offset = 0) -> void;
 		auto SetData(const void* data, uint64_t size, uint64_t offset = 0) -> void;
 
 		[[nodiscard]] auto GetBuffer() const -> nvrhi::BufferHandle { return m_Buffer; }

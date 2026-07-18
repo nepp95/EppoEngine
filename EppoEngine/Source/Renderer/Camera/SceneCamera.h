@@ -4,10 +4,6 @@
 
 namespace Eppo
 {
-	// Camera driven by a scene entity's transform (via CameraComponent). Unlike
-	// EditorCamera it owns no view matrix or input handling: the view is derived
-	// from the owning entity's TransformComponent at render time. It only owns the
-	// projection, recomputed whenever its perspective params or the viewport change.
 	class SceneCamera : public Camera
 	{
 	public:

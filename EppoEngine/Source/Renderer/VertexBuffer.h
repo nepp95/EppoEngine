@@ -20,7 +20,7 @@ namespace Eppo
 		[[nodiscard]] auto GetBuffer() const -> nvrhi::BufferHandle { return m_Buffer; }
 		[[nodiscard]] constexpr auto GetSize() const -> uint64_t { return m_Size; };
 
-		static auto CreateMeshPrimitive(MeshPrimitiveType type) -> Ref<VertexBuffer>;
+		static auto GeneratePrimitive(MeshPrimitiveType type) -> Ref<VertexBuffer>;
 
 	private:
 		auto CreateBuffer(bool isResize = false) -> void;

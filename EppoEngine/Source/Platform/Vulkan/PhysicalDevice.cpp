@@ -3,6 +3,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include <ranges>
+
 namespace Eppo
 {
 	namespace

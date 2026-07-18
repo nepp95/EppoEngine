@@ -9,6 +9,7 @@
     {
       "name": "debug-base",
       "hidden": true,
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -18,6 +19,7 @@
     {
       "name": "release-base",
       "hidden": true,
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
@@ -27,6 +29,7 @@
     {
       "name": "dist-base",
       "hidden": true,
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/dist",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <ranges>
 
 namespace Eppo
 {
@@ -214,7 +215,7 @@ namespace Eppo
 			const auto& assetManager = Project::GetActive()->GetAssetManager();
 
 			if (ImGui::MenuItem("New Folder"))
-				FS::CreateDirectory(MakeUniquePath(m_CurrentDirectory / "New Folder"));
+				FS::CreateDir(MakeUniquePath(m_CurrentDirectory / "New Folder"));
 
 			if (ImGui::MenuItem("New Scene"))
 			{

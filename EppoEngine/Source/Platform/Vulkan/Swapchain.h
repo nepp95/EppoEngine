@@ -3,6 +3,8 @@
 #include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/DeviceManager.h"
 
+#include <queue>
+
 namespace Eppo
 {
 	struct SwapchainSupportDetails
@@ -25,6 +27,7 @@ namespace Eppo
 		auto Resize(uint32_t width, uint32_t height) -> void;
 
 		auto GetCurrentBackBufferIndex() const -> uint32_t { return m_SwapchainIndex; }
+		auto GetImageCount() const -> uint32_t { return static_cast<uint32_t>(m_Images.size()); }
 		auto GetCurrentSwapchainImage() -> const SwapchainImage& { return m_Images.at(m_SwapchainIndex); }
 
 	private:

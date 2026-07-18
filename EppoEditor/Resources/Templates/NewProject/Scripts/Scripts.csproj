@@ -5,8 +5,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EppoScriptCore.Managed">
-      <HintPath>$APP_DIR$/EppoScriptCore.Managed.dll</HintPath>
+    <!-- CoreManagedDll is passed by the editor at build time; the runtime loads
+         the core, so this project doesn't copy it. -->
+    <Reference Include="EppoScriptCore">
+      <HintPath>$(CoreManagedDll)</HintPath>
+      <Private>false</Private>
     </Reference>
   </ItemGroup>
 </Project>

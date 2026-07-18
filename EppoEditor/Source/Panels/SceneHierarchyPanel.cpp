@@ -14,12 +14,11 @@ namespace Eppo
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetStyle().IndentSpacing * 0.5f);
 
 		// Roots only; children are drawn by recursion in DrawEntityNode.
-		for (const auto e : scene->m_Registry.view<entt::entity>())
+		scene->ForEachEntity([&](Entity entity)
 		{
-			const Entity entity(e, scene.get());
 			if (!entity.GetComponent<RelationshipComponent>().Parent)
 				DrawEntityNode(entity);
-		}
+		});
 
 		ImGui::PopStyleVar();
 
@@ -48,7 +47,8 @@ namespace Eppo
 		if (children.empty())
 			flags |= ImGuiTreeNodeFlags_Leaf;
 
-		ImGui::PushID(entity.GetUUID());
+		// Seed the ImGui ID with the full 64-bit UUID (PushID(int) would truncate).
+		ImGui::PushID(reinterpret_cast<const void*>(static_cast<uint64_t>(entity.GetUUID())));
 		const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
 
 		if (ImGui::IsItemClicked())

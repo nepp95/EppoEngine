@@ -1,143 +1,106 @@
 project(EppoEngineTesting)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "Source/*.cpp")
+set(INCLUDE_DIRS
+    "Source"
+)
 
 add_executable(EppoEngineTesting ${SOURCES})
-
-target_include_directories(EppoEngineTesting PRIVATE "Source")
+add_dependencies(EppoEngineTesting EppoScriptCore)
+target_include_directories(EppoEngineTesting PRIVATE ${INCLUDE_DIRS})
 target_link_libraries(EppoEngineTesting PRIVATE EppoEngine UnitTest++)
 
-if (MSVC)
-    target_compile_options(EppoEngineTesting PRIVATE "/W3")
-    target_link_options(EppoEngineTesting PRIVATE "/ignore:4099")
-endif ()
+# EppoScriptCore.dll + runtimeconfig.json beside the test exe (same as the editor).
+CopyBuildScripts(EppoEngineTesting)
 
-# EppoEngine pulls in DLL deps (spdlog, imgui, ...) — copy them next to the exe
-add_custom_command(TARGET EppoEngineTesting POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:EppoEngineTesting> $<TARGET_RUNTIME_DLLS:EppoEngineTesting>
-    COMMAND_EXPAND_LISTS)
+# Copy linked runtime DLLs (nvrhi, glfw, Tracy, ...) next to the exe so it can
+# launch. Without this the process fails to load (e.g. missing TracyClient.dll).
+# Windows-only: TARGET_RUNTIME_DLLS is empty on ELF platforms (the loader finds
+# .so deps via RPATH), and an empty `cmake -E copy` would error on Linux/CI.
+if (WIN32)
+    add_custom_command(TARGET EppoEngineTesting POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:EppoEngineTesting> $<TARGET_RUNTIME_DLLS:EppoEngineTesting>
+        COMMAND_EXPAND_LISTS
+    )
 
-# The Vulkan SDK's dxcompiler.dll isn't a CMake-known runtime dependency, and
-# Windows ships a SPIR-V-less Microsoft dxcompiler.dll that can shadow it on the
-# DLL search path — so the graphical suites' runtime shader compilation needs the
-# SDK DLL copied next to the exe (see EppoEditor/CMakeLists.txt for the full note).
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_custom_command(TARGET EppoEngineTesting POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$ENV{VULKAN_SDK}/Bin/dxcompiler.dll" $<TARGET_FILE_DIR:EppoEngineTesting>
-        COMMENT "Copying Vulkan DXC (dxcompiler.dll)")
+    )
 endif ()
 
-# Graphical suites (App/Scenario) boot the real Application, which loads shaders
-# and fonts from Resources/ next to the exe (FS::GetResourcesDirectory() resolves
-# against the working directory = exe dir). Reuse the editor's Resources tree,
-# copied incrementally via a stamp file so it only re-copies when files change.
+# --- Test user-script assembly ---------------------------------------------
+# Build the tiny user harness (EppoTesting.Scripts.dll) the Scripting suite loads,
+# then deploy it (and a fresh managed core) beside the exe. EppoEngineTesting
+# depends on this target, so a targeted `--target EppoEngineTesting` build (as CI
+# runs) produces the assembly — an unattached ALL target would be skipped by CI.
+# The deploy re-runs whenever the assemblies change, so managed-only edits don't
+# leave stale DLLs (CopyBuildScripts' POST_BUILD only fires on a C++ relink).
+# EppoScriptCore.dll is built at the root binary dir by the EppoScriptCore target.
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/harness/EppoTesting.Scripts.dll"
+    COMMAND ${DOTNET_EXE} build "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts/HarnessScripts.csproj"
+            -c $<CONFIG> -o "${CMAKE_CURRENT_BINARY_DIR}/harness"
+            -p:CoreManagedDll="${CMAKE_BINARY_DIR}/EppoScriptCore.dll"
+            -v m --nologo
+    COMMENT "Building test harness user assembly"
+    DEPENDS "${CMAKE_BINARY_DIR}/EppoScriptCore.dll"
+            "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts/Source/HarnessScript.cs"
+            "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts/HarnessScripts.csproj"
+    VERBATIM
+)
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_HarnessDeploy"
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/harness/EppoTesting.Scripts.dll"
+            "${CMAKE_BINARY_DIR}/EppoScriptCore.dll"
+    # The exe depends on this target, so it deploys before the exe is linked. On
+    # multi-config generators (VS) the per-config output dir may not exist yet, so
+    # create it before copying into it.
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoEngineTesting>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_BINARY_DIR}/harness/EppoTesting.Scripts.dll"
+            "${CMAKE_BINARY_DIR}/EppoScriptCore.dll"
+            "${CMAKE_BINARY_DIR}/EppoScriptCore.pdb"
+            "$<TARGET_FILE_DIR:EppoEngineTesting>"
+    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/_HarnessDeploy"
+    COMMENT "Deploying test harness + managed core beside the test exe"
+    VERBATIM
+)
+add_custom_target(EppoTestingHarness DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_HarnessDeploy")
+add_dependencies(EppoTestingHarness EppoScriptCore)
+add_dependencies(EppoEngineTesting EppoTestingHarness)
+
+# Copy the editor's Resources/ + TestData/Scenes/ next to the exe (stamp-gated)
+# so the graphical suites can boot the renderer and load harness.epscene.
 set(EDITOR_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/EppoEditor/Resources")
 file(GLOB_RECURSE TEST_RESOURCE_FILES CONFIGURE_DEPENDS "${EDITOR_RESOURCES_DIR}/*")
+file(GLOB TEST_SCENE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scenes/*")
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoEngineTesting>/Resources"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${EDITOR_RESOURCES_DIR}" "$<TARGET_FILE_DIR:EppoEngineTesting>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scenes" "$<TARGET_FILE_DIR:EppoEngineTesting>/TestData/Scenes"
     COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync"
-    DEPENDS ${TEST_RESOURCE_FILES}
-    COMMENT "Copying Resources (tests)"
-    VERBATIM)
-add_custom_target(EppoTestResources ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync")
+    DEPENDS ${TEST_RESOURCE_FILES} ${TEST_SCENE_FILES}
+    COMMENT "Copying Resources + scenario TestData (tests)"
+    VERBATIM
+)
+add_custom_target(EppoTestResources DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync")
 add_dependencies(EppoEngineTesting EppoTestResources)
 
-# Committed scenario data (e.g. the testing scene) copied next to the exe so
-# scenarios can load it via FS::GetRootDirectory() (= working dir = exe dir).
-add_custom_command(TARGET EppoEngineTesting POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scenes" "$<TARGET_FILE_DIR:EppoEngineTesting>/TestData/Scenes"
-    COMMENT "Copying scenario TestData")
-
-# Scripting suite provisioning (mirrors EppoEditor): the hosted .NET runtime
-# needs runtimeconfig.json + the managed core assembly (+ deps) next to the test
-# exe. We rebuild the managed core here rather than reaching into the editor's
-# output so the test target stands alone. The whole block is portable — only the
-# dotnet executable name differs — so it runs on Windows and Linux (CI); the
-# editor's own managed build stays Windows-only, hence the optional TARGET guard.
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        set(DOTNET_EXE "$ENV{DOTNET_ROOT}/dotnet.exe")
-    else ()
-        set(DOTNET_EXE "$ENV{DOTNET_ROOT}/dotnet")
-    endif ()
-
-    file(GLOB_RECURSE MANAGED_CORE_SOURCES CONFIGURE_DEPENDS "${EppoScriptCore_MANAGED_SOURCE_DIR}/Source/*.cs")
-
-    # The editor builds this same csproj; we can't redirect its intermediate dir
-    # (the port's csproj uses default globbing, which then sweeps stale in-source
-    # obj/*.cs into the compile), so instead we output to our own dir but serialize
-    # after the editor's managed build to avoid a parallel-build race on the shared
-    # obj/. EppoScriptCoreManaged is defined in EppoEditor (added before us).
-    add_custom_command(
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll"
-        COMMAND ${DOTNET_EXE} build "${EppoScriptCore_MANAGED_SOURCE_DIR}/EppoScriptCore.Managed.csproj" -c $<CONFIG> -o ${CMAKE_CURRENT_BINARY_DIR} -v m --nologo
-        COMMENT "Building EppoScriptCore.Managed (tests)"
-        DEPENDS ${MANAGED_CORE_SOURCES} "${EppoScriptCore_MANAGED_SOURCE_DIR}/EppoScriptCore.Managed.csproj"
-        VERBATIM)
-    add_custom_target(EppoScriptCoreManagedTest ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll")
-    if (TARGET EppoScriptCoreManaged)
-        add_dependencies(EppoScriptCoreManagedTest EppoScriptCoreManaged)
-    endif ()
-    add_dependencies(EppoEngineTesting EppoScriptCoreManagedTest)
-
-    # A tiny user script assembly (one concrete ScriptBehaviour) so the Scripting
-    # suite can exercise user-assembly loading + class/field discovery. References
-    # the core managed DLL by path (passed as an MSBuild property).
-    set(TEST_SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts")
-    file(GLOB_RECURSE TEST_SCRIPT_SOURCES CONFIGURE_DEPENDS "${TEST_SCRIPTS_DIR}/Source/*.cs")
-
-    # Intermediates go under the build tree (not the source tree next to the
-    # csproj) so nothing generated leaks into git.
-    add_custom_command(
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/TestScripts/EppoTesting.Scripts.dll"
-        COMMAND ${DOTNET_EXE} build "${TEST_SCRIPTS_DIR}/HarnessScripts.csproj" -c $<CONFIG>
-            -o "${CMAKE_CURRENT_BINARY_DIR}/TestScripts"
-            -p:BaseIntermediateOutputPath=${CMAKE_CURRENT_BINARY_DIR}/TestScripts/obj/
-            -p:CoreManagedDll=${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll
-            -v m --nologo
-        COMMENT "Building test user script assembly"
-        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll" ${TEST_SCRIPT_SOURCES} "${TEST_SCRIPTS_DIR}/HarnessScripts.csproj"
-        VERBATIM)
-    add_custom_target(EppoTestScripts ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/TestScripts/EppoTesting.Scripts.dll")
-    add_dependencies(EppoTestScripts EppoScriptCoreManagedTest)
-    add_dependencies(EppoEngineTesting EppoTestScripts)
-
-    add_custom_command(TARGET EppoEngineTesting POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/EppoEditor/runtimeconfig.json" $<TARGET_FILE_DIR:EppoEngineTesting>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.dll" $<TARGET_FILE_DIR:EppoEngineTesting>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.pdb" $<TARGET_FILE_DIR:EppoEngineTesting>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/EppoScriptCore.Managed.deps.json" $<TARGET_FILE_DIR:EppoEngineTesting>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/TestScripts/EppoTesting.Scripts.dll" $<TARGET_FILE_DIR:EppoEngineTesting>
-        COMMENT "Copying EppoScriptCore runtime + test scripts")
-endif ()
-
-# Register one CTest entry per UnitTest++ SUITE. The runner takes a suite name as
-# its first argument and runs only that suite (see Source/main.cpp), giving
-# per-suite pass/fail granularity. Labels group suites by cost/dependency so they
-# can be filtered, e.g. `ctest -L unit`:
-#   unit      — pure logic, no engine subsystems spun up
-#   scene     — headless ECS + serialization
-#   scripting — needs the hosted .NET runtime + managed assembly
-function(eppo_add_suite suite)
-    cmake_parse_arguments(ARG "" "LABEL" "" ${ARGN})
-    # Run from the exe's own directory: the hosted .NET runtime resolves the
-    # managed assemblies relative to the working directory, and the data files
-    # (runtimeconfig.json, script DLLs) are copied next to the exe.
-    add_test(NAME ${suite} COMMAND EppoEngineTesting ${suite}
+function(AddTestingSuite name label)
+    add_test(NAME ${name}
+        COMMAND EppoEngineTesting ${name}
         WORKING_DIRECTORY $<TARGET_FILE_DIR:EppoEngineTesting>)
-    if (ARG_LABEL)
-        set_tests_properties(${suite} PROPERTIES LABELS "${ARG_LABEL}")
-    endif ()
+    set_tests_properties(${name} PROPERTIES LABELS "${label}")
 endfunction()
 
-eppo_add_suite(Core      LABEL unit)
-eppo_add_suite(Input     LABEL unit)
-eppo_add_suite(Renderer  LABEL unit)
-eppo_add_suite(Scene     LABEL scene)
-eppo_add_suite(Project   LABEL scene)
-eppo_add_suite(Scripting LABEL scripting)
-eppo_add_suite(App       LABEL graphical)
-eppo_add_suite(Scenario  LABEL graphical)
+AddTestingSuite(Physics unit)
+AddTestingSuite(Scripting scripting)
+AddTestingSuite(ScriptMarshalling unit)
+AddTestingSuite(UUID core)
+
+# Graphical suites: boot the real Application (need a display + GPU). Excluded on
+# headless CI via `ctest --label-exclude graphical`.
+AddTestingSuite(App graphical)
+AddTestingSuite(Renderer graphical)
+AddTestingSuite(Scenario graphical)

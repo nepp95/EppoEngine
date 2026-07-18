@@ -3,15 +3,19 @@
 #include "Asset/Asset.h"
 #include "Core/UUID.h"
 #include "Renderer/Camera/EditorCamera.h"
+#include "Scene/Components.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
+
+#include <functional>
 
 namespace Eppo
 {
 	using EntityHandle = entt::entity;
 	class Entity;
 	class SceneRenderer;
+	class PhysicsWorld;
 
 	// Scene-level lighting environment. Without a skybox image the renderer
 	// shades the background and the ambient term from these three colors (a
@@ -41,7 +45,7 @@ namespace Eppo
 		auto OnRuntimeStop() -> void;
 		auto OnUpdateRuntime(float timestep) -> void;
 
-		auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera) -> void;
+		auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& camera) -> void;
 		auto OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer) -> void;
 
 		[[nodiscard]] auto GetPrimaryCameraEntity() -> Entity;
@@ -57,6 +61,15 @@ namespace Eppo
 
 		// Composes an entity's world transform from its parent chain.
 		[[nodiscard]] auto GetWorldTransform(Entity entity) -> glm::mat4;
+
+		// Enumerate every entity in creation order, handing each to `func`. Every
+		// entity carries an IDComponent, so a view over it covers the whole scene.
+		// Use this instead of reaching into the registry for all-entity iteration.
+		auto ForEachEntity(const std::function<void(Entity)>& func) -> void;
+
+		// Sort entities by UUID for deterministic iteration (e.g. serialization).
+		// Subsequent ForEachEntity calls visit them in this order.
+		auto SortEntitiesByID() -> void;
 
 		// Resolve an entity by its stable UUID. Returns an invalid Entity if the
 		// UUID is not present in this scene. Used to remap a selection across the
@@ -84,9 +97,8 @@ namespace Eppo
 		entt::registry m_Registry;
 		std::unordered_map<UUID, EntityHandle> m_EntityMap;
 		EnvironmentSettings m_Environment;
+		Ref<PhysicsWorld> m_PhysicsWorld;
 
 		friend class Entity;
-		friend class SceneHierarchyPanel;
-		friend class SceneSerializer;
 	};
 }

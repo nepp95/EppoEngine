@@ -7,11 +7,8 @@
 
 namespace Eppo::Testing
 {
-    // RAII scratch directory for tests that must touch the filesystem (e.g.
-    // serialization round-trips). Creates a uniquely-named directory under the
-    // system temp path on construction and removes it recursively on
-    // destruction, so tests leave nothing behind even if an assertion aborts
-    // the case.
+    // RAII scratch directory under the system temp path; removed recursively on
+    // destruction, so tests leave nothing behind even if an assertion aborts.
     class TempDir
     {
     public:

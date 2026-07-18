@@ -132,6 +132,8 @@ namespace Eppo
 	{
 		const auto& indices = m_PhysicalDevice->GetQueueFamilyIndices();
 
+		std::vector<const char*> deviceExtensions(g_DeviceExtensions.begin(), g_DeviceExtensions.end());
+
 		nvrhi::vulkan::DeviceDesc deviceDesc{
 			.errorCB = &m_MessageCallback,
 			.instance = m_Instance,
@@ -145,6 +147,8 @@ namespace Eppo
 			.computeQueueIndex = indices.Compute,
 			.instanceExtensions = m_Params.RequiredVulkanInstanceExtensions.data(),
 			.numInstanceExtensions = m_Params.RequiredVulkanInstanceExtensions.size(),
+			.deviceExtensions = deviceExtensions.data(),
+			.numDeviceExtensions = deviceExtensions.size(),
 		};
 
 		m_Device = nvrhi::vulkan::createDevice(deviceDesc);

@@ -53,7 +53,9 @@ namespace Eppo
 
 	auto DeviceManager::InitRenderer() -> void
 	{
+		// Shader binding layouts need the published Renderer's descriptor manager during Init().
 		m_Renderer = CreateScopedPtr<Renderer>();
+		m_Renderer->Init();
 	}
 
 	DeviceManager::DeviceManager(const Ref<Window>& window, DeviceParams params)
