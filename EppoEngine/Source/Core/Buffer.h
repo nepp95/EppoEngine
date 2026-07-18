@@ -53,13 +53,13 @@ namespace Eppo
 		template<typename T>
 		auto As() -> T*
 		{
-			return static_cast<T*>(Data);
+			return reinterpret_cast<T*>(Data);
 		}
 
 		template<typename T>
 		auto As() const -> const T*
 		{
-			return static_cast<const T*>(Data);
+			return reinterpret_cast<const T*>(Data);
 		}
 	};
 }
