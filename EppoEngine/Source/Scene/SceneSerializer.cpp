@@ -10,6 +10,8 @@ using json = nlohmann::json;
 
 namespace Eppo
 {
+	static std::vector<std::string> s_RelationshipRepairNotices;
+
 	namespace Utils
 	{
 		// Serializes a single script field value to JSON as its natural type.
@@ -71,6 +73,13 @@ namespace Eppo
 	SceneSerializer::SceneSerializer(const Ref<Scene>& scene)
 		: m_SceneContext(scene)
 	{}
+
+	auto SceneSerializer::ConsumeRelationshipRepairNotices() -> std::vector<std::string>
+	{
+		std::vector<std::string> notices = std::move(s_RelationshipRepairNotices);
+		s_RelationshipRepairNotices.clear();
+		return notices;
+	}
 
 	auto SceneSerializer::Serialize(const std::filesystem::path& path) const -> bool
 	{
@@ -187,8 +196,7 @@ namespace Eppo
 			if (entity.contains("RelationshipComponent"))
 			{
 				auto& c = entity["RelationshipComponent"];
-				// Already added in CreateEntityWithUUID; UUID links need no resolution.
-				auto& nc = newEntity.GetComponent<RelationshipComponent>();
+				auto& nc = newEntity.AddComponent<RelationshipComponent>();
 				nc.Parent = c["Parent"].get<UUID>();
 				if (c.contains("Children"))
 				{
@@ -295,7 +303,100 @@ namespace Eppo
 
 		}
 
+		RepairRelationships(sceneName);
+
 		return true;
+	}
+
+	auto SceneSerializer::RepairRelationships(const std::string& sceneName) const -> void
+	{
+		std::vector<std::string> repairs;
+		bool changed = true;
+		while (changed)
+		{
+			changed = false;
+			std::unordered_set<UUID> invalidRelationships;
+
+			m_SceneContext->ForEachEntity([&](Entity entity)
+			{
+				if (!entity.HasComponent<RelationshipComponent>())
+					return;
+
+				const auto& relationship = entity.GetComponent<RelationshipComponent>();
+				if (!relationship.Parent)
+					return;
+
+				const Entity parent = m_SceneContext->GetEntityByUUID(relationship.Parent);
+				const bool listedByParent = parent && parent.HasComponent<RelationshipComponent>() && [&]
+				{
+					const auto& children = parent.GetComponent<RelationshipComponent>().Children;
+					return std::find(children.begin(), children.end(), entity.GetUUID()) != children.end();
+				}();
+
+				std::unordered_set<UUID> visited{ entity.GetUUID() };
+				Entity ancestor = parent;
+				bool cyclic = false;
+				while (ancestor)
+				{
+					if (!visited.insert(ancestor.GetUUID()).second)
+					{
+						cyclic = true;
+						break;
+					}
+
+					const UUID ancestorParent = ancestor.HasComponent<RelationshipComponent>()
+						? ancestor.GetComponent<RelationshipComponent>().Parent : UUID(0);
+					ancestor = ancestorParent ? m_SceneContext->GetEntityByUUID(ancestorParent) : Entity{};
+				}
+
+				if (!listedByParent || cyclic)
+					invalidRelationships.insert(entity.GetUUID());
+			});
+
+			for (const UUID entityId : invalidRelationships)
+			{
+				Entity entity = m_SceneContext->GetEntityByUUID(entityId);
+				if (!entity || !entity.HasComponent<RelationshipComponent>())
+					continue;
+
+				repairs.push_back(fmt::format("'{}' had an inconsistent relationship; detached to root.", entity.GetName()));
+				m_SceneContext->SetParent(entity, {});
+				changed = true;
+			}
+
+			m_SceneContext->ForEachEntity([&](Entity entity)
+			{
+				if (!entity.HasComponent<RelationshipComponent>())
+					return;
+
+				auto& relationship = entity.GetComponent<RelationshipComponent>();
+				const size_t oldSize = relationship.Children.size();
+				std::erase_if(relationship.Children, [&](const UUID childId)
+				{
+					const Entity child = m_SceneContext->GetEntityByUUID(childId);
+					return !child || !child.HasComponent<RelationshipComponent>()
+						|| child.GetComponent<RelationshipComponent>().Parent != entity.GetUUID();
+				});
+				std::unordered_set<UUID> uniqueChildren;
+				std::erase_if(relationship.Children, [&](const UUID childId)
+				{
+					return !uniqueChildren.insert(childId).second;
+				});
+				changed |= oldSize != relationship.Children.size();
+
+				if (!relationship.Parent && relationship.Children.empty())
+				{
+					entity.RemoveComponent<RelationshipComponent>();
+					changed = true;
+				}
+			});
+		}
+
+		for (const std::string& repair : repairs)
+		{
+			Log::Warn("Scene '{}' relationship repaired: {}", sceneName, repair);
+			s_RelationshipRepairNotices.push_back(fmt::format("Scene '{}': {}", sceneName, repair));
+		}
 	}
 
 	auto SceneSerializer::SerializeEntity(nlohmann::json& data, const Entity entity) const -> void

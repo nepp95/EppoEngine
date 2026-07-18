@@ -61,6 +61,9 @@ Key libraries: entt (ECS), NVRHI (Vulkan RHI), GLFW + ImGui (docking), glm, box3
 - **"SPIR-V CodeGen not available"** at runtime means the Microsoft `dxcompiler.dll` is shadowing the Vulkan SDK one; copy the Vulkan SDK's `dxcompiler.dll` next to the exe.
 - **Platform/config macros:** `EP_PLATFORM_WINDOWS`/`EP_PLATFORM_LINUX`; `EP_DEBUG`/`EP_RELEASE`/`EP_DIST`; `TRACY_ENABLE` in Debug and RelWithDebInfo. Linux defines `__EMULATE_UUID`.
 - **`UUID::operator bool` is explicit.** Use `static_cast<uint64_t>(uuid)` to get the raw id; implicit numeric conversion is a compile error by design.
+- **`RelationshipComponent` is optional.** An entity with no parent or children has no relationship component. Readers guard its absence with `HasComponent`; parenting adds it lazily and unparenting removes it when empty.
+- **Scene graph has two walk directions that can disagree.** The hierarchy panel and `Scene::GatherColliders` walk **down** via `Children`; `GetWorldTransform` and the collider wireframe pass walk **up** via `Parent` / iterate the whole registry (`ForEachEntity`). A one-directional link (child names a parent that doesn't list it back, e.g. a scene stored with only the child's `Parent`) is invisible to the down-walkers but still rendered — an entity you can't select/delete whose collider keeps drawing, and whose collider never joins the compound body. `SceneSerializer::Deserialize` must reconcile both directions on load.
+- **Run the editor headless to observe runtime state:** from `build/debug/EppoEditor`, `./EppoEditor.exe > out.txt 2>&1 &`, wait a few seconds, `taskkill //IM EppoEditor.exe //F`. It loads the project default scene and logs to `latest.log` + stdout; useful for confirming a fix in the real app rather than trusting tests alone.
 
 ## Style
 
@@ -74,6 +77,7 @@ Key libraries: entt (ECS), NVRHI (Vulkan RHI), GLFW + ImGui (docking), glm, box3
 
 ## Workflow rules (required)
 
+- **Discover worktrees first.** Before inspecting, editing, building, or testing, run `git worktree list` from the repository and identify the worktree that contains the task. Never assume the primary checkout is the target; use the selected worktree consistently for every command.
 - **Plan before code.** For anything beyond a trivial change, write a plan first and confirm key decisions (including naming/layout choices) with the user before implementing.
 - **Test-driven development.** Write the test first (matching `EppoEngineTesting/Source/<module>/` suite, or a new suite via `AddTestingSuite`). Name suites/tests after the class/behaviour under test, not the goal ("Smoke"/"Sanity" are banned). Critical bug fixes get a regression test.
 - **Systematic debugging.** Root cause before fix; no patching symptoms.

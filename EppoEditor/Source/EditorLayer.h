@@ -40,7 +40,8 @@ namespace Eppo
 	    auto UpdateImGuizmo() -> void;
 		auto UI_Toolbar() -> void;
 		auto UI_NewProjectPopup() -> void;
-        auto UI_WarningNoPrimaryCamera() -> void;
+		auto UI_RelationshipRepairPopup() -> void;
+		auto UI_ViewportNotices() -> void;
 
 	private:
 		Ref<PanelManager> m_PanelManager = nullptr;
@@ -74,6 +75,7 @@ namespace Eppo
 
 		// Popups
 		bool m_NewProjectPopup = false;
+		std::vector<std::string> m_RelationshipRepairNotices;
 
 		// Gizmo
 		ImGuizmo::OPERATION m_GizmoType = ImGuizmo::TRANSLATE;

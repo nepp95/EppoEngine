@@ -13,7 +13,6 @@
 namespace Eppo
 {
 	struct RigidBodyComponent;
-	struct TransformComponent;
 
 	enum class ColliderShape : uint8_t { Box, Sphere, Capsule };
 
@@ -23,7 +22,9 @@ namespace Eppo
 	struct ColliderData
 	{
 		ColliderShape Shape = ColliderShape::Box;
+		// Body-local shape pose; Rotation orients the shape but does not re-rotate Offset.
 		glm::vec3 Offset = glm::vec3(0.0f);
+		glm::quat Rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 		float Density = 1.0f;
 		float Friction = 0.5f;
 		float Restitution = 0.0f;
@@ -42,12 +43,13 @@ namespace Eppo
 		PhysicsWorld(const PhysicsWorld&) = delete;
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-		auto CreateBody(UUID entityId, const RigidBodyComponent& rigidBody, const TransformComponent& transform,
+		auto CreateBody(UUID entityId, const RigidBodyComponent& rigidBody, const glm::vec3& position, const glm::quat& rotation,
 			const std::vector<ColliderData>& colliders) -> void;
 
 		auto Step(float timestep, int subStepCount = 4) -> void;
 
 		[[nodiscard]] auto HasBody(UUID entityId) const -> bool;
+		[[nodiscard]] auto GetShapeCount(UUID entityId) const -> int;
 
 		[[nodiscard]] auto GetPosition(UUID entityId) const -> glm::vec3;
 		[[nodiscard]] auto GetRotation(UUID entityId) const -> glm::quat;

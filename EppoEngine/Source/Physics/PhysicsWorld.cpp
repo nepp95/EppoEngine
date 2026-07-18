@@ -36,13 +36,13 @@ namespace Eppo
 		b3DestroyWorld(m_WorldId);
 	}
 
-	auto PhysicsWorld::CreateBody(const UUID entityId, const RigidBodyComponent& rigidBody, const TransformComponent& transform,
+	auto PhysicsWorld::CreateBody(const UUID entityId, const RigidBodyComponent& rigidBody, const glm::vec3& position, const glm::quat& rotation,
 		const std::vector<ColliderData>& colliders) -> void
 	{
 		b3BodyDef bodyDef = b3DefaultBodyDef();
 		bodyDef.type = Utils::ToB3BodyType(rigidBody.Type);
-		bodyDef.position = Utils::ToB3(transform.Translation);
-		bodyDef.rotation = Utils::ToB3(glm::quat(transform.Rotation));
+		bodyDef.position = Utils::ToB3(position);
+		bodyDef.rotation = Utils::ToB3(rotation);
 		bodyDef.gravityScale = rigidBody.GravityScale;
 		bodyDef.linearDamping = rigidBody.LinearDamping;
 		bodyDef.angularDamping = rigidBody.AngularDamping;
@@ -50,6 +50,12 @@ namespace Eppo
 		const b3BodyId body = b3CreateBody(m_WorldId, &bodyDef);
 		for (const ColliderData& collider : colliders)
 			AttachCollider(body, collider);
+		if (colliders.empty() && rigidBody.Type == RigidBodyComponent::BodyType::Dynamic)
+		{
+			b3MassData massData{};
+			massData.mass = 1.0f;
+			b3Body_SetMassData(body, massData);
+		}
 
 		m_Bodies[entityId] = body;
 	}
@@ -65,7 +71,8 @@ namespace Eppo
 		{
 			case ColliderShape::Box:
 			{
-				b3BoxHull hull = b3MakeOffsetBoxHull(collider.HalfExtents.x, collider.HalfExtents.y, collider.HalfExtents.z, Utils::ToB3(collider.Offset));
+				const b3Transform pose{ Utils::ToB3(collider.Offset), Utils::ToB3(collider.Rotation) };
+				b3BoxHull hull = b3MakeTransformedBoxHull(collider.HalfExtents.x, collider.HalfExtents.y, collider.HalfExtents.z, pose);
 				b3CreateHullShape(body, &shapeDef, &hull.base);
 				break;
 			}
@@ -79,11 +86,11 @@ namespace Eppo
 
 			case ColliderShape::Capsule:
 			{
-				// Aligned to local Y; Height is the distance between hemisphere centers.
-				const float halfHeight = collider.Height * 0.5f;
+				// Axis is local Y rotated by the shape rotation; Height spans the hemisphere centers.
+				const glm::vec3 halfAxis = collider.Rotation * glm::vec3(0.0f, collider.Height * 0.5f, 0.0f);
 				const b3Capsule capsule{
-					Utils::ToB3(collider.Offset - glm::vec3(0.0f, halfHeight, 0.0f)),
-					Utils::ToB3(collider.Offset + glm::vec3(0.0f, halfHeight, 0.0f)),
+					Utils::ToB3(collider.Offset - halfAxis),
+					Utils::ToB3(collider.Offset + halfAxis),
 					collider.Radius
 				};
 				b3CreateCapsuleShape(body, &shapeDef, &capsule);
@@ -110,6 +117,15 @@ namespace Eppo
 	auto PhysicsWorld::HasBody(const UUID entityId) const -> bool
 	{
 		return m_Bodies.contains(entityId);
+	}
+
+	auto PhysicsWorld::GetShapeCount(const UUID entityId) const -> int
+	{
+		b3BodyId body;
+		if (!TryGetBody(entityId, body))
+			return 0;
+
+		return b3Body_GetShapeCount(body);
 	}
 
 	auto PhysicsWorld::GetPosition(const UUID entityId) const -> glm::vec3

@@ -41,6 +41,8 @@ Required order: **configure -> build -> test**. After editing C# only, rebuild t
 - `EppoRuntime/` — scaffolded, currently **not wired into the top-level build** (no `add_subdirectory`); `BUILD_RUNTIME` option is unused.
 - `CMake/` — `Dependencies.cmake`, `Dotnet.cmake` (managed-core build + `CopyBuildScripts` helper), `Ports/` vcpkg overlays.
 
+Runtime behavior and reusable game functionality belong in `EppoEngine`, not `EppoEditor`. Editor code may call engine APIs, but must not own logic that a standalone game or runtime needs, such as deriving collider values from mesh bounds.
+
 ## Gotchas
 
 - **Run editor/tests from the exe output dir.** They resolve `runtimeconfig.json`, `EppoScriptCore.dll`, and `Resources/` relative to the working directory. `VS_DEBUGGER_WORKING_DIRECTORY` is set accordingly; from a terminal, `cd` to the exe dir first or scripting fails to load.
@@ -62,6 +64,7 @@ GitLab CI (`.gitlab-ci.yml`): runs on MRs, `master`, `develop`, and `feature/*` 
 
 ## Workflow rules (required)
 
+- **Discover worktrees first.** Before inspecting, editing, building, or testing, run `git worktree list` from the repository and identify the worktree that contains the task. Never assume the primary checkout is the target; use the selected worktree consistently for every command.
 - **Plan before code.** For anything beyond a trivial change, use the `plan-and-confirm` skill to write a complete plan, verify it works end-to-end, and confirm key decisions with the user. Do not write implementation code until the plan covers the entire task.
 - **Test-driven development and regressions.** Use the `test-driven-development` skill: write the test first, then implement. New behavior gets a test in the matching `EppoEngineTesting/Source/<module>/` suite, or a new suite via `AddTestingSuite` in `EppoEngineTesting/CMakeLists.txt`. Critical bug fixes get a test that would have caught the defect when practical.
 - **Systematic debugging.** Use the `systematic-debugging` skill. Find the root cause before attempting a fix; do not patch symptoms or proceed without evidence for the cause.
