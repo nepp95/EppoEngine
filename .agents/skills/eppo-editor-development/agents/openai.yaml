@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eppo Editor Development"
+  short_description: "Extend editor workflows without breaking state"
+  default_prompt: "Use $eppo-editor-development to implement an Eppo editor workflow while preserving edit and play state invariants."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eppo Rendering Pipeline"
+  short_description: "Develop the Vulkan and NVRHI renderer safely"
+  default_prompt: "Use $eppo-rendering-pipeline to trace and implement an Eppo rendering change from scene submission through GPU execution."
