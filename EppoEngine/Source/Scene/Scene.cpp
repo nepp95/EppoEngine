@@ -67,6 +67,16 @@ namespace Eppo
 				data.Height = c.Height * scale.y;
 				colliders.push_back(data);
 			}
+
+			if (entity.HasComponent<CylinderColliderComponent>())
+			{
+				const auto& c = entity.GetComponent<CylinderColliderComponent>();
+				ColliderData data{ .Shape = ColliderShape::Cylinder, .Offset = shapeOffset(c.Offset), .Rotation = rotation,
+					.Density = c.Density, .Friction = c.Friction, .Restitution = c.Restitution };
+				data.Radius = c.Radius * std::max(scale.x, scale.z);
+				data.Height = c.Height * scale.y;
+				colliders.push_back(data);
+			}
 		}
 
 		// Collects source's subtree colliders, stopping at nested physics roots; the visited set terminates cyclic serialized hierarchies.
@@ -369,6 +379,7 @@ namespace Eppo
 			TryCopyComponent<BoxColliderComponent>(source, duplicate);
 			TryCopyComponent<SphereColliderComponent>(source, duplicate);
 			TryCopyComponent<CapsuleColliderComponent>(source, duplicate);
+			TryCopyComponent<CylinderColliderComponent>(source, duplicate);
 
 			if (source.HasComponent<ScriptComponent>() && ScriptEngine::IsInitialized())
 				ScriptEngine::Get().CopyFieldMap(source.GetUUID(), duplicate.GetUUID());
@@ -444,6 +455,18 @@ namespace Eppo
 		collider.Offset = bounds.GetCenter();
 		collider.Radius = std::max(halfExtent.x, halfExtent.z);
 		collider.Height = std::max(0.0f, halfExtent.y * 2.0f - collider.Radius * 2.0f);
+	}
+
+	auto Scene::FitColliderToMesh(Entity entity, CylinderColliderComponent& collider) -> void
+	{
+		AABB bounds;
+		if (!TryGetMeshBounds(entity, bounds))
+			return;
+
+		const glm::vec3 halfExtent = bounds.GetHalfExtent();
+		collider.Offset = bounds.GetCenter();
+		collider.Radius = std::max(halfExtent.x, halfExtent.z);
+		collider.Height = halfExtent.y * 2.0f;
 	}
 
 	auto Scene::DestroyEntityHierarchy(Entity entity) -> void
@@ -636,6 +659,7 @@ namespace Eppo
 		CopyComponent<BoxColliderComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<SphereColliderComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<CapsuleColliderComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<CylinderColliderComponent>(srcRegistry, dstRegistry, entityMap);
 		// UUID-based links copy verbatim, no handle remapping needed.
 		CopyComponent<RelationshipComponent>(srcRegistry, dstRegistry, entityMap);
 

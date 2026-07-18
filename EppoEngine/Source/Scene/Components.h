@@ -150,4 +150,17 @@ namespace Eppo
 		CapsuleColliderComponent() = default;
 		CapsuleColliderComponent(const CapsuleColliderComponent&) = default;
 	};
+
+	struct CylinderColliderComponent
+	{
+		float Radius = 0.5f;
+		float Height = 1.0f;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		CylinderColliderComponent() = default;
+		CylinderColliderComponent(const CylinderColliderComponent&) = default;
+	};
 }

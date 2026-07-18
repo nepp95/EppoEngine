@@ -156,6 +156,8 @@ namespace Eppo
                 return entity.HasComponent<SphereColliderComponent>();
             if (name == "CapsuleColliderComponent")
                 return entity.HasComponent<CapsuleColliderComponent>();
+            if (name == "CylinderColliderComponent")
+                return entity.HasComponent<CylinderColliderComponent>();
 
             return false;
         }
@@ -187,6 +189,8 @@ namespace Eppo
                 entity.TryAddComponent<SphereColliderComponent>();
             if (name == "CapsuleColliderComponent")
                 entity.TryAddComponent<CapsuleColliderComponent>();
+            if (name == "CylinderColliderComponent")
+                entity.TryAddComponent<CylinderColliderComponent>();
         }
 
         auto Entity_RemoveComponent(const uint64_t id, const char* typeName) -> bool
@@ -216,6 +220,8 @@ namespace Eppo
                 return entity.RemoveComponent<SphereColliderComponent>();
             if (name == "CapsuleColliderComponent")
                 return entity.RemoveComponent<CapsuleColliderComponent>();
+            if (name == "CylinderColliderComponent")
+                return entity.RemoveComponent<CylinderColliderComponent>();
 
             return false;
         }
@@ -622,6 +628,114 @@ namespace Eppo
 
             entity.GetComponent<CapsuleColliderComponent>().Restitution = restitution;
         }
+
+        auto CylinderColliderComponent_GetRadius(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CylinderColliderComponent>().Radius;
+        }
+
+        auto CylinderColliderComponent_SetRadius(const uint64_t id, const float radius) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return;
+
+            entity.GetComponent<CylinderColliderComponent>().Radius = radius;
+        }
+
+        auto CylinderColliderComponent_GetHeight(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CylinderColliderComponent>().Height;
+        }
+
+        auto CylinderColliderComponent_SetHeight(const uint64_t id, const float height) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return;
+
+            entity.GetComponent<CylinderColliderComponent>().Height = height;
+        }
+
+        auto CylinderColliderComponent_GetOffset(const uint64_t id, glm::vec3* outOffset) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return;
+
+            *outOffset = entity.GetComponent<CylinderColliderComponent>().Offset;
+        }
+
+        auto CylinderColliderComponent_SetOffset(const uint64_t id, const glm::vec3* offset) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return;
+
+            entity.GetComponent<CylinderColliderComponent>().Offset = *offset;
+        }
+
+        auto CylinderColliderComponent_GetDensity(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CylinderColliderComponent>().Density;
+        }
+
+        auto CylinderColliderComponent_SetDensity(const uint64_t id, const float density) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return;
+
+            entity.GetComponent<CylinderColliderComponent>().Density = density;
+        }
+
+        auto CylinderColliderComponent_GetFriction(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CylinderColliderComponent>().Friction;
+        }
+
+        auto CylinderColliderComponent_SetFriction(const uint64_t id, const float friction) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return;
+
+            entity.GetComponent<CylinderColliderComponent>().Friction = friction;
+        }
+
+        auto CylinderColliderComponent_GetRestitution(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CylinderColliderComponent>().Restitution;
+        }
+
+        auto CylinderColliderComponent_SetRestitution(const uint64_t id, const float restitution) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CylinderColliderComponent>())
+                return;
+
+            entity.GetComponent<CylinderColliderComponent>().Restitution = restitution;
+        }
         #pragma endregion
     }
 
@@ -680,6 +794,18 @@ namespace Eppo
             { "CapsuleColliderComponent_SetFriction",    reinterpret_cast<void*>(&CapsuleColliderComponent_SetFriction)    },
             { "CapsuleColliderComponent_GetRestitution", reinterpret_cast<void*>(&CapsuleColliderComponent_GetRestitution) },
             { "CapsuleColliderComponent_SetRestitution", reinterpret_cast<void*>(&CapsuleColliderComponent_SetRestitution) },
+            { "CylinderColliderComponent_GetRadius",      reinterpret_cast<void*>(&CylinderColliderComponent_GetRadius)      },
+            { "CylinderColliderComponent_SetRadius",      reinterpret_cast<void*>(&CylinderColliderComponent_SetRadius)      },
+            { "CylinderColliderComponent_GetHeight",      reinterpret_cast<void*>(&CylinderColliderComponent_GetHeight)      },
+            { "CylinderColliderComponent_SetHeight",      reinterpret_cast<void*>(&CylinderColliderComponent_SetHeight)      },
+            { "CylinderColliderComponent_GetOffset",      reinterpret_cast<void*>(&CylinderColliderComponent_GetOffset)      },
+            { "CylinderColliderComponent_SetOffset",      reinterpret_cast<void*>(&CylinderColliderComponent_SetOffset)      },
+            { "CylinderColliderComponent_GetDensity",     reinterpret_cast<void*>(&CylinderColliderComponent_GetDensity)     },
+            { "CylinderColliderComponent_SetDensity",     reinterpret_cast<void*>(&CylinderColliderComponent_SetDensity)     },
+            { "CylinderColliderComponent_GetFriction",    reinterpret_cast<void*>(&CylinderColliderComponent_GetFriction)    },
+            { "CylinderColliderComponent_SetFriction",    reinterpret_cast<void*>(&CylinderColliderComponent_SetFriction)    },
+            { "CylinderColliderComponent_GetRestitution", reinterpret_cast<void*>(&CylinderColliderComponent_GetRestitution) },
+            { "CylinderColliderComponent_SetRestitution", reinterpret_cast<void*>(&CylinderColliderComponent_SetRestitution) },
         };
 
         return calls;

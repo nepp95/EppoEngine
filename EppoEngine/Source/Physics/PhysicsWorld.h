@@ -14,7 +14,7 @@ namespace Eppo
 {
 	struct RigidBodyComponent;
 
-	enum class ColliderShape : uint8_t { Box, Sphere, Capsule };
+	enum class ColliderShape : uint8_t { Box, Sphere, Capsule, Cylinder };
 
 	// Shape-agnostic collider description: the scene translates each collider
 	// component into one of these, so adding a shape never changes CreateBody's

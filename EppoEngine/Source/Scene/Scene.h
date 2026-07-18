@@ -58,6 +58,7 @@ namespace Eppo
 		auto FitColliderToMesh(Entity entity, BoxColliderComponent& collider) -> void;
 		auto FitColliderToMesh(Entity entity, SphereColliderComponent& collider) -> void;
 		auto FitColliderToMesh(Entity entity, CapsuleColliderComponent& collider) -> void;
+		auto FitColliderToMesh(Entity entity, CylinderColliderComponent& collider) -> void;
 
 		// Reparents child under parent (invalid parent detaches to root), preserving
 		// the child's world transform. No-op if the move would create a cycle.
