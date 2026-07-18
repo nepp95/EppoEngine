@@ -326,6 +326,28 @@ SUITE(Physics)
         CHECK_CLOSE(5.0f, y, 0.001f);
     }
 
+    TEST(Scene_RuntimeScaledBoxCollider_UsesEntityScale)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+
+        Entity ground = scene->CreateEntity("Scaled ground");
+        ground.GetComponent<TransformComponent>().Scale = { 1.0f, 4.0f, 1.0f };
+        ground.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Static;
+        ground.AddComponent<BoxColliderComponent>();
+
+        Entity falling = scene->CreateEntity("Falling sphere");
+        falling.GetComponent<TransformComponent>().Translation = { 0.0f, 4.0f, 0.0f };
+        falling.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
+        falling.AddComponent<SphereColliderComponent>();
+
+        scene->OnRuntimeStart();
+        StepScene(scene, 120);
+        const float y = falling.GetComponent<TransformComponent>().Translation.y;
+        scene->OnRuntimeStop();
+
+        CHECK(y > 2.0f);
+    }
+
     TEST(Scene_RuntimeBodyWithoutCollider_StillFalls)
     {
         const Ref<Scene> scene = CreateRef<Scene>();

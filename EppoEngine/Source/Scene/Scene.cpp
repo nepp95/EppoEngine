@@ -19,27 +19,28 @@ namespace Eppo
 		auto GatherColliders(Entity entity) -> std::vector<ColliderData>
 		{
 			std::vector<ColliderData> colliders;
+			const glm::vec3 scale = glm::abs(entity.GetComponent<TransformComponent>().Scale);
 
 			if (entity.HasComponent<BoxColliderComponent>())
 			{
 				const auto& c = entity.GetComponent<BoxColliderComponent>();
-				colliders.push_back({ ColliderShape::Box, c.Offset, c.Density, c.Friction, c.Restitution, c.HalfSize });
+				colliders.push_back({ ColliderShape::Box, c.Offset * scale, c.Density, c.Friction, c.Restitution, c.HalfSize * scale });
 			}
 
 			if (entity.HasComponent<SphereColliderComponent>())
 			{
 				const auto& c = entity.GetComponent<SphereColliderComponent>();
-				ColliderData data{ ColliderShape::Sphere, c.Offset, c.Density, c.Friction, c.Restitution };
-				data.Radius = c.Radius;
+				ColliderData data{ ColliderShape::Sphere, c.Offset * scale, c.Density, c.Friction, c.Restitution };
+				data.Radius = c.Radius * std::max({ scale.x, scale.y, scale.z });
 				colliders.push_back(data);
 			}
 
 			if (entity.HasComponent<CapsuleColliderComponent>())
 			{
 				const auto& c = entity.GetComponent<CapsuleColliderComponent>();
-				ColliderData data{ ColliderShape::Capsule, c.Offset, c.Density, c.Friction, c.Restitution };
-				data.Radius = c.Radius;
-				data.Height = c.Height;
+				ColliderData data{ ColliderShape::Capsule, c.Offset * scale, c.Density, c.Friction, c.Restitution };
+				data.Radius = c.Radius * std::max(scale.x, scale.z);
+				data.Height = c.Height * scale.y;
 				colliders.push_back(data);
 			}
 
