@@ -36,8 +36,11 @@ namespace Eppo
 			.renderState = renderState,
 		};
 		
+		uint32_t expectedSet = 0;
 		for (const auto& [set, layout] : m_Specification.Shader->GetBindingLayouts())
 		{
+			EP_ASSERT(set == expectedSet);
+			++expectedSet;
 			if (layout)
 				pipelineDesc.addBindingLayout(layout);
 		}

@@ -4,6 +4,7 @@
 #include "Renderer/Camera/SceneCamera.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Pipeline.h"
+#include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderPass.h"
 #include "Renderer/Sampler.h"
 #include "Renderer/StorageBuffer.h"
@@ -64,7 +65,8 @@ namespace Eppo
 		auto SetScene(const Ref<Scene>& scene) -> void { m_Scene = scene; }
 
 	private:
-        auto BeginSceneInternal() -> void;
+		auto BeginSceneInternal() -> void;
+		auto PrepareRender() -> void;
 
 		auto GeometryPass() -> void;
 		auto SkyPass() -> void;
@@ -72,7 +74,6 @@ namespace Eppo
 
 	private:
 		Ref<Scene> m_Scene = nullptr;
-		nvrhi::CommandListHandle m_CommandList = nullptr;
 
 		bool m_DebugRenderingEnabled = false;
 		bool m_ShowColliders = true;
@@ -82,10 +83,15 @@ namespace Eppo
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
 
-		RenderPass m_GeometryPass;
-		RenderPass m_SkyPass;
-		RenderPass m_WireframePass;
-	    
+		Ref<RenderPass> m_GeometryPass = nullptr;
+		Ref<RenderPass> m_SkyPass = nullptr;
+		Ref<RenderPass> m_WireframePass = nullptr;
+		Ref<RenderCommandBuffer> m_RenderCommandBuffer = nullptr;
+
+		PassStatistics m_GeometryStats{};
+		PassStatistics m_SkyStats{};
+		PassStatistics m_WireframeStats{};
+
 		Ref<Sampler> m_Sampler = nullptr;
 
 		struct DrawKey
@@ -102,8 +108,6 @@ namespace Eppo
 		{
 			Ref<Mesh> Mesh = nullptr;
 			std::vector<glm::mat4> Transforms = { glm::mat4(1.0f) };
-			uint32_t ImageCount = 0;
-			uint32_t ImageOffset = 0;
 			uint32_t InstanceOffset = 0;
 		};
 		std::map<DrawKey, DrawCommand> m_DrawCommands;

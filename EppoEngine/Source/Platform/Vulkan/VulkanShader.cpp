@@ -266,9 +266,11 @@ namespace Eppo
 			const auto& resource = resources.push_constant_buffers[0];
 			const auto& bufferType = compiler.get_type(resource.base_type_id);
 			const size_t bufferSize = compiler.get_declared_struct_size(bufferType);
+			const uint32_t pushConstantSize = static_cast<uint32_t>(bufferSize);
 
 			m_PushConstants.Binding = 0;
-			m_PushConstants.Size = static_cast<uint32_t>(bufferSize);
+			if (pushConstantSize > m_PushConstants.Size)
+				m_PushConstants.Size = pushConstantSize;
 			m_PushConstants.Stage = m_HasPushConstants ? nvrhi::ShaderType::All : type;
 			m_HasPushConstants = true;
 		}

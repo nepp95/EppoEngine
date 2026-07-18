@@ -13,12 +13,9 @@ namespace Eppo
 		CreateBuffer();
 	}
 
-	auto UniformBuffer::SetData(const void* data, uint64_t size, uint64_t offset /*= 0*/) -> void
+	auto UniformBuffer::SetData(const nvrhi::CommandListHandle& cmdList, const void* data, const uint64_t size, const uint64_t offset) -> void
 	{
 		EP_PROFILE_FN("UniformBuffer::SetData");
-
-		const auto device = DeviceManager::Get()->GetDevice();
-		const auto cmd = device->createCommandList();
 
 		if (size > m_Size)
 		{
@@ -27,8 +24,17 @@ namespace Eppo
 			CreateBuffer();
 		}
 
+		cmdList->writeBuffer(m_Buffer, data, size, offset);
+	}
+
+	auto UniformBuffer::SetData(const void* data, const uint64_t size, const uint64_t offset) -> void
+	{
+		EP_PROFILE_FN("UniformBuffer::SetData");
+
+		const auto device = DeviceManager::Get()->GetDevice();
+		const auto cmd = device->createCommandList();
 		cmd->open();
-		cmd->writeBuffer(m_Buffer, data, m_Size);
+		SetData(cmd, data, size, offset);
 		cmd->close();
 
 		device->executeCommandList(cmd);
@@ -40,7 +46,7 @@ namespace Eppo
 
 		const auto device = DeviceManager::Get()->GetDevice();
 
-		nvrhi::BufferDesc bufferDesc{
+		const nvrhi::BufferDesc bufferDesc{
 			.byteSize = m_Size,
 			.debugName = m_DebugName,
 			.isConstantBuffer = true,

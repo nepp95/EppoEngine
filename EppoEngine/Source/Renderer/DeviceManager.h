@@ -101,6 +101,7 @@ namespace Eppo
 
 		// Swapchain/Nvrhi device
 		[[nodiscard]] virtual auto GetCurrentBackBufferIndex() const -> uint32_t = 0;
+		[[nodiscard]] virtual auto GetBackBufferCount() const -> uint32_t = 0;
 		virtual auto GetCurrentSwapchainImage() -> const SwapchainImage & = 0;
 		[[nodiscard]] virtual auto GetDevice() const -> nvrhi::IDevice* = 0;
 

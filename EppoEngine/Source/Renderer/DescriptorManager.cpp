@@ -2,6 +2,7 @@
 #include "Renderer/DescriptorManager.h"
 
 #include "Renderer/DeviceManager.h"
+#include "Renderer/Sampler.h"
 
 namespace Eppo
 {

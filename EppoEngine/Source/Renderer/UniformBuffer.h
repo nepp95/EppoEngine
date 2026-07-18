@@ -7,8 +7,9 @@ namespace Eppo
 	class UniformBuffer
 	{
 	public:
-        explicit UniformBuffer(uint64_t size, std::string debugName = "UniformBuffer");
+		explicit UniformBuffer(uint64_t size, std::string debugName = "UniformBuffer");
 
+		auto SetData(const nvrhi::CommandListHandle& cmdList, const void* data, uint64_t size, uint64_t offset = 0) -> void;
 		auto SetData(const void* data, uint64_t size, uint64_t offset = 0) -> void;
 
 		[[nodiscard]] auto GetBuffer() const -> nvrhi::BufferHandle { return m_Buffer; }

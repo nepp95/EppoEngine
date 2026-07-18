@@ -2,6 +2,8 @@
 
 #include <nvrhi/nvrhi.h>
 
+#include <map>
+
 namespace Eppo
 {
 	struct ShaderInputAttribute
@@ -51,13 +53,16 @@ namespace Eppo
 	class Shader
 	{
 	public:
-        explicit Shader(ShaderSpecification spec);
+		explicit Shader(ShaderSpecification spec);
 		virtual ~Shader() = default;
 
 		[[nodiscard]] auto GetShaderHandle(nvrhi::ShaderType type) -> nvrhi::ShaderHandle;
 		[[nodiscard]] auto GetInputLayout() -> nvrhi::InputLayoutHandle { return m_InputLayout; }
-		[[nodiscard]] auto GetBindingLayouts() const -> const std::unordered_map<uint32_t, nvrhi::BindingLayoutHandle>& { return m_BindingLayouts; }
-		[[nodiscard]] auto GetDescriptorTable() const -> nvrhi::DescriptorTableHandle { return m_DescriptorTable; }
+		// Ordered by ascending set: nvrhi legacy mode maps a set to its index in the pipeline's layout array.
+		[[nodiscard]] auto GetBindingLayouts() const -> const std::map<uint32_t, nvrhi::BindingLayoutHandle>& { return m_BindingLayouts; }
+
+		[[nodiscard]] auto GetShaderResources() const -> const std::unordered_map<uint32_t, std::vector<ShaderResourceBinding>>& { return m_ShaderResources; }
+		[[nodiscard]] auto GetPushConstants() const -> const PushConstantRange& { return m_PushConstants; }
 
 		[[nodiscard]] constexpr auto GetName() const -> const std::string& { return m_Specification.Name; }
 
@@ -74,8 +79,7 @@ namespace Eppo
 		std::unordered_map<nvrhi::ShaderType, nvrhi::ShaderHandle> m_ShaderHandles;
 		
 		std::unordered_map<uint32_t, std::vector<ShaderResourceBinding>> m_ShaderResources;
-		std::unordered_map<uint32_t, nvrhi::BindingLayoutHandle> m_BindingLayouts;
-		nvrhi::DescriptorTableHandle m_DescriptorTable = nullptr;
+		std::map<uint32_t, nvrhi::BindingLayoutHandle> m_BindingLayouts;
 
 		PushConstantRange m_PushConstants;
 		bool m_HasPushConstants = false;

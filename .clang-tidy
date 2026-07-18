@@ -5,5 +5,4 @@ Checks: >
   clang-analyzer-*,
   cppcoreguidelines-*,
   modernize-*,
-  misc-use-anonymous-namespace,
-  misc-const-correctness
+  misc-use-anonymous-namespace

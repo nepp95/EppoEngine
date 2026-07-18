@@ -2,7 +2,6 @@
 
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Image.h"
-#include "Renderer/Sampler.h"
 #include "Renderer/StorageBuffer.h"
 #include "Renderer/UniformBuffer.h"
 
@@ -11,6 +10,7 @@
 namespace Eppo
 {
     class DescriptorManager;
+    class Sampler;
 
     enum class BindlessHeapType
     {
