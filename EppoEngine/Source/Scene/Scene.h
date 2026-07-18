@@ -16,6 +16,7 @@ namespace Eppo
 	class Entity;
 	class SceneRenderer;
 	class PhysicsWorld;
+	class SceneSerializer;
 
 	// Scene-level lighting environment. Without a skybox image the renderer
 	// shades the background and the ambient term from these three colors (a
@@ -54,6 +55,10 @@ namespace Eppo
 		auto CreateEntityWithUUID(const UUID& uuid, const std::string& name) -> Entity;
 		auto DuplicateEntity(Entity entity) -> Entity;
 		auto DestroyEntity(Entity entity) -> void;
+		auto FitColliderToMesh(Entity entity, BoxColliderComponent& collider) -> void;
+		auto FitColliderToMesh(Entity entity, SphereColliderComponent& collider) -> void;
+		auto FitColliderToMesh(Entity entity, CapsuleColliderComponent& collider) -> void;
+		auto FitColliderToMesh(Entity entity, CylinderColliderComponent& collider) -> void;
 
 		// Reparents child under parent (invalid parent detaches to root), preserving
 		// the child's world transform. No-op if the move would create a cycle.
@@ -87,6 +92,10 @@ namespace Eppo
 		[[nodiscard]] auto GetEnvironment() -> EnvironmentSettings& { return m_Environment; }
 		[[nodiscard]] auto GetEnvironment() const -> const EnvironmentSettings& { return m_Environment; }
 
+		// Null outside runtime (between OnRuntimeStop and the next OnRuntimeStart).
+		[[nodiscard]] auto GetPhysicsWorld() const -> Ref<PhysicsWorld> { return m_PhysicsWorld; }
+		[[nodiscard]] auto GetColliderlessRigidBodies() const -> const std::vector<std::string>& { return m_ColliderlessRigidBodies; }
+
 	private:
 		auto RenderScene(const Ref<SceneRenderer>& sceneRenderer) -> void;
 
@@ -98,6 +107,7 @@ namespace Eppo
 		std::unordered_map<UUID, EntityHandle> m_EntityMap;
 		EnvironmentSettings m_Environment;
 		Ref<PhysicsWorld> m_PhysicsWorld;
+		std::vector<std::string> m_ColliderlessRigidBodies;
 
 		friend class Entity;
 	};

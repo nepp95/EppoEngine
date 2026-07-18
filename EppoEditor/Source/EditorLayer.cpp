@@ -288,6 +288,7 @@ namespace Eppo
 
     // Popups
 	UI_NewProjectPopup();
+	UI_RelationshipRepairPopup();
 
 	// Scene render
 	m_SceneRenderer->RenderGui();
@@ -316,7 +317,7 @@ namespace Eppo
 
 	    // UI
 		UI_Toolbar();
-        UI_WarningNoPrimaryCamera();
+		UI_ViewportNotices();
 
 		ImGui::End(); // Viewport
 		ImGui::PopStyleVar();
@@ -921,26 +922,80 @@ namespace Eppo
 		}
 	}
 
-    auto EditorLayer::UI_WarningNoPrimaryCamera() -> void
-    {
-	    // Non-intrusive notice: while playing without a primary camera, the viewport
-	    // shows the editor camera's view instead of the game view. A small pill in the
-	    // corner explains why, so live edits still being applied don't look broken.
-	    if (m_SceneState == SceneState::Play && m_MissingPrimaryCamera)
-	    {
-	        constexpr const char* notice = "No primary camera - showing editor view";
-	        ImDrawList* drawList = ImGui::GetWindowDrawList();
-	        const ImVec2 imageMin = ImGui::GetItemRectMin();
-	        constexpr ImVec2 pad = { 8.0f, 5.0f };
-	        const ImVec2 textPos = { imageMin.x + 10.0f, imageMin.y + 10.0f };
-	        const ImVec2 textSize = ImGui::CalcTextSize(notice);
-	        drawList->AddRectFilled(
-                { textPos.x - pad.x, textPos.y - pad.y },
-                { textPos.x + textSize.x + pad.x, textPos.y + textSize.y + pad.y },
-                IM_COL32(18, 18, 20, 205), 4.0f);
-	        drawList->AddText(textPos, IM_COL32(232, 150, 60, 255), notice);
-	    }
-    }
+	auto EditorLayer::UI_RelationshipRepairPopup() -> void
+	{
+		auto notices = SceneSerializer::ConsumeRelationshipRepairNotices();
+		m_RelationshipRepairNotices.insert(m_RelationshipRepairNotices.end(), notices.begin(), notices.end());
+		if (!m_RelationshipRepairNotices.empty() && !ImGui::IsPopupOpen("Scene hierarchy repaired"))
+			ImGui::OpenPopup("Scene hierarchy repaired");
+
+		constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		ImGui::SetNextWindowSizeConstraints(ImVec2(420.0f, 0.0f), ImVec2(700.0f, FLT_MAX));
+		if (ImGui::BeginPopupModal("Scene hierarchy repaired", nullptr, windowFlags))
+		{
+			ImGui::TextWrapped("Invalid parent/child links were removed while loading the scene. No entities were deleted.");
+			ImGui::Separator();
+			for (const std::string& notice : m_RelationshipRepairNotices)
+				ImGui::BulletText("%s", notice.c_str());
+
+			if (ImGui::Button("OK", ImVec2(100.0f, 30.0f)))
+			{
+				m_RelationshipRepairNotices.clear();
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+	}
+
+	auto EditorLayer::UI_ViewportNotices() -> void
+	{
+		if (m_SceneState != SceneState::Play)
+			return;
+
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		const ImVec2 imageMin = ImGui::GetItemRectMin();
+		constexpr ImVec2 pad = { 8.0f, 5.0f };
+		float y = imageMin.y + 10.0f;
+		const auto drawNotice = [&](const char* notice)
+		{
+			const ImVec2 textPos = { imageMin.x + 10.0f, y };
+			const ImVec2 textSize = ImGui::CalcTextSize(notice);
+			drawList->AddRectFilled(
+				{ textPos.x - pad.x, textPos.y - pad.y },
+				{ textPos.x + textSize.x + pad.x, textPos.y + textSize.y + pad.y },
+				IM_COL32(18, 18, 20, 205), 4.0f);
+			drawList->AddText(textPos, IM_COL32(232, 150, 60, 255), notice);
+			y += textSize.y + pad.y * 2.0f + 4.0f;
+		};
+
+		if (m_MissingPrimaryCamera)
+		{
+			bool hasCameraEntity = false;
+			m_ActiveScene->ForEachEntity([&](Entity entity)
+			{
+				if (!entity.HasComponent<CameraComponent>())
+					return;
+
+				hasCameraEntity = true;
+				const std::string notice = "Camera entity '" + entity.GetName() + "' is not primary - showing editor view";
+				drawNotice(notice.c_str());
+			});
+
+			if (!hasCameraEntity)
+			{
+				const std::string sceneName = m_ActiveScenePath.empty() ? "Untitled" : m_ActiveScenePath.stem().string();
+				const std::string notice = "Scene '" + sceneName + "' has no camera entity - showing editor view";
+				drawNotice(notice.c_str());
+			}
+		}
+
+		for (const std::string& entityName : m_ActiveScene->GetColliderlessRigidBodies())
+		{
+			const std::string notice = "Entity '" + entityName + "' has a rigid body without a collider - it is still simulated";
+			drawNotice(notice.c_str());
+		}
+	}
 
     namespace Utils
 	{

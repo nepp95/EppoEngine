@@ -80,6 +80,7 @@ namespace Eppo
 			DrawAddComponentEntry<BoxColliderComponent>("Box Collider");
 			DrawAddComponentEntry<SphereColliderComponent>("Sphere Collider");
 			DrawAddComponentEntry<CapsuleColliderComponent>("Capsule Collider");
+			DrawAddComponentEntry<CylinderColliderComponent>("Cylinder Collider");
 
 			ImGui::EndPopup();
 		}
@@ -383,6 +384,16 @@ namespace Eppo
 			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
 			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
 		});
+
+		DrawComponent<CylinderColliderComponent>(entity, [](auto& component)
+		{
+			ImGui::DragFloat("Radius", &component.Radius, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Height", &component.Height, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat3("Offset", &component.Offset.x, 0.05f);
+			ImGui::DragFloat("Density", &component.Density, 0.05f, 0.0f, 0.0f);
+			ImGui::DragFloat("Friction", &component.Friction, 0.01f, 0.0f, 1.0f);
+			ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
+		});
 	}
 
 	template<typename T>
@@ -392,7 +403,10 @@ namespace Eppo
 		{
 			if (ImGui::MenuItem(label.c_str()))
 			{
-				GetSelectedEntity().AddComponent<T>();
+				T& component = GetSelectedEntity().AddComponent<T>();
+				if constexpr (std::same_as<T, BoxColliderComponent> || std::same_as<T, SphereColliderComponent>
+					|| std::same_as<T, CapsuleColliderComponent> || std::same_as<T, CylinderColliderComponent>)
+					GetSceneContext()->FitColliderToMesh(GetSelectedEntity(), component);
 				ImGui::CloseCurrentPopup();
 			}
 		}

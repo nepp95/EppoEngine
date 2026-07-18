@@ -95,6 +95,7 @@ function(AddTestingSuite name label)
 endfunction()
 
 AddTestingSuite(Core core)
+AddTestingSuite(Scene core)
 AddTestingSuite(Physics core)
 AddTestingSuite(Scene core)
 AddTestingSuite(Scripting scripting)

@@ -230,6 +230,8 @@ namespace Eppo
 			m_SphereColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
 		if (!m_CapsuleColliderMesh)
 			m_CapsuleColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
+		if (!m_CylinderColliderMesh)
+			m_CylinderColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cylinder));
 	}
 
 	auto SceneRenderer::PrepareRender() -> void
@@ -503,6 +505,12 @@ namespace Eppo
 					const auto& c = entity.GetComponent<CapsuleColliderComponent>();
 					// Unit capsule: radius 1, hemisphere centers at +-1, so height maps to Height/2.
 					wireframes.push_back({ m_CapsuleColliderMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor });
+				}
+
+				if (entity.HasComponent<CylinderColliderComponent>())
+				{
+					const auto& c = entity.GetComponent<CylinderColliderComponent>();
+					wireframes.push_back({ m_CylinderColliderMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor });
 				}
 			});
 		}
