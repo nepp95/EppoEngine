@@ -96,6 +96,7 @@ endfunction()
 
 AddTestingSuite(Core core)
 AddTestingSuite(Physics core)
+AddTestingSuite(Scene core)
 AddTestingSuite(Scripting scripting)
 AddTestingSuite(ScriptMarshalling scripting)
 

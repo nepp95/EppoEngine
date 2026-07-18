@@ -8,11 +8,9 @@
                 "MeshComponent": {
                     "MeshHandle": 1
                 },
-                "RigidBodyComponent": {
-                    "AngularDamping": 0.0,
-                    "GravityScale": 1.0,
-                    "LinearDamping": 0.0,
-                    "Type": 2
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 8562179739127488137
                 },
                 "TagComponent": {
                     "Tag": "Cone 1"
@@ -30,8 +28,8 @@
                     ],
                     "Translation": [
                         0.0,
-                        1.8557853698730469,
-                        -4.896738052368164
+                        0.0,
+                        0.0
                     ]
                 }
             },
@@ -208,6 +206,50 @@
                     "Density": 1.0,
                     "Friction": 0.5,
                     "HalfSize": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 6997014821330626930
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 8562179739127488137
+                },
+                "TagComponent": {
+                    "Tag": "Collider 2"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        -0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "HalfSize": [
                         1.0,
                         1.0,
                         1.0
@@ -249,6 +291,89 @@
                         0.0,
                         4.040522575378418,
                         -2.3551712036132813
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 8562179739127488137
+                },
+                "RelationshipComponent": {
+                    "Children": [
+                        39560509675772309,
+                        8793317176561240728,
+                        6997014821330626930
+                    ],
+                    "Parent": 0
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 2
+                },
+                "TagComponent": {
+                    "Tag": "BigParent"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        -0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        2.182922840118408,
+                        -5.394036293029785
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "HalfSize": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 8793317176561240728
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 8562179739127488137
+                },
+                "TagComponent": {
+                    "Tag": "Collider 1"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -1.0,
+                        0.0,
+                        0.0
                     ]
                 }
             },
@@ -298,50 +423,6 @@
                         0.0,
                         -1.0,
                         0.0
-                    ]
-                }
-            },
-            {
-                "BoxColliderComponent": {
-                    "Density": 1.0,
-                    "Friction": 0.5,
-                    "HalfSize": [
-                        0.5,
-                        0.5,
-                        0.5
-                    ],
-                    "Offset": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "Restitution": 0.0
-                },
-                "IDComponent": {
-                    "ID": 14578751355270128785
-                },
-                "RelationshipComponent": {
-                    "Children": [],
-                    "Parent": 39560509675772309
-                },
-                "TagComponent": {
-                    "Tag": "New entity"
-                },
-                "TransformComponent": {
-                    "Rotation": [
-                        0.0,
-                        -0.0,
-                        0.0
-                    ],
-                    "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
-                    "Translation": [
-                        0.0,
-                        -1.8557853698730469,
-                        4.896738052368164
                     ]
                 }
             }
