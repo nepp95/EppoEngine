@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/Pipeline.h"
+#include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderPass.h"
 
 #include <imgui.h>
@@ -19,29 +21,32 @@ namespace Eppo
 		auto Resize() -> void;
 		auto UpdateFontTexture() -> void;
 		auto RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain) -> void;
-		auto Render(ImGuiViewport* viewport, const nvrhi::GraphicsPipelineHandle& pipeline, const nvrhi::FramebufferHandle& framebuffer) -> void;
+		auto Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline) -> void;
 
 	    [[nodiscard]] auto GetGPUTime(uint32_t frameIndex) const -> float;
 		[[nodiscard]] auto GetOwnGPUTime(uint32_t frameIndex) const -> float;
 		[[nodiscard]] auto GetStats() const -> PassStatistics;
-		[[nodiscard]] auto GetOwnStats() const -> const PassStatistics& { return m_Pass.GetStats(); }
+		[[nodiscard]] auto GetOwnStats() const -> const PassStatistics& { return m_Stats; }
 
 	private:
 		auto UpdateGeometry(ImDrawData* drawData) -> void;
 		auto ReallocateBuffer(uint64_t size, bool indexBuffer) -> nvrhi::BufferHandle;
-		auto GetOrCreatePipeline(const ScopedPtr<Swapchain>& swapchain) -> nvrhi::GraphicsPipelineHandle;
+		auto GetOrCreatePipeline(const ScopedPtr<Swapchain>& swapchain) -> const Ref<Pipeline>&;
 		auto GetOrCreateBindingSet(const nvrhi::TextureHandle& texture) -> nvrhi::BindingSetHandle;
 
 	private:
 		nvrhi::CommandListHandle m_CommandList = nullptr;
-		RenderPass m_Pass{ "UI" };
 
-		nvrhi::GraphicsPipelineDesc m_PipelineDesc;
+		RenderCommandBuffer m_RenderCommandBuffer;
+		PassStatistics m_Stats{};
+
+		// Template spec (no framebuffer) cloned per swapchain in GetOrCreatePipeline.
+		PipelineSpecification m_PipelineSpecTemplate{};
 
 		struct PipelineCache
 		{
 			std::array<nvrhi::FramebufferHandle, 3> Framebuffers;
-			std::array<nvrhi::GraphicsPipelineHandle, 3> Pipelines;
+			std::array<Ref<Pipeline>, 3> Pipelines;
 		};
 		std::map<Swapchain*, PipelineCache> m_PipelineCache;
 

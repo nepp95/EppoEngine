@@ -27,6 +27,7 @@ namespace Eppo
 		auto Present() -> bool override;
 
 		[[nodiscard]] auto GetCurrentBackBufferIndex() const -> uint32_t override { return m_Swapchain->GetCurrentBackBufferIndex(); }
+		[[nodiscard]] auto GetBackBufferCount() const -> uint32_t override { return m_Swapchain->GetImageCount(); }
 		auto GetCurrentSwapchainImage() -> const SwapchainImage& override { return m_Swapchain->GetCurrentSwapchainImage(); }
 
 		[[nodiscard]] constexpr auto GetVulkanInstance() const -> VkInstance { return m_Instance; }

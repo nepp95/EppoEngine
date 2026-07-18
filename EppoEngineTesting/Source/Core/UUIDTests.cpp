@@ -2,17 +2,17 @@
 
 #include <type_traits>
 
-// Compile-time contract: both conversions must stay *explicit*. is_convertible tests
-// implicit convertibility, so these break the day someone drops `explicit` and revives
-// the footgun (a raw id silently collapsing to the bool 0/1) — before any test runs.
-static_assert(!std::is_convertible_v<Eppo::UUID, bool>, "UUID->bool must be explicit");
-static_assert(!std::is_convertible_v<Eppo::UUID, uint64_t>, "UUID->uint64_t must be explicit");
-static_assert(std::is_constructible_v<bool, Eppo::UUID>, "explicit UUID->bool must still work");
-static_assert(std::is_constructible_v<uint64_t, Eppo::UUID>, "explicit UUID->uint64_t must still work");
-
 SUITE(Core)
 {
     using Eppo::UUID;
+
+    // Compile-time contract: both conversions must stay *explicit*. is_convertible tests
+    // implicit convertibility, so these break the day someone drops `explicit` and revives
+    // the footgun (a raw id silently collapsing to the bool 0/1) — before any test runs.
+    static_assert(!std::is_convertible_v<UUID, bool>, "UUID->bool must be explicit");
+    static_assert(!std::is_convertible_v<UUID, uint64_t>, "UUID->uint64_t must be explicit");
+    static_assert(std::is_constructible_v<bool, UUID>, "explicit UUID->bool must still work");
+    static_assert(std::is_constructible_v<uint64_t, UUID>, "explicit UUID->uint64_t must still work");
 
     TEST(UUID_BoolConversion_ZeroIsFalse)
     {

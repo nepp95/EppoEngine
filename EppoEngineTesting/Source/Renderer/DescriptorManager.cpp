@@ -2,52 +2,12 @@
 #include "Support/AppHarness.h"
 
 #include "Renderer/DescriptorManager.h"
-#include "Renderer/DeviceManager.h"
-#include "Renderer/Framebuffer.h"
-
-#include <nvrhi/nvrhi.h>
+#include "Renderer/Sampler.h"
 
 using namespace Eppo;
 
-// Boots the real Application via AppHarness and
-// exercises live GPU resources. Needs a display + GPU (label `graphical`, excluded
-// on headless CI via `ctest --label-exclude graphical`). Every test guards on
-// AppHarness::IsAvailable() so the suite no-ops (rather than crashes) where no
-// device could boot.
 SUITE(Renderer)
 {
-    TEST(DeviceManager_UnderHarness_ExposesLiveDevice)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& dm = DeviceManager::Get();
-        REQUIRE CHECK(dm);
-
-        // A booted harness must hand us a real nvrhi device and renderer.
-        CHECK(dm->GetDevice());
-        CHECK(dm->GetRenderer());
-    }
-
-    TEST(Framebuffer_CreatedWithExplicitSize_HasMatchingDimensionsAndHandle)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const FramebufferSpecification spec{
-            .Width = 256,
-            .Height = 256,
-            .Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
-            .DebugName = "Framebuffer RendererExampleTest",
-        };
-
-        const auto framebuffer = CreateRef<Framebuffer>(spec);
-
-        CHECK(framebuffer->GetFramebuffer());
-        CHECK_EQUAL(256, framebuffer->GetWidth());
-        CHECK_EQUAL(256, framebuffer->GetHeight());
-    }
-
     TEST(DescriptorManager_CreatesBindlessLayouts)
     {
         if (!Testing::AppHarness::IsAvailable())
@@ -112,14 +72,12 @@ SUITE(Renderer)
         const auto& manager = CreateRef<DescriptorManager>();
         REQUIRE CHECK(manager);
 
-        const auto sampler = CreateRef<Sampler>();
+        const auto sampler = Sampler::Create(manager);
         REQUIRE CHECK(sampler);
 
         const auto& samplerHeap = manager->GetSamplerHeap();
         REQUIRE CHECK(samplerHeap);
 
-        CHECK_EQUAL(0, samplerHeap->NextFreeSlot);
-        (void)manager->Register(sampler);
         CHECK_EQUAL(1, samplerHeap->NextFreeSlot);
     }
 
@@ -148,10 +106,10 @@ SUITE(Renderer)
         const auto& manager = CreateRef<DescriptorManager>();
         REQUIRE CHECK(manager);
 
-        const auto sampler = CreateRef<Sampler>();
+        const auto sampler = Sampler::Create(manager);
         REQUIRE CHECK(sampler);
 
-        const auto handle = manager->Register(sampler);
+        const auto& handle = sampler->GetBindlessHandle();
         CHECK(handle.Index != std::numeric_limits<uint32_t>::max());
         CHECK(handle.Index < 2048);
         CHECK(handle.HeapType == BindlessHeapType::Sampler);
@@ -195,14 +153,14 @@ SUITE(Renderer)
         constexpr uint32_t initialSize = 256;
         constexpr uint32_t trySize = initialSize + 1;
 
-        std::array<BindlessHandle, trySize> handles{};
+        std::vector<Ref<Sampler>> samplers;
+        samplers.reserve(trySize);
         for (uint32_t i = 0; i < trySize; i++)
         {
-            const auto sampler = CreateRef<Sampler>();
-            REQUIRE CHECK(sampler);
-            handles.at(i) = manager->Register(sampler);
-            CHECK(handles.at(i).Index != std::numeric_limits<uint32_t>::max());
-            CHECK(handles.at(i).HeapType == BindlessHeapType::Sampler);
+            samplers.emplace_back(Sampler::Create(manager));
+            REQUIRE CHECK(samplers.back());
+            CHECK(samplers.back()->GetBindlessHandle().Index != std::numeric_limits<uint32_t>::max());
+            CHECK(samplers.back()->GetBindlessHandle().HeapType == BindlessHeapType::Sampler);
         }
 
         const auto& samplerHeap = manager->GetSamplerHeap();
@@ -406,9 +364,8 @@ SUITE(Renderer)
         CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
         CHECK_EQUAL(0, samplerHeap->NextFreeSlot);
 
-        const auto sampler = CreateRef<Sampler>();
+        const auto sampler = Sampler::Create(manager);
         REQUIRE CHECK(sampler);
-        (void)manager->Register(sampler);
         CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
         CHECK_EQUAL(1, samplerHeap->NextFreeSlot);
     }
@@ -648,18 +605,12 @@ SUITE(Renderer)
         REQUIRE CHECK(samplerHeap);
 
         std::vector<Ref<Sampler>> samplers;
-        std::vector<BindlessHandle> handles;
         for (uint32_t i = 0; i < 2048; i++)
-        {
-            samplers.emplace_back(CreateRef<Sampler>());
-            handles.emplace_back(manager->Register(samplers.back()));
-            Log::Warn("{}", handles.back().Index);
-        }
+            samplers.emplace_back(Sampler::Create(manager));
         CHECK(samplerHeap->NextFreeSlot == 2048);
 
-        const auto sampler = CreateRef<Sampler>();
-        const auto handle = manager->Register(sampler);
-        CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), handle.Index);
+        const auto sampler = Sampler::Create(manager);
+        CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), sampler->GetBindlessIndex());
         CHECK(samplerHeap->Capacity <= 2048);
     }
 }

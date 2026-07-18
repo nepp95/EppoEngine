@@ -2,7 +2,9 @@
 #include "Renderer/Shader.h"
 
 #include "Platform/Vulkan/VulkanShader.h"
+#include "Renderer/DescriptorManager.h"
 #include "Renderer/DeviceManager.h"
+#include "Renderer/Renderer.h"
 
 namespace Eppo
 {
@@ -117,9 +119,29 @@ namespace Eppo
 	{
 		const auto& dm = DeviceManager::Get();
 		auto device = dm->GetDevice();
+		const auto& descriptorManager = dm->GetRenderer()->GetDescriptorManager();
+		const auto isGlobalHeap = [this](const uint32_t set, const std::string_view name, const nvrhi::ResourceType type) -> bool
+		{
+			const auto it = m_ShaderResources.find(set);
+			if (it == m_ShaderResources.end())
+				return true;
+
+			return it->second.size() == 1 && it->second.front().Name == name && it->second.front().Type == type;
+		};
+
+		if (!isGlobalHeap(1, "ResourceDescriptorHeap", nvrhi::ResourceType::Texture_SRV)
+			|| !isGlobalHeap(2, "SamplerDescriptorHeap", nvrhi::ResourceType::Sampler))
+		{
+			Log::Error("Shader '{}' uses descriptor sets reserved for the global bindless heaps!", m_Specification.Name);
+			EP_ASSERT(false);
+			return;
+		}
 
 		for (const auto& [set, setResources] : m_ShaderResources)
 		{
+			if (set == 1 || set == 2)
+				continue;
+
 			nvrhi::BindingLayoutDesc bindingLayoutDesc{
 				.visibility = nvrhi::ShaderType::All,
 			};
@@ -131,38 +153,36 @@ namespace Eppo
 			{
 				if (resource.ArraySize == 0)
 				{
-					// Bindless layout needed
-					const nvrhi::BindingLayoutItem bindlessLayoutItem{
-						.slot = resource.Binding,
-						.type = resource.Type,
-					};
-
-					nvrhi::BindlessLayoutDesc bindlessLayoutDesc{
-						.visibility = nvrhi::ShaderType::All,
-						.firstSlot = resource.Binding,
-						.maxCapacity = 1024,
-						.registerSpaces = { bindlessLayoutItem },
-					};
-
-					m_BindingLayouts[set] = device->createBindlessLayout(bindlessLayoutDesc);
-
-					if (!m_DescriptorTable)
-						m_DescriptorTable = device->createDescriptorTable(m_BindingLayouts.at(set));
+					EP_ASSERT(false);
+					continue;
 				}
-				else
-				{
-					nvrhi::BindingLayoutItem item{
-						.slot = resource.Binding,
-						.type = resource.Type,
-						.size = static_cast<uint16_t>(resource.ArraySize),
-					};
 
-					bindingLayoutDesc.addItem(item);
-				}
+				nvrhi::BindingLayoutItem item{
+					.slot = resource.Binding,
+					.type = resource.Type,
+					.size = static_cast<uint16_t>(resource.ArraySize),
+				};
+
+				bindingLayoutDesc.addItem(item);
 			}
 
 			if (!bindingLayoutDesc.bindings.empty())
 				m_BindingLayouts[set] = device->createBindingLayout(bindingLayoutDesc);
 		}
+
+		if (!m_BindingLayouts.contains(0))
+		{
+			nvrhi::BindingLayoutDesc bindingLayoutDesc{
+				.visibility = nvrhi::ShaderType::All,
+			};
+			if (m_HasPushConstants)
+				bindingLayoutDesc.addItem(nvrhi::BindingLayoutItem::PushConstants(m_PushConstants.Binding, m_PushConstants.Size));
+			m_BindingLayouts[0] = device->createBindingLayout(bindingLayoutDesc);
+		}
+
+		EP_ASSERT(!m_BindingLayouts.contains(1));
+		EP_ASSERT(!m_BindingLayouts.contains(2));
+		m_BindingLayouts[1] = descriptorManager->GetResourceHeap()->BindingLayout;
+		m_BindingLayouts[2] = descriptorManager->GetSamplerHeap()->BindingLayout;
 	}
 }

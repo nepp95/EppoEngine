@@ -21,6 +21,7 @@ namespace Eppo
 		bool DepthTestEnable = false;
 		bool DepthWriteEnable = false;
 		nvrhi::ComparisonFunc DepthFunc = nvrhi::ComparisonFunc::Less;
+		nvrhi::BlendState BlendState{};
 
 		// Depth bias (polygon offset), in Vulkan units — pulls geometry toward
 		// (negative) or away from (positive) the camera to resolve z-fighting.
