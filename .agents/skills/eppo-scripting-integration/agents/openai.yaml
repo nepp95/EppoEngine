@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eppo Scripting Integration"
+  short_description: "Develop native and managed scripting safely"
+  default_prompt: "Use $eppo-scripting-integration to implement or diagnose an Eppo scripting change across the native and managed boundary."

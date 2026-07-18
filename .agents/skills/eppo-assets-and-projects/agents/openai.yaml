@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eppo Assets and Projects"
+  short_description: "Extend asset and project persistence safely"
+  default_prompt: "Use $eppo-assets-and-projects to implement an Eppo asset, project, or content-browser workflow with stable handles and paths."

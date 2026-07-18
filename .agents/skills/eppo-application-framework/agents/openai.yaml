@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eppo Application Framework"
+  short_description: "Change frame, window, input, and UI lifecycle safely"
+  default_prompt: "Use $eppo-application-framework to trace or change Eppo application lifecycle, events, input, layers, or ImGui integration."

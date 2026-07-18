@@ -62,6 +62,18 @@ Runtime behavior and reusable game functionality belong in `EppoEngine`, not `Ep
 
 GitLab CI (`.gitlab-ci.yml`): runs on MRs, `master`, `develop`, and `feature/*` + `test/*` branches. `build-and-test` configures `linux-debug`, builds only the `EppoEngineTesting` target, runs `ctest --label-exclude graphical`, publishes JUnit. Toolchain baked in `.gitlab/ci/Dockerfile` (clang, CMake >= 3.31, Ninja, vcpkg, Vulkan SDK, .NET 10). vcpkg binary cache keyed on `vcpkg.json` + `CMakePresets.json`.
 
+## Domain skills
+
+Read the matching repository skill under `.agents/skills/` before investigating or changing a major subsystem. Use every applicable skill for cross-system work. Claude Code loads the same skills from full copies under `.claude/skills/` — when editing a skill, apply the same change to both trees.
+
+- `eppo-scripting-integration` — CoreCLR hosting, native/managed ABI, assemblies, ScriptGlue, fields, lifecycle, deployment, and scripting tests.
+- `eppo-rendering-pipeline` — Vulkan/NVRHI devices, shaders, descriptors, GPU resources, render passes, SceneRenderer, and graphical tests.
+- `eppo-editor-development` — EditorLayer state, edit/play transitions, panels, viewport input, gizmos, projects, scenes, and content browsing.
+- `eppo-scene-ecs-lifecycle` — EnTT entities, UUIDs, relationships, transforms, copy/duplication, serialization, runtime systems, and scene tests.
+- `eppo-physics-integration` — Box3D bodies, hierarchy-aware colliders, transform conversion, runtime synchronization, scripting, and physics tests.
+- `eppo-assets-and-projects` — asset handles, registry persistence, paths, loading/import/export, project lifecycle, and content-browser coordination.
+- `eppo-application-framework` — application/frame lifecycle, layers, windows, events, input, ImGui, startup order, and application harnesses.
+
 ## Workflow rules (required)
 
 - **Discover worktrees first.** Before inspecting, editing, building, or testing, run `git worktree list` from the repository and identify the worktree that contains the task. Never assume the primary checkout is the target; use the selected worktree consistently for every command.
