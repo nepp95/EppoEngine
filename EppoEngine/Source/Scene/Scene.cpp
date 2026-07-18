@@ -292,6 +292,10 @@ namespace Eppo
 			Entity entity(e, this);
 			scriptEngine.OnUpdateEntity(entity, timestep);
 		}
+
+		// Carry out destructions scripts queued this frame, now that the script view
+		// is no longer being iterated.
+		FlushDestroyQueue();
 	}
 
 	auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& camera) -> void
@@ -424,6 +428,14 @@ namespace Eppo
 		DestroyEntityHierarchy(entity);
 	}
 
+	auto Scene::DestroyEntityDeferred(Entity entity) -> void
+	{
+		if (!entity)
+			return;
+
+		m_EntitiesToDestroy.push_back(entity.GetUUID());
+	}
+
 	auto Scene::FitColliderToMesh(Entity entity, BoxColliderComponent& collider) -> void
 	{
 		AABB bounds;
@@ -481,10 +493,30 @@ namespace Eppo
 		}
 
 		if (entity.HasComponent<ScriptComponent>() && ScriptEngine::IsInitialized())
-			ScriptEngine::Get().RemoveFieldMap(entity.GetUUID());
+		{
+			auto& scriptEngine = ScriptEngine::Get();
+			scriptEngine.OnDestroyEntity(entity); // run managed OnDestroy, unregister the live instance
+			scriptEngine.RemoveFieldMap(entity.GetUUID());
+		}
 
 		m_EntityMap.erase(entity.GetUUID());
 		m_Registry.destroy(entity);
+	}
+
+	auto Scene::FlushDestroyQueue() -> void
+	{
+		if (m_EntitiesToDestroy.empty())
+			return;
+
+		// Move out first so a destroy can't re-enter the queue mid-drain; a queued
+		// descendant already taken by an ancestor's subtree simply won't resolve.
+		const std::vector<UUID> pending = std::move(m_EntitiesToDestroy);
+		m_EntitiesToDestroy.clear();
+		for (const UUID id : pending)
+		{
+			if (const Entity entity = GetEntityByUUID(id))
+				DestroyEntity(entity);
+		}
 	}
 
 	auto Scene::SetParent(Entity child, Entity parent) -> void

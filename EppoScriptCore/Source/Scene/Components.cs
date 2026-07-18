@@ -15,6 +15,18 @@ namespace EppoScriptCore.Scene
             get => InternalCalls.TransformComponent_GetTranslation(Entity.ID);
             set => InternalCalls.TransformComponent_SetTranslation(Entity.ID, ref value);
         }
+
+        public Vector3 Rotation
+        {
+            get => InternalCalls.TransformComponent_GetRotation(Entity.ID);
+            set => InternalCalls.TransformComponent_SetRotation(Entity.ID, ref value);
+        }
+
+        public Vector3 Scale
+        {
+            get => InternalCalls.TransformComponent_GetScale(Entity.ID);
+            set => InternalCalls.TransformComponent_SetScale(Entity.ID, ref value);
+        }
     }
 
     public class MeshComponent : Component
@@ -28,6 +40,24 @@ namespace EppoScriptCore.Scene
         {
             get => InternalCalls.CameraComponent_GetPrimary(Entity.ID);
             set => InternalCalls.CameraComponent_SetPrimary(Entity.ID, value);
+        }
+
+        public float VerticalFov
+        {
+            get => InternalCalls.CameraComponent_GetVerticalFov(Entity.ID);
+            set => InternalCalls.CameraComponent_SetVerticalFov(Entity.ID, value);
+        }
+
+        public float NearClip
+        {
+            get => InternalCalls.CameraComponent_GetNearClip(Entity.ID);
+            set => InternalCalls.CameraComponent_SetNearClip(Entity.ID, value);
+        }
+
+        public float FarClip
+        {
+            get => InternalCalls.CameraComponent_GetFarClip(Entity.ID);
+            set => InternalCalls.CameraComponent_SetFarClip(Entity.ID, value);
         }
     }
 
@@ -53,6 +83,8 @@ namespace EppoScriptCore.Scene
             get => InternalCalls.RelationshipComponent_GetParent(Entity.ID);
             set => InternalCalls.RelationshipComponent_SetParent(Entity.ID, value);
         }
+
+        public ulong[] Children => InternalCalls.RelationshipComponent_GetChildren(Entity.ID);
     }
 
     public class RigidBodyComponent : Component
@@ -73,6 +105,24 @@ namespace EppoScriptCore.Scene
                 return velocity;
             }
             set => InternalCalls.Physics_SetLinearVelocity(Entity.ID, ref value);
+        }
+
+        public float GravityScale
+        {
+            get => InternalCalls.RigidBodyComponent_GetGravityScale(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetGravityScale(Entity.ID, value);
+        }
+
+        public float LinearDamping
+        {
+            get => InternalCalls.RigidBodyComponent_GetLinearDamping(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetLinearDamping(Entity.ID, value);
+        }
+
+        public float AngularDamping
+        {
+            get => InternalCalls.RigidBodyComponent_GetAngularDamping(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetAngularDamping(Entity.ID, value);
         }
     }
 
