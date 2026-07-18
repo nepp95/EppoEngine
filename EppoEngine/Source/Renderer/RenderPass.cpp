@@ -1,97 +1,167 @@
 #include "pch.h"
 #include "Renderer/RenderPass.h"
 
+#include "Renderer/DescriptorManager.h"
 #include "Renderer/DeviceManager.h"
-#include "Renderer/Framebuffer.h"
-
-#include <nvrhi/utils.h>
+#include "Renderer/Renderer.h"
 
 namespace Eppo
 {
+	namespace
+	{
+		auto MakeBindingSetItem(uint32_t binding, nvrhi::IResource* resource, const std::vector<ShaderResourceBinding>& setResources)
+			-> nvrhi::BindingSetItem
+		{
+			if (auto* sampler = dynamic_cast<nvrhi::ISampler*>(resource))
+			{
+				for (const auto& r : setResources)
+					if (r.Binding == binding && r.Type == nvrhi::ResourceType::Sampler)
+						return nvrhi::BindingSetItem::Sampler(binding, sampler);
+
+				EP_ASSERT(false && "SetInput: no sampler reflected at this binding");
+				return nvrhi::BindingSetItem::None(binding);
+			}
+
+			if (auto* texture = dynamic_cast<nvrhi::ITexture*>(resource))
+			{
+				for (const auto& r : setResources)
+					if (r.Binding == binding && r.Type == nvrhi::ResourceType::Texture_SRV)
+						return nvrhi::BindingSetItem::Texture_SRV(binding, texture);
+
+				EP_ASSERT(false && "SetInput: no texture_srv reflected at this binding");
+				return nvrhi::BindingSetItem::None(binding);
+			}
+
+			if (auto* buffer = dynamic_cast<nvrhi::IBuffer*>(resource))
+			{
+				for (const auto& r : setResources)
+				{
+					if (r.Binding != binding)
+						continue;
+
+					switch (r.Type)
+					{
+						case nvrhi::ResourceType::ConstantBuffer:
+						case nvrhi::ResourceType::VolatileConstantBuffer:
+							return nvrhi::BindingSetItem::ConstantBuffer(binding, buffer);
+						case nvrhi::ResourceType::StructuredBuffer_SRV:
+							return nvrhi::BindingSetItem::StructuredBuffer_SRV(binding, buffer);
+						case nvrhi::ResourceType::StructuredBuffer_UAV:
+							return nvrhi::BindingSetItem::StructuredBuffer_UAV(binding, buffer);
+						case nvrhi::ResourceType::TypedBuffer_SRV:
+							return nvrhi::BindingSetItem::TypedBuffer_SRV(binding, buffer);
+						case nvrhi::ResourceType::TypedBuffer_UAV:
+							return nvrhi::BindingSetItem::TypedBuffer_UAV(binding, buffer);
+						case nvrhi::ResourceType::RawBuffer_SRV:
+							return nvrhi::BindingSetItem::RawBuffer_SRV(binding, buffer);
+						case nvrhi::ResourceType::RawBuffer_UAV:
+							return nvrhi::BindingSetItem::RawBuffer_UAV(binding, buffer);
+						default:
+							break;
+					}
+				}
+
+				EP_ASSERT(false && "SetInput: no buffer reflected at this binding");
+				return nvrhi::BindingSetItem::None(binding);
+			}
+
+			EP_ASSERT(false && "SetInput: unsupported IResource type");
+			return nvrhi::BindingSetItem::None(binding);
+		}
+	}
+
 	RenderPass::RenderPass(RenderPassSpecification spec)
 		: m_Specification(std::move(spec))
 	{
-		const auto& dm = DeviceManager::Get();
-		const auto device = dm->GetDevice();
-
-		const uint32_t maxFrames = dm->GetParams().MaxFramesInFlight;
-		m_TimerQueries.resize(maxFrames);
-		m_Timestamps.resize(maxFrames);
-
-		for (uint32_t i = 0; i < maxFrames; i++)
-			m_TimerQueries[i] = device->createTimerQuery();
-	}
-
-	auto RenderPass::Begin(const nvrhi::CommandListHandle& commandList) -> nvrhi::GraphicsState
-	{
-		const auto& dm = DeviceManager::Get();
-		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-		EP_ASSERT(frameIndex < m_TimerQueries.size());
-
-		m_Statistics = {};
-		commandList->open();
-		commandList->beginTimerQuery(m_TimerQueries.at(frameIndex));
-		commandList->beginMarker(m_Specification.Name.c_str());
-
-		nvrhi::GraphicsState state{};
-
-		if (m_Specification.Pipeline)
-		{
-			const auto& pipeline = m_Specification.Pipeline;
-			const auto& framebuffer = pipeline->GetSpecification().Framebuffer;
-
-			if (m_Specification.ClearColor)
-			{
-				const auto& clearColor = framebuffer->GetSpecification().ClearColor;
-				for (uint32_t i = 0; i < framebuffer->GetFramebuffer()->getDesc().colorAttachments.size(); i++)
-					nvrhi::utils::ClearColorAttachment(commandList, framebuffer->GetFramebuffer(), i, nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a));
-			}
-
-			if (m_Specification.ClearDepth)
-			{
-				const auto& spec = framebuffer->GetSpecification();
-				nvrhi::utils::ClearDepthStencilAttachment(commandList, framebuffer->GetFramebuffer(), spec.DepthClearValue, spec.StencilClearValue);
-			}
-
-			const auto width = static_cast<float>(pipeline->GetWidth());
-			const auto height = static_cast<float>(pipeline->GetHeight());
-
-			state.pipeline = pipeline->GetPipeline();
-			state.framebuffer = framebuffer->GetFramebuffer();
-			state.viewport.viewports = { nvrhi::Viewport(width, height) };
-			state.viewport.scissorRects = { nvrhi::Rect(static_cast<int>(width), static_cast<int>(height)) };
-		}
-
-		return state;
-	}
-
-	auto RenderPass::End(const nvrhi::CommandListHandle& commandList) -> void
-	{
-		const auto& dm = DeviceManager::Get();
-		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-		EP_ASSERT(frameIndex < m_TimerQueries.size());
-
-		commandList->endMarker();
-		commandList->endTimerQuery(m_TimerQueries.at(frameIndex));
-	}
-
-	auto RenderPass::Submit(const nvrhi::CommandListHandle& commandList) -> void
-	{
-		const auto& dm = DeviceManager::Get();
-		const auto device = dm->GetDevice();
-		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-		EP_ASSERT(frameIndex < m_TimerQueries.size());
-
-		commandList->close();
-		device->executeCommandList(commandList);
-
-		m_Timestamps[frameIndex] = device->getTimerQueryTime(m_TimerQueries.at(frameIndex));
-		device->resetTimerQuery(m_TimerQueries.at(frameIndex));
 	}
 
 	auto RenderPass::Resize(const uint32_t width, const uint32_t height) const -> void
 	{
 		if (m_Specification.Pipeline)
 			m_Specification.Pipeline->Resize(width, height);
+	}
+
+	auto RenderPass::SetInput(const uint32_t set, const uint32_t binding, nvrhi::IResource* resource) -> void
+	{
+		m_Inputs[set].push_back({ .Binding = binding, .Resource = resource });
+	}
+
+	auto RenderPass::DeclarePushConstants(const uint32_t set, const uint32_t size) -> void
+	{
+		m_PushConstantSizes[set] = size;
+	}
+
+	auto RenderPass::Bake() -> void
+	{
+		m_OwnedBindingSets.clear();
+		m_BindingSets = {};
+
+		if (!IsValid())
+		{
+			Log::Warn("RenderPass::Bake failed because render pass is invalid!");
+			m_Inputs.clear();
+			m_PushConstantSizes.clear();
+			return;
+		}
+
+		const auto& dm = DeviceManager::Get();
+		const auto device = dm->GetDevice();
+		const auto& descriptorManager = dm->GetRenderer()->GetDescriptorManager();
+		const auto& shader = m_Specification.Pipeline->GetSpecification().Shader;
+		const auto& layouts = shader->GetBindingLayouts();
+		const auto& resources = shader->GetShaderResources();
+
+		uint32_t expectedSet = 0;
+		for (const auto& [set, layout] : layouts)
+		{
+			EP_ASSERT(set == expectedSet);
+			++expectedSet;
+
+			if (const auto* bindlessDesc = layout->getBindlessDesc())
+			{
+				if (bindlessDesc->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv)
+					m_BindingSets.push_back(descriptorManager->GetResourceDT());
+				else if (bindlessDesc->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSampler)
+					m_BindingSets.push_back(descriptorManager->GetSamplerDT());
+				else
+					EP_ASSERT(false);
+				continue;
+			}
+
+			nvrhi::BindingSetDesc desc{};
+
+			if (const auto pcIt = m_PushConstantSizes.find(set); pcIt != m_PushConstantSizes.end())
+			{
+				const auto& pc = shader->GetPushConstants();
+				desc.bindings.push_back(nvrhi::BindingSetItem::PushConstants(pc.Binding, pcIt->second));
+			}
+
+			if (const auto inputIt = m_Inputs.find(set); inputIt != m_Inputs.end())
+			{
+				const auto resourceIt = resources.find(set);
+				EP_ASSERT(resourceIt != resources.end());
+
+				for (const auto& input : inputIt->second)
+					desc.bindings.push_back(MakeBindingSetItem(input.Binding, input.Resource, resourceIt->second));
+			}
+
+			auto bindingSet = device->createBindingSet(desc, layout);
+			EP_ASSERT(bindingSet);
+			m_BindingSets.push_back(bindingSet.Get());
+			m_OwnedBindingSets.push_back(std::move(bindingSet));
+		}
+
+		m_Inputs.clear();
+		m_PushConstantSizes.clear();
+	}
+
+	auto RenderPass::IsValid() const -> bool
+	{
+		if (!m_Specification.Pipeline)
+			return false;
+		if (!m_Specification.Pipeline->GetSpecification().Framebuffer)
+			return false;
+
+		return true;
 	}
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Pipeline.h"
+#include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderPass.h"
 
 #include <imgui.h>
@@ -25,7 +26,7 @@ namespace Eppo
 	    [[nodiscard]] auto GetGPUTime(uint32_t frameIndex) const -> float;
 		[[nodiscard]] auto GetOwnGPUTime(uint32_t frameIndex) const -> float;
 		[[nodiscard]] auto GetStats() const -> PassStatistics;
-		[[nodiscard]] auto GetOwnStats() const -> const PassStatistics& { return m_Pass.GetStats(); }
+		[[nodiscard]] auto GetOwnStats() const -> const PassStatistics& { return m_Stats; }
 
 	private:
 		auto UpdateGeometry(ImDrawData* drawData) -> void;
@@ -35,7 +36,9 @@ namespace Eppo
 
 	private:
 		nvrhi::CommandListHandle m_CommandList = nullptr;
-		RenderPass m_Pass{ RenderPassSpecification{ .Name = "UI" } };
+
+		RenderCommandBuffer m_RenderCommandBuffer;
+		PassStatistics m_Stats{};
 
 		// Template spec (no framebuffer) cloned per swapchain in GetOrCreatePipeline.
 		PipelineSpecification m_PipelineSpecTemplate{};

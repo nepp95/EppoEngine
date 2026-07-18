@@ -33,13 +33,6 @@ namespace Eppo
 		uint32_t Height = 0;
 
 		FramebufferAttachmentSpecification Attachments;
-		
-		glm::vec4 ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		float DepthClearValue = 1.0f;
-		uint32_t StencilClearValue = 0;
-		bool ClearColorOnLoad = false;
-		bool ClearDepthOnLoad = false;
-
 		bool SwapchainTarget = false;
 		Ref<Image> SwapchainImage = nullptr;
 

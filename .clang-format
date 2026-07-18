@@ -49,6 +49,9 @@ MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
 PackConstructorInitializers: NextLineOnly
 PointerAlignment: Left
+QualifierAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: true
 SpaceAfterTemplateKeyword: false
 SpaceBeforeCtorInitializerColon: true
 SpaceInEmptyParentheses: false

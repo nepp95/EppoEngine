@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "ImGui/ImGuiRenderer.h"
 
+#include "Renderer/DescriptorManager.h"
 #include "Renderer/DeviceManager.h"
+#include "Renderer/Renderer.h"
 
 // TODO: TEMPORARY
 #include "Platform/Vulkan/Swapchain.h"
@@ -121,11 +123,15 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("ImGuiRenderer::Render")
 
-		nvrhi::GraphicsState state = m_Pass.Begin(m_CommandList);
-		PassStatistics& stats = m_Pass.GetStats();
+		m_Stats = {};
+		const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+
+		m_RenderCommandBuffer.Begin("UI");
+
+		nvrhi::GraphicsState state{};
 
 		const auto& framebuffer = pipeline->GetSpecification().Framebuffer->GetFramebuffer();
-		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
+		nvrhi::utils::ClearColorAttachment(m_RenderCommandBuffer.GetCommandList(), framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
 
 		// Update geometry
 		ImDrawData* drawData = viewport->DrawData;
@@ -189,7 +195,12 @@ namespace Eppo
 				}
 				else
 				{
-					state.bindings = { GetOrCreateBindingSet((nvrhi::ITexture*)drawCmd->TexRef.GetTexID()) };
+					const nvrhi::BindingSetVector bindingSets{
+						GetOrCreateBindingSet((nvrhi::ITexture*)drawCmd->TexRef.GetTexID()),
+						descriptorManager->GetResourceDT(),
+						descriptorManager->GetSamplerDT(),
+					};
+					state.bindings = bindingSets;
 					EP_ASSERT(state.bindings[0]);
 
 					ImVec2 clipMin((drawCmd->ClipRect.x - clipOffset.x) * clipScale.x, (drawCmd->ClipRect.y - clipOffset.y) * clipScale.y);
@@ -214,11 +225,12 @@ namespace Eppo
 						.startVertexLocation = drawCmd->VtxOffset + vtxOffset,
 					};
 
-					m_CommandList->setGraphicsState(state);
-					m_CommandList->setPushConstants(&pushConstants, sizeof(PushConstants));
-					m_CommandList->drawIndexed(drawArgs);
+					m_RenderCommandBuffer.SetGraphicsState(state);
+					m_RenderCommandBuffer.CommitGraphicsState();
+					m_RenderCommandBuffer.GetCommandList()->setPushConstants(&pushConstants, sizeof(PushConstants));
+					m_RenderCommandBuffer.GetCommandList()->drawIndexed(drawArgs);
 
-					stats.DrawCalls++;
+					m_Stats.DrawCalls++;
 				}
 			}
 			idxOffset += drawList->IdxBuffer.Size;
@@ -226,24 +238,23 @@ namespace Eppo
 		}
 
 		// Geometry submitted for this viewport (draw calls counted above).
-		stats.Vertices += static_cast<uint32_t>(drawData->TotalVtxCount);
-		stats.Indices += static_cast<uint32_t>(drawData->TotalIdxCount);
+		m_Stats.Vertices += static_cast<uint32_t>(drawData->TotalVtxCount);
+		m_Stats.Indices += static_cast<uint32_t>(drawData->TotalIdxCount);
 
-		m_Pass.End(m_CommandList);
-		m_Pass.Submit(m_CommandList);
+		m_RenderCommandBuffer.End();
+		m_RenderCommandBuffer.Submit();
 	}
 
-	auto ImGuiRenderer::GetOwnGPUTime(uint32_t frameIndex) const -> float
+	auto ImGuiRenderer::GetOwnGPUTime(const uint32_t frameIndex) const -> float
 	{
-		return m_Pass.GetTimeMs(frameIndex);
+		return m_RenderCommandBuffer.GetTimeMs(frameIndex);
 	}
 
-	auto ImGuiRenderer::GetGPUTime(uint32_t frameIndex) const -> float
+	auto ImGuiRenderer::GetGPUTime(const uint32_t frameIndex) const -> float
 	{
 		float totalTime = GetOwnGPUTime(frameIndex);
 
-		const auto& platformIO = ImGui::GetPlatformIO();
-		for (ImGuiViewport* viewport : platformIO.Viewports)
+        for (const auto& platformIO = ImGui::GetPlatformIO(); const ImGuiViewport* viewport : platformIO.Viewports)
 		{
 			if (viewport == ImGui::GetMainViewport())
 				continue;
@@ -304,8 +315,8 @@ namespace Eppo
 			idxDst += drawList->IdxBuffer.Size;
 		}
 
-		m_CommandList->writeBuffer(m_VertexBuffer, m_LocalVertexData.data(), m_LocalVertexData.size() * sizeof(ImDrawVert));
-		m_CommandList->writeBuffer(m_IndexBuffer, m_LocalIndexData.data(), m_LocalIndexData.size() * sizeof(ImDrawIdx));
+		m_RenderCommandBuffer.GetCommandList()->writeBuffer(m_VertexBuffer, m_LocalVertexData.data(), m_LocalVertexData.size() * sizeof(ImDrawVert));
+		m_RenderCommandBuffer.GetCommandList()->writeBuffer(m_IndexBuffer, m_LocalIndexData.data(), m_LocalIndexData.size() * sizeof(ImDrawIdx));
 	}
 
 	auto ImGuiRenderer::ReallocateBuffer(const uint64_t size, const bool indexBuffer) -> nvrhi::BufferHandle
