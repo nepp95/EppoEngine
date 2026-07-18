@@ -1336,4 +1336,385 @@ SUITE(Scripting)
 
         engine.OnDestroyEntity(entity);
     }
+
+    TEST(TransformComponent_Rotation_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& tc = entity.GetComponent<TransformComponent>();
+        tc.Rotation = glm::vec3(0.1f, 0.2f, 0.3f);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        glm::vec3 rotation{};
+        const ScriptMethod* getRotation = c->GetMethod("TransformComponent_GetRotation");
+        REQUIRE CHECK(getRotation != nullptr);
+        c->InvokeMethod(entity, *getRotation, nullptr, &rotation);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), rotation, 1e-5f);
+
+        const glm::vec3 next(0.4f, 0.5f, 0.6f);
+        const ScriptMethod* setRotation = c->GetMethod("TransformComponent_SetRotation");
+        REQUIRE CHECK(setRotation != nullptr);
+        c->InvokeMethod(entity, *setRotation, &next, nullptr);
+        CHECK_VEC3_CLOSE(next, tc.Rotation, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(TransformComponent_Scale_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& tc = entity.GetComponent<TransformComponent>();
+        tc.Scale = glm::vec3(2.0f, 3.0f, 4.0f);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        glm::vec3 scale{};
+        const ScriptMethod* getScale = c->GetMethod("TransformComponent_GetScale");
+        REQUIRE CHECK(getScale != nullptr);
+        c->InvokeMethod(entity, *getScale, nullptr, &scale);
+        CHECK_VEC3_CLOSE(glm::vec3(2.0f, 3.0f, 4.0f), scale, 1e-5f);
+
+        const glm::vec3 next(0.5f, 0.25f, 0.125f);
+        const ScriptMethod* setScale = c->GetMethod("TransformComponent_SetScale");
+        REQUIRE CHECK(setScale != nullptr);
+        c->InvokeMethod(entity, *setScale, &next, nullptr);
+        CHECK_VEC3_CLOSE(next, tc.Scale, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(RigidBodyComponent_GravityScale_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.GravityScale = 2.5f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float gravityScale = 0.0f;
+        const ScriptMethod* getGravity = c->GetMethod("RigidBodyComponent_GetGravityScale");
+        REQUIRE CHECK(getGravity != nullptr);
+        c->InvokeMethod(entity, *getGravity, nullptr, &gravityScale);
+        CHECK_CLOSE(2.5f, gravityScale, 1e-5f);
+
+        const float next = 0.75f;
+        const ScriptMethod* setGravity = c->GetMethod("RigidBodyComponent_SetGravityScale");
+        REQUIRE CHECK(setGravity != nullptr);
+        c->InvokeMethod(entity, *setGravity, &next, nullptr);
+        CHECK_CLOSE(0.75f, rb.GravityScale, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(RigidBodyComponent_LinearDamping_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.LinearDamping = 0.3f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float linearDamping = 0.0f;
+        const ScriptMethod* getDamping = c->GetMethod("RigidBodyComponent_GetLinearDamping");
+        REQUIRE CHECK(getDamping != nullptr);
+        c->InvokeMethod(entity, *getDamping, nullptr, &linearDamping);
+        CHECK_CLOSE(0.3f, linearDamping, 1e-5f);
+
+        const float next = 0.9f;
+        const ScriptMethod* setDamping = c->GetMethod("RigidBodyComponent_SetLinearDamping");
+        REQUIRE CHECK(setDamping != nullptr);
+        c->InvokeMethod(entity, *setDamping, &next, nullptr);
+        CHECK_CLOSE(0.9f, rb.LinearDamping, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(RigidBodyComponent_AngularDamping_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.AngularDamping = 0.2f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float angularDamping = 0.0f;
+        const ScriptMethod* getDamping = c->GetMethod("RigidBodyComponent_GetAngularDamping");
+        REQUIRE CHECK(getDamping != nullptr);
+        c->InvokeMethod(entity, *getDamping, nullptr, &angularDamping);
+        CHECK_CLOSE(0.2f, angularDamping, 1e-5f);
+
+        const float next = 0.6f;
+        const ScriptMethod* setDamping = c->GetMethod("RigidBodyComponent_SetAngularDamping");
+        REQUIRE CHECK(setDamping != nullptr);
+        c->InvokeMethod(entity, *setDamping, &next, nullptr);
+        CHECK_CLOSE(0.6f, rb.AngularDamping, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(Entity_SetName_MutatesScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        // The harness forwarder writes this exact string via Entity_SetName.
+        const ScriptMethod* setName = c->GetMethod("Entity_SetName");
+        REQUIRE CHECK(setName != nullptr);
+
+        c->InvokeMethod(entity, *setName, nullptr, nullptr);
+        CHECK_EQUAL(std::string("RenamedFromScript"), entity.GetName());
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(RelationshipComponent_GetChildren_ReturnsSceneChildren)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity parent = MakeContextEntity(scene); // scripted invoker
+        Entity first = scene->CreateEntity("First");
+        Entity second = scene->CreateEntity("Second");
+        scene->SetParent(first, parent);
+        scene->SetParent(second, parent);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        int32_t count = 0;
+        const ScriptMethod* getCount = c->GetMethod("RelationshipComponent_GetChildCount");
+        REQUIRE CHECK(getCount != nullptr);
+        c->InvokeMethod(parent, *getCount, nullptr, &count);
+        CHECK_EQUAL(2, count);
+
+        const ScriptMethod* getChild = c->GetMethod("RelationshipComponent_GetChild");
+        REQUIRE CHECK(getChild != nullptr);
+        const int32_t zero = 0;
+        const int32_t one = 1;
+        uint64_t child0 = 0;
+        uint64_t child1 = 0;
+        c->InvokeMethod(parent, *getChild, &zero, &child0);
+        c->InvokeMethod(parent, *getChild, &one, &child1);
+
+        const uint64_t firstId = static_cast<uint64_t>(first.GetUUID());
+        const uint64_t secondId = static_cast<uint64_t>(second.GetUUID());
+        CHECK((child0 == firstId && child1 == secondId) || (child0 == secondId && child1 == firstId));
+
+        engine.OnDestroyEntity(parent);
+    }
+
+    TEST(CameraComponent_VerticalFov_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& camera = entity.AddComponent<CameraComponent>();
+        camera.Camera.SetPerspectiveVerticalFov(60.0f);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float fov = 0.0f;
+        const ScriptMethod* getFov = c->GetMethod("CameraComponent_GetVerticalFov");
+        REQUIRE CHECK(getFov != nullptr);
+        c->InvokeMethod(entity, *getFov, nullptr, &fov);
+        CHECK_CLOSE(60.0f, fov, 1e-4f);
+
+        const float next = 75.0f;
+        const ScriptMethod* setFov = c->GetMethod("CameraComponent_SetVerticalFov");
+        REQUIRE CHECK(setFov != nullptr);
+        c->InvokeMethod(entity, *setFov, &next, nullptr);
+        CHECK_CLOSE(75.0f, camera.Camera.GetPerspectiveVerticalFov(), 1e-4f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(CameraComponent_NearClip_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& camera = entity.AddComponent<CameraComponent>();
+        camera.Camera.SetPerspectiveNearClip(0.25f);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float nearClip = 0.0f;
+        const ScriptMethod* getNear = c->GetMethod("CameraComponent_GetNearClip");
+        REQUIRE CHECK(getNear != nullptr);
+        c->InvokeMethod(entity, *getNear, nullptr, &nearClip);
+        CHECK_CLOSE(0.25f, nearClip, 1e-5f);
+
+        const float next = 0.5f;
+        const ScriptMethod* setNear = c->GetMethod("CameraComponent_SetNearClip");
+        REQUIRE CHECK(setNear != nullptr);
+        c->InvokeMethod(entity, *setNear, &next, nullptr);
+        CHECK_CLOSE(0.5f, camera.Camera.GetPerspectiveNearClip(), 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(CameraComponent_FarClip_RoundTripsSceneValue)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& camera = entity.AddComponent<CameraComponent>();
+        camera.Camera.SetPerspectiveFarClip(500.0f);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float farClip = 0.0f;
+        const ScriptMethod* getFar = c->GetMethod("CameraComponent_GetFarClip");
+        REQUIRE CHECK(getFar != nullptr);
+        c->InvokeMethod(entity, *getFar, nullptr, &farClip);
+        CHECK_CLOSE(500.0f, farClip, 1e-3f);
+
+        const float next = 250.0f;
+        const ScriptMethod* setFar = c->GetMethod("CameraComponent_SetFarClip");
+        REQUIRE CHECK(setFar != nullptr);
+        c->InvokeMethod(entity, *setFar, &next, nullptr);
+        CHECK_CLOSE(250.0f, camera.Camera.GetPerspectiveFarClip(), 1e-3f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(Scene_CreateEntity_AddsEntityToScene)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity invoker = MakeContextEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* create = c->GetMethod("Scene_CreateEntity");
+        REQUIRE CHECK(create != nullptr);
+
+        uint64_t spawnedId = 0;
+        c->InvokeMethod(invoker, *create, nullptr, &spawnedId);
+        CHECK(spawnedId != 0);
+
+        Entity spawned = scene->GetEntityByUUID(Eppo::UUID(spawnedId));
+        REQUIRE CHECK(static_cast<bool>(spawned));
+        CHECK_EQUAL(std::string("Spawned"), spawned.GetName());
+        CHECK(spawnedId != static_cast<uint64_t>(invoker.GetUUID()));
+
+        engine.OnDestroyEntity(invoker);
+    }
+
+    TEST(Scene_DestroyEntity_DefersUntilFrameEnd)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity invoker = MakeContextEntity(scene);
+        Entity doomed = scene->CreateEntity("Doomed");
+        const uint64_t doomedId = static_cast<uint64_t>(doomed.GetUUID());
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* destroy = c->GetMethod("Scene_DestroyEntity");
+        REQUIRE CHECK(destroy != nullptr);
+
+        c->InvokeMethod(invoker, *destroy, &doomedId, nullptr);
+        // Deferred: the entity is still present until the frame's destroy queue drains.
+        CHECK(static_cast<bool>(scene->GetEntityByUUID(Eppo::UUID(doomedId))));
+
+        scene->OnUpdateRuntime(0.0f); // drains the queue after the script update loop
+        CHECK(!static_cast<bool>(scene->GetEntityByUUID(Eppo::UUID(doomedId))));
+
+        engine.OnDestroyEntity(invoker);
+    }
+
+    // Destroying a scripted entity must run its managed OnDestroy and unregister the
+    // live instance, not leak it until engine shutdown.
+    TEST(Scene_DestroyEntity_TearsDownScriptInstance)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        const Eppo::UUID id = entity.GetUUID();
+        REQUIRE CHECK(engine.GetEntityInstance(id) != nullptr);
+
+        scene->DestroyEntity(entity);
+        CHECK(engine.GetEntityInstance(id) == nullptr);
+    }
+
+    // A scripted entity destroying itself from inside OnUpdate must not corrupt the
+    // ScriptComponent view being iterated: the destroy is deferred to the frame's
+    // drain, the entity is gone afterward, and other scripts still run.
+    TEST(Scene_DestroyEntity_SelfDuringUpdate_IsSafe)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity selfDestruct = MakeContextEntity(scene);
+        Entity survivor = MakeContextEntity(scene); // a second entity in the script view
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const int32_t flagIndex = FieldIndex(*c, "DestroySelfOnUpdate");
+        REQUIRE CHECK(flagIndex >= 0);
+
+        ScriptInstance* instance = engine.GetEntityInstance(selfDestruct.GetUUID());
+        REQUIRE CHECK(instance != nullptr);
+        bool destroySelf = true;
+        instance->SetFieldValue(flagIndex, &destroySelf);
+
+        const Eppo::UUID selfId = selfDestruct.GetUUID();
+        const Eppo::UUID survivorId = survivor.GetUUID();
+
+        scene->OnUpdateRuntime(0.016f); // self-destruct queued mid-loop, drained after
+
+        CHECK(!static_cast<bool>(scene->GetEntityByUUID(selfId)));    // self-destructed
+        CHECK(static_cast<bool>(scene->GetEntityByUUID(survivorId))); // survivor intact
+        CHECK(engine.GetEntityInstance(selfId) == nullptr);           // instance torn down
+
+        engine.OnDestroyEntity(survivor);
+    }
 }

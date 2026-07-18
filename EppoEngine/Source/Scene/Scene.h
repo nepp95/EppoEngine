@@ -55,6 +55,11 @@ namespace Eppo
 		auto CreateEntityWithUUID(const UUID& uuid, const std::string& name) -> Entity;
 		auto DuplicateEntity(Entity entity) -> Entity;
 		auto DestroyEntity(Entity entity) -> void;
+		// Queues an entity for destruction, carried out after the script update loop.
+		// Safe to call from a script's OnUpdate, mid-iteration of the script view.
+		// Drained only by OnUpdateRuntime, so a non-runtime caller would leave the
+		// queue pending until the next runtime update.
+		auto DestroyEntityDeferred(Entity entity) -> void;
 		auto FitColliderToMesh(Entity entity, BoxColliderComponent& collider) -> void;
 		auto FitColliderToMesh(Entity entity, SphereColliderComponent& collider) -> void;
 		auto FitColliderToMesh(Entity entity, CapsuleColliderComponent& collider) -> void;
@@ -102,12 +107,16 @@ namespace Eppo
 		// Destroys an entity and its descendants (caller detaches the subtree root).
 		auto DestroyEntityHierarchy(Entity entity) -> void;
 
+		// Destroys everything queued via DestroyEntityDeferred this frame.
+		auto FlushDestroyQueue() -> void;
+
 	private:
 		entt::registry m_Registry;
 		std::unordered_map<UUID, EntityHandle> m_EntityMap;
 		EnvironmentSettings m_Environment;
 		Ref<PhysicsWorld> m_PhysicsWorld;
 		std::vector<std::string> m_ColliderlessRigidBodies;
+		std::vector<UUID> m_EntitiesToDestroy;
 
 		friend class Entity;
 	};

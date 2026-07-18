@@ -13,7 +13,11 @@ namespace EppoScriptCore.Scene
         // Settable only within this assembly: the runtime writes the owning
         // entity's id after construction, user scripts read it.
         public ulong ID { get; internal set; }
-        public string Name => InternalCalls.Entity_GetName(ID);
+        public string Name
+        {
+            get => InternalCalls.Entity_GetName(ID);
+            set => InternalCalls.Entity_SetName(ID, value);
+        }
 
         // For the runtime's Activator.CreateInstance on user script subclasses;
         // ID is assigned immediately after, before any lifecycle call.
