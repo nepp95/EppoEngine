@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Scene/Scene.h"
 
+#include "Physics/PhysicsWorld.h"
 #include "Renderer/SceneRenderer.h"
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
@@ -11,6 +12,41 @@
 
 namespace Eppo
 {
+	static constexpr glm::vec3 s_DefaultGravity = { 0.0f, -9.81f, 0.0f };
+
+	namespace
+	{
+		auto GatherColliders(Entity entity) -> std::vector<ColliderData>
+		{
+			std::vector<ColliderData> colliders;
+
+			if (entity.HasComponent<BoxColliderComponent>())
+			{
+				const auto& c = entity.GetComponent<BoxColliderComponent>();
+				colliders.push_back({ ColliderShape::Box, c.Offset, c.Density, c.Friction, c.Restitution, c.HalfSize });
+			}
+
+			if (entity.HasComponent<SphereColliderComponent>())
+			{
+				const auto& c = entity.GetComponent<SphereColliderComponent>();
+				ColliderData data{ ColliderShape::Sphere, c.Offset, c.Density, c.Friction, c.Restitution };
+				data.Radius = c.Radius;
+				colliders.push_back(data);
+			}
+
+			if (entity.HasComponent<CapsuleColliderComponent>())
+			{
+				const auto& c = entity.GetComponent<CapsuleColliderComponent>();
+				ColliderData data{ ColliderShape::Capsule, c.Offset, c.Density, c.Friction, c.Restitution };
+				data.Radius = c.Radius;
+				data.Height = c.Height;
+				colliders.push_back(data);
+			}
+
+			return colliders;
+		}
+	}
+
 	auto Scene::SetViewportSize(uint32_t width, uint32_t height) -> void
 	{
 		// Keep every scene camera's projection aspect ratio in sync with the viewport.
@@ -27,10 +63,41 @@ namespace Eppo
 		if (!GetPrimaryCameraEntity())
 			Log::Warn("Scene has no primary camera entity; nothing will be rendered in play mode.");
 
+		// Build the physics world regardless of scripting so it simulates even with no scripts.
+		m_PhysicsWorld = CreateRef<PhysicsWorld>(s_DefaultGravity);
+		{
+			const auto view = m_Registry.view<RigidBodyComponent, TransformComponent>();
+			for (const auto e : view)
+			{
+				Entity entity(e, this);
+
+				std::vector<ColliderData> colliders = GatherColliders(entity);
+				if (colliders.empty() && entity.GetComponent<RigidBodyComponent>().Type == RigidBodyComponent::BodyType::Dynamic)
+				{
+					// A dynamic body with no shapes has zero mass and ignores
+					// gravity.  Inject a unit box so it falls through space
+					// until the user adds a real collider.
+					Log::Info("Entity '{}': no collider component found; using a default 0.5-unit box so gravity acts.", entity.GetName());
+					colliders.push_back(ColliderData{});
+				}
+
+				if (colliders.empty())
+					continue;
+
+				m_PhysicsWorld->CreateBody(
+					entity.GetUUID(),
+					entity.GetComponent<RigidBodyComponent>(),
+					entity.GetComponent<TransformComponent>(),
+					colliders);
+			}
+		}
+
 		if (!ScriptEngine::IsInitialized())
 			return;
 
 		auto& scriptEngine = ScriptEngine::Get();
+		scriptEngine.SetActivePhysicsWorld(m_PhysicsWorld);
+
 		const auto view = m_Registry.view<ScriptComponent>();
 		for (const auto e : view)
 		{
@@ -42,6 +109,9 @@ namespace Eppo
 	auto Scene::OnRuntimeStop() -> void
 	{
 		EP_PROFILE_FN("Scene::OnRuntimeStop");
+
+		// The script engine's WeakRef expires with this reset.
+		m_PhysicsWorld.reset();
 
 		if (!ScriptEngine::IsInitialized())
 			return;
@@ -59,6 +129,26 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("Scene::OnUpdateRuntime");
 
+		// Step physics before scripts so they observe this frame's poses (and before
+		// the scripting early-return so it runs without scripts).
+		if (m_PhysicsWorld)
+		{
+			m_PhysicsWorld->Step(timestep);
+
+			const auto view = m_Registry.view<RigidBodyComponent, TransformComponent>();
+			for (const auto e : view)
+			{
+				Entity entity(e, this);
+				const UUID id = entity.GetUUID();
+				if (!m_PhysicsWorld->HasBody(id))
+					continue;
+
+				auto& tc = entity.GetComponent<TransformComponent>();
+				tc.Translation = m_PhysicsWorld->GetPosition(id);
+				tc.Rotation = glm::eulerAngles(m_PhysicsWorld->GetRotation(id));
+			}
+		}
+
 		if (!ScriptEngine::IsInitialized())
 			return;
 
@@ -71,7 +161,7 @@ namespace Eppo
 		}
 	}
 
-	auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const ScopedPtr<EditorCamera>& camera) -> void
+	auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& camera) -> void
 	{
 		EP_PROFILE_FN("Scene::OnRenderEditor");
 
@@ -91,12 +181,7 @@ namespace Eppo
 		const auto& camera = cameraEntity.GetComponent<CameraComponent>().Camera;
 		const auto& transform = cameraEntity.GetComponent<TransformComponent>();
 
-		// Derive the view from translation + rotation only; a scaled camera entity
-		// must not distort the view, so scale is intentionally ignored here.
-		const glm::mat4 cameraTransform = glm::translate(glm::mat4(1.0f), transform.Translation)
-			* glm::mat4_cast(glm::quat(transform.Rotation));
-
-		sceneRenderer->BeginScene(glm::inverse(cameraTransform), camera.GetProjectionMatrix(), transform.Translation);
+		sceneRenderer->BeginScene(camera, transform.GetTransform());
 		RenderScene(sceneRenderer);
 		sceneRenderer->EndScene();
 	}
@@ -153,6 +238,10 @@ namespace Eppo
 		TryCopyComponent<CameraComponent>(entity, newEntity);
 		TryCopyComponent<PointLightComponent>(entity, newEntity);
 		TryCopyComponent<ScriptComponent>(entity, newEntity);
+		TryCopyComponent<RigidBodyComponent>(entity, newEntity);
+		TryCopyComponent<BoxColliderComponent>(entity, newEntity);
+		TryCopyComponent<SphereColliderComponent>(entity, newEntity);
+		TryCopyComponent<CapsuleColliderComponent>(entity, newEntity);
 
 		// Script field values live in ScriptEngine's side table, keyed by UUID,
 		// so they must be copied across to the new entity explicitly.
@@ -276,6 +365,21 @@ namespace Eppo
 		return world;
 	}
 
+	auto Scene::ForEachEntity(const std::function<void(Entity)>& func) -> void
+	{
+		// Every entity carries an IDComponent, so a view over it enumerates all.
+		for (const auto view = m_Registry.view<IDComponent>(); const auto e : view)
+			func(Entity{ e, this });
+	}
+
+	auto Scene::SortEntitiesByID() -> void
+	{
+		m_Registry.sort<IDComponent>([](const IDComponent& lhs, const IDComponent& rhs)
+		{
+			return lhs.ID < rhs.ID;
+		});
+	}
+
 	template<typename T>
 	auto Scene::TryCopyComponent(Entity srcEntity, Entity dstEntity) -> void
 	{
@@ -331,6 +435,10 @@ namespace Eppo
 		CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<PointLightComponent>(srcRegistry, dstRegistry, entityMap);
 		CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<RigidBodyComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<BoxColliderComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<SphereColliderComponent>(srcRegistry, dstRegistry, entityMap);
+		CopyComponent<CapsuleColliderComponent>(srcRegistry, dstRegistry, entityMap);
 		// UUID-based links copy verbatim, no handle remapping needed.
 		CopyComponent<RelationshipComponent>(srcRegistry, dstRegistry, entityMap);
 

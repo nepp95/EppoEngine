@@ -3,14 +3,11 @@
 
 using namespace Eppo;
 
-// App suite (label `graphical`): boots the real, on-screen application via the
-// shared AppHarness and steps real frames through it. This is the foundation for
-// the scenario tests — if the window comes up and frames advance without a
-// crash, the automated-application path works. Requires a display + GPU, so the
-// suite is excluded on headless CI (`ctest -LE graphical`).
+// Foundation for the scenario tests: boots the real Application and steps frames.
+// Needs a display + GPU (label `graphical`, excluded on headless CI).
 SUITE(App)
 {
-    TEST(HarnessBootsApplication)
+    TEST(Application_Boot_ProducesWindowAndDevice)
     {
         Application* app = Testing::AppHarness::Get();
         REQUIRE CHECK(app != nullptr);
@@ -21,7 +18,7 @@ SUITE(App)
         CHECK(app->IsRunning());
     }
 
-    TEST(AdvancesFramesWithoutCrashing)
+    TEST(Application_AdvanceFrames_StaysRunning)
     {
         if (!Testing::AppHarness::IsAvailable())
             return;
@@ -33,7 +30,7 @@ SUITE(App)
         CHECK(Testing::AppHarness::Get()->IsRunning());
     }
 
-    TEST(RepeatedAdvanceIsStable)
+    TEST(Application_RepeatedAdvance_StaysRunning)
     {
         if (!Testing::AppHarness::IsAvailable())
             return;

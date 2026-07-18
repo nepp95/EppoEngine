@@ -13,6 +13,8 @@ namespace Eppo
 		nvrhi::RasterState rasterState{
 			.fillMode = m_Specification.FillMode,
 			.cullMode = m_Specification.CullMode,
+			.depthBias = m_Specification.DepthBias,
+			.slopeScaledDepthBias = m_Specification.SlopeScaledDepthBias,
 		};
 
 		nvrhi::DepthStencilState depthStencilState{
@@ -22,7 +24,7 @@ namespace Eppo
 		};
 
 		nvrhi::RenderState renderState{
-			.blendState = nvrhi::BlendState(),
+			.blendState = m_Specification.BlendState,
 			.depthStencilState = depthStencilState,
 			.rasterState = rasterState,
 		};
@@ -34,8 +36,11 @@ namespace Eppo
 			.renderState = renderState,
 		};
 		
+		uint32_t expectedSet = 0;
 		for (const auto& [set, layout] : m_Specification.Shader->GetBindingLayouts())
 		{
+			EP_ASSERT(set == expectedSet);
+			++expectedSet;
 			if (layout)
 				pipelineDesc.addBindingLayout(layout);
 		}

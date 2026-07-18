@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <!-- Calls native engine services through C# unmanaged function pointers. -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <ItemGroup>
+		<Folder Include="Source\Core\" />
+		<Folder Include="Source\Math\" />
+		<Folder Include="Source\Scene\" />
+    </ItemGroup>
+    <ItemGroup>
+		<!-- The test harness forwards straight to InternalCalls so tests target the
+		     native internal call, not the Entity/Component wrappers around it. -->
+		<InternalsVisibleTo Include="EppoTesting.Scripts" />
+    </ItemGroup>
+</Project>

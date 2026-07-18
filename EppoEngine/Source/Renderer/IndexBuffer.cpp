@@ -74,9 +74,9 @@ namespace Eppo
 		m_Buffer = buffer;
 	}
 
-	auto IndexBuffer::CreateMeshPrimitive(const MeshPrimitiveType type) -> Ref<IndexBuffer>
+	auto IndexBuffer::GeneratePrimitive(const MeshPrimitiveType type) -> Ref<IndexBuffer>
 	{
-		EP_PROFILE_FN("IndexBuffer::CreateMeshPrimitive");
+		EP_PROFILE_FN("IndexBuffer::GeneratePrimitive");
 
 		switch (type)
 		{
@@ -197,6 +197,43 @@ namespace Eppo
 						}
 
 						if (i != (stacks - 1))
+						{
+							indices.emplace_back(k1 + 1);
+							indices.emplace_back(k2);
+							indices.emplace_back(k2 + 1);
+						}
+					}
+				}
+
+				return CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+			}
+
+			case MeshPrimitiveType::Capsule:
+			{
+				constexpr uint32_t sectors = 36; // Longitude
+				constexpr uint32_t hemiStacks = 8; // Latitude rings per hemisphere
+				constexpr uint32_t rings = 2 * (hemiStacks + 1);
+
+				std::vector<uint32_t> indices;
+				indices.reserve((rings - 1) * sectors * 6);
+
+				// Same grid stitching as Sphere; the degenerate pole rings (first/last)
+				// are skipped so no zero-area triangles are emitted at the caps' tips.
+				for (uint32_t i = 0; i < rings - 1; i++)
+				{
+					uint32_t k1 = i * (sectors + 1);
+					uint32_t k2 = k1 + sectors + 1;
+
+					for (uint32_t j = 0; j < sectors; j++, k1++, k2++)
+					{
+						if (i != 0)
+						{
+							indices.emplace_back(k1);
+							indices.emplace_back(k2);
+							indices.emplace_back(k1 + 1);
+						}
+
+						if (i != rings - 2)
 						{
 							indices.emplace_back(k1 + 1);
 							indices.emplace_back(k2);

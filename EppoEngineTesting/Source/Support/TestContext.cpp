@@ -1,5 +1,3 @@
-// pch first: this TU includes engine headers that name Ref<T> etc., and test
-// TUs do not get the engine PCH automatically.
 #include "pch.h"
 
 #include "Support/TestContext.h"
@@ -12,13 +10,8 @@ namespace Eppo::Testing
 {
 	namespace
 	{
-		// The scenario layer is pushed once into the harness app and lives for the
-		// app's lifetime (the layer stack has no pop). Its update callback is
-		// set/cleared per AdvanceFrames call, so only the active scenario's logic
-		// runs. We key the cached pointer on the owning app instance so that if the
-		// harness is ever torn down and re-booted (AppHarness::Shutdown re-arms
-		// boot), we push a fresh layer into the new app rather than returning a
-		// dangling pointer into the old one.
+		// One ScenarioLayer pushed per app instance (keyed on the owner so a
+		// re-booted harness gets a fresh layer, not a dangling pointer).
 		auto GetScenarioLayer() -> ScenarioLayer*
 		{
 			static ScenarioLayer* layer = nullptr;
@@ -41,20 +34,13 @@ namespace Eppo::Testing
 	TestContext::TestContext()
 		: m_Scene(CreateRef<Scene>())
 	{
-		// Boot the shared application (no-op if already up) and route all input
-		// queries through this scenario's SimulatedInput.
-		//
-		// Note: TestContext instances are not designed to nest — the destructor
-		// restores the default device backend rather than a previous simulated
-		// one. Scenarios each scope their own TestContext, so this is not a
-		// concern in practice.
+		// Boot the shared app (no-op if up) and route input through this scenario.
 		(void)AppHarness::Get();
 		Input::SetBackend(&m_Input);
 	}
 
 	TestContext::~TestContext()
 	{
-		// Restore the live device backend so later suites/tests are unaffected.
 		Input::SetBackend(nullptr);
 	}
 
@@ -68,9 +54,7 @@ namespace Eppo::Testing
 		if (!AppHarness::IsAvailable())
 			return;
 
-		// Drive the scenario's per-frame logic from inside the real frame loop:
-		// StepFrame calls the ScenarioLayer's OnUpdate, which runs `perFrame`. The
-		// logic therefore only executes if the app genuinely steps frames.
+		// The layer's OnUpdate runs `perFrame`, so it only fires on real stepped frames.
 		ScenarioLayer* layer = GetScenarioLayer();
 		if (layer)
 			layer->SetUpdate(perFrame);

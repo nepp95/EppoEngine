@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Core/UUID.h"
-
-#include <EppoScriptCore.Native/Assembly.h>
+#include "Scripting/Assembly.h"
 
 namespace Eppo
 {
@@ -15,7 +14,7 @@ namespace Eppo
     class ScriptInstance
     {
     public:
-        ScriptInstance(EppoScriptCore::Assembly& assembly, const UUID& entityId, int32_t classIndex);
+        ScriptInstance(Assembly& assembly, const UUID& entityId, int32_t classIndex);
 
         auto InvokeOnCreate() const -> void;
         auto InvokeOnUpdate(float timestep) const -> void;
@@ -31,8 +30,11 @@ namespace Eppo
     private:
         // Non-owning: the Assembly outlives every instance (ScriptEngine owns both
         // and clears the registry before the assembly is torn down).
-        EppoScriptCore::Assembly* m_Assembly;
-        UUID m_EntityId;
+        Assembly* m_Assembly;
+        // Stored as the raw 64-bit id the managed registry is keyed by; UUID's
+        // conversions are explicit, so the cast to uint64_t happens once here
+        // rather than at every Assembly call below.
+        uint64_t m_EntityId;
         int32_t m_ClassIndex;
     };
 }

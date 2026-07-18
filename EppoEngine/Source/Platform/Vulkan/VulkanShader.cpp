@@ -10,6 +10,8 @@
 #endif
 
 #include <dxc/dxcapi.h>
+
+#include <ranges>
 #include <nvrhi/utils.h>
 #include <spirv_cross/spirv_cross.hpp>
 
@@ -171,9 +173,11 @@ namespace Eppo
 		const bool isVertex = type == nvrhi::ShaderType::Vertex ? true : false;
 		LPCWSTR args[] = {
 			L"-E", L"Main",
-			L"-T", isVertex ? L"vs_6_0" : L"ps_6_0",
+			L"-T", isVertex ? L"vs_6_6" : L"ps_6_6",
 			L"-spirv", L"-fvk-t-shift", L"0", L"0", L"-fvk-s-shift", L"128", L"0", L"-fvk-b-shift", L"256", L"0", L"-fvk-u-shift", L"384", L"0", L"-fspv-reflect",
-			L"-D", L"TARGET_VULKAN",
+			L"-fvk-bind-resource-heap", L"0", L"1",
+		    L"-fvk-bind-sampler-heap", L"0", L"2",
+		    L"-D", L"TARGET_VULKAN",
 			shaderPath.c_str(),
 			L"-Fo", binaryPath.c_str()
 		};
@@ -262,9 +266,11 @@ namespace Eppo
 			const auto& resource = resources.push_constant_buffers[0];
 			const auto& bufferType = compiler.get_type(resource.base_type_id);
 			const size_t bufferSize = compiler.get_declared_struct_size(bufferType);
+			const uint32_t pushConstantSize = static_cast<uint32_t>(bufferSize);
 
 			m_PushConstants.Binding = 0;
-			m_PushConstants.Size = static_cast<uint32_t>(bufferSize);
+			if (pushConstantSize > m_PushConstants.Size)
+				m_PushConstants.Size = pushConstantSize;
 			m_PushConstants.Stage = m_HasPushConstants ? nvrhi::ShaderType::All : type;
 			m_HasPushConstants = true;
 		}

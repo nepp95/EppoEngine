@@ -1,65 +1,86 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repo.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Overview
+## Project
 
-Eppo: C++20 game engine — `EppoEngine` (static lib) + `EppoEditor` (ImGui editor exe). Rendering: Vulkan via NVRHI; ECS: EnTT; C# scripting via hosted .NET runtime. `EppoRuntime` is a stub, not in the build.
+EppoEngine — a C++20 cross-platform (Windows/Linux) game engine + editor with C# scripting via CoreCLR (.NET 10) and Vulkan rendering through NVRHI. Built with CMake + vcpkg (manifest mode). AGENTS.md holds the same core guidance for other agents; keep the two in sync when editing either.
 
-## Environment
+## Prerequisites (enforced by `CMake/Dependencies.cmake`)
 
-Required env vars (configure fails without them): `VCPKG_ROOT` (deps come from the vcpkg manifest `vcpkg.json`), `VULKAN_SDK`, `DOTNET_ROOT` (builds the managed scripting assembly on Windows). `CMake/Ports/` holds vcpkg overlay ports for `nvrhi` and `epposcriptcore` (scripting glue, https://gitlab.com/nepp95/epposcriptcore).
+- **Vulkan SDK** with `dxc` (`VULKAN_SDK` set).
+- **vcpkg** with `VCPKG_ROOT` set. Manifest mode; overlay ports in `CMake/Ports` (box3d, nvrhi, epposcriptcore).
+- **.NET SDK 10** with `DOTNET_ROOT` set (managed core targets `net10.0`).
+- **clang**: Windows presets pin `clang-cl`, Linux presets pin `clang`/`clang++`. MSVC alone is not used. The MSVC STL requires Clang 20+ — an STL1000 error means the CMake cache is pinned to an old clang; reconfigure.
+- Linux also needs X11/GL dev libs: `libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config`.
 
-## Build
+## Commands
 
-CMake presets (clang/clang-cl on both platforms) define everything — compiler, build type, toolchain, build dir — no extra flags:
+Presets are platform-prefixed: `windows-debug` / `linux-debug` (Debug), `*-release` (RelWithDebInfo), `*-dist` (Release). Binary dirs: `build/debug`, `build/release`, `build/dist`. Generator is Ninja; `compile_commands.json` is emitted at `build/<preset>`.
 
+```bash
+cmake --preset windows-debug                                       # configure (linux-debug on Linux)
+cmake --build --preset windows-debug                               # build everything
+cmake --build --preset windows-debug --target EppoEngineTesting    # test runner only (fastest; what CI builds)
+ctest --test-dir build/debug --output-on-failure                   # all suites
+ctest --test-dir build/debug --label-exclude graphical             # headless only (what CI runs)
+ctest --test-dir build/debug -R Scripting                          # one suite by name
 ```
-cmake --preset=windows-debug          # configure (linux-debug on Linux)
-cmake --build --preset=windows-debug  # build
-```
 
-Presets: `{windows,linux}-{debug,release,dist}` = Debug / RelWithDebInfo / Release; build trees `build/{debug,release,dist}`. Debug editor exe: `build/debug/EppoEditor/Debug/EppoEditor.exe`, with runtime DLLs, `Resources/`, and the managed scripting assembly copied beside it by post-build steps. `.clang-format` at the repo root defines the code style.
+Run a suite directly from the exe output dir (see Gotchas): `./EppoEngineTesting Scripting`.
+Suite names: `Physics`, `Scripting`, `ScriptMarshalling`, `UUID`, `App`, `Scenario`. Labels: `unit`, `scripting`, `core`, `graphical`.
 
-## Tests
-
-`EppoEngineTesting/` — UnitTest++ runner linking `EppoEngine` (built when `BUILD_TESTING` is ON, the default). One CTest entry per suite (`eppo_add_suite` in its CMakeLists); the runner takes a suite name as first arg. Run via `ctest --preset=windows-debug` (test presets exist for `{windows,linux}-debug`) or `ctest --test-dir build/debug -C Debug`. Suites are labeled by cost — `unit` (Core, Input), `scene` (Scene, Project), `scripting` (needs hosted .NET), `graphical` (App, Scenario — boot the real `Application`, need GPU + display) — filter with `ctest -L unit` / `--label-exclude graphical`. `Source/Support/` helpers: `AppHarness` (steppable app loop for graphical tests), `TestContext`/`ScenarioLayer` (graphical scenarios), `TempDir`, `GlmCheck`. The test target stands alone: post-build steps copy the editor's `Resources/`, `TestData/` (scenario scene + a test user-script assembly), and build the managed scripting core beside the exe; tests run with the exe dir as working directory.
-
-## CI
-
-`.gitlab-ci.yml` — GitLab CI on shared Linux runners. Toolchain (clang, CMake, vcpkg, Vulkan SDK, .NET) lives in a container image (`.gitlab/ci/Dockerfile`) in the project registry, rebuilt only when the Dockerfile changes. The `build-and-test` job builds only the `EppoEngineTesting` target with the `linux-debug` preset, runs everything except the `graphical` label, and publishes JUnit to the MR Tests tab. Compute budget matters: vcpkg binary cache (keyed on `vcpkg.json` + `CMakePresets.json`) is the main lever — avoid churning those files needlessly.
+Required order: **configure → build → test**. After editing C# only, rebuild the `EppoEngineTesting` (or `EppoEditor`) target so the dotnet custom commands re-run and DLLs are re-copied.
 
 ## Architecture
 
-- **EppoEngine/** — static lib; engine code in `Source/`, which is a public include dir (`#include "Renderer/Renderer.h"`); PCH at `Source/pch.h`.
-- **EppoEditor/** — editor exe; `EditorLayer` (owns edit/play scene state, `OnScenePlay`/`OnSceneStop`) + dockable panels in `Source/Panels/` (managed by `PanelManager`): Property, Scene Hierarchy, Content Browser (asset/directory browsing with icons, drag-drop sources). `Resources/` (shaders, fonts, icons, meshes, new-project templates) copied incrementally to output dir via stamp file (`_ResourcesSync`).
-- **EppoEngineTesting/** — test runner (see Tests above).
-- **EppoRuntime/** — placeholder, not built.
+### Targets
 
-### Application framework (Source/Core/)
+- `EppoEngine/` — static library, the engine. `Source/` modules: `Asset`, `Core`, `Event`, `ImGui`, `Physics`, `Platform`, `Project`, `Renderer`, `Scene`, `Scripting`, `Utility`. Public umbrella header `Source/EppoEngine.h`; PCH `Source/pch.h`.
+- `EppoEditor/` — editor executable (`EppoEditor.cpp` → `EditorLayer`). Depends on `EppoEngine` + `EppoScriptCore`. Owns `Resources/` and `runtimeconfig.json`.
+- `EppoScriptCore/` — C# class library (net10.0) built by `dotnet` via `CMake/Dotnet.cmake` (not msbuild/IDE). Produces `EppoScriptCore.dll` at the binary root. Namespaces mirror the folder path minus `Source/`.
+- `EppoEngineTesting/` — UnitTest++ runner. `Source/` suites mirror engine modules; `Support/` has `AppHarness` (graphical) and `TestContext` (scenarios). `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites are registered via `AddTestingSuite` in its `CMakeLists.txt`.
+- `EppoRuntime/` — scaffolded, currently **not wired into the top-level build** (no `add_subdirectory`); `BUILD_RUNTIME` is unused.
+- `CMake/` — `Dependencies.cmake`, `Dotnet.cmake` (managed-core build + `CopyBuildScripts` helper), `Ports/` vcpkg overlays.
 
-`main()` lives in `Core/EntryPoint.h`; the client (editor) includes it once and implements `Eppo::CreateApplication(argc, argv)` returning an `Application` subclass. `Application` is a singleton (`Application::Get()`) owning the `Window` (GLFW), `DeviceManager`, layer stack (`PushLayer<T>()`), and `ImGuiLayer`; its loop is steppable (single-frame stepping used by the test `AppHarness`). Events (`Event/`) are dispatched down the layer stack via `OnEvent`. `Input` routes through an injectable `InputBackend` seam — GLFW in production, `SimulatedInput` in tests.
+Key libraries: entt (ECS), NVRHI (Vulkan RHI), GLFW + ImGui (docking), glm, box3d (physics), spdlog, tinygltf, Tracy, UnitTest++.
 
-`Core/Base.h` conventions:
-- `Ref<T>` = `std::shared_ptr` (`CreateRef<T>()`); `ScopedPtr<T>` = `std::unique_ptr` (`CreateScopedPtr<T>()`)
-- `EP_ASSERT(cond, msg)` — logs + debug-breaks in Debug/Release, compiled out in Dist
-- Config macros `EP_DEBUG`/`EP_RELEASE`/`EP_DIST`; platform macros `EP_PLATFORM_WINDOWS`/`EP_PLATFORM_LINUX`
-- Tracy profiling (`EP_PROFILE_FN`, `EP_FRAME_MARK`) enabled in Debug/Release; global `new`/`delete` overridden for memory tracking
-- Trailing return type style (`auto Foo() -> void`)
-- Keep comments concise — explain the non-obvious *why* in a line or two, not a paragraph
+### C#↔C++ scripting bridge (spans both languages — read as one system)
 
-### Renderer (Source/Renderer/ + Platform/Vulkan/)
+- `Scripting/RuntimeHost` boots CoreCLR via hostfxr using the `runtimeconfig.json` next to the exe; **CoreCLR initializes once per process** and cannot be re-initialized.
+- `ScriptEngine` (singleton, `Init`/`Shutdown`) loads `EppoScriptCore.dll` (core assembly) plus a user assembly, holds per-entity `ScriptInstance`s keyed by entity UUID, and owns the editor-time field side table (`ScriptFieldMap`) — the authoritative, serialized copy of script fields, pushed into the managed instance on create.
+- `ScriptGlue.cpp` registers the native functions; on the C# side `EppoScriptCore/Source/Core/InternalCalls.cs` is the **sole unsafe hub** — all `[UnmanagedCallersOnly]`/extern glue lives there, wrapped by friendly APIs (`Entity`, `Components`, `Input`, `Log`, `Physics`).
+- Internal-call conventions: structs passed by pointer, entity UUID is the first argument, the live scene is resolved through `ScriptEngine`'s scene context (set on play, cleared on stop/unload). The active `PhysicsWorld` is held weakly so callbacks no-op after scene stop.
+- The scene drives per-entity script lifecycle (`OnCreateEntity`/`OnUpdateEntity`/`OnDestroyEntity`).
 
-Renderer classes (`Shader`, `Pipeline`, `Framebuffer`, buffers, `Image`, `Mesh`) are written against NVRHI handles; Vulkan device/swapchain/shader-compilation code is isolated in `Platform/Vulkan/`. GLSL shaders (`.vert`/`.frag` in `EppoEditor/Resources/Shaders/`) compile at runtime via DXC with a disk cache (`Resources/Shaders/Cache`), reflected with spirv-cross. `SceneRenderer` does scene-level drawing atop the lower-level `Renderer`.
+## Gotchas
 
-### Scene & assets
+- **Run editor/tests from the exe output dir.** They resolve `runtimeconfig.json`, `EppoScriptCore.dll`, and `Resources/` relative to the working directory; from a terminal, `cd` to the exe dir first or scripting fails to load.
+- **Managed core is built by CMake, not your IDE.** A plain `dotnet build` won't wire the DLLs into the C++ build; the custom commands (`CopyBuildScripts`, `_HarnessDeploy`) copy them beside the exes.
+- **Graphical suites (`App`, `Scenario`) need a real display + GPU.** They early-return if `AppHarness` can't boot; on headless/CI use `--label-exclude graphical`.
+- **"SPIR-V CodeGen not available"** at runtime means the Microsoft `dxcompiler.dll` is shadowing the Vulkan SDK one; copy the Vulkan SDK's `dxcompiler.dll` next to the exe.
+- **Platform/config macros:** `EP_PLATFORM_WINDOWS`/`EP_PLATFORM_LINUX`; `EP_DEBUG`/`EP_RELEASE`/`EP_DIST`; `TRACY_ENABLE` in Debug and RelWithDebInfo. Linux defines `__EMULATE_UUID`.
+- **`UUID::operator bool` is explicit.** Use `static_cast<uint64_t>(uuid)` to get the raw id; implicit numeric conversion is a compile error by design.
 
-`Scene/` — EnTT ECS (`Scene`, `Entity` wrapper, `Components.h`); scenes/projects serialize to JSON (nlohmann-json, helpers in `Utility/Json.h`). `CameraComponent` (holds a `SceneCamera`, `Primary` flag) drives the play-mode view; `ScriptComponent` names a C# class only — per-instance field values live in a side table owned by `ScriptEngine`. `Project/` models a user project. `Asset/` — `AssetManager`/`AssetImporter` with UUID-keyed metadata (glTF meshes via tinygltf).
+## Style
 
-### Scripting (Source/Scripting/)
+- `.clang-format`: 140-col limit, Allman braces, pointer left (`int* p`), `SortIncludes: Never`, namespaces indented.
+- **Indentation is mixed and `.clang-format` is not authoritative**: most engine files use tabs (e.g. `Scene.h`, `Application.h`); the Scripting module and newer files use 4 spaces. Always match the file you're editing — check with `cat -A` (`^I` = tab) when unsure.
+- `.clang-tidy`: `bugprone-*`, `clang-analyzer-*`, `cppcoreguidelines-*`, `modernize-*`, `misc-use-anonymous-namespace`, `misc-const-correctness`.
+- Comments: zero is the default. Add one only for a non-obvious "why", max 1 line. Never restate what the code does.
+- On error paths, log via `Log::` rather than silently returning.
+- Don't add synonym APIs — if equivalent functionality exists, point the caller at it.
+- Forward-declare only to break include cycles; otherwise `#include`.
 
-`ScriptEngine` is a singleton wrapping `EppoScriptCore.Native` (from the overlay port), which hosts .NET — it owns itself between `Init(runtimeConfigPath)` and `Shutdown()`, reached via `Get()` (guard with `IsInitialized()`). `LoadUserAssembly` loads user C# assemblies; engine callbacks (logging, input) are registered into the managed side. Per-entity scripting: the scene drives `OnCreateEntity`/`OnUpdateEntity`/`OnDestroyEntity` on play; `ScriptEngine` owns the live-instance registry (`GetEntityInstance`, UUID-keyed `ScriptInstance`s) and the editor-time field storage (`ScriptFieldMap` side table, serialized with the scene and pushed into instances on create). Editing fields during play mutates the live instance directly and bypasses the side table, so stopping restores editor-time values. On Windows, the editor build also runs `dotnet build` on `EppoScriptCore.Managed.csproj` (C# sources from the port) and copies the DLL + `runtimeconfig.json` beside the editor exe.
+## Workflow rules (required)
 
-## Changes
+- **Plan before code.** For anything beyond a trivial change, write a plan first and confirm key decisions (including naming/layout choices) with the user before implementing.
+- **Test-driven development.** Write the test first (matching `EppoEngineTesting/Source/<module>/` suite, or a new suite via `AddTestingSuite`). Name suites/tests after the class/behaviour under test, not the goal ("Smoke"/"Sanity" are banned). Critical bug fixes get a regression test.
+- **Systematic debugging.** Root cause before fix; no patching symptoms.
+- **Code review via subagent** after substantial changes — do not review your own work.
+- **No formatting changes to existing code.** Match surrounding whitespace exactly; never run clang-format on files you didn't create. If `.clang-format` conflicts with a file's actual style, match the file.
+- **Verify before claiming done.** Run the relevant build + `ctest` and confirm it passes. A green build alone does not verify editor/GUI behaviour — state what was actually verified.
 
-Big changes: create a new git branch. Small changes: `develop`. After changes, create a PR for the branch you edited but do NOT merge it — the code reviewer will weigh in.
+## CI
+
+GitLab CI (`.gitlab-ci.yml`): runs on MRs, `master`, `develop`, `feature/*`, `test/*`. Configures `linux-debug`, builds only `EppoEngineTesting`, runs `ctest --label-exclude graphical`, publishes JUnit. Toolchain baked in `.gitlab/ci/Dockerfile`; vcpkg binary cache keyed on `vcpkg.json` + `CMakePresets.json`. Use `glab` CLI for MR operations.

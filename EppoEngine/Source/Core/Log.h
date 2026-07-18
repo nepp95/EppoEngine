@@ -14,6 +14,7 @@ namespace Eppo
 	{
 		Core,
 		Glfw,
+	    Script,
 		Vulkan
 	};
 
@@ -37,6 +38,12 @@ namespace Eppo
 				{
 					s_GlfwLogger->trace(fmt, std::forward<Args>(args)...);
 					break;
+				}
+
+			    case LogSource::Script:
+				{
+				    s_ScriptLogger->trace(fmt, std::forward<Args>(args)...);
+				    break;
 				}
 
 				case LogSource::Vulkan:
@@ -70,6 +77,12 @@ namespace Eppo
 					break;
 				}
 
+			    case LogSource::Script:
+				{
+				    s_ScriptLogger->info(fmt, std::forward<Args>(args)...);
+				    break;
+				}
+
 				case LogSource::Vulkan:
 				{
 					s_VulkanLogger->info(fmt, std::forward<Args>(args)...);
@@ -99,6 +112,12 @@ namespace Eppo
 				{
 					s_GlfwLogger->warn(fmt, std::forward<Args>(args)...);
 					break;
+				}
+
+			    case LogSource::Script:
+				{
+				    s_ScriptLogger->warn(fmt, std::forward<Args>(args)...);
+				    break;
 				}
 
 				case LogSource::Vulkan:
@@ -132,6 +151,12 @@ namespace Eppo
 					break;
 				}
 
+			    case LogSource::Script:
+				{
+				    s_ScriptLogger->error(fmt, std::forward<Args>(args)...);
+				    break;
+				}
+
 				case LogSource::Vulkan:
 				{
 					s_VulkanLogger->error(fmt, std::forward<Args>(args)...);
@@ -151,6 +176,7 @@ namespace Eppo
 		static std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> s_ConsoleLoggerSink;
 		static std::shared_ptr<spdlog::logger> s_CoreLogger;
 		static std::shared_ptr<spdlog::logger> s_GlfwLogger;
+	    static std::shared_ptr<spdlog::logger> s_ScriptLogger;
 		static std::shared_ptr<spdlog::logger> s_VulkanLogger;
 	};
 }

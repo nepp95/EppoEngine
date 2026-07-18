@@ -8,9 +8,7 @@ namespace Eppo
 		if (m_Shaders.contains(name))
 			Log::Warn("Shader with name '{}' already exists, reloading shader!", name);
 	
-		const ShaderSpecification shaderSpec{
-			.Name = name,
-		};
+		const ShaderSpecification shaderSpec{ .Name = name };
 
 		m_Shaders[name] = Shader::Create(shaderSpec);
 	}

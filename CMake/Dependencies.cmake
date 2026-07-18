@@ -3,6 +3,11 @@ if (NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan not found!")
 endif ()
 
+find_package(box3d CONFIG REQUIRED)
+if (NOT box3d_FOUND)
+    message(FATAL_ERROR "box3d not found!")
+endif ()
+
 find_package(EnTT REQUIRED)
 if (NOT EnTT_FOUND)
     message(FATAL_ERROR "entt not found!")
@@ -16,6 +21,11 @@ endif ()
 find_package(imgui REQUIRED)
 if (NOT imgui_FOUND)
     message(FATAL_ERROR "imgui not found!")
+endif ()
+
+find_package(imguizmo CONFIG REQUIRED)
+if (NOT imguizmo_FOUND)
+    message(FATAL_ERROR "imguizmo not found!")
 endif ()
 
 find_package(nfd REQUIRED)
@@ -38,9 +48,10 @@ if (NOT tracy_FOUND)
     message(FATAL_ERROR "tracy not found!")
 endif ()
 
-find_package(EppoScriptCore CONFIG REQUIRED)
-
 find_package(UnitTest++ CONFIG REQUIRED)
+if (NOT UnitTest++_FOUND)
+    message(FATAL_ERROR "tracy not found!")
+endif ()
 
 if (NOT DEFINED ENV{DOTNET_ROOT})
     message(FATAL_ERROR "Set the DOTNET_ROOT environment variable to the .net SDK")

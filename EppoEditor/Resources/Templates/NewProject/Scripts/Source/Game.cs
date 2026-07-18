@@ -1,8 +1,8 @@
-using EppoScriptCore;
+using EppoScriptCore.Scene;
 
 namespace Game
 {
-    public class Player : ScriptBehaviour
+    public class Player : Entity
     {
         public override void OnCreate()
         {

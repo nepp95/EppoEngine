@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "Renderer/DescriptorManager.h"
 #include "Renderer/Image.h"
 #include "Renderer/IndexBuffer.h"
-#include "Renderer/Vertex.h"
 #include "Renderer/VertexBuffer.h"
 
 #include <glm/glm.hpp>
+
+#include <limits>
 
 struct tg3_mesh;
 struct tg3_model;
@@ -20,17 +22,45 @@ namespace Eppo
 		Cube = 2,
 		Cylinder = 3,
 		Sphere = 4,
+		Capsule = 5,
+	};
+
+	// Axis-aligned bounding box in the mesh's local space — the space the entity's
+	// world transform maps from. Computed once at load time (vertices are uploaded
+	// to GPU and not retained on CPU), so the renderer can size a selection box
+	// without reading back vertex data.
+	struct AABB
+	{
+		glm::vec3 Min{ std::numeric_limits<float>::max() };
+		glm::vec3 Max{ std::numeric_limits<float>::lowest() };
+
+		auto Expand(const glm::vec3& p) -> void
+		{
+			Min = glm::min(Min, p);
+			Max = glm::max(Max, p);
+		}
+
+		[[nodiscard]] auto GetCenter() const -> glm::vec3 { return (Min + Max) * 0.5f; }
+		[[nodiscard]] auto GetHalfExtent() const -> glm::vec3 { return (Max - Min) * 0.5f; }
+		[[nodiscard]] auto IsValid() const -> bool { return Min.x <= Max.x; }
 	};
 
 	struct Material
 	{
-		int32_t DiffuseMapIndex = -1;
-		int32_t NormalMapIndex = -1;
-		int32_t RoughMetMapIndex = -1;
+		Ref<BindlessHandle> DiffuseMap = nullptr;
+		Ref<BindlessHandle> NormalMap = nullptr;
+		Ref<BindlessHandle> RoughMetMap = nullptr;
 
 		glm::vec4 BaseColor = glm::vec4(1.0f);
 		float Roughness = 1.0f;
 		float Metallic = 1.0f;
+
+	    // NOTE: This converts a uint32 to a int32 which loses half the range.
+	    //       Currently this is no issue since our handles won't ever reach that far,
+	    //       But this might change in the future.
+		[[nodiscard]] auto GetDiffuseMapIndex() const -> int32_t { return DiffuseMap ? static_cast<int32_t>(DiffuseMap->Index) : -1; }
+		[[nodiscard]] auto GetNormalMapIndex() const -> int32_t { return NormalMap ? static_cast<int32_t>(NormalMap->Index) : -1; }
+		[[nodiscard]] auto GetRoughMetMapIndex() const -> int32_t { return RoughMetMap ? static_cast<int32_t>(RoughMetMap->Index) : -1; }
 	};
 
 	struct Primitive
@@ -64,8 +94,13 @@ namespace Eppo
 		[[nodiscard]] auto GetMaterial(uint32_t materialIndex) const -> const Ref<Material>& { return m_Materials.at(materialIndex); }
 		[[nodiscard]] constexpr auto GetImages() const -> const std::vector<Ref<Image>>& { return m_Images; }
 		[[nodiscard]] auto GetImage(uint32_t imageIndex) const -> const Ref<Image>& { return m_Images.at(imageIndex); }
+		[[nodiscard]] constexpr auto GetBounds() const -> const AABB& { return m_Bounds; }
 
-		static auto CreateMeshPrimitive(MeshPrimitiveType type) -> Ref<Mesh>;
+		// Procedurally builds a Mesh for the given primitive shape. Called by the
+		// AssetManager to materialize a primitive asset on first request; subsequent
+		// requests are served from the AssetManager's cache, so this only runs once
+		// per type. Use AssetManager::GetOrLoadAsset to obtain primitive meshes.
+		static auto GenerateMeshPrimitive(MeshPrimitiveType type) -> Ref<Mesh>;
 
 	private:
 		auto ProcessNode(const tg3_model& model, const tg3_node& node) -> void;
@@ -78,5 +113,6 @@ namespace Eppo
 		std::vector<Submesh> m_Submeshes;
 		std::vector<Ref<Material>> m_Materials;
 		std::vector<Ref<Image>> m_Images;
+		AABB m_Bounds;
 	};
 }

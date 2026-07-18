@@ -2,6 +2,7 @@
 #include "Renderer/Mesh.h"
 
 #include "Renderer/DeviceManager.h"
+#include "Renderer/Vertex.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -9,6 +10,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <stb_image.h>
 #include <tiny_gltf_v3.h>
+
+#include <execution>
 
 namespace Eppo
 {
@@ -50,7 +53,7 @@ namespace Eppo
 		tg3_error_stack_free(&errors);
 	}
 
-	auto Mesh::CreateMeshPrimitive(const MeshPrimitiveType type) -> Ref<Mesh>
+	auto Mesh::GenerateMeshPrimitive(const MeshPrimitiveType type) -> Ref<Mesh>
 	{
 		constexpr auto MeshPrimitiveTypeToString = [](const MeshPrimitiveType type) -> std::string
 		{
@@ -62,11 +65,13 @@ namespace Eppo
 				return "Cylinder";
 			if (type == MeshPrimitiveType::Sphere)
 				return "Sphere";
+			if (type == MeshPrimitiveType::Capsule)
+				return "Capsule";
 			return "Unknown";
 		};
 
-		const auto vb = VertexBuffer::CreateMeshPrimitive(type);
-		const auto ib = IndexBuffer::CreateMeshPrimitive(type);
+		const auto vb = VertexBuffer::GeneratePrimitive(type);
+		const auto ib = IndexBuffer::GeneratePrimitive(type);
 
 		Ref<Material> material = CreateRef<Material>();
 
@@ -88,6 +93,16 @@ namespace Eppo
 		mesh->m_Submeshes.emplace_back(submesh);
 		mesh->m_Materials.emplace_back(material);
 		mesh->m_Name = MeshPrimitiveTypeToString(type);
+
+		// Unit primitives: all fit within a ±1 cube except the capsule, whose
+		// hemispheres extend to ±2 on Y (radius 1, hemisphere centers at ±1).
+		mesh->m_Bounds.Min = glm::vec3(-1.0f);
+		mesh->m_Bounds.Max = glm::vec3(1.0f);
+		if (type == MeshPrimitiveType::Capsule)
+		{
+			mesh->m_Bounds.Min.y = -2.0f;
+			mesh->m_Bounds.Max.y = 2.0f;
+		}
 
 		return mesh;
 	}
@@ -219,6 +234,13 @@ namespace Eppo
 		
 		data.VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), static_cast<uint64_t>(vertices.size() * sizeof(Vertex)));
 		data.IndexBuffer = CreateRef<IndexBuffer>(indices.data(), static_cast<uint64_t>(indices.size() * sizeof(uint32_t)));
+
+		// Accumulate mesh-local bounds: vertices are in submesh space, so
+		// transform by the submesh's LocalTransform to reach the space the
+		// entity's world transform maps from.
+		for (const auto& v : vertices)
+			m_Bounds.Expand(glm::vec3(localTransform * glm::vec4(v.Position, 1.0f)));
+
 		m_Submeshes.emplace_back(std::move(data));
 	}
 
@@ -236,24 +258,6 @@ namespace Eppo
 			newMat->Roughness = static_cast<float>(material.pbr_metallic_roughness.roughness_factor);
 			newMat->Metallic = static_cast<float>(material.pbr_metallic_roughness.metallic_factor);
 
-			if (material.pbr_metallic_roughness.base_color_texture.index != -1)
-			{
-				const auto index = material.pbr_metallic_roughness.base_color_texture.index;
-				newMat->DiffuseMapIndex = model.textures[index].source;
-			}
-
-			if (material.normal_texture.index != -1)
-			{
-				const auto index = material.normal_texture.index;
-				newMat->NormalMapIndex = model.textures[index].source;
-			}
-
-			if (material.pbr_metallic_roughness.metallic_roughness_texture.index != -1)
-			{
-				const auto index = material.pbr_metallic_roughness.metallic_roughness_texture.index;
-				newMat->RoughMetMapIndex = model.textures[index].source;
-			}
-
 			m_Materials[i] = newMat;
 		}
 	}
@@ -266,14 +270,15 @@ namespace Eppo
 
 		// Format look up
 		std::unordered_map<uint32_t, nvrhi::Format> imageFormats;
-		for (const auto& mat : m_Materials)
+		for (uint32_t i = 0; i < model.materials_count; i++)
 		{
-			if (mat->DiffuseMapIndex >= 0)
-				imageFormats[mat->DiffuseMapIndex] = nvrhi::Format::SRGBA8_UNORM;
-			if (mat->NormalMapIndex >= 0)
-				imageFormats[mat->NormalMapIndex] = nvrhi::Format::RGBA8_UNORM;
-			if (mat->RoughMetMapIndex >= 0)
-				imageFormats[mat->RoughMetMapIndex] = nvrhi::Format::RGBA8_UNORM;
+			const auto& material = model.materials[i];
+			if (const auto texture = material.pbr_metallic_roughness.base_color_texture.index; texture >= 0)
+				imageFormats[model.textures[texture].source] = nvrhi::Format::SRGBA8_UNORM;
+			if (const auto texture = material.normal_texture.index; texture >= 0)
+				imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+			if (const auto texture = material.pbr_metallic_roughness.metallic_roughness_texture.index; texture >= 0)
+				imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
 		}
 
 		m_Images.resize(model.images_count);
@@ -355,5 +360,34 @@ namespace Eppo
 			rawCmds.emplace_back(cmd.Get());
 
 		device->executeCommandLists(rawCmds.data(), cmdLists.size());
+
+		const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+		std::vector<Ref<BindlessHandle>> imageHandles(m_Images.size());
+		for (uint32_t i = 0; i < m_Images.size(); i++)
+		{
+			if (!m_Images[i])
+				continue;
+
+			auto handle = descriptorManager->Register<Image>(m_Images[i]);
+			if (handle.Index != std::numeric_limits<uint32_t>::max())
+				imageHandles[i] = CreateRef<BindlessHandle>(std::move(handle));
+		}
+
+		const auto getHandle = [&](const int32_t textureIndex) -> Ref<BindlessHandle>
+		{
+			if (textureIndex < 0)
+				return nullptr;
+			const int32_t imageIndex = model.textures[textureIndex].source;
+			return imageIndex >= 0 ? imageHandles.at(imageIndex) : nullptr;
+		};
+
+		for (uint32_t i = 0; i < model.materials_count; i++)
+		{
+			const auto& source = model.materials[i];
+			const auto& material = m_Materials.at(i);
+			material->DiffuseMap = getHandle(source.pbr_metallic_roughness.base_color_texture.index);
+			material->NormalMap = getHandle(source.normal_texture.index);
+			material->RoughMetMap = getHandle(source.pbr_metallic_roughness.metallic_roughness_texture.index);
+		}
 	}
 }

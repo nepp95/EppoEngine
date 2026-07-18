@@ -265,7 +265,7 @@ namespace Eppo
 
         if (id > 0 && id < 10)
         {
-            Ref<Mesh> mesh = Mesh::CreateMeshPrimitive(static_cast<MeshPrimitiveType>(id));
+            Ref<Mesh> mesh = Mesh::GenerateMeshPrimitive(static_cast<MeshPrimitiveType>(id));
 
             const AssetMetadata metadata{
 				.Handle = handle,

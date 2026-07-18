@@ -64,9 +64,6 @@ namespace Eppo
 		{}
 	};
 
-	// Turns an entity into a camera. On play, the scene renders through the
-	// primary camera entity, using its TransformComponent for the view. Primary
-	// selects which camera is used when several exist (first primary wins).
 	struct CameraComponent
 	{
 		SceneCamera Camera;
@@ -76,9 +73,6 @@ namespace Eppo
 		CameraComponent(const CameraComponent&) = default;
 	};
 
-	// Turns an entity into a point light. Position comes from the entity's
-	// TransformComponent; the scene submits these to the SceneRenderer each
-	// frame. Intensity scales the radiance before inverse-square attenuation.
 	struct PointLightComponent
 	{
 		glm::vec3 Color = glm::vec3(1.0f);
@@ -88,10 +82,6 @@ namespace Eppo
 		PointLightComponent(const PointLightComponent&) = default;
 	};
 
-	// Attaches a user script class to an entity. Kept intentionally small: it
-	// only names the class. The per-instance field values live in a side table
-	// owned by ScriptEngine (keyed by entity UUID), so this component stays
-	// cheap to store and copy in the registry.
 	struct ScriptComponent
 	{
 		std::string ClassName;
@@ -102,10 +92,6 @@ namespace Eppo
 		{}
 	};
 
-	// Places an entity in the transform hierarchy. Links are stable UUIDs (not
-	// handles) so they survive Scene::Copy and serialization. Parent == 0 is a root;
-	// transforms are local, composed via Scene::GetWorldTransform. Every entity
-	// carries one (added in CreateEntityWithUUID).
 	struct RelationshipComponent
 	{
 		UUID Parent = 0;
@@ -113,5 +99,55 @@ namespace Eppo
 
 		RelationshipComponent() = default;
 		RelationshipComponent(const RelationshipComponent&) = default;
+	};
+
+	struct RigidBodyComponent
+	{
+		enum class BodyType : uint8_t { Static = 0, Kinematic, Dynamic };
+
+		BodyType Type = BodyType::Static;
+		float GravityScale = 1.0f;
+		float LinearDamping = 0.0f;
+		float AngularDamping = 0.0f;
+
+		RigidBodyComponent() = default;
+		RigidBodyComponent(const RigidBodyComponent&) = default;
+	};
+
+	struct BoxColliderComponent
+	{
+        glm::vec3 HalfSize = glm::vec3(0.5f);
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		BoxColliderComponent() = default;
+		BoxColliderComponent(const BoxColliderComponent&) = default;
+	};
+
+	struct SphereColliderComponent
+	{
+		float Radius = 0.5f;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		SphereColliderComponent() = default;
+		SphereColliderComponent(const SphereColliderComponent&) = default;
+	};
+
+	struct CapsuleColliderComponent
+	{
+		float Radius = 0.5f;
+		float Height = 1.0f;
+		glm::vec3 Offset = glm::vec3(0.0f);
+		float Density = 1.0f;
+		float Friction = 0.5f;
+		float Restitution = 0.0f;
+
+		CapsuleColliderComponent() = default;
+		CapsuleColliderComponent(const CapsuleColliderComponent&) = default;
 	};
 }

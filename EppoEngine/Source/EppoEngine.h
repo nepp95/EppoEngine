@@ -20,6 +20,8 @@
 #include "ImGui/ImExt.h"
 #include "ImGui/ScopedBegin.h"
 
+#include <ImGuizmo.h>
+
 #include "Project/Project.h"
 
 #include "Renderer/Camera/EditorCamera.h"
