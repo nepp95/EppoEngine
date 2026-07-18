@@ -97,5 +97,17 @@ namespace EppoTesting
         public void CapsuleColliderComponent_SetFriction(float v) => InternalCalls.CapsuleColliderComponent_SetFriction(ID, v);
         public float CapsuleColliderComponent_GetRestitution() => InternalCalls.CapsuleColliderComponent_GetRestitution(ID);
         public void CapsuleColliderComponent_SetRestitution(float v) => InternalCalls.CapsuleColliderComponent_SetRestitution(ID, v);
+        public float CylinderColliderComponent_GetRadius() => InternalCalls.CylinderColliderComponent_GetRadius(ID);
+        public void CylinderColliderComponent_SetRadius(float v) => InternalCalls.CylinderColliderComponent_SetRadius(ID, v);
+        public float CylinderColliderComponent_GetHeight() => InternalCalls.CylinderColliderComponent_GetHeight(ID);
+        public void CylinderColliderComponent_SetHeight(float v) => InternalCalls.CylinderColliderComponent_SetHeight(ID, v);
+        public Vector3 CylinderColliderComponent_GetOffset() => InternalCalls.CylinderColliderComponent_GetOffset(ID);
+        public void CylinderColliderComponent_SetOffset(Vector3 v) => InternalCalls.CylinderColliderComponent_SetOffset(ID, ref v);
+        public float CylinderColliderComponent_GetDensity() => InternalCalls.CylinderColliderComponent_GetDensity(ID);
+        public void CylinderColliderComponent_SetDensity(float v) => InternalCalls.CylinderColliderComponent_SetDensity(ID, v);
+        public float CylinderColliderComponent_GetFriction() => InternalCalls.CylinderColliderComponent_GetFriction(ID);
+        public void CylinderColliderComponent_SetFriction(float v) => InternalCalls.CylinderColliderComponent_SetFriction(ID, v);
+        public float CylinderColliderComponent_GetRestitution() => InternalCalls.CylinderColliderComponent_GetRestitution(ID);
+        public void CylinderColliderComponent_SetRestitution(float v) => InternalCalls.CylinderColliderComponent_SetRestitution(ID, v);
     }
 }

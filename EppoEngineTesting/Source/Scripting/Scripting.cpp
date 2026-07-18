@@ -1160,6 +1160,99 @@ SUITE(Scripting)
         engine.OnDestroyEntity(entity);
     }
 
+    TEST(CylinderColliderComponent_GettersAndSetters_RoundTripSceneValues)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& cylinder = entity.AddComponent<CylinderColliderComponent>();
+        cylinder.Radius = 1.5f;
+        cylinder.Height = 3.0f;
+        cylinder.Offset = glm::vec3(0.1f, 0.2f, 0.3f);
+        cylinder.Density = 2.0f;
+        cylinder.Friction = 0.25f;
+        cylinder.Restitution = 0.1f;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        float radius = 0.0f;
+        const ScriptMethod* getRadius = c->GetMethod("CylinderColliderComponent_GetRadius");
+        REQUIRE CHECK(getRadius != nullptr);
+        c->InvokeMethod(entity, *getRadius, nullptr, &radius);
+        CHECK_CLOSE(1.5f, radius, 1e-5f);
+
+        float height = 0.0f;
+        const ScriptMethod* getHeight = c->GetMethod("CylinderColliderComponent_GetHeight");
+        REQUIRE CHECK(getHeight != nullptr);
+        c->InvokeMethod(entity, *getHeight, nullptr, &height);
+        CHECK_CLOSE(3.0f, height, 1e-5f);
+
+        glm::vec3 offset{};
+        const ScriptMethod* getOffset = c->GetMethod("CylinderColliderComponent_GetOffset");
+        REQUIRE CHECK(getOffset != nullptr);
+        c->InvokeMethod(entity, *getOffset, nullptr, &offset);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), offset, 1e-5f);
+
+        float density = 0.0f;
+        const ScriptMethod* getDensity = c->GetMethod("CylinderColliderComponent_GetDensity");
+        REQUIRE CHECK(getDensity != nullptr);
+        c->InvokeMethod(entity, *getDensity, nullptr, &density);
+        CHECK_CLOSE(2.0f, density, 1e-5f);
+
+        float friction = 0.0f;
+        const ScriptMethod* getFriction = c->GetMethod("CylinderColliderComponent_GetFriction");
+        REQUIRE CHECK(getFriction != nullptr);
+        c->InvokeMethod(entity, *getFriction, nullptr, &friction);
+        CHECK_CLOSE(0.25f, friction, 1e-5f);
+
+        float restitution = 0.0f;
+        const ScriptMethod* getRestitution = c->GetMethod("CylinderColliderComponent_GetRestitution");
+        REQUIRE CHECK(getRestitution != nullptr);
+        c->InvokeMethod(entity, *getRestitution, nullptr, &restitution);
+        CHECK_CLOSE(0.1f, restitution, 1e-5f);
+
+        radius = 2.5f;
+        const ScriptMethod* setRadius = c->GetMethod("CylinderColliderComponent_SetRadius");
+        REQUIRE CHECK(setRadius != nullptr);
+        c->InvokeMethod(entity, *setRadius, &radius, nullptr);
+        CHECK_CLOSE(2.5f, cylinder.Radius, 1e-5f);
+
+        height = 4.0f;
+        const ScriptMethod* setHeight = c->GetMethod("CylinderColliderComponent_SetHeight");
+        REQUIRE CHECK(setHeight != nullptr);
+        c->InvokeMethod(entity, *setHeight, &height, nullptr);
+        CHECK_CLOSE(4.0f, cylinder.Height, 1e-5f);
+
+        offset = glm::vec3(0.4f, 0.5f, 0.6f);
+        const ScriptMethod* setOffset = c->GetMethod("CylinderColliderComponent_SetOffset");
+        REQUIRE CHECK(setOffset != nullptr);
+        c->InvokeMethod(entity, *setOffset, &offset, nullptr);
+        CHECK_VEC3_CLOSE(offset, cylinder.Offset, 1e-5f);
+
+        density = 3.0f;
+        const ScriptMethod* setDensity = c->GetMethod("CylinderColliderComponent_SetDensity");
+        REQUIRE CHECK(setDensity != nullptr);
+        c->InvokeMethod(entity, *setDensity, &density, nullptr);
+        CHECK_CLOSE(3.0f, cylinder.Density, 1e-5f);
+
+        friction = 0.75f;
+        const ScriptMethod* setFriction = c->GetMethod("CylinderColliderComponent_SetFriction");
+        REQUIRE CHECK(setFriction != nullptr);
+        c->InvokeMethod(entity, *setFriction, &friction, nullptr);
+        CHECK_CLOSE(0.75f, cylinder.Friction, 1e-5f);
+
+        restitution = 0.9f;
+        const ScriptMethod* setRestitution = c->GetMethod("CylinderColliderComponent_SetRestitution");
+        REQUIRE CHECK(setRestitution != nullptr);
+        c->InvokeMethod(entity, *setRestitution, &restitution, nullptr);
+        CHECK_CLOSE(0.9f, cylinder.Restitution, 1e-5f);
+
+        engine.OnDestroyEntity(entity);
+    }
+
     // LinearVelocity routes through the active physics world rather than the component.
     TEST(RigidBodyComponent_GetLinearVelocity_ReturnsWorldValue)
     {
@@ -1172,7 +1265,8 @@ SUITE(Scripting)
         rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
         const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f)); // gravity-free
-        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        const auto& tc = entity.GetComponent<TransformComponent>();
+        world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
         world->SetLinearVelocity(entity.GetUUID(), glm::vec3(1.0f, 2.0f, 3.0f));
         engine.SetActivePhysicsWorld(world);
 
@@ -1199,7 +1293,8 @@ SUITE(Scripting)
         rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
         const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
-        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        const auto& tc = entity.GetComponent<TransformComponent>();
+        world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
         engine.SetActivePhysicsWorld(world);
 
         const ScriptClass* c = FindClass(kUserClass);
@@ -1226,7 +1321,8 @@ SUITE(Scripting)
         rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
         const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
-        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        const auto& tc = entity.GetComponent<TransformComponent>();
+        world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
         engine.SetActivePhysicsWorld(world);
 
         const ScriptClass* c = FindClass(kUserClass);
