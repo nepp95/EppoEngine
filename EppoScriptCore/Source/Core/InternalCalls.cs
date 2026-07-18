@@ -342,6 +342,69 @@ namespace EppoScriptCore.Core
         {
             ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CapsuleColliderComponent_SetRestitution"))(id, restitution);
         }
+
+        internal static float CylinderColliderComponent_GetRadius(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CylinderColliderComponent_GetRadius"))(id);
+        }
+
+        internal static void CylinderColliderComponent_SetRadius(ulong id, float radius)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CylinderColliderComponent_SetRadius"))(id, radius);
+        }
+
+        internal static float CylinderColliderComponent_GetHeight(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CylinderColliderComponent_GetHeight"))(id);
+        }
+
+        internal static void CylinderColliderComponent_SetHeight(ulong id, float height)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CylinderColliderComponent_SetHeight"))(id, height);
+        }
+
+        internal static Vector3 CylinderColliderComponent_GetOffset(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("CylinderColliderComponent_GetOffset"))(id, &result);
+            return result;
+        }
+
+        internal static void CylinderColliderComponent_SetOffset(ulong id, ref Vector3 offset)
+        {
+            fixed (Vector3* ptr = &offset)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("CylinderColliderComponent_SetOffset"))(id, ptr);
+        }
+
+        internal static float CylinderColliderComponent_GetDensity(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CylinderColliderComponent_GetDensity"))(id);
+        }
+
+        internal static void CylinderColliderComponent_SetDensity(ulong id, float density)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CylinderColliderComponent_SetDensity"))(id, density);
+        }
+
+        internal static float CylinderColliderComponent_GetFriction(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CylinderColliderComponent_GetFriction"))(id);
+        }
+
+        internal static void CylinderColliderComponent_SetFriction(ulong id, float friction)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CylinderColliderComponent_SetFriction"))(id, friction);
+        }
+
+        internal static float CylinderColliderComponent_GetRestitution(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CylinderColliderComponent_GetRestitution"))(id);
+        }
+
+        internal static void CylinderColliderComponent_SetRestitution(ulong id, float restitution)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CylinderColliderComponent_SetRestitution"))(id, restitution);
+        }
         #endregion
     }
 }

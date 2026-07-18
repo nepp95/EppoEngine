@@ -301,6 +301,18 @@ namespace Eppo
 				nc.Restitution = c["Restitution"].get<float>();
 			}
 
+			if (entity.contains("CylinderColliderComponent"))
+			{
+				auto& c = entity["CylinderColliderComponent"];
+				auto& nc = newEntity.AddComponent<CylinderColliderComponent>();
+				nc.Radius = c["Radius"].get<float>();
+				nc.Height = c["Height"].get<float>();
+				nc.Offset = c["Offset"].get<glm::vec3>();
+				nc.Density = c["Density"].get<float>();
+				nc.Friction = c["Friction"].get<float>();
+				nc.Restitution = c["Restitution"].get<float>();
+			}
+
 		}
 
 		RepairRelationships(sceneName);
@@ -516,6 +528,17 @@ namespace Eppo
 			e["CapsuleColliderComponent"]["Density"] = c.Density;
 			e["CapsuleColliderComponent"]["Friction"] = c.Friction;
 			e["CapsuleColliderComponent"]["Restitution"] = c.Restitution;
+		}
+
+		if (entity.HasComponent<CylinderColliderComponent>())
+		{
+			const auto& c = entity.GetComponent<CylinderColliderComponent>();
+			e["CylinderColliderComponent"]["Radius"] = c.Radius;
+			e["CylinderColliderComponent"]["Height"] = c.Height;
+			e["CylinderColliderComponent"]["Offset"] = c.Offset;
+			e["CylinderColliderComponent"]["Density"] = c.Density;
+			e["CylinderColliderComponent"]["Friction"] = c.Friction;
+			e["CylinderColliderComponent"]["Restitution"] = c.Restitution;
 		}
 
 		data.emplace_back(e);

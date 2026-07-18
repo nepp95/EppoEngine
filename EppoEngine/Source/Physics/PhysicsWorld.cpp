@@ -96,6 +96,15 @@ namespace Eppo
 				b3CreateCapsuleShape(body, &shapeDef, &capsule);
 				break;
 			}
+
+			case ColliderShape::Cylinder:
+			{
+				b3HullData* hull = b3CreateCylinder(collider.Height, collider.Radius, -collider.Height * 0.5f, 16);
+				const b3Transform pose{ Utils::ToB3(collider.Offset), Utils::ToB3(collider.Rotation) };
+				b3CreateTransformedHullShape(body, &shapeDef, hull, pose, b3Vec3{ 1.0f, 1.0f, 1.0f });
+				b3DestroyHull(hull);
+				break;
+			}
 		}
 	}
 

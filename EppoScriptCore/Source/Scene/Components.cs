@@ -175,4 +175,43 @@ namespace EppoScriptCore.Scene
             set => InternalCalls.CapsuleColliderComponent_SetRestitution(Entity.ID, value);
         }
     }
+
+    public class CylinderColliderComponent : Component
+    {
+        public float Radius
+        {
+            get => InternalCalls.CylinderColliderComponent_GetRadius(Entity.ID);
+            set => InternalCalls.CylinderColliderComponent_SetRadius(Entity.ID, value);
+        }
+
+        public float Height
+        {
+            get => InternalCalls.CylinderColliderComponent_GetHeight(Entity.ID);
+            set => InternalCalls.CylinderColliderComponent_SetHeight(Entity.ID, value);
+        }
+
+        public Vector3 Offset
+        {
+            get => InternalCalls.CylinderColliderComponent_GetOffset(Entity.ID);
+            set => InternalCalls.CylinderColliderComponent_SetOffset(Entity.ID, ref value);
+        }
+
+        public float Density
+        {
+            get => InternalCalls.CylinderColliderComponent_GetDensity(Entity.ID);
+            set => InternalCalls.CylinderColliderComponent_SetDensity(Entity.ID, value);
+        }
+
+        public float Friction
+        {
+            get => InternalCalls.CylinderColliderComponent_GetFriction(Entity.ID);
+            set => InternalCalls.CylinderColliderComponent_SetFriction(Entity.ID, value);
+        }
+
+        public float Restitution
+        {
+            get => InternalCalls.CylinderColliderComponent_GetRestitution(Entity.ID);
+            set => InternalCalls.CylinderColliderComponent_SetRestitution(Entity.ID, value);
+        }
+    }
 }

@@ -120,6 +120,7 @@ namespace Eppo
 		Ref<Mesh> m_BoxColliderMesh = nullptr;
 		Ref<Mesh> m_SphereColliderMesh = nullptr;
 		Ref<Mesh> m_CapsuleColliderMesh = nullptr;
+		Ref<Mesh> m_CylinderColliderMesh = nullptr;
 
 		struct CameraData
 		{

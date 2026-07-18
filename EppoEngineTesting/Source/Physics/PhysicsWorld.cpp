@@ -454,6 +454,80 @@ SUITE(Physics)
         CHECK(world.GetPosition(ballId).x > 0.5f);
     }
 
+    TEST(PhysicsWorld_CylinderCollider_BlocksSphere)
+    {
+        PhysicsWorld world({ 0.0f, 0.0f, 0.0f });
+
+        const UUID cylinderId;
+        {
+            RigidBodyComponent rb;
+            ColliderData cylinder;
+            cylinder.Shape = ColliderShape::Cylinder;
+            cylinder.Radius = 1.0f;
+            cylinder.Height = 2.0f;
+            world.CreateBody(cylinderId, rb, glm::vec3(0.0f), s_Identity, { cylinder });
+        }
+
+        const UUID ballId;
+        {
+            RigidBodyComponent rb;
+            rb.Type = RigidBodyComponent::BodyType::Dynamic;
+            ColliderData sphere;
+            sphere.Shape = ColliderShape::Sphere;
+            world.CreateBody(ballId, rb, { 3.0f, 0.0f, 0.0f }, s_Identity, { sphere });
+        }
+
+        world.SetLinearVelocity(ballId, { -5.0f, 0.0f, 0.0f });
+        for (int i = 0; i < 120; ++i)
+            world.Step(1.0f / 60.0f);
+
+        CHECK(world.GetPosition(ballId).x > 0.5f);
+
+        const UUID topBallId;
+        {
+            RigidBodyComponent rb;
+            rb.Type = RigidBodyComponent::BodyType::Dynamic;
+            ColliderData sphere;
+            sphere.Shape = ColliderShape::Sphere;
+            world.CreateBody(topBallId, rb, { 0.0f, 3.0f, 0.0f }, s_Identity, { sphere });
+        }
+
+        world.SetLinearVelocity(topBallId, { 0.0f, -5.0f, 0.0f });
+        for (int i = 0; i < 120; ++i)
+            world.Step(1.0f / 60.0f);
+
+        CHECK_CLOSE(1.5f, world.GetPosition(topBallId).y, 0.1f);
+    }
+
+    TEST(PhysicsWorld_DynamicCylinder_RestsOnFloorAtFullHeight)
+    {
+        PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+        const UUID floorId;
+        {
+            RigidBodyComponent rb;
+            ColliderData floor;
+            floor.HalfExtents = { 5.0f, 0.5f, 5.0f };
+            world.CreateBody(floorId, rb, glm::vec3(0.0f), s_Identity, { floor });
+        }
+
+        const UUID cylinderId;
+        {
+            RigidBodyComponent rb;
+            rb.Type = RigidBodyComponent::BodyType::Dynamic;
+            ColliderData cylinder;
+            cylinder.Shape = ColliderShape::Cylinder;
+            cylinder.Radius = 1.0f;
+            cylinder.Height = 2.0f;
+            world.CreateBody(cylinderId, rb, { 0.0f, 4.0f, 0.0f }, s_Identity, { cylinder });
+        }
+
+        for (int i = 0; i < 240; ++i)
+            world.Step(1.0f / 60.0f);
+
+        CHECK_CLOSE(1.5f, world.GetPosition(cylinderId).y, 0.1f);
+    }
+
     TEST(PhysicsWorld_ZeroExtentBoxCollider_StillBlocks)
     {
         PhysicsWorld world({ 0.0f, 0.0f, 0.0f });
@@ -595,6 +669,20 @@ SUITE(Physics)
         entity.AddComponent<MeshComponent>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
 
         auto& collider = entity.AddComponent<CapsuleColliderComponent>();
+        scene->FitColliderToMesh(entity, collider);
+
+        CHECK_VEC3_CLOSE(glm::vec3(0.0f), collider.Offset, 0.001f);
+        CHECK_CLOSE(1.0f, collider.Radius, 0.001f);
+        CHECK_CLOSE(2.0f, collider.Height, 0.001f);
+    }
+
+    TEST(Scene_FitCylinderColliderToMesh_UsesPrimitiveBounds)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Cylinder");
+        entity.AddComponent<MeshComponent>(static_cast<uint64_t>(MeshPrimitiveType::Cylinder));
+
+        auto& collider = entity.AddComponent<CylinderColliderComponent>();
         scene->FitColliderToMesh(entity, collider);
 
         CHECK_VEC3_CLOSE(glm::vec3(0.0f), collider.Offset, 0.001f);
@@ -976,6 +1064,11 @@ SUITE(Physics)
             capsule.Radius = 0.9f; capsule.Height = 1.8f;
             capsule.Offset = { 0.7f, 0.8f, 0.9f };
             capsule.Density = 3.5f; capsule.Friction = 0.45f; capsule.Restitution = 0.8f;
+
+            auto& cylinder = entity.AddComponent<CylinderColliderComponent>();
+            cylinder.Radius = 1.1f; cylinder.Height = 2.2f;
+            cylinder.Offset = { 1.0f, 1.1f, 1.2f };
+            cylinder.Density = 4.5f; cylinder.Friction = 0.55f; cylinder.Restitution = 0.9f;
         }
 
         const Testing::TempDir dir;
@@ -1015,5 +1108,13 @@ SUITE(Physics)
         CHECK_CLOSE(3.5f, capsule.Density, 1e-5f);
         CHECK_CLOSE(0.45f, capsule.Friction, 1e-5f);
         CHECK_CLOSE(0.8f, capsule.Restitution, 1e-5f);
+
+        const auto& cylinder = entity.GetComponent<CylinderColliderComponent>();
+        CHECK_CLOSE(1.1f, cylinder.Radius, 1e-5f);
+        CHECK_CLOSE(2.2f, cylinder.Height, 1e-5f);
+        CHECK_VEC3_CLOSE(glm::vec3(1.0f, 1.1f, 1.2f), cylinder.Offset, 1e-5f);
+        CHECK_CLOSE(4.5f, cylinder.Density, 1e-5f);
+        CHECK_CLOSE(0.55f, cylinder.Friction, 1e-5f);
+        CHECK_CLOSE(0.9f, cylinder.Restitution, 1e-5f);
     }
 }
