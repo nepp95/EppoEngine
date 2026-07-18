@@ -94,10 +94,10 @@ function(AddTestingSuite name label)
     set_tests_properties(${name} PROPERTIES LABELS "${label}")
 endfunction()
 
-AddTestingSuite(Physics unit)
+AddTestingSuite(Core core)
+AddTestingSuite(Physics core)
 AddTestingSuite(Scripting scripting)
-AddTestingSuite(ScriptMarshalling unit)
-AddTestingSuite(UUID core)
+AddTestingSuite(ScriptMarshalling scripting)
 
 # Graphical suites: boot the real Application (need a display + GPU). Excluded on
 # headless CI via `ctest --label-exclude graphical`.
