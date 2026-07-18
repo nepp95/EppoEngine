@@ -45,7 +45,7 @@
                         0.0,
                         0.0
                     ],
-                    "Radius": 0.5,
+                    "Radius": 1.0,
                     "Restitution": 0.0
                 },
                 "IDComponent": {
@@ -127,6 +127,18 @@
                 }
             },
             {
+                "CapsuleColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "Height": 1.0,
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Radius": 1.0,
+                    "Restitution": 0.0
+                },
                 "IDComponent": {
                     "ID": 5276681695514195852
                 },
@@ -286,6 +298,50 @@
                         0.0,
                         -1.0,
                         0.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "HalfSize": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 14578751355270128785
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 39560509675772309
+                },
+                "TagComponent": {
+                    "Tag": "New entity"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        -0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        -1.8557853698730469,
+                        4.896738052368164
                     ]
                 }
             }

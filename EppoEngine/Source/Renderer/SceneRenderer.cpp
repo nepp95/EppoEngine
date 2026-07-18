@@ -225,8 +225,6 @@ namespace Eppo
 		const auto& assetManager = project->GetAssetManager();
 		if (!m_BoxColliderMesh)
 			m_BoxColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
-		if (!m_ShowColliders)
-			return;
 
 		if (!m_SphereColliderMesh)
 			m_SphereColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
