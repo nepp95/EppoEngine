@@ -1172,7 +1172,8 @@ SUITE(Scripting)
         rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
         const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f)); // gravity-free
-        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        const auto& tc = entity.GetComponent<TransformComponent>();
+        world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
         world->SetLinearVelocity(entity.GetUUID(), glm::vec3(1.0f, 2.0f, 3.0f));
         engine.SetActivePhysicsWorld(world);
 
@@ -1199,7 +1200,8 @@ SUITE(Scripting)
         rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
         const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
-        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        const auto& tc = entity.GetComponent<TransformComponent>();
+        world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
         engine.SetActivePhysicsWorld(world);
 
         const ScriptClass* c = FindClass(kUserClass);
@@ -1226,7 +1228,8 @@ SUITE(Scripting)
         rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
         const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
-        world->CreateBody(entity.GetUUID(), rb, entity.GetComponent<TransformComponent>(), { ColliderData{} });
+        const auto& tc = entity.GetComponent<TransformComponent>();
+        world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
         engine.SetActivePhysicsWorld(world);
 
         const ScriptClass* c = FindClass(kUserClass);

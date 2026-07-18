@@ -311,8 +311,8 @@ namespace Eppo
                 return;
 
             const Entity entity = scene->GetEntityByUUID(UUID(id));
-            if (!entity || !entity.HasComponent<RelationshipComponent>())
-                return;
+			if (!entity)
+				return;
 
             scene->SetParent(entity, scene->GetEntityByUUID(UUID(parent)));
         }

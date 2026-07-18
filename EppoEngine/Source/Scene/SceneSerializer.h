@@ -14,9 +14,13 @@ namespace Eppo
 
 		auto Serialize(const std::filesystem::path& path) const -> bool;
 		auto Deserialize(const std::filesystem::path& path) const -> bool;
+		static auto ConsumeRelationshipRepairNotices() -> std::vector<std::string>;
 
 	private:
 		auto SerializeEntity(nlohmann::json& data, Entity entity) const -> void;
+
+		// Rebuilds sparse relationship links and detaches missing or cyclic parents.
+		auto RepairRelationships(const std::string& sceneName) const -> void;
 
 	private:
 		Ref<Scene> m_SceneContext = nullptr;

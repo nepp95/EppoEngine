@@ -392,7 +392,10 @@ namespace Eppo
 		{
 			if (ImGui::MenuItem(label.c_str()))
 			{
-				GetSelectedEntity().AddComponent<T>();
+				T& component = GetSelectedEntity().AddComponent<T>();
+				if constexpr (std::same_as<T, BoxColliderComponent> || std::same_as<T, SphereColliderComponent>
+					|| std::same_as<T, CapsuleColliderComponent>)
+					GetSceneContext()->FitColliderToMesh(GetSelectedEntity(), component);
 				ImGui::CloseCurrentPopup();
 			}
 		}

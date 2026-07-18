@@ -16,9 +16,26 @@ namespace Eppo
 		// Roots only; children are drawn by recursion in DrawEntityNode.
 		scene->ForEachEntity([&](Entity entity)
 		{
-			if (!entity.GetComponent<RelationshipComponent>().Parent)
+			const UUID parentId = entity.HasComponent<RelationshipComponent>()
+				? entity.GetComponent<RelationshipComponent>().Parent : UUID(0);
+			if (!parentId || !scene->GetEntityByUUID(parentId))
 				DrawEntityNode(entity);
 		});
+
+		const ImVec2 dropTargetSize = ImGui::GetContentRegionAvail();
+		if (dropTargetSize.x > 0.0f && dropTargetSize.y > 0.0f)
+		{
+			ImGui::InvisibleButton("##HierarchyRootDropTarget", dropTargetSize);
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_UUID"))
+				{
+					const UUID droppedId = *static_cast<const uint64_t*>(payload->Data);
+					scene->SetParent(scene->GetEntityByUUID(droppedId), {});
+				}
+				ImGui::EndDragDropTarget();
+			}
+		}
 
 		ImGui::PopStyleVar();
 
@@ -40,7 +57,8 @@ namespace Eppo
 		const std::string& tag = entity.GetComponent<TagComponent>().Tag;
 
 		// Snapshot: a drag-drop reparent below can mutate the live child list.
-		const std::vector<UUID> children = entity.GetComponent<RelationshipComponent>().Children;
+		const std::vector<UUID> children = entity.HasComponent<RelationshipComponent>()
+			? entity.GetComponent<RelationshipComponent>().Children : std::vector<UUID>{};
 
 		ImGuiTreeNodeFlags flags = (GetSelectedEntity() == entity ? ImGuiTreeNodeFlags_Selected : 0);
 		flags |= ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
@@ -76,13 +94,10 @@ namespace Eppo
 		}
 
 		bool entityDeleted = false;
-		bool entityUnparented = false;
 		if (ImGui::BeginPopupContextItem())
 		{
 			if (ImGui::MenuItem("Duplicate entity"))
 				scene->DuplicateEntity(entity);
-			if (ImGui::MenuItem("Unparent entity", nullptr, false, static_cast<bool>(entity.GetComponent<RelationshipComponent>().Parent)))
-				entityUnparented = true;
 			if (ImGui::MenuItem("Delete entity"))
 				entityDeleted = true;
 
@@ -102,14 +117,9 @@ namespace Eppo
 			ImGui::TreePop();
 		}
 
-		if (entityUnparented)
-			scene->SetParent(entity, {});
-
 		if (entityDeleted)
 		{
-			if (GetSelectedEntity() == entity)
-				SetSelectedEntity({});
-
+			SetSelectedEntity({});
 			scene->DestroyEntity(entity);
 		}
 	}
