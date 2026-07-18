@@ -135,6 +135,16 @@ namespace EppoScriptCore.Core
             return result;
         }
 
+        internal static bool CameraComponent_GetPrimary(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("CameraComponent_GetPrimary"))(id);
+        }
+
+        internal static void CameraComponent_SetPrimary(ulong id, bool primary)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("CameraComponent_SetPrimary"))(id, primary);
+        }
+
         internal static void PointLightComponent_SetColor(ulong id, ref Vector3 translation)
         {
             fixed (Vector3* ptr = &translation)

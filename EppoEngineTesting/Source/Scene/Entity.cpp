@@ -57,4 +57,19 @@ SUITE(Scene)
         entity.AddComponent<RelationshipComponent>();
         CHECK(entity.HasComponent<RelationshipComponent>());
     }
+
+    TEST(Entity_TryAddComponent_ReturnsExistingComponent)
+    {
+        const auto scene = CreateRef<Scene>();
+        REQUIRE CHECK(scene);
+
+        auto entity = scene->CreateEntity();
+        ValidateDefaultEntity(entity);
+
+        auto& tag = entity.GetComponent<TagComponent>().Tag;
+        tag = "Works";
+
+        auto& result = entity.TryAddComponent<TagComponent>().Tag;
+        CHECK_EQUAL("Works", result);
+    }
 }
