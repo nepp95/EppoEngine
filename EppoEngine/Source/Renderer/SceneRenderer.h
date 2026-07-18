@@ -66,6 +66,7 @@ namespace Eppo
 
 	private:
 		auto BeginSceneInternal() -> void;
+		auto EnsureColliderMeshes() -> void;
 		auto PrepareRender() -> void;
 
 		auto GeometryPass() -> void;
@@ -114,9 +115,11 @@ namespace Eppo
 		Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
 
 		// WireframePass owns its own instance buffer (collider/highlight draws are
-		// separate from geometry instances). Collider primitive meshes are fetched
-		// from the AssetManager on demand, so they share its lazy cache.
+		// separate from geometry instances).
 		Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
+		Ref<Mesh> m_BoxColliderMesh = nullptr;
+		Ref<Mesh> m_SphereColliderMesh = nullptr;
+		Ref<Mesh> m_CapsuleColliderMesh = nullptr;
 
 		struct CameraData
 		{

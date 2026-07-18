@@ -82,7 +82,7 @@ namespace Eppo
 		};
 
 		Submesh submesh{
-			.Name = "Cube",
+			.Name = MeshPrimitiveTypeToString(type),
 			.VertexBuffer = vb,
 			.IndexBuffer = ib,
 			.Primitives = { primitive },

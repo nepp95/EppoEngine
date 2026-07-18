@@ -8,13 +8,19 @@
                 "MeshComponent": {
                     "MeshHandle": 1
                 },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 2
+                },
                 "TagComponent": {
                     "Tag": "Cone 1"
                 },
                 "TransformComponent": {
                     "Rotation": [
                         0.0,
-                        0.0,
+                        -0.0,
                         0.0
                     ],
                     "Scale": [
@@ -24,17 +30,35 @@
                     ],
                     "Translation": [
                         0.0,
-                        0.0,
-                        -4.0
+                        1.8557853698730469,
+                        -4.896738052368164
                     ]
                 }
             },
             {
+                "CapsuleColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "Height": 1.0,
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Radius": 0.5,
+                    "Restitution": 0.0
+                },
                 "IDComponent": {
                     "ID": 558050922577306240
                 },
                 "MeshComponent": {
                     "MeshHandle": 3
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 2
                 },
                 "TagComponent": {
                     "Tag": "Cylinder 2"
@@ -64,13 +88,30 @@
                 "MeshComponent": {
                     "MeshHandle": 4
                 },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 2
+                },
+                "SphereColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Radius": 1.0,
+                    "Restitution": 0.0
+                },
                 "TagComponent": {
                     "Tag": "Sphere 1"
                 },
                 "TransformComponent": {
                     "Rotation": [
                         0.0,
-                        0.0,
+                        -0.0,
                         0.0
                     ],
                     "Scale": [
@@ -80,8 +121,8 @@
                     ],
                     "Translation": [
                         0.0,
-                        0.0,
-                        -2.0
+                        1.468109369277954,
+                        -2.6168289184570313
                     ]
                 }
             },
@@ -92,13 +133,19 @@
                 "MeshComponent": {
                     "MeshHandle": 3
                 },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 2
+                },
                 "TagComponent": {
                     "Tag": "Cylinder 1"
                 },
                 "TransformComponent": {
                     "Rotation": [
                         0.0,
-                        0.0,
+                        -0.0,
                         0.0
                     ],
                     "Scale": [
@@ -108,17 +155,69 @@
                     ],
                     "Translation": [
                         0.0,
-                        0.0,
-                        2.0
+                        2.3648488521575928,
+                        3.718557357788086
                     ]
                 }
             },
             {
+                "CameraComponent": {
+                    "FarClip": 1000.0,
+                    "NearClip": 0.10000000149011612,
+                    "Primary": true,
+                    "VerticalFov": 45.0
+                },
+                "IDComponent": {
+                    "ID": 5284583425630774357
+                },
+                "TagComponent": {
+                    "Tag": "Scene Camera"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        1.5,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        20.0,
+                        2.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
                 "IDComponent": {
                     "ID": 8351827442453317863
                 },
                 "MeshComponent": {
                     "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 2
                 },
                 "TagComponent": {
                     "Tag": "Cube 1"
@@ -126,7 +225,7 @@
                 "TransformComponent": {
                     "Rotation": [
                         0.0,
-                        0.0,
+                        -0.0,
                         0.0
                     ],
                     "Scale": [
@@ -136,12 +235,80 @@
                     ],
                     "Translation": [
                         0.0,
+                        4.040522575378418,
+                        -2.3551712036132813
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.5,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
                         0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 10002926466338872384
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 0
+                },
+                "TagComponent": {
+                    "Tag": "Floor"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        -0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        10.0,
+                        1.0,
+                        10.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        -1.0,
                         0.0
                     ]
                 }
             }
         ],
+        "Environment": {
+            "AmbientIntensity": 1.0,
+            "GroundColor": [
+                0.20000000298023224,
+                0.17000000178813934,
+                0.12999999523162842
+            ],
+            "HorizonColor": [
+                0.6499999761581421,
+                0.6600000262260437,
+                0.6700000166893005
+            ],
+            "SkyboxHandle": 0,
+            "ZenithColor": [
+                0.3499999940395355,
+                0.44999998807907104,
+                0.550000011920929
+            ]
+        },
         "Handle": 18159251541775323644,
         "Name": "Def"
     }

@@ -213,6 +213,27 @@ namespace Eppo
 		m_CameraData.InverseViewProjection = glm::inverse(m_CameraData.ViewProjection);
 	}
 
+	auto SceneRenderer::EnsureColliderMeshes() -> void
+	{
+		if (!m_DebugRenderingEnabled || (!m_ShowColliders && !m_HighlightedEntity))
+			return;
+
+		const auto& project = Project::GetActive();
+		if (!project)
+			return;
+
+		const auto& assetManager = project->GetAssetManager();
+		if (!m_BoxColliderMesh)
+			m_BoxColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+		if (!m_ShowColliders)
+			return;
+
+		if (!m_SphereColliderMesh)
+			m_SphereColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
+		if (!m_CapsuleColliderMesh)
+			m_CapsuleColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
+	}
+
 	auto SceneRenderer::PrepareRender() -> void
 	{
 		const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
@@ -248,6 +269,8 @@ namespace Eppo
 	auto SceneRenderer::EndScene() -> void
 	{
 		EP_PROFILE_FN("SceneRenderer::EndScene")
+
+		EnsureColliderMeshes();
 
 		std::vector<glm::mat4> instanceTransforms;
 		for (auto& drawCmd : m_DrawCommands | std::views::values)
@@ -459,13 +482,8 @@ namespace Eppo
 
 		if (m_ShowColliders)
 		{
-			// Unit collider primitives from the AssetManager (lazy-cached there).
 			// Dimensions match the scale math below: cube half-extent 1, sphere
 			// radius 1, capsule radius 1 / total height 2 (so Height maps to Height/2).
-			const auto boxMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
-			const auto sphereMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
-			const auto capsuleMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
-
 			m_Scene->ForEachEntity([&](Entity entity)
 			{
 				const glm::mat4 world = m_Scene->GetWorldTransform(entity);
@@ -473,20 +491,20 @@ namespace Eppo
 				if (entity.HasComponent<BoxColliderComponent>())
 				{
 					const auto& c = entity.GetComponent<BoxColliderComponent>();
-					wireframes.push_back({ boxMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor });
+					wireframes.push_back({ m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor });
 				}
 
 				if (entity.HasComponent<SphereColliderComponent>())
 				{
 					const auto& c = entity.GetComponent<SphereColliderComponent>();
-					wireframes.push_back({ sphereMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius)), colliderColor });
+					wireframes.push_back({ m_SphereColliderMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius)), colliderColor });
 				}
 
 				if (entity.HasComponent<CapsuleColliderComponent>())
 				{
 					const auto& c = entity.GetComponent<CapsuleColliderComponent>();
 					// Unit capsule: radius 1, hemisphere centers at +-1, so height maps to Height/2.
-					wireframes.push_back({ capsuleMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor });
+					wireframes.push_back({ m_CapsuleColliderMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor });
 				}
 			});
 		}
@@ -520,10 +538,9 @@ namespace Eppo
 				const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
 				if (const auto& bounds = mesh->GetBounds(); bounds.IsValid())
 				{
-					const auto boxMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
 					const glm::mat4 world = m_Scene->GetWorldTransform(m_HighlightedEntity);
 					const glm::mat4 boxTransform = glm::scale(glm::translate(world, bounds.GetCenter()), bounds.GetHalfExtent());
-					wireframes.push_back({ boxMesh, boxTransform, highlightColor });
+					wireframes.push_back({ m_BoxColliderMesh, boxTransform, highlightColor });
 				}
 			}
 		}
