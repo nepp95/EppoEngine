@@ -24,7 +24,11 @@ namespace EppoScriptCore.Scene
 
     public class CameraComponent : Component
     {
-
+        public bool Primary
+        {
+            get => InternalCalls.CameraComponent_GetPrimary(Entity.ID);
+            set => InternalCalls.CameraComponent_SetPrimary(Entity.ID, value);
+        }
     }
 
     public class PointLightComponent : Component

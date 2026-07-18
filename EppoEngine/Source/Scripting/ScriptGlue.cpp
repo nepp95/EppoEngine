@@ -265,6 +265,24 @@ namespace Eppo
             return static_cast<uint64_t>(entity.GetComponent<MeshComponent>().MeshHandle);
         }
 
+        auto CameraComponent_GetPrimary(const uint64_t id) -> bool
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return false;
+
+            return entity.GetComponent<CameraComponent>().Primary;
+        }
+
+        auto CameraComponent_SetPrimary(const uint64_t id, const bool primary) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return;
+
+            entity.GetComponent<CameraComponent>().Primary = primary;
+        }
+
         auto PointLightComponent_GetColor(const uint64_t id, glm::vec3* outColor) -> void
         {
             const Entity entity = GetEntity(id);
@@ -754,6 +772,8 @@ namespace Eppo
             { "TransformComponent_GetTranslation", reinterpret_cast<void*>(&TransformComponent_GetTranslation) },
             { "TransformComponent_SetTranslation", reinterpret_cast<void*>(&TransformComponent_SetTranslation) },
             { "MeshComponent_GetMeshHandle",       reinterpret_cast<void*>(&MeshComponent_GetMeshHandle)       },
+            { "CameraComponent_GetPrimary",        reinterpret_cast<void*>(&CameraComponent_GetPrimary)        },
+            { "CameraComponent_SetPrimary",        reinterpret_cast<void*>(&CameraComponent_SetPrimary)        },
             { "PointLightComponent_GetColor",      reinterpret_cast<void*>(&PointLightComponent_GetColor)      },
             { "PointLightComponent_SetColor",      reinterpret_cast<void*>(&PointLightComponent_SetColor)      },
             { "PointLightComponent_GetIntensity",  reinterpret_cast<void*>(&PointLightComponent_GetIntensity)  },
