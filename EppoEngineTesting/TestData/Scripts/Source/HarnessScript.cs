@@ -23,8 +23,17 @@ namespace EppoTesting
         public int Created;
         public float Accumulated;
 
+        // Set by the destroy-safety test: makes OnUpdate destroy this entity from
+        // inside the script update loop, exercising deferred destruction.
+        public bool DestroySelfOnUpdate;
+
         public override void OnCreate() => Created = 1;
-        public override void OnUpdate(float deltaTime) => Accumulated += deltaTime;
+        public override void OnUpdate(float deltaTime)
+        {
+            Accumulated += deltaTime;
+            if (DestroySelfOnUpdate)
+                Scene.DestroyEntity(this);
+        }
 
         // Exercised by the GetMethod/InvokeMethod round-trip.
         public int Add(int a, int b) => a + b;
@@ -47,20 +56,41 @@ namespace EppoTesting
         public void Entity_AddComponent() => InternalCalls.Entity_AddComponent(ID, "PointLightComponent");
         public bool Entity_RemoveComponent() => InternalCalls.Entity_RemoveComponent(ID, "PointLightComponent");
         public bool Entity_GetName_Matches() => InternalCalls.Entity_GetName(ID) == "NamedEntity";
+        public void Entity_SetName() => InternalCalls.Entity_SetName(ID, "RenamedFromScript");
+        public ulong Scene_CreateEntity() => Scene.CreateEntity("Spawned").ID;
+        public void Scene_DestroyEntity(ulong id) => Scene.DestroyEntity(new Entity(id));
         public Vector3 TransformComponent_GetTranslation() => InternalCalls.TransformComponent_GetTranslation(ID);
         public void TransformComponent_SetTranslation(Vector3 t) => InternalCalls.TransformComponent_SetTranslation(ID, ref t);
+        public Vector3 TransformComponent_GetRotation() => InternalCalls.TransformComponent_GetRotation(ID);
+        public void TransformComponent_SetRotation(Vector3 r) => InternalCalls.TransformComponent_SetRotation(ID, ref r);
+        public Vector3 TransformComponent_GetScale() => InternalCalls.TransformComponent_GetScale(ID);
+        public void TransformComponent_SetScale(Vector3 s) => InternalCalls.TransformComponent_SetScale(ID, ref s);
         public ulong MeshComponent_GetMeshHandle() => InternalCalls.MeshComponent_GetMeshHandle(ID);
+        public float CameraComponent_GetVerticalFov() => InternalCalls.CameraComponent_GetVerticalFov(ID);
+        public void CameraComponent_SetVerticalFov(float v) => InternalCalls.CameraComponent_SetVerticalFov(ID, v);
+        public float CameraComponent_GetNearClip() => InternalCalls.CameraComponent_GetNearClip(ID);
+        public void CameraComponent_SetNearClip(float v) => InternalCalls.CameraComponent_SetNearClip(ID, v);
+        public float CameraComponent_GetFarClip() => InternalCalls.CameraComponent_GetFarClip(ID);
+        public void CameraComponent_SetFarClip(float v) => InternalCalls.CameraComponent_SetFarClip(ID, v);
         public Vector3 PointLightComponent_GetColor() => InternalCalls.PointLightComponent_GetColor(ID);
         public void PointLightComponent_SetColor(Vector3 c) => InternalCalls.PointLightComponent_SetColor(ID, ref c);
         public float PointLightComponent_GetIntensity() => InternalCalls.PointLightComponent_GetIntensity(ID);
         public void PointLightComponent_SetIntensity(float intensity) => InternalCalls.PointLightComponent_SetIntensity(ID, intensity);
         public ulong RelationshipComponent_GetParent() => InternalCalls.RelationshipComponent_GetParent(ID);
         public void RelationshipComponent_SetParent(ulong parent) => InternalCalls.RelationshipComponent_SetParent(ID, parent);
+        public int RelationshipComponent_GetChildCount() => InternalCalls.RelationshipComponent_GetChildren(ID).Length;
+        public ulong RelationshipComponent_GetChild(int index) => InternalCalls.RelationshipComponent_GetChildren(ID)[index];
 
         public byte RigidBodyComponent_GetType() => InternalCalls.RigidBodyComponent_GetType(ID);
         public void RigidBodyComponent_SetType(byte type) => InternalCalls.RigidBodyComponent_SetType(ID, type);
         public Vector3 RigidBodyComponent_GetLinearVelocity() => GetComponent<RigidBodyComponent>().LinearVelocity;
         public void RigidBodyComponent_SetLinearVelocity(Vector3 v) => GetComponent<RigidBodyComponent>().LinearVelocity = v;
+        public float RigidBodyComponent_GetGravityScale() => InternalCalls.RigidBodyComponent_GetGravityScale(ID);
+        public void RigidBodyComponent_SetGravityScale(float v) => InternalCalls.RigidBodyComponent_SetGravityScale(ID, v);
+        public float RigidBodyComponent_GetLinearDamping() => InternalCalls.RigidBodyComponent_GetLinearDamping(ID);
+        public void RigidBodyComponent_SetLinearDamping(float v) => InternalCalls.RigidBodyComponent_SetLinearDamping(ID, v);
+        public float RigidBodyComponent_GetAngularDamping() => InternalCalls.RigidBodyComponent_GetAngularDamping(ID);
+        public void RigidBodyComponent_SetAngularDamping(float v) => InternalCalls.RigidBodyComponent_SetAngularDamping(ID, v);
         public void Physics_ApplyLinearImpulseUp() => Physics.ApplyLinearImpulse(this, new Vector3(0.0f, 5.0f, 0.0f));
 
         public Vector3 BoxColliderComponent_GetHalfSize() => InternalCalls.BoxColliderComponent_GetHalfSize(ID);

@@ -238,6 +238,38 @@ namespace Eppo
             return entity.GetName().c_str();
         }
 
+        auto Entity_SetName(const uint64_t id, const char* name) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<TagComponent>())
+                return;
+
+            entity.GetComponent<TagComponent>().Tag = name ? std::string(name) : std::string();
+        }
+
+        auto Scene_CreateEntity(const char* name) -> uint64_t
+        {
+            const auto& scene = GetScene();
+            if (!scene)
+                return 0;
+
+            Entity entity = scene->CreateEntity(name ? std::string(name) : std::string());
+            return static_cast<uint64_t>(entity.GetUUID());
+        }
+
+        auto Scene_DestroyEntity(const uint64_t id) -> void
+        {
+            const auto& scene = GetScene();
+            if (!scene)
+                return;
+
+            const Entity entity = scene->GetEntityByUUID(UUID(id));
+            if (!entity)
+                return;
+
+            scene->DestroyEntityDeferred(entity);
+        }
+
         auto TransformComponent_GetTranslation(const uint64_t id, glm::vec3* outTranslation) -> void
         {
             const Entity entity = GetEntity(id);
@@ -254,6 +286,42 @@ namespace Eppo
                 return;
 
             entity.GetComponent<TransformComponent>().Translation = *translation;
+        }
+
+        auto TransformComponent_GetRotation(const uint64_t id, glm::vec3* outRotation) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<TransformComponent>())
+                return;
+
+            *outRotation = entity.GetComponent<TransformComponent>().Rotation;
+        }
+
+        auto TransformComponent_SetRotation(const uint64_t id, const glm::vec3* rotation) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<TransformComponent>())
+                return;
+
+            entity.GetComponent<TransformComponent>().Rotation = *rotation;
+        }
+
+        auto TransformComponent_GetScale(const uint64_t id, glm::vec3* outScale) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<TransformComponent>())
+                return;
+
+            *outScale = entity.GetComponent<TransformComponent>().Scale;
+        }
+
+        auto TransformComponent_SetScale(const uint64_t id, const glm::vec3* scale) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<TransformComponent>())
+                return;
+
+            entity.GetComponent<TransformComponent>().Scale = *scale;
         }
 
         auto MeshComponent_GetMeshHandle(const uint64_t id) -> uint64_t
@@ -281,6 +349,60 @@ namespace Eppo
                 return;
 
             entity.GetComponent<CameraComponent>().Primary = primary;
+        }
+
+        auto CameraComponent_GetVerticalFov(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CameraComponent>().Camera.GetPerspectiveVerticalFov();
+        }
+
+        auto CameraComponent_SetVerticalFov(const uint64_t id, const float verticalFov) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return;
+
+            entity.GetComponent<CameraComponent>().Camera.SetPerspectiveVerticalFov(verticalFov);
+        }
+
+        auto CameraComponent_GetNearClip(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CameraComponent>().Camera.GetPerspectiveNearClip();
+        }
+
+        auto CameraComponent_SetNearClip(const uint64_t id, const float nearClip) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return;
+
+            entity.GetComponent<CameraComponent>().Camera.SetPerspectiveNearClip(nearClip);
+        }
+
+        auto CameraComponent_GetFarClip(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<CameraComponent>().Camera.GetPerspectiveFarClip();
+        }
+
+        auto CameraComponent_SetFarClip(const uint64_t id, const float farClip) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return;
+
+            entity.GetComponent<CameraComponent>().Camera.SetPerspectiveFarClip(farClip);
         }
 
         auto PointLightComponent_GetColor(const uint64_t id, glm::vec3* outColor) -> void
@@ -341,6 +463,28 @@ namespace Eppo
             scene->SetParent(entity, scene->GetEntityByUUID(UUID(parent)));
         }
 
+        auto RelationshipComponent_GetChildCount(const uint64_t id) -> int32_t
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RelationshipComponent>())
+                return 0;
+
+            return static_cast<int32_t>(entity.GetComponent<RelationshipComponent>().Children.size());
+        }
+
+        auto RelationshipComponent_GetChild(const uint64_t id, const int32_t index) -> uint64_t
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RelationshipComponent>())
+                return 0;
+
+            const auto& children = entity.GetComponent<RelationshipComponent>().Children;
+            if (index < 0 || index >= static_cast<int32_t>(children.size()))
+                return 0;
+
+            return static_cast<uint64_t>(children[index]);
+        }
+
         auto RigidBodyComponent_GetType(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
@@ -357,6 +501,60 @@ namespace Eppo
                 return;
 
             entity.GetComponent<RigidBodyComponent>().Type = static_cast<RigidBodyComponent::BodyType>(type);
+        }
+
+        auto RigidBodyComponent_GetGravityScale(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<RigidBodyComponent>().GravityScale;
+        }
+
+        auto RigidBodyComponent_SetGravityScale(const uint64_t id, const float gravityScale) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().GravityScale = gravityScale;
+        }
+
+        auto RigidBodyComponent_GetLinearDamping(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<RigidBodyComponent>().LinearDamping;
+        }
+
+        auto RigidBodyComponent_SetLinearDamping(const uint64_t id, const float linearDamping) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().LinearDamping = linearDamping;
+        }
+
+        auto RigidBodyComponent_GetAngularDamping(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<RigidBodyComponent>().AngularDamping;
+        }
+
+        auto RigidBodyComponent_SetAngularDamping(const uint64_t id, const float angularDamping) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().AngularDamping = angularDamping;
         }
 
         auto BoxColliderComponent_GetHalfSize(const uint64_t id, glm::vec3* outHalfSize) -> void
@@ -769,19 +967,40 @@ namespace Eppo
             { "Entity_AddComponent",               reinterpret_cast<void*>(&Entity_AddComponent)               },
             { "Entity_RemoveComponent",            reinterpret_cast<void*>(&Entity_RemoveComponent)            },
             { "Entity_GetName",                    reinterpret_cast<void*>(&Entity_GetName)                    },
+            { "Entity_SetName",                    reinterpret_cast<void*>(&Entity_SetName)                    },
+            { "Scene_CreateEntity",                reinterpret_cast<void*>(&Scene_CreateEntity)                },
+            { "Scene_DestroyEntity",               reinterpret_cast<void*>(&Scene_DestroyEntity)               },
             { "TransformComponent_GetTranslation", reinterpret_cast<void*>(&TransformComponent_GetTranslation) },
             { "TransformComponent_SetTranslation", reinterpret_cast<void*>(&TransformComponent_SetTranslation) },
+            { "TransformComponent_GetRotation",    reinterpret_cast<void*>(&TransformComponent_GetRotation)    },
+            { "TransformComponent_SetRotation",    reinterpret_cast<void*>(&TransformComponent_SetRotation)    },
+            { "TransformComponent_GetScale",       reinterpret_cast<void*>(&TransformComponent_GetScale)       },
+            { "TransformComponent_SetScale",       reinterpret_cast<void*>(&TransformComponent_SetScale)       },
             { "MeshComponent_GetMeshHandle",       reinterpret_cast<void*>(&MeshComponent_GetMeshHandle)       },
             { "CameraComponent_GetPrimary",        reinterpret_cast<void*>(&CameraComponent_GetPrimary)        },
             { "CameraComponent_SetPrimary",        reinterpret_cast<void*>(&CameraComponent_SetPrimary)        },
+            { "CameraComponent_GetVerticalFov",    reinterpret_cast<void*>(&CameraComponent_GetVerticalFov)    },
+            { "CameraComponent_SetVerticalFov",    reinterpret_cast<void*>(&CameraComponent_SetVerticalFov)    },
+            { "CameraComponent_GetNearClip",       reinterpret_cast<void*>(&CameraComponent_GetNearClip)       },
+            { "CameraComponent_SetNearClip",       reinterpret_cast<void*>(&CameraComponent_SetNearClip)       },
+            { "CameraComponent_GetFarClip",        reinterpret_cast<void*>(&CameraComponent_GetFarClip)        },
+            { "CameraComponent_SetFarClip",        reinterpret_cast<void*>(&CameraComponent_SetFarClip)        },
             { "PointLightComponent_GetColor",      reinterpret_cast<void*>(&PointLightComponent_GetColor)      },
             { "PointLightComponent_SetColor",      reinterpret_cast<void*>(&PointLightComponent_SetColor)      },
             { "PointLightComponent_GetIntensity",  reinterpret_cast<void*>(&PointLightComponent_GetIntensity)  },
             { "PointLightComponent_SetIntensity",  reinterpret_cast<void*>(&PointLightComponent_SetIntensity)  },
             { "RelationshipComponent_GetParent",   reinterpret_cast<void*>(&RelationshipComponent_GetParent)   },
             { "RelationshipComponent_SetParent",   reinterpret_cast<void*>(&RelationshipComponent_SetParent)   },
+            { "RelationshipComponent_GetChildCount", reinterpret_cast<void*>(&RelationshipComponent_GetChildCount) },
+            { "RelationshipComponent_GetChild",    reinterpret_cast<void*>(&RelationshipComponent_GetChild)    },
             { "RigidBodyComponent_GetType",        reinterpret_cast<void*>(&RigidBodyComponent_GetType)        },
             { "RigidBodyComponent_SetType",        reinterpret_cast<void*>(&RigidBodyComponent_SetType)        },
+            { "RigidBodyComponent_GetGravityScale", reinterpret_cast<void*>(&RigidBodyComponent_GetGravityScale) },
+            { "RigidBodyComponent_SetGravityScale", reinterpret_cast<void*>(&RigidBodyComponent_SetGravityScale) },
+            { "RigidBodyComponent_GetLinearDamping", reinterpret_cast<void*>(&RigidBodyComponent_GetLinearDamping) },
+            { "RigidBodyComponent_SetLinearDamping", reinterpret_cast<void*>(&RigidBodyComponent_SetLinearDamping) },
+            { "RigidBodyComponent_GetAngularDamping", reinterpret_cast<void*>(&RigidBodyComponent_GetAngularDamping) },
+            { "RigidBodyComponent_SetAngularDamping", reinterpret_cast<void*>(&RigidBodyComponent_SetAngularDamping) },
             { "BoxColliderComponent_GetHalfSize",  reinterpret_cast<void*>(&BoxColliderComponent_GetHalfSize)  },
             { "BoxColliderComponent_SetHalfSize",  reinterpret_cast<void*>(&BoxColliderComponent_SetHalfSize)  },
             { "BoxColliderComponent_GetOffset",    reinterpret_cast<void*>(&BoxColliderComponent_GetOffset)    },

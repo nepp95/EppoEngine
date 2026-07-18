@@ -110,6 +110,37 @@ namespace EppoScriptCore.Core
             return Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
         }
 
+        internal static void Entity_SetName(ulong id, string name)
+        {
+            var ptr = Marshal.StringToCoTaskMemUTF8(name);
+            try
+            {
+                ((delegate* unmanaged[Cdecl]<ulong, byte*, void>)Get("Entity_SetName"))(id, (byte*)ptr);
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(ptr);
+            }
+        }
+
+        internal static ulong Scene_CreateEntity(string name)
+        {
+            var ptr = Marshal.StringToCoTaskMemUTF8(name);
+            try
+            {
+                return ((delegate* unmanaged[Cdecl]<byte*, ulong>)Get("Scene_CreateEntity"))((byte*)ptr);
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(ptr);
+            }
+        }
+
+        internal static void Scene_DestroyEntity(ulong id)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, void>)Get("Scene_DestroyEntity"))(id);
+        }
+
         internal static Vector3 TransformComponent_GetTranslation(ulong id)
         {
             Vector3 result = default;
@@ -121,6 +152,32 @@ namespace EppoScriptCore.Core
         {
             fixed (Vector3* ptr = &translation)
                 ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("TransformComponent_SetTranslation"))(id, ptr);
+        }
+
+        internal static Vector3 TransformComponent_GetRotation(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("TransformComponent_GetRotation"))(id, &result);
+            return result;
+        }
+
+        internal static void TransformComponent_SetRotation(ulong id, ref Vector3 rotation)
+        {
+            fixed (Vector3* ptr = &rotation)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("TransformComponent_SetRotation"))(id, ptr);
+        }
+
+        internal static Vector3 TransformComponent_GetScale(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("TransformComponent_GetScale"))(id, &result);
+            return result;
+        }
+
+        internal static void TransformComponent_SetScale(ulong id, ref Vector3 scale)
+        {
+            fixed (Vector3* ptr = &scale)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("TransformComponent_SetScale"))(id, ptr);
         }
 
         internal static ulong MeshComponent_GetMeshHandle(ulong id)
@@ -143,6 +200,36 @@ namespace EppoScriptCore.Core
         internal static void CameraComponent_SetPrimary(ulong id, bool primary)
         {
             ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("CameraComponent_SetPrimary"))(id, primary);
+        }
+
+        internal static float CameraComponent_GetVerticalFov(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CameraComponent_GetVerticalFov"))(id);
+        }
+
+        internal static void CameraComponent_SetVerticalFov(ulong id, float verticalFov)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CameraComponent_SetVerticalFov"))(id, verticalFov);
+        }
+
+        internal static float CameraComponent_GetNearClip(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CameraComponent_GetNearClip"))(id);
+        }
+
+        internal static void CameraComponent_SetNearClip(ulong id, float nearClip)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CameraComponent_SetNearClip"))(id, nearClip);
+        }
+
+        internal static float CameraComponent_GetFarClip(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("CameraComponent_GetFarClip"))(id);
+        }
+
+        internal static void CameraComponent_SetFarClip(ulong id, float farClip)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CameraComponent_SetFarClip"))(id, farClip);
         }
 
         internal static void PointLightComponent_SetColor(ulong id, ref Vector3 translation)
@@ -171,6 +258,15 @@ namespace EppoScriptCore.Core
             ((delegate* unmanaged[Cdecl]<ulong, ulong, void>)Get("RelationshipComponent_SetParent"))(id, parent);
         }
 
+        internal static ulong[] RelationshipComponent_GetChildren(ulong id)
+        {
+            var count = ((delegate* unmanaged[Cdecl]<ulong, int>)Get("RelationshipComponent_GetChildCount"))(id);
+            var children = new ulong[count < 0 ? 0 : count];
+            for (var i = 0; i < children.Length; i++)
+                children[i] = ((delegate* unmanaged[Cdecl]<ulong, int, ulong>)Get("RelationshipComponent_GetChild"))(id, i);
+            return children;
+        }
+
         internal static byte RigidBodyComponent_GetType(ulong id)
         {
             return ((delegate* unmanaged[Cdecl]<ulong, byte>)Get("RigidBodyComponent_GetType"))(id);
@@ -179,6 +275,36 @@ namespace EppoScriptCore.Core
         internal static void RigidBodyComponent_SetType(ulong id, byte type)
         {
             ((delegate* unmanaged[Cdecl]<ulong, byte, void>)Get("RigidBodyComponent_SetType"))(id, type);
+        }
+
+        internal static float RigidBodyComponent_GetGravityScale(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("RigidBodyComponent_GetGravityScale"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetGravityScale(ulong id, float gravityScale)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("RigidBodyComponent_SetGravityScale"))(id, gravityScale);
+        }
+
+        internal static float RigidBodyComponent_GetLinearDamping(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("RigidBodyComponent_GetLinearDamping"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetLinearDamping(ulong id, float linearDamping)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("RigidBodyComponent_SetLinearDamping"))(id, linearDamping);
+        }
+
+        internal static float RigidBodyComponent_GetAngularDamping(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("RigidBodyComponent_GetAngularDamping"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetAngularDamping(ulong id, float angularDamping)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("RigidBodyComponent_SetAngularDamping"))(id, angularDamping);
         }
 
         internal static Vector3 BoxColliderComponent_GetHalfSize(ulong id)
