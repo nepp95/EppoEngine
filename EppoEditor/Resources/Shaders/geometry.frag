@@ -33,9 +33,6 @@ struct Environment
 };
 ConstantBuffer<Environment> uEnvironment : register(b3, space0);
 
-Texture2D uTextures[] : register(t0, space1);
-SamplerState uSampler : register(s0, space0);
-
 struct Input
 {
 	float3 WorldPos : POSITION0;
@@ -52,9 +49,10 @@ struct PushConstants
 	int RoughMetMapIndex;
 	float Metallic;
 	float Roughness;
+	uint SamplerIndex;
 };
 PUSH_CONSTANTS
-ConstantBuffer<PushConstants> uPC : register(b0, space1);
+ConstantBuffer<PushConstants> uPC : register(b0, space0);
 
 float4 Main(Input input) : SV_Target
 {
@@ -63,7 +61,12 @@ float4 Main(Input input) : SV_Target
 
 	float3 albedo;
 	if (uPC.DiffuseMapIndex > -1)
-		albedo = uTextures[NonUniformResourceIndex(uPC.DiffuseMapIndex)].Sample(uSampler, input.TexCoord).rgb;
+	{
+		// SM6.6 dynamic resources: index the renderer's global heaps directly.
+		Texture2D diffuseMap = ResourceDescriptorHeap[NonUniformResourceIndex(uPC.DiffuseMapIndex)];
+		SamplerState samp = SamplerDescriptorHeap[uPC.SamplerIndex];
+		albedo = diffuseMap.Sample(samp, input.TexCoord).rgb;
+	}
 	else
 		albedo = float3(1.0, 1.0, 1.0);
 

@@ -1,11 +1,12 @@
 #pragma once
 
+#include "Core/Base.h"
+#include "Renderer/Pipeline.h"
+
 #include <nvrhi/nvrhi.h>
 
 namespace Eppo
 {
-	// Accumulated per-pass draw statistics. Reset at the start of each pass and
-	// added together to form the scene/grand totals shown in the stats UI.
 	struct PassStatistics
 	{
 		uint32_t DrawCalls = 0;
@@ -27,41 +28,60 @@ namespace Eppo
 		}
 	};
 
-	// Bundles the GPU timer-query lifecycle (one query per frame-in-flight) and
-	// the draw statistics for a single render pass, centralizing the boilerplate
-	// that SceneRenderer and ImGuiRenderer previously each duplicated. Construct
-	// one per logical pass; drive it from the pass' command list.
+	struct RenderPassSpecification
+	{
+		std::string Name;
+		Ref<Pipeline> Pipeline = nullptr;
+
+		bool ClearColorOnLoad = false;
+		glm::vec4 ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+		bool ClearDepthOnLoad = false;
+		float DepthClearValue = 1.0f;
+		uint32_t StencilClearValue = 0;
+	};
+
 	class RenderPass
 	{
 	public:
-		explicit RenderPass(std::string name);
+		RenderPass() = default;
+		explicit RenderPass(RenderPassSpecification spec);
+		~RenderPass() = default;
 
-		// Owns per-frame GPU timer queries; copying would silently share them
-		// between two logical passes. Non-copyable (and non-movable — instances
-		// live as members, never reseated).
 		RenderPass(const RenderPass&) = delete;
 		auto operator=(const RenderPass&) -> RenderPass& = delete;
+		RenderPass(RenderPass&&) noexcept = default;
+		auto operator=(RenderPass&&) noexcept -> RenderPass& = default;
 
-		// Reset the stats, begin the GPU timer and open a debug marker on the
-		// (already-open) command list. Pass a non-empty marker to override the pass
-		// name in the capture (used for ImGui's per-viewport markers).
-		auto Begin(const nvrhi::CommandListHandle& commandList, uint32_t frameIndex, const std::string& marker = "") -> void;
-		// Close the debug marker and end the GPU timer.
-		auto End(const nvrhi::CommandListHandle& commandList, uint32_t frameIndex) const -> void;
-		// Read the timer back and reset the query. Call after the command list that
-		// wrapped Begin/End has been executed.
-		auto Readback(uint32_t frameIndex) -> void;
+		auto Resize(uint32_t width, uint32_t height) const -> void;
 
-		[[nodiscard]] auto GetStats() -> PassStatistics& { return m_Statistics; }
-		[[nodiscard]] auto GetStats() const -> const PassStatistics& { return m_Statistics; }
-		[[nodiscard]] auto GetTime(const uint32_t frameIndex) const -> float { return m_Timestamps.at(frameIndex); }
-		[[nodiscard]] auto GetTimeMs(const uint32_t frameIndex) const -> float { return m_Timestamps.at(frameIndex) * 1000.0f;}
-		[[nodiscard]] auto GetName() const -> const std::string& { return m_Name; }
+		[[nodiscard]] auto GetSpecification() const -> const RenderPassSpecification& { return m_Specification; }
+		[[nodiscard]] auto GetPipeline() const -> const Ref<Pipeline>& { return m_Specification.Pipeline; }
+		[[nodiscard]] auto GetName() const -> const std::string& { return m_Specification.Name; }
+
+		auto SetInput(uint32_t set, uint32_t binding, nvrhi::IResource* resource) -> void;
+		auto DeclarePushConstants(uint32_t set, uint32_t size) -> void;
+
+		auto Bake() -> void;
+
+		[[nodiscard]] auto GetBindingSets() const -> const nvrhi::BindingSetVector& { return m_BindingSets; }
 
 	private:
-		std::string m_Name;
-		std::vector<nvrhi::TimerQueryHandle> m_TimerQueries;
-		std::vector<float> m_Timestamps;
-		PassStatistics m_Statistics;
+		[[nodiscard]] auto IsValid() const -> bool;
+
+	private:
+		RenderPassSpecification m_Specification;
+
+		struct BindingInput
+		{
+			uint32_t Binding = 0;
+			nvrhi::IResource* Resource = nullptr;
+		};
+
+		std::unordered_map<uint32_t, std::vector<BindingInput>> m_Inputs;
+		std::unordered_map<uint32_t, uint32_t> m_PushConstantSizes;
+
+		std::vector<nvrhi::BindingSetHandle> m_OwnedBindingSets;
+		nvrhi::BindingSetVector m_BindingSets;
 	};
 }
