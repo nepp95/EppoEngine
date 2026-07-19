@@ -34,7 +34,26 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("AssetImporter::ImportMesh");
 
-		return nullptr;
+		const auto path = Project::GetAssetFilepath(metadata.Filepath);
+		if (!FS::Exists(path))
+		{
+			Log::Error("Cannot import mesh '{}': file does not exist", path);
+			return nullptr;
+		}
+
+		Ref<Mesh> mesh = CreateRef<Mesh>(path.string());
+		if (!mesh->IsValid())
+		{
+			// Caching an unrenderable mesh would hide the failure until draw time.
+			Log::Error("Cannot import mesh '{}': the file could not be parsed", path);
+			return nullptr;
+		}
+
+		// Serialized MeshComponents resolve through the registry's handle, not the
+		// fresh UUID the Asset base constructed.
+		mesh->Handle = handle;
+
+		return mesh;
 	}
 
 	auto AssetImporter::ImportScene(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Scene>

@@ -3,6 +3,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- The editor passes CoreManagedDll as a global property, which wins over
+         this. The fallback exists only so IDEs and language servers opening the
+         project standalone can still resolve the core types. -->
+    <CoreManagedDll Condition="'$(CoreManagedDll)' == ''">$(MSBuildThisFileDirectory)../../../../build/debug/EppoScriptCore.dll</CoreManagedDll>
   </PropertyGroup>
   <ItemGroup>
     <!-- CoreManagedDll is passed by the editor at build time; the runtime loads

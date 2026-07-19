@@ -96,6 +96,8 @@ namespace Eppo
 		[[nodiscard]] auto GetImage(uint32_t imageIndex) const -> const Ref<Image>& { return m_Images.at(imageIndex); }
 		[[nodiscard]] constexpr auto GetBounds() const -> const AABB& { return m_Bounds; }
 
+		[[nodiscard]] constexpr auto IsValid() const -> bool { return m_Valid; }
+
 		// Procedurally builds a Mesh for the given primitive shape. Called by the
 		// AssetManager to materialize a primitive asset on first request; subsequent
 		// requests are served from the AssetManager's cache, so this only runs once
@@ -114,5 +116,6 @@ namespace Eppo
 		std::vector<Ref<Material>> m_Materials;
 		std::vector<Ref<Image>> m_Images;
 		AABB m_Bounds;
+		bool m_Valid = true;
 	};
 }

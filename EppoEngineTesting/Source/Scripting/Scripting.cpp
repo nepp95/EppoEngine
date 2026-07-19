@@ -1,8 +1,10 @@
 #include "Support/EppoTest.h"
 #include "Support/GlmCheck.h"
 #include "Asset/Asset.h"
+#include "Asset/AssetManager.h"
 #include "Core/Input.h"
 #include "Core/KeyCodes.h"
+#include "Core/MouseCodes.h"
 #include "Core/SimulatedInput.h"
 #include "Physics/PhysicsWorld.h"
 #include "Scene/Components.h"
@@ -26,6 +28,7 @@ using namespace Eppo;
 SUITE(Scripting)
 {
     constexpr const char* kUserClass = "EppoTesting.HarnessScript";
+    constexpr const char* kLifecycleClass = "EppoTesting.LifecycleScript";
 
     namespace
     {
@@ -86,6 +89,25 @@ SUITE(Scripting)
         {
             ScriptEngine::Get().SetSceneContext(scene);
             return MakeLiveEntity(scene);
+        }
+
+        // A dynamic, scripted rigid body for the runtime-lifecycle tests. The
+        // collider gives it mass, so the impulse LifecycleScript applies from
+        // OnCreate produces a readable velocity.
+        auto MakeLifecycleBody(const Ref<Scene>& scene) -> Entity
+        {
+            Entity entity = scene->CreateEntity("LifecycleOwner");
+            entity.AddComponent<ScriptComponent>(std::string(kLifecycleClass));
+            entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
+            entity.AddComponent<SphereColliderComponent>();
+            return entity;
+        }
+
+        auto HasEntityNamed(const Ref<Scene>& scene, const std::string& name) -> bool
+        {
+            bool found = false;
+            scene->ForEachEntity([&](Entity e) { found = found || e.GetName() == name; });
+            return found;
         }
     }
 
@@ -472,6 +494,132 @@ SUITE(Scripting)
         engine.RemoveFieldMap(entity.GetUUID());
     }
 
+    // --- Runtime lifecycle: Scene publishes the scripting scene context, so
+    // OnCreate and OnDestroy both run against a resolvable scene and a live
+    // physics world. Asserted through native scene/physics state, since the
+    // managed instance is destroyed as OnDestroy returns. ---
+
+    TEST(Scene_OnRuntimeStart_RunsOnCreateWithSceneAndPhysicsContext)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        // Scene must publish the context itself; don't inherit one from a prior test.
+        ScriptEngine::Get().SetSceneContext(nullptr);
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = MakeLifecycleBody(scene);
+
+        scene->OnRuntimeStart();
+
+        // Component write from OnCreate landed on the native transform.
+        CHECK_VEC3_CLOSE(glm::vec3(1.0f, 2.0f, 3.0f), entity.GetComponent<TransformComponent>().Translation, 1e-5f);
+
+        // Scene op from OnCreate produced a real entity.
+        CHECK(HasEntityNamed(scene, "CreatedFromOnCreate"));
+
+        // Physics op from OnCreate reached the live body.
+        REQUIRE CHECK(scene->GetPhysicsWorld() != nullptr);
+        CHECK(scene->GetPhysicsWorld()->GetLinearVelocity(entity.GetUUID()).y > 0.0f);
+
+        scene->OnRuntimeStop();
+    }
+
+    TEST(Scene_OnRuntimeStop_RunsOnDestroyWithSceneAndPhysicsContext)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        ScriptEngine::Get().SetSceneContext(nullptr);
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = MakeLifecycleBody(scene);
+
+        scene->OnRuntimeStart();
+        scene->OnRuntimeStop();
+
+        // Scene op from OnDestroy produced a real entity.
+        CHECK(HasEntityNamed(scene, "CreatedFromOnDestroy"));
+
+        // OnDestroy overwrote the translation with the velocity it read back, so a
+        // non-zero y proves the physics world was still live. Zero would mean the
+        // scene resolved but physics was already released; OnCreate's (1,2,3) that
+        // neither resolved.
+        CHECK(entity.GetComponent<TransformComponent>().Translation.y > 0.0f);
+    }
+
+    // The editor gates its play button on this before a project (and therefore the
+    // engine) exists, so it has to answer rather than assert.
+    TEST(ScriptEngine_IsUserAssemblyValid_WithoutASuccessfulBuild_IsFalse)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        CHECK_EQUAL(false, ScriptEngine::IsUserAssemblyValid());
+    }
+
+    // Hot reload polls every frame, including while no project is open.
+    TEST(ScriptEngine_OnUpdate_WithoutAnActiveProject_DoesNothing)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        ScriptEngine::Get().VerifyRuntime();
+
+        CHECK_EQUAL(false, ScriptEngine::IsUserAssemblyValid());
+    }
+
+    TEST(ScriptEngine_ReloadProjectAssembly_WithoutAnActiveProject_Fails)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        CHECK_EQUAL(false, ScriptEngine::Get().ReloadProjectAssembly());
+    }
+
+    // Covers the addition case only, and passes with or without the snapshot: entt's
+    // storage is paged and views iterate in reverse, so appends fall outside the walk.
+    // Component removal is the genuinely unsafe mutation and is not covered here.
+    TEST(Scene_ScriptSpawnsScriptedEntitiesFromLifecycleHooks_Succeeds)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        ScriptEngine::Get().SetSceneContext(nullptr);
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        Entity entity = scene->CreateEntity("Spawner");
+        entity.AddComponent<ScriptComponent>(std::string("EppoTesting.SpawningScript"));
+
+        scene->OnRuntimeStart();
+
+        size_t spawnedFromCreate = 0;
+        scene->ForEachEntity([&](Entity e)
+        {
+            if (e.GetName().starts_with("SpawnedFromCreate"))
+                spawnedFromCreate++;
+        });
+        CHECK_EQUAL(size_t(8), spawnedFromCreate);
+
+        scene->OnRuntimeStop();
+
+        size_t spawnedFromDestroy = 0;
+        scene->ForEachEntity([&](Entity e)
+        {
+            if (e.GetName().starts_with("SpawnedFromDestroy"))
+                spawnedFromDestroy++;
+        });
+        CHECK_EQUAL(size_t(8), spawnedFromDestroy);
+    }
+
+    TEST(Scene_OnRuntimeStop_ClearsSceneContext)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        MakeLifecycleBody(scene);
+
+        scene->OnRuntimeStart();
+        CHECK(ScriptEngine::Get().GetSceneContext() == scene);
+
+        scene->OnRuntimeStop();
+        CHECK(ScriptEngine::Get().GetSceneContext() == nullptr);
+    }
+
     // --- Internal calls (ScriptGlue): each test invokes the 1:1 harness forwarder
     // for one internal call and asserts on native state / the returned value. ---
     TEST(Input_IsKeyPressed_ReturnsNativeState)
@@ -501,6 +649,262 @@ SUITE(Scripting)
         CHECK_EQUAL(false, up);
 
         Input::SetBackend(nullptr);
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(Input_IsMouseButtonPressed_ReturnsNativeState)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* isPressed = c->GetMethod("Input_IsMouseButtonPressed");
+        REQUIRE CHECK(isPressed != nullptr);
+
+        SimulatedInput input;
+        Input::SetBackend(&input);
+
+        input.PressMouseButton(Mouse::ButtonRight);
+        bool down = false;
+        c->InvokeMethod(entity, *isPressed, nullptr, &down);
+        CHECK_EQUAL(true, down);
+
+        // A different button held down must not report as this one.
+        input.ReleaseMouseButton(Mouse::ButtonRight);
+        input.PressMouseButton(Mouse::ButtonLeft);
+        bool up = true;
+        c->InvokeMethod(entity, *isPressed, nullptr, &up);
+        CHECK_EQUAL(false, up);
+
+        Input::SetBackend(nullptr);
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(Input_GetMousePosition_ReturnsNativeState)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getPosition = c->GetMethod("Input_GetMousePosition");
+        REQUIRE CHECK(getPosition != nullptr);
+
+        SimulatedInput input;
+        input.SetMousePosition(glm::vec2(640.0f, 360.0f));
+        Input::SetBackend(&input);
+
+        glm::vec2 position{};
+        c->InvokeMethod(entity, *getPosition, nullptr, &position);
+        CHECK_VEC2_CLOSE(glm::vec2(640.0f, 360.0f), position, 1e-5f);
+
+        Input::SetBackend(nullptr);
+        engine.OnDestroyEntity(entity);
+    }
+
+    // GetMouseX/GetMouseY are derived on the C# side from GetMousePosition, so they
+    // need cover of their own: an asymmetric position catches either one reading the
+    // wrong component.
+    TEST(Input_GetMouseXY_ReturnMousePositionComponents)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* getX = c->GetMethod("Input_GetMouseX");
+        const ScriptMethod* getY = c->GetMethod("Input_GetMouseY");
+        REQUIRE CHECK(getX != nullptr);
+        REQUIRE CHECK(getY != nullptr);
+
+        SimulatedInput input;
+        input.SetMousePosition(glm::vec2(12.0f, 34.0f));
+        Input::SetBackend(&input);
+
+        float x = 0.0f;
+        c->InvokeMethod(entity, *getX, nullptr, &x);
+        CHECK_CLOSE(12.0f, x, 1e-5f);
+
+        float y = 0.0f;
+        c->InvokeMethod(entity, *getY, nullptr, &y);
+        CHECK_CLOSE(34.0f, y, 1e-5f);
+
+        Input::SetBackend(nullptr);
+        engine.OnDestroyEntity(entity);
+    }
+
+    // The world-input gate silences polled key/button input when the editor viewport
+    // doesn't own it. Mouse position is deliberately not gated, so a script keeps
+    // reading the cursor while keys and buttons go quiet.
+    TEST(Input_ViewportInputDisabled_SilencesButtonsButNotMousePosition)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeLiveEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* isPressed = c->GetMethod("Input_IsMouseButtonPressed");
+        const ScriptMethod* getPosition = c->GetMethod("Input_GetMousePosition");
+        REQUIRE CHECK(isPressed != nullptr);
+        REQUIRE CHECK(getPosition != nullptr);
+
+        SimulatedInput input;
+        input.PressMouseButton(Mouse::ButtonRight);
+        input.SetMousePosition(glm::vec2(5.0f, 7.0f));
+        Input::SetBackend(&input);
+        Input::SetViewportInputEnabled(false);
+
+        bool down = true;
+        c->InvokeMethod(entity, *isPressed, nullptr, &down);
+        CHECK_EQUAL(false, down);
+
+        glm::vec2 position{};
+        c->InvokeMethod(entity, *getPosition, nullptr, &position);
+        CHECK_VEC2_CLOSE(glm::vec2(5.0f, 7.0f), position, 1e-5f);
+
+        Input::SetViewportInputEnabled(true);
+        Input::SetBackend(nullptr);
+        engine.OnDestroyEntity(entity);
+    }
+
+    // --- Writable mesh handles: a script can make a spawned entity visible. ---
+
+    TEST(MeshComponent_SetMeshHandle_AssignsPrimitiveHandle)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<MeshComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setHandle = c->GetMethod("MeshComponent_SetMeshHandle");
+        REQUIRE CHECK(setHandle != nullptr);
+
+        const uint64_t cube = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+        c->InvokeMethod(entity, *setHandle, &cube, nullptr);
+
+        CHECK(entity.GetComponent<MeshComponent>().MeshHandle == AssetHandle(cube));
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // The typed enum is the API scripts are meant to use; it must land on the same
+    // reserved handle the asset manager generates primitives from.
+    TEST(MeshComponent_SetPrimitive_MapsEnumToReservedHandle)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<MeshComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setPrimitive = c->GetMethod("MeshComponent_SetPrimitiveCube");
+        REQUIRE CHECK(setPrimitive != nullptr);
+
+        c->InvokeMethod(entity, *setPrimitive, nullptr, nullptr);
+
+        const AssetHandle assigned = entity.GetComponent<MeshComponent>().MeshHandle;
+        CHECK(assigned == AssetHandle(static_cast<uint64_t>(MeshPrimitiveType::Cube)));
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // Without an active project an unregistered handle can't be verified as a mesh,
+    // so it must be refused rather than assigned on trust.
+    TEST(MeshComponent_SetMeshHandle_UnknownHandle_LeavesComponentUnchanged)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<MeshComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setHandle = c->GetMethod("MeshComponent_SetMeshHandle");
+        REQUIRE CHECK(setHandle != nullptr);
+
+        // Seed a known-good value so a rejected assignment is distinguishable.
+        const uint64_t sphere = static_cast<uint64_t>(MeshPrimitiveType::Sphere);
+        c->InvokeMethod(entity, *setHandle, &sphere, nullptr);
+
+        const uint64_t bogus = 0xDEADBEEFull;
+        c->InvokeMethod(entity, *setHandle, &bogus, nullptr);
+
+        CHECK(entity.GetComponent<MeshComponent>().MeshHandle == AssetHandle(sphere));
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    TEST(MeshComponent_SetMeshHandle_ZeroClearsAssignment)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        entity.AddComponent<MeshComponent>();
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* setHandle = c->GetMethod("MeshComponent_SetMeshHandle");
+        REQUIRE CHECK(setHandle != nullptr);
+
+        const uint64_t cube = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+        c->InvokeMethod(entity, *setHandle, &cube, nullptr);
+
+        const uint64_t none = 0;
+        c->InvokeMethod(entity, *setHandle, &none, nullptr);
+
+        CHECK(entity.GetComponent<MeshComponent>().MeshHandle == AssetHandle(0));
+
+        engine.OnDestroyEntity(entity);
+    }
+
+    // The end-to-end case the feature exists for: spawn an entity from a script and
+    // give it a visible mesh, with no asset handle known to the script author.
+    TEST(Scene_CreateEntity_WithPrimitiveMesh_IsVisibleFromScript)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const ScriptMethod* spawn = c->GetMethod("Scene_CreateEntityWithPrimitive");
+        REQUIRE CHECK(spawn != nullptr);
+
+        uint64_t spawnedId = 0;
+        c->InvokeMethod(entity, *spawn, nullptr, &spawnedId);
+
+        Entity spawned = scene->GetEntityByUUID(Eppo::UUID(spawnedId));
+        REQUIRE CHECK(static_cast<bool>(spawned));
+        REQUIRE CHECK(spawned.HasComponent<MeshComponent>());
+        CHECK(spawned.GetComponent<MeshComponent>().MeshHandle
+            == AssetHandle(static_cast<uint64_t>(MeshPrimitiveType::Sphere)));
+
         engine.OnDestroyEntity(entity);
     }
 

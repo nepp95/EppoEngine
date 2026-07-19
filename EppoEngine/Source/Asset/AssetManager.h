@@ -48,6 +48,7 @@ namespace Eppo
 		// Deduce an asset type purely from a file's extension. Shared by CreateAsset
 		// and the content browser (for picking icons on unregistered files).
 		[[nodiscard]] static auto GetAssetTypeFromPath(const std::filesystem::path& path) -> AssetType;
+
 		auto SerializeAssetRegistry() const -> void;
 		auto DeserializeAssetRegistry() -> bool;
 

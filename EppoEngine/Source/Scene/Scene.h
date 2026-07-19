@@ -32,7 +32,7 @@ namespace Eppo
 		float AmbientIntensity = 1.0f;
 	};
 
-	class Scene : public Asset
+	class Scene : public Asset, public std::enable_shared_from_this<Scene>
 	{
 	public:
 		Scene() = default;

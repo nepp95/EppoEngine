@@ -191,9 +191,20 @@ namespace Eppo
 		auto& scriptEngine = ScriptEngine::Get();
 		scriptEngine.SetActivePhysicsWorld(m_PhysicsWorld);
 
-		const auto view = m_Registry.view<ScriptComponent>();
-		for (const auto e : view)
+		// Both contexts must be published before OnCreate: every internal call
+		// resolves through them.
+		scriptEngine.SetSceneContext(shared_from_this());
+
+		// Snapshot: OnCreate can spawn or destroy scripted entities, mutating the
+		// storage this walks. Hence the per-entity validity re-check too.
+		const auto scripts = m_Registry.view<ScriptComponent>();
+		const std::vector<EntityHandle> scripted(scripts.begin(), scripts.end());
+
+		for (const auto e : scripted)
 		{
+			if (!m_Registry.valid(e))
+				continue;
+
 			Entity entity(e, this);
 			scriptEngine.OnCreateEntity(entity);
 		}
@@ -203,20 +214,31 @@ namespace Eppo
 	{
 		EP_PROFILE_FN("Scene::OnRuntimeStop");
 
+		// OnDestroy runs before either context is torn down, so a script can still
+		// reach its entity and the simulation while it cleans up.
+		if (ScriptEngine::IsInitialized())
+		{
+			auto& scriptEngine = ScriptEngine::Get();
+			const auto view = m_Registry.view<ScriptComponent>();
+
+            for (const std::vector scripted(view.begin(), view.end()); const auto e : scripted)
+			{
+				if (!m_Registry.valid(e))
+					continue;
+
+                const Entity entity(e, this);
+				scriptEngine.OnDestroyEntity(entity);
+			}
+
+			// Only release a context this scene published, so stopping one scene can't
+			// yank it from another that is still running.
+			if (scriptEngine.GetSceneContext() == shared_from_this())
+				scriptEngine.SetSceneContext(nullptr);
+		}
+
 		// The script engine's WeakRef expires with this reset.
 		m_PhysicsWorld.reset();
 		m_ColliderlessRigidBodies.clear();
-
-		if (!ScriptEngine::IsInitialized())
-			return;
-
-		auto& scriptEngine = ScriptEngine::Get();
-		const auto view = m_Registry.view<ScriptComponent>();
-		for (const auto e : view)
-		{
-			Entity entity(e, this);
-			scriptEngine.OnDestroyEntity(entity);
-		}
 	}
 
 	auto Scene::OnUpdateRuntime(float timestep) -> void
@@ -230,8 +252,8 @@ namespace Eppo
 			m_PhysicsWorld->Step(timestep);
 
 			// Parents first: a parented body's local conversion reads ancestor transforms that must already hold this frame's pose.
-			const auto depthOf = [this](Entity entity)
-			{
+			const auto depthOf = [this](const Entity entity) -> size_t
+		    {
 				size_t depth = 0;
 				UUID parentId = entity.HasComponent<RelationshipComponent>()
 					? entity.GetComponent<RelationshipComponent>().Parent : UUID(0);
@@ -286,9 +308,13 @@ namespace Eppo
 			return;
 
 		auto& scriptEngine = ScriptEngine::Get();
+
 		const auto view = m_Registry.view<ScriptComponent>();
-		for (const auto e : view)
+        for (const std::vector scripted(view.begin(), view.end()); const auto e : scripted)
 		{
+			if (!m_Registry.valid(e))
+				continue;
+
 			Entity entity(e, this);
 			scriptEngine.OnUpdateEntity(entity, timestep);
 		}

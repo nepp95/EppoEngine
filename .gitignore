@@ -14,6 +14,13 @@
 /EppoEngineTesting/TestData/Scripts/bin
 /EppoEngineTesting/TestData/Scripts/obj
 
+# Same for the editor's script projects: an IDE or language server restore
+# creates these in-source even though the real builds go to the build tree.
+/EppoEditor/Projects/Test/Scripts/bin
+/EppoEditor/Projects/Test/Scripts/obj
+/EppoEditor/Resources/Templates/NewProject/Scripts/bin
+/EppoEditor/Resources/Templates/NewProject/Scripts/obj
+
 # Log files
 latest.log
 previous.log

@@ -5,6 +5,7 @@
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptField.h"
 #include "Scripting/ScriptInstance.h"
+#include "Utility/FileWatcher.h"
 
 namespace Eppo
 {
@@ -51,6 +52,8 @@ namespace Eppo
         static auto Shutdown() -> void;
         [[nodiscard]] static auto IsInitialized() -> bool;
 
+        auto VerifyRuntime() -> void;
+
         // Access the engine. Only valid between Init() and Shutdown(); guard with
         // IsInitialized() at sites that can run before a project is loaded.
         [[nodiscard]] static auto Get() -> ScriptEngine&;
@@ -58,7 +61,10 @@ namespace Eppo
         // Assembly management
         auto LoadUserAssembly(const std::filesystem::path& path) const -> void;
         auto UnloadUserAssembly() -> void;
+        auto ReloadProjectAssembly() -> bool;
+
         [[nodiscard]] auto IsRuntimeLoaded() const -> bool;
+        [[nodiscard]] static auto IsUserAssemblyValid() -> bool;
 
         // Class metadata
         [[nodiscard]] auto GetClasses() const -> const std::vector<ScriptClass>&;
@@ -96,6 +102,11 @@ namespace Eppo
         ScriptEngine() = default;
 
         ScopedPtr<Assembly> m_CoreAssembly = nullptr;
+
+        ScopedPtr<FileWatcher> m_ScriptWatcher = nullptr;
+        std::filesystem::path m_WatchedScriptsDirectory;
+        bool m_UserAssemblyValid = false;
+        bool m_ReloadPending = false;
 
         WeakRef<PhysicsWorld> m_ActivePhysicsWorld;
         WeakRef<Scene> m_SceneContext;

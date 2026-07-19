@@ -199,6 +199,11 @@ namespace EppoScriptCore.Core
             return ((delegate* unmanaged[Cdecl]<ulong, ulong>)Get("MeshComponent_GetMeshHandle"))(id);
         }
 
+        internal static void MeshComponent_SetMeshHandle(ulong id, ulong meshHandle)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, ulong, void>)Get("MeshComponent_SetMeshHandle"))(id, meshHandle);
+        }
+
         internal static Vector3 PointLightComponent_GetColor(ulong id)
         {
             Vector3 result = default;

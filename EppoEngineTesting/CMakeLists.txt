@@ -36,6 +36,10 @@ endif ()
 # The deploy re-runs whenever the assemblies change, so managed-only edits don't
 # leave stale DLLs (CopyBuildScripts' POST_BUILD only fires on a C++ relink).
 # EppoScriptCore.dll is built at the root binary dir by the EppoScriptCore target.
+# Globbed, not named: the csproj compiles all of Source/**, so a hand-maintained
+# DEPENDS list silently serves a stale assembly when a script file is added.
+file(GLOB_RECURSE HARNESS_SCRIPT_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts/Source/*.cs")
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/harness/EppoTesting.Scripts.dll"
     COMMAND ${DOTNET_EXE} build "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts/HarnessScripts.csproj"
@@ -44,7 +48,7 @@ add_custom_command(
             -v m --nologo
     COMMENT "Building test harness user assembly"
     DEPENDS "${CMAKE_BINARY_DIR}/EppoScriptCore.dll"
-            "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts/Source/HarnessScript.cs"
+            ${HARNESS_SCRIPT_SOURCES}
             "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scripts/HarnessScripts.csproj"
     VERBATIM
 )

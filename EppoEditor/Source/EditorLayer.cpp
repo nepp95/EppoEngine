@@ -29,7 +29,7 @@ namespace Eppo
 		// Route scene opening through EditorLayer so scripting is rebuilt and the
 		// editor/active scene bookkeeping stays authoritative.
 		m_PanelManager->GetPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL)
-			->SetOpenSceneCallback([this](AssetHandle handle) { OpenScene(handle); });
+			->SetOpenSceneCallback([this](const AssetHandle handle) -> void { OpenScene(handle); });
 
 		m_EditorCamera = EditorCamera(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
 
@@ -78,7 +78,7 @@ namespace Eppo
 		Project::SetActive(nullptr);
 	}
 
-	auto EditorLayer::OnUpdate(float timestep) -> void
+	auto EditorLayer::OnUpdate(const float timestep) -> void
 	{
 	    EP_PROFILE_FN("EditorLayer::OnUpdate");
 
@@ -106,6 +106,9 @@ namespace Eppo
 		// Outline the selection in edit mode only; clear it while playing.
 		m_SceneRenderer->SetScene(m_ActiveScene);
 		m_SceneRenderer->SetHighlightedEntity(m_SceneState == SceneState::Edit ? m_SelectedEntity : Entity{});
+
+		if (ScriptEngine::IsInitialized())
+			ScriptEngine::Get().VerifyRuntime();
 
 		switch (m_SceneState)
 		{
@@ -401,6 +404,13 @@ namespace Eppo
 		if (!m_EditorScene)
 			return;
 
+		// Backs up the disabled toolbar button.
+		if (!ScriptEngine::IsUserAssemblyValid())
+		{
+			Log::Warn("Cannot enter play mode: the project's scripts failed to compile.");
+			return;
+		}
+
 		// Capture the UUID while the current scene is still alive. Scene::Copy
 		// creates a new registry (handles don't survive), but UUIDs do.
 		const UUID selectedUUID = m_PanelManager->GetSelectedEntity()
@@ -413,17 +423,10 @@ namespace Eppo
 		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
 		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
 
-		m_ActiveScene->OnRuntimeStart();
-
 		if (!ScriptEngine::IsInitialized() || !ScriptEngine::Get().IsRuntimeLoaded())
-		{
             Log::Warn("Scripting backend not initialized, not running scripts.");
-		}
-		else
-		{
-            auto& scriptEngine = ScriptEngine::Get();
-            scriptEngine.SetSceneContext(m_ActiveScene);
-		}
+
+		m_ActiveScene->OnRuntimeStart();
 	}
 
 	auto EditorLayer::OnSceneStop() -> void
@@ -433,9 +436,7 @@ namespace Eppo
 		if (!m_ActiveScene)
 			return;
 
-		if (ScriptEngine::IsInitialized() && ScriptEngine::Get().IsRuntimeLoaded())
-            ScriptEngine::Get().SetSceneContext(nullptr);
-
+		// Clears the scripting scene context once OnDestroy has run.
 		m_ActiveScene->OnRuntimeStop();
 
 		// Capture the UUID while the play scene is still alive. The Entity's
@@ -572,38 +573,15 @@ namespace Eppo
 		{
 			const auto& projSpec = Project::GetActive()->GetSpecification();
 
-			// Build and load the scripting assemblies before opening the scene:
-			// scene deserialization populates ScriptEngine's field storage, so
-			// the engine must be initialized and the user classes known first.
-			const auto scriptsProjectPath = Project::GetScriptsDirectory() / (projSpec.Name + ".csproj");
-			if (FS::Exists(scriptsProjectPath))
-			{
-				// Pass the current EppoScriptCore.dll location to the build so the
-				// project references it via $(CoreManagedDll) instead of a baked-in
-				// path that goes stale when the output layout changes.
-				const auto coreManagedDll = FS::GetRootDirectory() / "EppoScriptCore.dll";
-				const std::string command = std::format(
-					"dotnet build \"{}\" -c Debug -o \"{}\" -p:CoreManagedDll=\"{}\"",
-					scriptsProjectPath.string(),
-					FS::GetRootDirectory().string(),
-					coreManagedDll.string()
-				);
-				std::system(command.c_str());
-			}
-
+			// Before opening the scene: deserialization populates ScriptEngine's field
+			// storage. Init runs even when the user's scripts fail to build, or scene
+			// load would drop every serialized field value and the next save would
+			// write them back out empty.
 			const auto runtimeConfigPath = FS::GetRootDirectory() / "runtimeconfig.json";
-			if (ScriptEngine::Init(runtimeConfigPath))
-			{
-				const auto userAssemblyPath = FS::GetRootDirectory() / (projSpec.Name + ".dll");
-				if (FS::Exists(userAssemblyPath))
-					ScriptEngine::Get().LoadUserAssembly(userAssemblyPath);
-				else
-					Log::Warn("No user script assembly found at '{}'; scripts will be unavailable.", userAssemblyPath);
-			}
-			else
-			{
+			if (!ScriptEngine::Init(runtimeConfigPath))
 				Log::Error("Failed to initialize the script runtime for project '{}'.", projSpec.Name);
-			}
+			else
+				ScriptEngine::Get().ReloadProjectAssembly();
 
 			// Now that scripting is ready, open the start scene.
 			if (projSpec.StartScene)
@@ -802,7 +780,7 @@ namespace Eppo
 		switch (m_SceneState)
 		{
 			case SceneState::Edit:
-				buttons.push_back({ "##Play", m_PlayIcon, "Play", true, ToolbarAction::Play });
+				buttons.push_back({ "##Play", m_PlayIcon, "Play", ScriptEngine::IsUserAssemblyValid(), ToolbarAction::Play });
 				break;
 			case SceneState::Play:
 				buttons.push_back({ "##Pause", m_PauseIcon, "II", false, ToolbarAction::None });
@@ -950,9 +928,6 @@ namespace Eppo
 
 	auto EditorLayer::UI_ViewportNotices() -> void
 	{
-		if (m_SceneState != SceneState::Play)
-			return;
-
 		ImDrawList* drawList = ImGui::GetWindowDrawList();
 		const ImVec2 imageMin = ImGui::GetItemRectMin();
 		constexpr ImVec2 pad = { 8.0f, 5.0f };
@@ -968,6 +943,13 @@ namespace Eppo
 			drawList->AddText(textPos, IM_COL32(232, 150, 60, 255), notice);
 			y += textSize.y + pad.y * 2.0f + 4.0f;
 		};
+
+		// Shown in edit mode too, unlike the notices below.
+		if (!ScriptEngine::IsUserAssemblyValid())
+			drawNotice("Scripts failed to compile - see the log. Play is disabled until the build succeeds.");
+
+		if (m_SceneState != SceneState::Play)
+			return;
 
 		if (m_MissingPrimaryCamera)
 		{

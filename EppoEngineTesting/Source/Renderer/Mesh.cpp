@@ -2,6 +2,8 @@
 
 #include "Renderer/Mesh.h"
 
+#include <filesystem>
+
 using namespace Eppo;
 
 SUITE(Renderer)

@@ -51,6 +51,13 @@ namespace EppoTesting
         public void LogMessage()
             => InternalCalls.LogMessage((byte)LogLevel.Info, "HarnessScript.LogMessage: native Log callback reached");
         public bool Input_IsKeyPressed() => InternalCalls.Input_IsKeyPressed((ushort)KeyCode.Space);
+        public bool Input_IsMouseButtonPressed() => InternalCalls.Input_IsMouseButtonPressed((ushort)MouseCode.ButtonRight);
+        public Vector2 Input_GetMousePosition() => InternalCalls.Input_GetMousePosition();
+
+        // The public Input facade rather than the raw internal call: GetMouseX/Y are
+        // derived C#-side from GetMousePosition, so they need their own cover.
+        public float Input_GetMouseX() => Input.GetMouseX();
+        public float Input_GetMouseY() => Input.GetMouseY();
 
         public bool Entity_HasComponent() => InternalCalls.Entity_HasComponent(ID, "PointLightComponent");
         public void Entity_AddComponent() => InternalCalls.Entity_AddComponent(ID, "PointLightComponent");
@@ -66,6 +73,20 @@ namespace EppoTesting
         public Vector3 TransformComponent_GetScale() => InternalCalls.TransformComponent_GetScale(ID);
         public void TransformComponent_SetScale(Vector3 s) => InternalCalls.TransformComponent_SetScale(ID, ref s);
         public ulong MeshComponent_GetMeshHandle() => InternalCalls.MeshComponent_GetMeshHandle(ID);
+        public void MeshComponent_SetMeshHandle(ulong handle) => InternalCalls.MeshComponent_SetMeshHandle(ID, handle);
+
+        // The public typed API rather than the raw handle: proves the enum maps onto
+        // the reserved primitive handles the asset manager generates.
+        public void MeshComponent_SetPrimitiveCube() => GetComponent<MeshComponent>().SetPrimitive(PrimitiveMesh.Cube);
+
+        // Spawns an entity and makes it visible entirely from script, which is the
+        // scenario writable mesh handles exist for.
+        public ulong Scene_CreateEntityWithPrimitive()
+        {
+            Entity entity = Scene.CreateEntity("SpawnedVisible");
+            entity.AddComponent<MeshComponent>().SetPrimitive(PrimitiveMesh.Sphere);
+            return entity.ID;
+        }
         public float CameraComponent_GetVerticalFov() => InternalCalls.CameraComponent_GetVerticalFov(ID);
         public void CameraComponent_SetVerticalFov(float v) => InternalCalls.CameraComponent_SetVerticalFov(ID, v);
         public float CameraComponent_GetNearClip() => InternalCalls.CameraComponent_GetNearClip(ID);
