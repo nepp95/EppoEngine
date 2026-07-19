@@ -38,7 +38,21 @@ namespace EppoScriptCore.Core
         }
 
         internal static bool Input_IsKeyPressed(ushort key)
-            => ((delegate* unmanaged[Cdecl]<ushort, byte>)Get("Input_IsKeyPressed"))(key) != 0;
+        {
+            return ((delegate* unmanaged[Cdecl]<ushort, byte>)Get("Input_IsKeyPressed"))(key) != 0;
+        }
+
+        internal static bool Input_IsMouseButtonPressed(ushort button)
+        {
+            return ((delegate* unmanaged[Cdecl]<ushort, byte>)Get("Input_IsMouseButtonPressed"))(button) != 0;
+        }
+
+        internal static Vector2 Input_GetMousePosition()
+        {
+            Vector2 position = default;
+            ((delegate* unmanaged[Cdecl]<Vector2*, void>)Get("Input_GetMousePosition"))(&position);
+            return position;
+        }
         #endregion
 
         #region Physics
