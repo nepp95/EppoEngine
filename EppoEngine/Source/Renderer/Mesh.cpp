@@ -22,7 +22,11 @@ namespace Eppo
 		// Initialize tinygltf
 		tg3_parse_options options;
 		tg3_error_stack errors;
-		tg3_model model;
+
+		// tg3_model_free unconditionally destroys model->arena_, which a failed parse
+		// leaves untouched — stack garbage without this.
+		tg3_model model{};
+		model.default_scene = -1;
 
 		tg3_parse_options_init(&options);
 		tg3_error_stack_init(&errors);
@@ -34,6 +38,12 @@ namespace Eppo
 			Log::Error("Failed loading mesh '{}'", path);
 			for (uint32_t i = 0; i < errors.count; i++)
 				Log::Error("{}", errors.entries[i].message ? errors.entries[i].message : "NULL");
+
+			// A failed parse only partially writes the model, so its counts are garbage.
+			m_Valid = false;
+			tg3_model_free(&model);
+			tg3_error_stack_free(&errors);
+			return;
 		}
 
 		ProcessMaterials(model);

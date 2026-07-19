@@ -36,6 +36,7 @@ target_compile_definitions(EppoEngine PUBLIC
 target_include_directories(EppoEngine PUBLIC ${INCLUDE_DIRS})
 target_link_libraries(EppoEngine PUBLIC box3d::box3d EnTT::EnTT glm::glm imgui::imgui imguizmo::imguizmo nfd::nfd nvrhi spdlog::spdlog Tracy::TracyClient Vulkan::Vulkan)
 target_link_libraries(EppoEngine PRIVATE
+    efsw::efsw
     glfw
     Vulkan::dxc_lib
 )

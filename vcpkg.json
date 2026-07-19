@@ -6,6 +6,10 @@
       "version>=": "0.1.0"
     },
     {
+      "name": "efsw",
+      "version>=": "1.6.3"
+    },
+    {
       "name": "entt",
       "version>=": "3.16.0"
     },

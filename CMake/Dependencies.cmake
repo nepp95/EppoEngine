@@ -8,6 +8,11 @@ if (NOT box3d_FOUND)
     message(FATAL_ERROR "box3d not found!")
 endif ()
 
+find_package(efsw CONFIG REQUIRED)
+if (NOT efsw_FOUND)
+    message(FATAL_ERROR "efsw not found!")
+endif ()
+
 find_package(EnTT REQUIRED)
 if (NOT EnTT_FOUND)
     message(FATAL_ERROR "entt not found!")

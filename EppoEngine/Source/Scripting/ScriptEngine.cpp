@@ -1,9 +1,31 @@
 #include "pch.h"
 #include "Scripting/ScriptEngine.h"
 
+#include "Project/Project.h"
+#include "Utility/Process.h"
+
 namespace Eppo
 {
     ScopedPtr<ScriptEngine> ScriptEngine::s_Instance = nullptr;
+
+    namespace
+    {
+        auto IsUserScriptFile(const std::filesystem::path& path) -> bool
+        {
+            if (path.extension() != ".cs")
+                return false;
+
+            // dotnet writes generated sources into obj/ inside the watched tree, so
+            // an unfiltered watch would see its own build output and rebuild forever.
+            for (const auto& segment : path)
+            {
+                if (segment == "obj" || segment == "bin")
+                    return false;
+            }
+
+            return true;
+        }
+    }
 
     // Marshalling width of each field type, matching the managed layout (C# char
     // is UTF-16 → 2 bytes). Sizes field/argument buffers.
@@ -72,6 +94,26 @@ namespace Eppo
         return s_Instance != nullptr;
     }
 
+    auto ScriptEngine::VerifyRuntime() -> void
+    {
+        if (!m_ScriptWatcher || !Project::GetActive())
+            return;
+
+        // Reloading a frame later lets a burst of saves collapse into one build.
+        if (m_ScriptWatcher->ConsumeChange())
+        {
+            m_ReloadPending = true;
+            return;
+        }
+
+        // A live scene context means play mode.
+        if (!m_ReloadPending || GetSceneContext())
+            return;
+
+        ReloadProjectAssembly();
+        m_ReloadPending = false;
+    }
+
     auto ScriptEngine::Get() -> ScriptEngine&
     {
         EP_ASSERT(s_Instance != nullptr, "ScriptEngine::Get() called before Init()!");
@@ -91,6 +133,77 @@ namespace Eppo
 
         m_EntityInstances.clear();
         m_CoreAssembly->UnloadUserAssembly();
+    }
+
+    auto ScriptEngine::ReloadProjectAssembly() -> bool
+    {
+        EP_PROFILE_FN("ScriptEngine::ReloadProjectAssembly");
+
+        m_UserAssemblyValid = false;
+
+        const auto project = Project::GetActive();
+        if (!project)
+        {
+            Log::Error(LogSource::Script, "Cannot build scripts without an active project.");
+            return false;
+        }
+
+        const auto& name = project->GetSpecification().Name;
+        const auto scriptsDirectory = Project::GetScriptsDirectory();
+        // A project without a script project is a valid state, not a failure: there
+        // is nothing to build, so nothing blocks play.
+        const auto projectFile = scriptsDirectory / (name + ".csproj");
+        if (!FS::Exists(projectFile))
+        {
+            Log::Info(LogSource::Script, "Project '{}' has no script project; scripting is unavailable.", name);
+            m_UserAssemblyValid = true;
+            return true;
+        }
+
+        // Watch before building, so a project that opens with broken sources still
+        // reloads once the user fixes them.
+        if (m_WatchedScriptsDirectory != scriptsDirectory)
+        {
+            m_ScriptWatcher = CreateScopedPtr<FileWatcher>(scriptsDirectory, IsUserScriptFile);
+            m_WatchedScriptsDirectory = scriptsDirectory;
+        }
+
+        const auto outputDirectory = FS::GetRootDirectory();
+        const int exitCode = RunProcess("dotnet", {
+            "build", projectFile.string(),
+            "-c", "Debug",
+            "-o", outputDirectory.string(),
+            // Point the project at this build's core assembly instead of a baked-in
+            // path that goes stale when the output layout changes.
+            "-p:CoreManagedDll=" + (outputDirectory / "EppoScriptCore.dll").string(),
+            "--nologo"
+        });
+
+        if (exitCode != 0)
+        {
+            Log::Error(LogSource::Script, "Script build for '{}' failed with exit code {}; see the build output above.", name, exitCode);
+            return false;
+        }
+
+        const auto assemblyPath = outputDirectory / (name + ".dll");
+        if (!FS::Exists(assemblyPath))
+        {
+            Log::Error(LogSource::Script, "Script build for '{}' produced no assembly at '{}'.", name, assemblyPath);
+            return false;
+        }
+
+        UnloadUserAssembly();
+        LoadUserAssembly(assemblyPath);
+
+        m_UserAssemblyValid = true;
+        Log::Info(LogSource::Script, "Loaded script assembly for '{}'.", name);
+
+        return true;
+    }
+
+    auto ScriptEngine::IsUserAssemblyValid() -> bool
+    {
+        return s_Instance && s_Instance->m_UserAssemblyValid;
     }
 
     auto ScriptEngine::SetSceneContext(const Ref<Scene>& scene) -> void

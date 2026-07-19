@@ -36,5 +36,6 @@
 #include "Scripting/ScriptEngine.h"
 
 #include "Utility/Filesystem.h"
+#include "Utility/FileWatcher.h"
 #include "Utility/Json.h"
 #include "Utility/Random.h"

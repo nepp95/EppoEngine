@@ -1,8 +1,10 @@
 #include "pch.h"
 #include "Scripting/ScriptGlue.h"
 
+#include "Asset/AssetManager.h"
 #include "Core/Input.h"
 #include "Physics/PhysicsWorld.h"
+#include "Project/Project.h"
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
@@ -341,6 +343,46 @@ namespace Eppo
                 return 0;
 
             return static_cast<uint64_t>(entity.GetComponent<MeshComponent>().MeshHandle);
+        }
+
+        // A bad handle would reach the renderer as a silently invisible entity.
+        auto MeshComponent_SetMeshHandle(const uint64_t id, const uint64_t meshHandle) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<MeshComponent>())
+                return;
+
+            const AssetHandle handle(meshHandle);
+
+            // 0 clears the assignment; primitives are generated on demand and need no
+            // registry entry.
+            const bool isPrimitive = meshHandle >= static_cast<uint64_t>(MeshPrimitiveType::Cone)
+                                  && meshHandle <= static_cast<uint64_t>(MeshPrimitiveType::Capsule);
+
+            if (meshHandle != 0 && !isPrimitive)
+            {
+                const auto& project = Project::GetActive();
+                if (!project || !project->GetAssetManager())
+                {
+                    Log::Error(LogSource::Script, "Cannot assign mesh handle {}: no active project", meshHandle);
+                    return;
+                }
+
+                const auto& assetManager = project->GetAssetManager();
+                if (!assetManager->HasAssetData(handle))
+                {
+                    Log::Error(LogSource::Script, "Cannot assign mesh handle {}: no such asset", meshHandle);
+                    return;
+                }
+
+                if (assetManager->GetMetadata(handle).Type != AssetType::Mesh)
+                {
+                    Log::Error(LogSource::Script, "Cannot assign mesh handle {}: asset is not a mesh", meshHandle);
+                    return;
+                }
+            }
+
+            entity.GetComponent<MeshComponent>().MeshHandle = handle;
         }
 
         auto CameraComponent_GetPrimary(const uint64_t id) -> bool
@@ -989,6 +1031,7 @@ namespace Eppo
             { "TransformComponent_GetScale",              reinterpret_cast<void*>(&TransformComponent_GetScale)              },
             { "TransformComponent_SetScale",              reinterpret_cast<void*>(&TransformComponent_SetScale)              },
             { "MeshComponent_GetMeshHandle",              reinterpret_cast<void*>(&MeshComponent_GetMeshHandle)              },
+            { "MeshComponent_SetMeshHandle",              reinterpret_cast<void*>(&MeshComponent_SetMeshHandle)              },
             { "CameraComponent_GetPrimary",               reinterpret_cast<void*>(&CameraComponent_GetPrimary)               },
             { "CameraComponent_SetPrimary",               reinterpret_cast<void*>(&CameraComponent_SetPrimary)               },
             { "CameraComponent_GetVerticalFov",           reinterpret_cast<void*>(&CameraComponent_GetVerticalFov)           },

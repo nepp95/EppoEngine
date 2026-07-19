@@ -27,9 +27,9 @@ CoreCLR is process-global in practice. `ScriptEngine::Shutdown` ends engine owne
 
 `EditorLayer::OnScenePlay` copies the authored scene. `Scene::OnRuntimeStart` creates physics, then calls `ScriptEngine::OnCreateEntity` for each `ScriptComponent`. Creation resolves the class index, creates a managed instance keyed by entity UUID, copies serialized editor fields into it, and invokes `OnCreate`.
 
-Current limitation: `EditorLayer` publishes `ScriptEngine`'s scene context only after `Scene::OnRuntimeStart` returns. Consequently, entity/component internal calls made from managed `OnCreate` cannot resolve the runtime scene. Treat any ordering change as a lifecycle fix requiring a regression; do not assume `OnCreate` currently has a usable scene context.
+`Scene` owns publishing both scripting contexts. `Scene::OnRuntimeStart` sets the active physics world and the scene context (via `shared_from_this`) *before* the `OnCreateEntity` loop, so entity, component and physics internal calls all resolve from managed `OnCreate`. Hosts must not publish the scene context themselves; `EditorLayer` deliberately does not.
 
-Each runtime update steps physics first and then invokes `OnUpdate`. On stop, `EditorLayer` clears the managed scene context, `Scene::OnRuntimeStop` releases runtime physics, and only then invokes `OnDestroy` and destroys live instances before the runtime scene is replaced. Consequently, managed `OnDestroy` currently cannot resolve entity/component internal calls or access the active physics world. Treat a different ordering as a lifecycle change requiring explicit tests.
+Each runtime update steps physics first and then invokes `OnUpdate`. On stop, `Scene::OnRuntimeStop` invokes `OnDestroy` and destroys live instances *first* — while both the scene context and the physics world are still published — then clears the scene context and releases physics. Managed `OnDestroy` can therefore still resolve its entity, other entities, components and the running simulation. Treat any reordering of these four steps as a lifecycle change requiring explicit tests; the `Scene_OnRuntimeStart_*` / `Scene_OnRuntimeStop_*` tests in the Scripting suite cover it.
 
 The ownership split is deliberate:
 

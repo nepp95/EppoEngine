@@ -31,7 +31,18 @@ namespace EppoScriptCore.Scene
 
     public class MeshComponent : Component
     {
-        public ulong MeshHandle => InternalCalls.MeshComponent_GetMeshHandle(Entity.ID);
+        // A handle that isn't a mesh is rejected natively; the component keeps its
+        // previous value.
+        public ulong MeshHandle
+        {
+            get => InternalCalls.MeshComponent_GetMeshHandle(Entity.ID);
+            set => InternalCalls.MeshComponent_SetMeshHandle(Entity.ID, value);
+        }
+
+        // Preferred over assigning MeshHandle directly: needs no knowledge of the
+        // project's asset registry.
+        public void SetPrimitive(PrimitiveMesh primitive)
+            => MeshHandle = (ulong)primitive;
     }
 
     public class CameraComponent : Component
