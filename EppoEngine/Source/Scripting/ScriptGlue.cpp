@@ -56,26 +56,26 @@ namespace Eppo
             {
                 case 0:
                 {
-                    Log::Trace("{}", message);
+                    Log::Trace(LogSource::Script, "{}", message);
                     break;
                 }
 
                 case 1:
                 {
-                    Log::Info("{}", message);
+                    Log::Info(LogSource::Script, "{}", message);
                     break;
                 }
 
                 case 2:
                 {
-                    Log::Warn("{}", message);
+                    Log::Warn(LogSource::Script, "{}", message);
                     break;
                 }
 
                 case 3:
                 default:
                 {
-                    Log::Error("{}", message);
+                    Log::Error(LogSource::Script, "{}", message);
                     break;
                 }
 

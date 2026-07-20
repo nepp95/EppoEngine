@@ -5,6 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Panels/ContentBrowserPanel.h"
+#include "Panels/LogPanel.h"
 #include "Panels/PropertyPanel.h"
 #include "Panels/SceneHierarchyPanel.h"
 
@@ -15,6 +16,7 @@ namespace Eppo
 	namespace
 	{
 		constexpr const char* CONTENT_BROWSER_PANEL = "Content Browser";
+		constexpr const char* LOG_PANEL = "Log";
 		constexpr const char* PROPERTY_PANEL = "Property";
 		constexpr const char* SCENE_HIERARCHY_PANEL = "Scene Hierarchy";
 	}
@@ -25,6 +27,7 @@ namespace Eppo
 		m_PanelManager->AddPanel<PropertyPanel>(PROPERTY_PANEL, true);
 		m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
 		m_PanelManager->AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true);
+		m_PanelManager->AddPanel<LogPanel>(LOG_PANEL, true);
 
 		// Route scene opening through EditorLayer so scripting is rebuilt and the
 		// editor/active scene bookkeeping stays authoritative.
@@ -264,6 +267,9 @@ namespace Eppo
 				if (ImGui::MenuItem("Content Browser", nullptr, m_PanelManager->IsPanelOpen(CONTENT_BROWSER_PANEL)))
 					m_PanelManager->TogglePanel(CONTENT_BROWSER_PANEL);
 
+				if (ImGui::MenuItem("Log", nullptr, m_PanelManager->IsPanelOpen(LOG_PANEL)))
+					m_PanelManager->TogglePanel(LOG_PANEL);
+
 				if (ImGui::MenuItem("Properties", nullptr, m_PanelManager->IsPanelOpen(PROPERTY_PANEL)))
 					m_PanelManager->TogglePanel(PROPERTY_PANEL);
 
@@ -480,6 +486,7 @@ namespace Eppo
 		// The docking layout references panel windows by name, so reopen every panel
 		// to guarantee the restored dock nodes have their windows to populate.
 		m_PanelManager->SetPanelOpen(CONTENT_BROWSER_PANEL, true);
+		m_PanelManager->SetPanelOpen(LOG_PANEL, true);
 		m_PanelManager->SetPanelOpen(PROPERTY_PANEL, true);
 		m_PanelManager->SetPanelOpen(SCENE_HIERARCHY_PANEL, true);
 	}
