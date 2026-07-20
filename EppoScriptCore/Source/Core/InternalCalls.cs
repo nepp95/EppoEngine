@@ -74,6 +74,32 @@ namespace EppoScriptCore.Core
             fixed (Vector3* ptr = &velocity)
                 ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("Physics_SetLinearVelocity"))(id, ptr);
         }
+
+        // Blittable ray-cast result; layout must match ScriptRayHit in ScriptGlue.cpp.
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct RaycastHitNative
+        {
+            public Vector3 Point;
+            public Vector3 Normal;
+            public ulong EntityId;
+            public float Distance;
+            public byte Hit;
+        }
+
+        internal static void Physics_Raycast(ref Vector3 origin, ref Vector3 direction, float maxDistance, out RaycastHitNative result)
+        {
+            result = default;
+            fixed (Vector3* o = &origin)
+            fixed (Vector3* d = &direction)
+            fixed (RaycastHitNative* r = &result)
+                ((delegate* unmanaged[Cdecl]<Vector3*, Vector3*, float, RaycastHitNative*, void>)Get("Physics_Raycast"))(o, d, maxDistance, r);
+        }
+
+        internal static bool Physics_OverlapsSphere(ulong id, ref Vector3 center, float radius)
+        {
+            fixed (Vector3* c = &center)
+                return ((delegate* unmanaged[Cdecl]<ulong, Vector3*, float, byte>)Get("Physics_OverlapsSphere"))(id, c, radius) != 0;
+        }
         #endregion
 
         #region Scene
@@ -153,6 +179,19 @@ namespace EppoScriptCore.Core
         internal static void Scene_DestroyEntity(ulong id)
         {
             ((delegate* unmanaged[Cdecl]<ulong, void>)Get("Scene_DestroyEntity"))(id);
+        }
+
+        internal static ulong Scene_FindEntityByName(string name)
+        {
+            var ptr = Marshal.StringToCoTaskMemUTF8(name);
+            try
+            {
+                return ((delegate* unmanaged[Cdecl]<byte*, ulong>)Get("Scene_FindEntityByName"))((byte*)ptr);
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(ptr);
+            }
         }
 
         internal static Vector3 TransformComponent_GetTranslation(ulong id)

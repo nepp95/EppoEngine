@@ -2,177 +2,9 @@
     "Scene": {
         "Entities": [
             {
-                "CylinderColliderComponent": {
-                    "Density": 1.0,
-                    "Friction": 0.5,
-                    "Height": 2.0,
-                    "Offset": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "Radius": 1.0,
-                    "Restitution": 0.0
-                },
-                "IDComponent": {
-                    "ID": 558050922577306240
-                },
-                "MeshComponent": {
-                    "MeshHandle": 3
-                },
-                "RigidBodyComponent": {
-                    "AngularDamping": 0.0,
-                    "GravityScale": 1.0,
-                    "LinearDamping": 0.0,
-                    "Type": 2
-                },
-                "TagComponent": {
-                    "Tag": "Cylinder 2"
-                },
-                "TransformComponent": {
-                    "Rotation": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
-                    "Translation": [
-                        0.0,
-                        3.0999999046325684,
-                        0.0
-                    ]
-                }
-            },
-            {
-                "IDComponent": {
-                    "ID": 1297734541011958955
-                },
-                "MeshComponent": {
-                    "MeshHandle": 4
-                },
-                "RigidBodyComponent": {
-                    "AngularDamping": 0.0,
-                    "GravityScale": 1.0,
-                    "LinearDamping": 0.0,
-                    "Type": 2
-                },
-                "SphereColliderComponent": {
-                    "Density": 1.0,
-                    "Friction": 0.5,
-                    "Offset": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "Radius": 1.0,
-                    "Restitution": 0.0
-                },
-                "TagComponent": {
-                    "Tag": "Sphere 1"
-                },
-                "TransformComponent": {
-                    "Rotation": [
-                        0.0,
-                        -0.0,
-                        0.0
-                    ],
-                    "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
-                    "Translation": [
-                        0.0,
-                        1.468109369277954,
-                        -2.6168289184570313
-                    ]
-                }
-            },
-            {
-                "CylinderColliderComponent": {
-                    "Density": 1.0,
-                    "Friction": 0.5,
-                    "Height": 2.0,
-                    "Offset": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "Radius": 1.0,
-                    "Restitution": 0.0
-                },
-                "IDComponent": {
-                    "ID": 5276681695514195852
-                },
-                "MeshComponent": {
-                    "MeshHandle": 3
-                },
-                "RigidBodyComponent": {
-                    "AngularDamping": 0.0,
-                    "GravityScale": 1.0,
-                    "LinearDamping": 0.0,
-                    "Type": 2
-                },
-                "TagComponent": {
-                    "Tag": "Cylinder 1"
-                },
-                "TransformComponent": {
-                    "Rotation": [
-                        0.0,
-                        -0.0,
-                        0.0
-                    ],
-                    "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
-                    "Translation": [
-                        0.0,
-                        2.3648488521575928,
-                        3.718557357788086
-                    ]
-                }
-            },
-            {
-                "CameraComponent": {
-                    "FarClip": 1000.0,
-                    "NearClip": 0.10000000149011612,
-                    "Primary": true,
-                    "VerticalFov": 45.0
-                },
-                "IDComponent": {
-                    "ID": 5284583425630774357
-                },
-                "TagComponent": {
-                    "Tag": "Scene Camera"
-                },
-                "TransformComponent": {
-                    "Rotation": [
-                        0.0,
-                        1.5,
-                        0.0
-                    ],
-                    "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
-                    "Translation": [
-                        20.0,
-                        2.0,
-                        0.0
-                    ]
-                }
-            },
-            {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.5,
+                    "Friction": 0.8,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -186,56 +18,7 @@
                     "Restitution": 0.0
                 },
                 "IDComponent": {
-                    "ID": 8351827442453317863
-                },
-                "MeshComponent": {
-                    "MeshHandle": 2
-                },
-                "RigidBodyComponent": {
-                    "AngularDamping": 0.0,
-                    "GravityScale": 1.0,
-                    "LinearDamping": 0.0,
-                    "Type": 2
-                },
-                "TagComponent": {
-                    "Tag": "Cube 1"
-                },
-                "TransformComponent": {
-                    "Rotation": [
-                        0.0,
-                        -0.0,
-                        0.0
-                    ],
-                    "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
-                    "Translation": [
-                        0.0,
-                        4.040522575378418,
-                        -2.3551712036132813
-                    ]
-                }
-            },
-            {
-                "BoxColliderComponent": {
-                    "Density": 1.0,
-                    "Friction": 0.5,
-                    "HalfSize": [
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
-                    "Offset": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "Restitution": 0.0
-                },
-                "IDComponent": {
-                    "ID": 10002926466338872384
+                    "ID": 1001
                 },
                 "MeshComponent": {
                     "MeshHandle": 2
@@ -252,18 +35,620 @@
                 "TransformComponent": {
                     "Rotation": [
                         0.0,
-                        -0.0,
+                        0.0,
                         0.0
                     ],
                     "Scale": [
-                        10.0,
+                        12.0,
                         1.0,
-                        10.0
+                        18.0
                     ],
                     "Translation": [
                         0.0,
                         -1.0,
+                        -1.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.8,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
                         0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 1002
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 0
+                },
+                "TagComponent": {
+                    "Tag": "Platform 1"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.5,
+                        0.5,
+                        1.5
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        10.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.8,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 1003
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 0
+                },
+                "TagComponent": {
+                    "Tag": "Platform 2"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.5,
+                        0.5,
+                        1.5
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.5,
+                        5.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.8,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 1004
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 0
+                },
+                "TagComponent": {
+                    "Tag": "Platform 3"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.5,
+                        0.5,
+                        1.5
+                    ],
+                    "Translation": [
+                        3.0,
+                        1.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1005
+                },
+                "MeshComponent": {
+                    "MeshHandle": 3
+                },
+                "ScriptComponent": {
+                    "ClassName": "Test.JumpPad",
+                    "Fields": []
+                },
+                "TagComponent": {
+                    "Tag": "Jump Pad"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        0.5,
+                        0.2,
+                        0.5
+                    ],
+                    "Translation": [
+                        3.0,
+                        1.7,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.8,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 1006
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 0
+                },
+                "TagComponent": {
+                    "Tag": "Platform 4"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.5,
+                        0.5,
+                        1.5
+                    ],
+                    "Translation": [
+                        3.0,
+                        3.5,
+                        -5.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.8,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 1007
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 0
+                },
+                "TagComponent": {
+                    "Tag": "Platform 5"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.5,
+                        0.5,
+                        1.5
+                    ],
+                    "Translation": [
+                        0.0,
+                        4.0,
+                        -9.0
+                    ]
+                }
+            },
+            {
+                "BoxColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.8,
+                    "HalfSize": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 1008
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 0.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.0,
+                    "Type": 0
+                },
+                "TagComponent": {
+                    "Tag": "Goal"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        2.0,
+                        0.5,
+                        2.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        4.5,
+                        -13.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1009
+                },
+                "MeshComponent": {
+                    "MeshHandle": 4
+                },
+                "ScriptComponent": {
+                    "ClassName": "Test.GoalTrigger",
+                    "Fields": []
+                },
+                "TagComponent": {
+                    "Tag": "Goal Trigger"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "Translation": [
+                        0.0,
+                        5.5,
+                        -13.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1010
+                },
+                "MeshComponent": {
+                    "MeshHandle": 4
+                },
+                "ScriptComponent": {
+                    "ClassName": "Test.Collectible",
+                    "Fields": []
+                },
+                "TagComponent": {
+                    "Tag": "Collectible 1"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        0.4,
+                        0.4,
+                        0.4
+                    ],
+                    "Translation": [
+                        0.0,
+                        1.5,
+                        5.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1011
+                },
+                "MeshComponent": {
+                    "MeshHandle": 4
+                },
+                "ScriptComponent": {
+                    "ClassName": "Test.Collectible",
+                    "Fields": []
+                },
+                "TagComponent": {
+                    "Tag": "Collectible 2"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        0.4,
+                        0.4,
+                        0.4
+                    ],
+                    "Translation": [
+                        3.0,
+                        4.5,
+                        -5.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1012
+                },
+                "MeshComponent": {
+                    "MeshHandle": 4
+                },
+                "ScriptComponent": {
+                    "ClassName": "Test.Collectible",
+                    "Fields": []
+                },
+                "TagComponent": {
+                    "Tag": "Collectible 3"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        0.4,
+                        0.4,
+                        0.4
+                    ],
+                    "Translation": [
+                        0.0,
+                        5.5,
+                        -9.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1013
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.9,
+                        0.7
+                    ],
+                    "Intensity": 8.0
+                },
+                "TagComponent": {
+                    "Tag": "Start Light"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        4.0,
+                        10.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1014
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        0.5,
+                        0.7,
+                        1.0
+                    ],
+                    "Intensity": 10.0
+                },
+                "TagComponent": {
+                    "Tag": "Goal Light"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        6.0,
+                        -13.0
+                    ]
+                }
+            },
+            {
+                "CapsuleColliderComponent": {
+                    "Density": 1.0,
+                    "Friction": 0.6,
+                    "Height": 1.0,
+                    "Offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Radius": 0.4,
+                    "Restitution": 0.0
+                },
+                "IDComponent": {
+                    "ID": 1015
+                },
+                "RigidBodyComponent": {
+                    "AngularDamping": 50.0,
+                    "GravityScale": 1.0,
+                    "LinearDamping": 0.5,
+                    "Type": 2
+                },
+                "ScriptComponent": {
+                    "ClassName": "Test.Player",
+                    "Fields": []
+                },
+                "TagComponent": {
+                    "Tag": "Player"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        1.0,
+                        10.0
+                    ]
+                }
+            },
+            {
+                "CameraComponent": {
+                    "FarClip": 1000.0,
+                    "NearClip": 0.10000000149011612,
+                    "Primary": true,
+                    "VerticalFov": 60.0
+                },
+                "IDComponent": {
+                    "ID": 1016
+                },
+                "ScriptComponent": {
+                    "ClassName": "Test.FirstPersonCamera",
+                    "Fields": []
+                },
+                "TagComponent": {
+                    "Tag": "FPS Camera"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        1.7,
+                        10.0
                     ]
                 }
             }

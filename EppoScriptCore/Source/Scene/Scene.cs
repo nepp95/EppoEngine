@@ -12,5 +12,11 @@ namespace EppoScriptCore.Scene
 
         public static void DestroyEntity(Entity entity)
             => InternalCalls.Scene_DestroyEntity(entity.ID);
+
+        public static Entity? FindEntityByName(string name)
+        {
+            var id = InternalCalls.Scene_FindEntityByName(name);
+            return id != 0 ? new Entity(id) : null;
+        }
     }
 }

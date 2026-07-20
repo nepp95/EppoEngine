@@ -86,6 +86,8 @@ namespace Eppo
 		// editor/runtime scene copies (UUIDs survive Scene::Copy, handles do not).
 		[[nodiscard]] auto GetEntityByUUID(const UUID& uuid) -> Entity;
 
+		[[nodiscard]] auto FindEntityByName(const std::string& name) -> Entity;
+
 		template<typename T>
 		static auto TryCopyComponent(Entity srcEntity, Entity dstEntity) -> void;
 

@@ -138,6 +138,52 @@ namespace Eppo
 
             world->SetLinearVelocity(entity.GetUUID(), *velocity);
         }
+
+        // Blittable ray-cast result marshalled to managed. Layout must match the
+        // RaycastHit struct in InternalCalls.cs.
+        struct ScriptRayHit
+        {
+            glm::vec3 Point;
+            glm::vec3 Normal;
+            uint64_t EntityId;
+            float Distance;
+            uint8_t Hit;
+        };
+
+        auto Physics_Raycast(const glm::vec3* origin, const glm::vec3* direction, const float maxDistance, ScriptRayHit* outHit) -> void
+        {
+            if (!outHit)
+                return;
+
+            outHit->Hit = 0;
+            outHit->EntityId = 0;
+            outHit->Distance = 0.0f;
+            outHit->Point = glm::vec3(0.0f);
+            outHit->Normal = glm::vec3(0.0f);
+
+            const auto world = ScriptEngine::Get().GetActivePhysicsWorld();
+            if (!world)
+                return;
+
+            const RayHit hit = world->CastRay(*origin, *direction, maxDistance);
+            if (!hit.Hit)
+                return;
+
+            outHit->Hit = 1;
+            outHit->Point = hit.Point;
+            outHit->Normal = hit.Normal;
+            outHit->Distance = hit.Distance;
+            outHit->EntityId = static_cast<uint64_t>(hit.EntityId);
+        }
+
+        auto Physics_OverlapsSphere(const uint64_t id, const glm::vec3* center, const float radius) -> bool
+        {
+            const auto world = ScriptEngine::Get().GetActivePhysicsWorld();
+            if (!world)
+                return false;
+
+            return world->OverlapsSphere(UUID(id), *center, radius);
+        }
         #pragma endregion
 
         #pragma region Scene
@@ -280,6 +326,16 @@ namespace Eppo
                 return;
 
             scene->DestroyEntityDeferred(entity);
+        }
+
+        auto Scene_FindEntityByName(const char* name) -> uint64_t
+        {
+            const auto& scene = GetScene();
+            if (!scene || !name)
+                return 0;
+
+            const Entity entity = scene->FindEntityByName(std::string(name));
+            return entity ? static_cast<uint64_t>(entity.GetUUID()) : 0;
         }
 
         auto TransformComponent_GetTranslation(const uint64_t id, glm::vec3* outTranslation) -> void
@@ -1017,6 +1073,8 @@ namespace Eppo
             { "Physics_ApplyLinearImpulse",               reinterpret_cast<void*>(&Physics_ApplyLinearImpulse)               },
             { "Physics_GetLinearVelocity",                reinterpret_cast<void*>(&Physics_GetLinearVelocity)                },
             { "Physics_SetLinearVelocity",                reinterpret_cast<void*>(&Physics_SetLinearVelocity)                },
+            { "Physics_Raycast",                          reinterpret_cast<void*>(&Physics_Raycast)                          },
+            { "Physics_OverlapsSphere",                   reinterpret_cast<void*>(&Physics_OverlapsSphere)                   },
             { "Entity_HasComponent",                      reinterpret_cast<void*>(&Entity_HasComponent)                      },
             { "Entity_AddComponent",                      reinterpret_cast<void*>(&Entity_AddComponent)                      },
             { "Entity_RemoveComponent",                   reinterpret_cast<void*>(&Entity_RemoveComponent)                   },
@@ -1024,6 +1082,7 @@ namespace Eppo
             { "Entity_SetName",                           reinterpret_cast<void*>(&Entity_SetName)                           },
             { "Scene_CreateEntity",                       reinterpret_cast<void*>(&Scene_CreateEntity)                       },
             { "Scene_DestroyEntity",                      reinterpret_cast<void*>(&Scene_DestroyEntity)                      },
+            { "Scene_FindEntityByName",                   reinterpret_cast<void*>(&Scene_FindEntityByName)                   },
             { "TransformComponent_GetTranslation",        reinterpret_cast<void*>(&TransformComponent_GetTranslation)        },
             { "TransformComponent_SetTranslation",        reinterpret_cast<void*>(&TransformComponent_SetTranslation)        },
             { "TransformComponent_GetRotation",           reinterpret_cast<void*>(&TransformComponent_GetRotation)           },
