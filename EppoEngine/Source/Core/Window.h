@@ -6,6 +6,13 @@ struct GLFWwindow;
 
 namespace Eppo
 {
+    enum class CursorMode
+    {
+        Normal = 0x00034001, // From glfw3.h
+        Hidden = 0x00034002, // From glfw3.h
+        Disabled = 0x00034003, // From glfw3.h
+    };
+
 	class Window
 	{
 	public:
@@ -22,6 +29,8 @@ namespace Eppo
 		// Set the OS window/taskbar icon from an image file (RGBA). Best-effort:
 		// logs and returns without changing the icon if the file cannot be loaded.
 		auto SetIcon(const std::filesystem::path& path) -> void;
+
+	    auto SetCursorMode(CursorMode mode) const -> void;
 
 		[[nodiscard]] auto GetNative() const -> GLFWwindow* { return m_Window; }
 		[[nodiscard]] auto GetWidth() const -> uint32_t { return m_Width; }

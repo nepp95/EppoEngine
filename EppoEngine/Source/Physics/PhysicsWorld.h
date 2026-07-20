@@ -34,6 +34,15 @@ namespace Eppo
 		float Height = 1.0f;                     // Capsule
 	};
 
+	struct RayHit
+	{
+		bool Hit = false;
+		glm::vec3 Point = glm::vec3(0.0f);
+		glm::vec3 Normal = glm::vec3(0.0f);
+		float Distance = 0.0f;
+		UUID EntityId = 0;
+	};
+
 	class PhysicsWorld
 	{
 	public:
@@ -57,6 +66,9 @@ namespace Eppo
 		auto ApplyLinearImpulse(UUID entityId, const glm::vec3& impulse) -> void;
 		[[nodiscard]] auto GetLinearVelocity(UUID entityId) const -> glm::vec3;
 		auto SetLinearVelocity(UUID entityId, const glm::vec3& velocity) -> void;
+
+		[[nodiscard]] auto CastRay(const glm::vec3& origin, const glm::vec3& direction, float maxDistance) const -> RayHit;
+		[[nodiscard]] auto OverlapsSphere(UUID entityId, const glm::vec3& center, float radius) const -> bool;
 
 	private:
 		auto AttachCollider(b3BodyId body, const ColliderData& collider) const -> void;

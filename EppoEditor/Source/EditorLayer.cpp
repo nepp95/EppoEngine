@@ -392,6 +392,12 @@ namespace Eppo
 					m_GizmoType = ImGuizmo::SCALE;
 				break;
 			}
+
+		    case Key::Escape:
+		    {
+		        if (m_SceneState == SceneState::Play)
+		            OnSceneStop();
+		    }
 		}
 
 		return false;
@@ -427,6 +433,7 @@ namespace Eppo
             Log::Warn("Scripting backend not initialized, not running scripts.");
 
 		m_ActiveScene->OnRuntimeStart();
+	    Application::Get().GetWindow()->SetCursorMode(CursorMode::Disabled);
 	}
 
 	auto EditorLayer::OnSceneStop() -> void
@@ -435,6 +442,8 @@ namespace Eppo
 
 		if (!m_ActiveScene)
 			return;
+
+	    Application::Get().GetWindow()->SetCursorMode(CursorMode::Normal);
 
 		// Clears the scripting scene context once OnDestroy has run.
 		m_ActiveScene->OnRuntimeStop();

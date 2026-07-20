@@ -168,4 +168,9 @@ namespace Eppo
 
 		pixels.Release();
 	}
+
+    auto Window::SetCursorMode(const CursorMode mode) const -> void
+	{
+	    glfwSetInputMode(m_Window, GLFW_CURSOR, static_cast<int>(mode));
+	}
 }

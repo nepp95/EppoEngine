@@ -11,6 +11,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 
+#include <algorithm>
+
 namespace Eppo
 {
 	static constexpr glm::vec3 s_DefaultGravity = { 0.0f, -9.81f, 0.0f };
@@ -383,6 +385,18 @@ namespace Eppo
 	{
         if (const auto it = m_EntityMap.find(uuid); it != m_EntityMap.end())
 			return { it->second, this };
+
+		return {};
+	}
+
+	auto Scene::FindEntityByName(const std::string& name) -> Entity
+	{
+		const auto view = m_Registry.view<TagComponent>();
+		for (const auto e : view)
+		{
+			if (view.get<TagComponent>(e).Tag == name)
+				return { e, this };
+		}
 
 		return {};
 	}

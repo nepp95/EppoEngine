@@ -562,6 +562,75 @@ SUITE(Physics)
         CHECK(world.GetPosition(ballId).y > 0.0f);
     }
 
+    TEST(PhysicsWorld_CastRay_HitsStaticBoxBelow)
+    {
+        PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+        const UUID floorId;
+        MakeBody(world, floorId, RigidBodyComponent::BodyType::Static, glm::vec3(0.0f)); // unit box, top at y=0.5
+        world.Step(1.0f / 60.0f);
+
+        const RayHit hit = world.CastRay({ 0.0f, 5.0f, 0.0f }, { 0.0f, -1.0f, 0.0f }, 10.0f);
+        REQUIRE CHECK(hit.Hit);
+        CHECK_CLOSE(0.5f, hit.Point.y, 0.05f);
+        CHECK_CLOSE(1.0f, hit.Normal.y, 0.05f);
+        CHECK_CLOSE(4.5f, hit.Distance, 0.1f);
+        CHECK_EQUAL(static_cast<uint64_t>(floorId), static_cast<uint64_t>(hit.EntityId));
+    }
+
+    TEST(PhysicsWorld_CastRay_MissesWhenOutOfRange)
+    {
+        PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+        const UUID floorId;
+        MakeBody(world, floorId, RigidBodyComponent::BodyType::Static, glm::vec3(0.0f));
+        world.Step(1.0f / 60.0f);
+
+        const RayHit hit = world.CastRay({ 0.0f, 5.0f, 0.0f }, { 0.0f, -1.0f, 0.0f }, 1.0f);
+        CHECK(!hit.Hit);
+    }
+
+    TEST(PhysicsWorld_CastRay_IgnoresInitialOverlap)
+    {
+        PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+        const UUID id;
+        MakeBody(world, id, RigidBodyComponent::BodyType::Static, glm::vec3(0.0f));
+        world.Step(1.0f / 60.0f);
+
+        // A ray whose origin lies inside a convex shape does not register that shape.
+        const RayHit hit = world.CastRay(glm::vec3(0.0f), { 0.0f, -1.0f, 0.0f }, 10.0f);
+        CHECK(!hit.Hit);
+    }
+
+    TEST(PhysicsWorld_OverlapsSphere_TrueInsideRadius_FalseOutside)
+    {
+        PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+        const UUID id;
+        MakeBody(world, id, RigidBodyComponent::BodyType::Static, glm::vec3(0.0f));
+        world.Step(1.0f / 60.0f);
+
+        CHECK(world.OverlapsSphere(id, { 0.0f, 0.0f, 0.0f }, 2.0f));
+        CHECK(!world.OverlapsSphere(id, { 10.0f, 0.0f, 0.0f }, 2.0f));
+    }
+
+    TEST(PhysicsWorld_OverlapsSphere_MatchesOnlyTargetBody)
+    {
+        PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+        const UUID a, b;
+        MakeBody(world, a, RigidBodyComponent::BodyType::Static, glm::vec3(0.0f));
+        MakeBody(world, b, RigidBodyComponent::BodyType::Static, glm::vec3(0.0f));
+        world.Step(1.0f / 60.0f);
+
+        const UUID missing;
+        CHECK(world.OverlapsSphere(a, { 0.0f, 0.0f, 0.0f }, 2.0f));
+        CHECK(world.OverlapsSphere(b, { 0.0f, 0.0f, 0.0f }, 2.0f));
+        CHECK(!world.OverlapsSphere(missing, { 0.0f, 0.0f, 0.0f }, 2.0f));
+        CHECK(!world.OverlapsSphere(a, { 10.0f, 0.0f, 0.0f }, 2.0f));
+    }
+
     TEST(Scene_RuntimeDynamicBody_FallsUnderGravity)
     {
         const Ref<Scene> scene = CreateRef<Scene>();
