@@ -15,8 +15,8 @@ namespace Eppo::Testing
 		class HarnessApp final : public Application
 		{
 		public:
-			HarnessApp()
-				: Application(ApplicationParams{ .Args = CommandLineArgs(0, nullptr) })
+			explicit HarnessApp(ApplicationParams&& params)
+				: Application(std::move(params))
 			{}
 
 			~HarnessApp() override
@@ -31,12 +31,17 @@ namespace Eppo::Testing
 
 	auto AppHarness::Get() -> Application*
 	{
+		return Get(ApplicationParams{ .Args = CommandLineArgs(0, nullptr) });
+	}
+
+	auto AppHarness::Get(ApplicationParams params) -> Application*
+	{
 		if (!s_BootAttempted)
 		{
 			s_BootAttempted = true;
 			try
 			{
-				s_App = std::make_unique<HarnessApp>();
+				s_App = std::make_unique<HarnessApp>(std::move(params));
 			}
 			catch (const std::exception& ex)
 			{

@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Core/Log.h"
 
+#include "Utility/Filesystem.h"
+
 namespace Eppo
 {
 	Ref<spdlog::sinks::basic_file_sink_mt> Log::s_FileLoggerSink = nullptr;
@@ -12,14 +14,18 @@ namespace Eppo
 
 	auto Log::Init() -> void
 	{
-		if (std::filesystem::exists("latest.log"))
+		const auto logDirectory = FS::GetWritableDirectory();
+		std::filesystem::create_directories(logDirectory);
+		const auto latestLog = logDirectory / "latest.log";
+		const auto previousLog = logDirectory / "previous.log";
+		if (std::filesystem::exists(latestLog))
 		{
-			if (std::filesystem::exists("previous.log"))
-				std::filesystem::remove("previous.log");
-			std::filesystem::rename("latest.log", "previous.log");
+			if (std::filesystem::exists(previousLog))
+				std::filesystem::remove(previousLog);
+			std::filesystem::rename(latestLog, previousLog);
 		}
 
-		s_FileLoggerSink = CreateRef<spdlog::sinks::basic_file_sink_mt>("latest.log", true);
+		s_FileLoggerSink = CreateRef<spdlog::sinks::basic_file_sink_mt>(latestLog.string(), true);
 		s_FileLoggerSink->set_level(spdlog::level::trace);
 		s_ConsoleLoggerSink = CreateRef<spdlog::sinks::stdout_color_sink_mt>();
 		s_ConsoleLoggerSink->set_level(spdlog::level::trace);

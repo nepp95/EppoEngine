@@ -38,13 +38,16 @@ add_custom_command(TARGET EppoEditor POST_BUILD
 )
 
 # Copy resources incrementally — only re-copies when files change
-file(GLOB_RECURSE RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Resources/*")
+set(ENGINE_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/EppoEngine/Resources")
+file(GLOB_RECURSE ENGINE_RESOURCE_FILES CONFIGURE_DEPENDS "${ENGINE_RESOURCES_DIR}/*")
+file(GLOB_RECURSE EDITOR_RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Resources/*")
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoEditor>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_RESOURCES_DIR}" "$<TARGET_FILE_DIR:EppoEditor>/Resources"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/Resources" "$<TARGET_FILE_DIR:EppoEditor>/Resources"
     COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync"
-    DEPENDS ${RESOURCE_FILES}
+    DEPENDS ${ENGINE_RESOURCE_FILES} ${EDITOR_RESOURCE_FILES}
     COMMENT "Copying Resources"
     VERBATIM
 )

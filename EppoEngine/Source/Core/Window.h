@@ -13,12 +13,22 @@ namespace Eppo
         Disabled = 0x00034003, // From glfw3.h
     };
 
+	struct WindowSpecification
+	{
+		std::string Title = "EppoEngine";
+		uint32_t Width = 1600;
+		uint32_t Height = 900;
+		bool Fullscreen = false;
+		bool Decorated = true;
+		bool EnableFileDialogs = true;
+	};
+
 	class Window
 	{
 	public:
 		using EventCallbackFn = std::function<void(Event&)>;
 
-		Window(uint32_t width, uint32_t height);
+		explicit Window(WindowSpecification specification);
 		~Window() = default;
 
 		auto Shutdown() -> void;
@@ -35,12 +45,16 @@ namespace Eppo
 		[[nodiscard]] auto GetNative() const -> GLFWwindow* { return m_Window; }
 		[[nodiscard]] auto GetWidth() const -> uint32_t { return m_Width; }
 		[[nodiscard]] auto GetHeight() const -> uint32_t { return m_Height; }
+		[[nodiscard]] auto GetFramebufferSize() const -> std::pair<uint32_t, uint32_t>;
+		[[nodiscard]] auto GetSpecification() const -> const WindowSpecification& { return m_Specification; }
 
 	private:
 		GLFWwindow* m_Window = nullptr;
 		EventCallbackFn m_EventCallback;
+		WindowSpecification m_Specification;
 
 		uint32_t m_Width;
 		uint32_t m_Height;
+		bool m_FileDialogsInitialized = false;
 	};
 }

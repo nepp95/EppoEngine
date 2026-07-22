@@ -67,10 +67,7 @@ namespace Eppo
 		uint32_t Height = 900;
 		uint32_t MaxFramesInFlight = 2;
 		uint32_t SwapchainImageCount = 3;
-
-		bool StartMaximized = false;
-		bool StartFullscreen = false;
-		bool Decorated = true;
+		bool VSync = false;
 
 		bool EnableComputeQueue = true;
 		bool EnableTransferQueue = false;

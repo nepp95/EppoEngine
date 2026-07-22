@@ -16,6 +16,10 @@ namespace Eppo
         const AssetMetadata s_NullMetadata;
     }
 
+	AssetManager::AssetManager(std::map<AssetHandle, AssetMetadata>&& assetData, std::map<AssetHandle, PackedAssetData>&& packedAssets)
+		: m_AssetData(std::move(assetData)), m_PackedAssets(std::move(packedAssets)), m_UsesPackedAssets(true)
+	{}
+
     auto AssetManager::GetAssetTypeFromPath(const std::filesystem::path& path) -> AssetType
     {
         const auto ext = path.extension().string();
@@ -105,10 +109,28 @@ namespace Eppo
             }
             else
             {
-                // Load asset here
-                asset = AssetImporter::ImportAsset(handle, metadata);
+                if (const auto packedAsset = m_PackedAssets.find(handle); packedAsset != m_PackedAssets.end())
+                {
+                    if (packedAsset->second.Type != metadata.Type)
+                        return nullptr;
+                    Buffer payload(packedAsset->second.Payload.data(), packedAsset->second.Payload.size());
+                    BufferReader reader(payload);
+                    asset = AssetImporter::ImportAsset(handle, packedAsset->second.Type, reader);
+                }
+                else if (m_UsesPackedAssets && metadata.Type == AssetType::Scene)
+                {
+                    Log::Error("Packed scene '{}' has no payload", handle);
+                    return nullptr;
+                }
+                else
+                {
+                    asset = AssetImporter::ImportAsset(handle, metadata);
+                }
             }
         }
+
+		if (!asset)
+			return nullptr;
 
         asset->Handle = handle;
         m_LoadedAssets[handle] = asset;

@@ -12,7 +12,7 @@ namespace Eppo
         explicit Assembly(const EP_NativeString& runtimeConfigPath);
         ~Assembly() = default;
 
-        auto LoadUserAssembly(const EP_NativeString& path) -> void;
+        auto LoadUserAssembly(const EP_NativeString& path) -> bool;
         auto UnloadUserAssembly() -> void;
 
         [[nodiscard]] auto GetClasses() const -> const std::vector<ScriptClass>& { return m_Classes; }

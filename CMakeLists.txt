@@ -34,6 +34,10 @@ include(CMake/Dotnet.cmake)
 add_subdirectory(EppoEngine)
 add_subdirectory(EppoEditor)
 
+if (BUILD_RUNTIME)
+    add_subdirectory(EppoRuntime)
+endif ()
+
 if (BUILD_TESTING)
     enable_testing()
     add_subdirectory(EppoEngineTesting)

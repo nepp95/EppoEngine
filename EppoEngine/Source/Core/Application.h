@@ -32,9 +32,14 @@ namespace Eppo
 	{
 		CommandLineArgs Args;
 
+		std::string Title = "EppoEngine";
 		uint32_t Width = 1600;
 		uint32_t Height = 900;
 		bool VSync = false;
+		bool Fullscreen = false;
+		bool Decorated = true;
+		bool EnableImGui = true;
+		bool EnableFileDialogs = true;
 	};
 
 	class Application
