@@ -11,6 +11,9 @@ namespace Eppo
 	class AssetManager
 	{
 	public:
+		AssetManager() = default;
+		AssetManager(std::map<AssetHandle, AssetMetadata>&& assetData, std::map<AssetHandle, PackedAssetData>&& packedAssets);
+
 		// Create an asset from a file on disk
 		auto CreateAsset(const std::filesystem::path& path, const Ref<Asset>& existingAsset = nullptr) -> bool;
 
@@ -57,7 +60,9 @@ namespace Eppo
 
 	private:
 		std::map<AssetHandle, AssetMetadata> m_AssetData;
+		std::map<AssetHandle, PackedAssetData> m_PackedAssets;
 		std::unordered_map<AssetHandle, Ref<Asset>> m_LoadedAssets;
+		bool m_UsesPackedAssets = false;
 		mutable std::shared_mutex m_Mutex;
 	};
 }

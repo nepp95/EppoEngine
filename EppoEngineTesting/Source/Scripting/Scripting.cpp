@@ -3,6 +3,8 @@
 #include "Asset/Asset.h"
 #include "Asset/AssetManager.h"
 #include "Core/Input.h"
+#include "Core/BufferReader.h"
+#include "Core/BufferWriter.h"
 #include "Core/KeyCodes.h"
 #include "Core/MouseCodes.h"
 #include "Core/SimulatedInput.h"
@@ -10,6 +12,7 @@
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneSerializer.h"
 #include "Scripting/ScriptEngine.h"
 
 #include <algorithm>
@@ -42,10 +45,8 @@ SUITE(Scripting)
                         return false;
                     if (!ScriptEngine::Get().IsRuntimeLoaded())
                         return false;
-                    ScriptEngine::Get().LoadUserAssembly(FS::GetRootDirectory() / "EppoTesting.Scripts.dll");
-                    // The managed side swallows a failed load (missing/bad assembly),
-                    // so confirm the harness class is really present — otherwise a
-                    // provisioning gap would surface as opaque per-test failures.
+                    if (!ScriptEngine::Get().LoadUserAssembly(FS::GetRootDirectory() / "EppoTesting.Scripts.dll"))
+                        return false;
                     return ScriptEngine::Get().IsValidScriptClass(kUserClass);
                 }
                 catch (...) { return false; }
@@ -112,6 +113,11 @@ SUITE(Scripting)
     }
 
     // --- Class metadata: the runtime comes up and reflects the user class. ---
+
+    TEST(ScriptEngine_IsUserAssemblyValid_BeforeInitialization_IsFalse)
+    {
+        CHECK_EQUAL(false, ScriptEngine::IsUserAssemblyValid());
+    }
 
     TEST(ScriptEngine_Init_DiscoversClasses)
     {
@@ -546,13 +552,12 @@ SUITE(Scripting)
         CHECK(entity.GetComponent<TransformComponent>().Translation.y > 0.0f);
     }
 
-    // The editor gates its play button on this before a project (and therefore the
-    // engine) exists, so it has to answer rather than assert.
-    TEST(ScriptEngine_IsUserAssemblyValid_WithoutASuccessfulBuild_IsFalse)
+    // A successful explicit load is what makes the assembly valid for play mode.
+    TEST(ScriptEngine_IsUserAssemblyValid_AfterExplicitLoad_IsTrue)
     {
         REQUIRE CHECK(EnsureRuntime());
 
-        CHECK_EQUAL(false, ScriptEngine::IsUserAssemblyValid());
+        CHECK_EQUAL(true, ScriptEngine::IsUserAssemblyValid());
     }
 
     // Hot reload polls every frame, including while no project is open.
@@ -562,7 +567,7 @@ SUITE(Scripting)
 
         ScriptEngine::Get().VerifyRuntime();
 
-        CHECK_EQUAL(false, ScriptEngine::IsUserAssemblyValid());
+        CHECK_EQUAL(true, ScriptEngine::IsUserAssemblyValid());
     }
 
     TEST(ScriptEngine_ReloadProjectAssembly_WithoutAnActiveProject_Fails)
@@ -2120,5 +2125,146 @@ SUITE(Scripting)
         CHECK(engine.GetEntityInstance(selfId) == nullptr);           // instance torn down
 
         engine.OnDestroyEntity(survivor);
+    }
+
+    TEST(SceneSerializer_Binary_ScriptFieldsRoundTripDeterministically)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> source = CreateRef<Scene>();
+        source->Handle = AssetHandle(8100);
+        Entity entity = source->CreateEntityWithUUID(Eppo::UUID(8101), "Scripted");
+        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
+
+        ScriptFieldValue speed;
+        speed.Type = ScriptFieldType::Float;
+        speed.Set(12.5f);
+        ScriptFieldValue count;
+        count.Type = ScriptFieldType::Int32;
+        count.Set(int32_t{ 37 });
+
+        auto& engine = ScriptEngine::Get();
+        auto& fields = engine.GetFieldMap(entity.GetUUID());
+        fields["Speed"] = speed;
+        fields["Count"] = count;
+
+        BufferWriter sizingWriter;
+        REQUIRE CHECK(SceneSerializer(source).Serialize(sizingWriter));
+        Buffer first(sizingWriter.GetSize());
+        BufferWriter firstWriter(first);
+        REQUIRE CHECK(SceneSerializer(source).Serialize(firstWriter));
+
+        fields.clear();
+        fields["Count"] = count;
+        fields["Speed"] = speed;
+        Buffer second(sizingWriter.GetSize());
+        BufferWriter secondWriter(second);
+        REQUIRE CHECK(SceneSerializer(source).Serialize(secondWriter));
+        CHECK_EQUAL(first.Size, second.Size);
+        CHECK_ARRAY_EQUAL(first.Data, second.Data, first.Size);
+
+        const Ref<Scene> loaded = CreateRef<Scene>();
+        loaded->Handle = source->Handle;
+        BufferReader reader(first);
+        REQUIRE CHECK(SceneSerializer(loaded).Deserialize(reader));
+
+        const Entity loadedEntity = loaded->GetEntityByUUID(entity.GetUUID());
+        REQUIRE CHECK(loadedEntity);
+        REQUIRE CHECK(loadedEntity.HasComponent<ScriptComponent>());
+        CHECK_EQUAL(std::string(kUserClass), loadedEntity.GetComponent<ScriptComponent>().ClassName);
+        const auto* loadedFields = engine.TryGetFieldMap(loadedEntity.GetUUID());
+        REQUIRE CHECK(loadedFields != nullptr);
+        CHECK_EQUAL(2, loadedFields->size());
+        CHECK_CLOSE(12.5f, loadedFields->at("Speed").Get<float>(), 0.0001f);
+        CHECK_EQUAL(37, loadedFields->at("Count").Get<int32_t>());
+
+        engine.RemoveFieldMap(entity.GetUUID());
+        first.Release();
+        second.Release();
+    }
+
+    TEST(SceneSerializer_Binary_RejectsDuplicateAndTruncatedScriptFields)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const EnvironmentSettings environment{};
+        const TransformComponent transform{};
+        BufferWriter sizingWriter;
+        REQUIRE CHECK(sizingWriter.Write(uint64_t{ 8200 }));
+        REQUIRE CHECK(sizingWriter.Write(environment));
+        REQUIRE CHECK(sizingWriter.Write(uint32_t{ 1 }));
+        REQUIRE CHECK(sizingWriter.Write(uint64_t{ 8201 }));
+        REQUIRE CHECK(sizingWriter.WriteString("Scripted"));
+        REQUIRE CHECK(sizingWriter.Write(transform));
+        REQUIRE CHECK(sizingWriter.Write(uint16_t{ 1u << 3 }));
+        REQUIRE CHECK(sizingWriter.WriteString(kUserClass));
+        REQUIRE CHECK(sizingWriter.Write(uint32_t{ 2 }));
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            REQUIRE CHECK(sizingWriter.WriteString("Speed"));
+            REQUIRE CHECK(sizingWriter.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
+            REQUIRE CHECK(sizingWriter.Write(3.0f));
+        }
+
+        Buffer buffer(sizingWriter.GetSize());
+        BufferWriter writer(buffer);
+        REQUIRE CHECK(writer.Write(uint64_t{ 8200 }));
+        REQUIRE CHECK(writer.Write(environment));
+        REQUIRE CHECK(writer.Write(uint32_t{ 1 }));
+        REQUIRE CHECK(writer.Write(uint64_t{ 8201 }));
+        REQUIRE CHECK(writer.WriteString("Scripted"));
+        REQUIRE CHECK(writer.Write(transform));
+        REQUIRE CHECK(writer.Write(uint16_t{ 1u << 3 }));
+        REQUIRE CHECK(writer.WriteString(kUserClass));
+        REQUIRE CHECK(writer.Write(uint32_t{ 2 }));
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            REQUIRE CHECK(writer.WriteString("Speed"));
+            REQUIRE CHECK(writer.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
+            REQUIRE CHECK(writer.Write(3.0f));
+        }
+
+        const Ref<Scene> duplicateScene = CreateRef<Scene>();
+        duplicateScene->Handle = AssetHandle(8200);
+        BufferReader duplicateReader(buffer);
+        CHECK(!SceneSerializer(duplicateScene).Deserialize(duplicateReader));
+
+        BufferWriter validSizingWriter;
+        REQUIRE CHECK(validSizingWriter.Write(uint64_t{ 8200 }));
+        REQUIRE CHECK(validSizingWriter.Write(environment));
+        REQUIRE CHECK(validSizingWriter.Write(uint32_t{ 1 }));
+        REQUIRE CHECK(validSizingWriter.Write(uint64_t{ 8201 }));
+        REQUIRE CHECK(validSizingWriter.WriteString("Scripted"));
+        REQUIRE CHECK(validSizingWriter.Write(transform));
+        REQUIRE CHECK(validSizingWriter.Write(uint16_t{ 1u << 3 }));
+        REQUIRE CHECK(validSizingWriter.WriteString(kUserClass));
+        REQUIRE CHECK(validSizingWriter.Write(uint32_t{ 1 }));
+        REQUIRE CHECK(validSizingWriter.WriteString("Speed"));
+        REQUIRE CHECK(validSizingWriter.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
+        REQUIRE CHECK(validSizingWriter.Write(3.0f));
+        Buffer validBuffer(validSizingWriter.GetSize());
+        BufferWriter validWriter(validBuffer);
+        REQUIRE CHECK(validWriter.Write(uint64_t{ 8200 }));
+        REQUIRE CHECK(validWriter.Write(environment));
+        REQUIRE CHECK(validWriter.Write(uint32_t{ 1 }));
+        REQUIRE CHECK(validWriter.Write(uint64_t{ 8201 }));
+        REQUIRE CHECK(validWriter.WriteString("Scripted"));
+        REQUIRE CHECK(validWriter.Write(transform));
+        REQUIRE CHECK(validWriter.Write(uint16_t{ 1u << 3 }));
+        REQUIRE CHECK(validWriter.WriteString(kUserClass));
+        REQUIRE CHECK(validWriter.Write(uint32_t{ 1 }));
+        REQUIRE CHECK(validWriter.WriteString("Speed"));
+        REQUIRE CHECK(validWriter.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
+        REQUIRE CHECK(validWriter.Write(3.0f));
+
+        Buffer truncated(validBuffer.Data, validBuffer.Size - 1);
+        const Ref<Scene> truncatedScene = CreateRef<Scene>();
+        truncatedScene->Handle = AssetHandle(8200);
+        BufferReader truncatedReader(truncated);
+        CHECK(!SceneSerializer(truncatedScene).Deserialize(truncatedReader));
+
+        ScriptEngine::Get().RemoveFieldMap(Eppo::UUID(8201));
+        buffer.Release();
+        validBuffer.Release();
     }
 }

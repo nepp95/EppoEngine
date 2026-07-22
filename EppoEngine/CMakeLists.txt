@@ -9,7 +9,7 @@ if (${EP_PLATFORM} STREQUAL "EP_PLATFORM_WINDOWS")
     target_compile_options(EppoEngine PUBLIC /utf-8)
     target_include_directories(EppoEngine PUBLIC $ENV{VULKAN_SDK}/Include)
     target_link_directories(EppoEngine PUBLIC "$ENV{VULKAN_SDK}/Lib")
-    target_link_libraries(EppoEngine PRIVATE $<$<CONFIG:Debug>:spirv-cross-cored> $<$<CONFIG:RelWithDebInfo>:spirv-cross-core> $<$<CONFIG:Dist>:spirv-cross-core>)
+    target_link_libraries(EppoEngine PRIVATE $<$<CONFIG:Debug>:spirv-cross-cored> $<$<CONFIG:RelWithDebInfo>:spirv-cross-core> $<$<CONFIG:Release>:spirv-cross-core>)
 elseif (${EP_PLATFORM} STREQUAL "EP_PLATFORM_LINUX")
     # DXC's WinAdapter.h uses __declspec(uuid(...)) unless __EMULATE_UUID is set;
     # the latter selects its cross-platform UUID path so the headers compile with

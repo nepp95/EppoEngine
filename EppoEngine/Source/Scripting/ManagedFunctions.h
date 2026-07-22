@@ -13,7 +13,7 @@ namespace Eppo
     using GetClassMethodCountFn = int32_t(*)(int32_t);
     using GetClassMethodNameFn = char* (*)(int32_t, int32_t);
 
-    using LoadUserAssemblyFn = void(*)(const char*);
+    using LoadUserAssemblyFn = int32_t(*)(const char*);
     using UnloadUserAssemblyFn = void(*)();
 
     using CreateInstanceFn = int32_t(*)(int32_t classIndex, uint64_t entityId);

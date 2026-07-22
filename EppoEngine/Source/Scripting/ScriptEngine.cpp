@@ -120,11 +120,12 @@ namespace Eppo
         return *s_Instance;
     }
 
-    auto ScriptEngine::LoadUserAssembly(const std::filesystem::path& path) const -> void
+    auto ScriptEngine::LoadUserAssembly(const std::filesystem::path& path) -> bool
     {
         EP_PROFILE_FN("ScriptEngine::LoadUserAssembly");
 
-        m_CoreAssembly->LoadUserAssembly(EP_NativeString(path));
+        m_UserAssemblyValid = m_CoreAssembly->LoadUserAssembly(EP_NativeString(path));
+        return m_UserAssemblyValid;
     }
 
     auto ScriptEngine::UnloadUserAssembly() -> void
@@ -193,9 +194,12 @@ namespace Eppo
         }
 
         UnloadUserAssembly();
-        LoadUserAssembly(assemblyPath);
+        if (!LoadUserAssembly(assemblyPath))
+        {
+            Log::Error(LogSource::Script, "Failed to load script assembly for '{}'.", name);
+            return false;
+        }
 
-        m_UserAssemblyValid = true;
         Log::Info(LogSource::Script, "Loaded script assembly for '{}'.", name);
 
         return true;

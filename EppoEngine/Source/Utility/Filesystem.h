@@ -7,12 +7,100 @@ namespace Eppo::FS
 {
 	inline auto CreateDir(const std::filesystem::path& path) -> bool
 	{
-		return std::filesystem::create_directories(path);
+		std::error_code error;
+		std::filesystem::create_directories(path, error);
+		if (error)
+		{
+			Log::Error("Failed to create directory '{}': {}", path, error.message());
+			return false;
+		}
+		return true;
 	}
 
 	inline auto Exists(const std::filesystem::path& path) -> bool
 	{
 		return std::filesystem::exists(path);
+	}
+
+	inline auto IsDirectory(const std::filesystem::path& path) -> bool
+	{
+		std::error_code error;
+		return std::filesystem::is_directory(path, error) && !error;
+	}
+
+	inline auto IsEmpty(const std::filesystem::path& path) -> bool
+	{
+		std::error_code error;
+		return std::filesystem::is_empty(path, error) && !error;
+	}
+
+	inline auto RemoveAll(const std::filesystem::path& path) -> bool
+	{
+		std::error_code error;
+		std::filesystem::remove_all(path, error);
+		if (error)
+		{
+			Log::Error("Failed to remove '{}': {}", path, error.message());
+			return false;
+		}
+		return true;
+	}
+
+	// Copies a single file, creating parent directories as needed. Non-throwing: logs and returns false on failure.
+	inline auto CopyFile(const std::filesystem::path& source, const std::filesystem::path& destination, const bool overwrite) -> bool
+	{
+		std::error_code error;
+		if (const auto parent = destination.parent_path(); !parent.empty())
+		{
+			std::filesystem::create_directories(parent, error);
+			if (error)
+			{
+				Log::Error("Failed to create directory '{}': {}", parent, error.message());
+				return false;
+			}
+		}
+
+		const auto options = overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none;
+		std::filesystem::copy_file(source, destination, options, error);
+		if (error)
+		{
+			Log::Error("Failed to copy '{}' to '{}': {}", source, destination, error.message());
+			return false;
+		}
+		return true;
+	}
+
+	// Copies the files under source into destination for which predicate(path) is true, preserving the tree
+	// when recursive. Non-throwing.
+	template<typename Predicate>
+	inline auto CopyDirectory(const std::filesystem::path& source, const std::filesystem::path& destination, Predicate predicate,
+		const bool recursive = true) -> bool
+	{
+		std::error_code error;
+		if (recursive)
+		{
+			for (std::filesystem::recursive_directory_iterator it(source, error), end; !error && it != end; it.increment(error))
+			{
+				if (!it->is_regular_file() || !predicate(it->path()))
+					continue;
+
+				const auto relative = std::filesystem::relative(it->path(), source, error);
+				if (error || !CopyFile(it->path(), destination / relative, true))
+					return false;
+			}
+		}
+		else
+		{
+			for (std::filesystem::directory_iterator it(source, error), end; !error && it != end; it.increment(error))
+			{
+				if (!it->is_regular_file() || !predicate(it->path()))
+					continue;
+
+				if (!CopyFile(it->path(), destination / it->path().filename(), true))
+					return false;
+			}
+		}
+		return !error;
 	}
 
 	inline auto Copy(const std::filesystem::path& from, const std::filesystem::path& to) -> bool
@@ -41,7 +129,11 @@ namespace Eppo::FS
 
 	// Absolute directory of the running executable. Defined in Filesystem.cpp so the
 	// platform headers it needs don't leak through this widely-included header.
+	auto GetExecutablePath() -> std::filesystem::path;
 	auto GetExecutableDirectory() -> std::filesystem::path;
+	auto ConfigureWritableDirectory(const std::filesystem::path& path) -> bool;
+	auto GetWritableDirectory() -> std::filesystem::path;
+	auto GetUserStateDirectory(const std::string& applicationName) -> std::filesystem::path;
 
 	inline auto GetRootDirectory() -> std::filesystem::path
 	{
@@ -57,15 +149,7 @@ namespace Eppo::FS
 		return GetRootDirectory() / "Resources";
 	}
 	
-	inline auto GetShaderCacheDirectory() -> std::filesystem::path
-	{
-		const std::filesystem::path cacheDir = GetResourcesDirectory() / "Shaders" / "Cache";
-
-		if (!Exists(cacheDir))
-			CreateDir(cacheDir);
-
-		return cacheDir;
-	}
+	auto GetShaderCacheDirectory() -> std::filesystem::path;
 
 	inline auto ReadBytes(const std::filesystem::path& path) -> std::vector<char>
 	{

@@ -229,12 +229,13 @@ namespace EppoScriptCore.Core
         }
 
         [UnmanagedCallersOnly(EntryPoint = "LoadUserAssembly")]
-        public static void LoadUserAssembly(IntPtr pathPtr)
+        public static int LoadUserAssembly(IntPtr pathPtr)
         {
             var path = Marshal.PtrToStringUTF8(pathPtr);
             if (path is null)
-                return;
+                return 0;
 
+            var loaded = 0;
             Guard("LoadUserAssembly", () =>
             {
                 UnloadUserAssemblyInternal();
@@ -245,7 +246,9 @@ namespace EppoScriptCore.Core
                 var assembly = s_UserContext.LoadFromStream(stream);
 
                 ScanAssembly(assembly, s_UserClasses);
+                loaded = 1;
             });
+            return loaded;
         }
 
         [UnmanagedCallersOnly(EntryPoint = "UnloadUserAssembly")]

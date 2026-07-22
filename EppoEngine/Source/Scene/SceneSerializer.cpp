@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Scene/SceneSerializer.h"
 
+#include "Asset/PackFormat.h"
 #include "Scripting/ScriptEngine.h"
 #include "Utility/Json.h"
 
@@ -11,6 +12,31 @@ using json = nlohmann::json;
 namespace Eppo
 {
 	static std::vector<std::string> s_RelationshipRepairNotices;
+	static constexpr uint16_t MeshComponentBit = 1 << 0;
+	static constexpr uint16_t CameraComponentBit = 1 << 1;
+	static constexpr uint16_t PointLightComponentBit = 1 << 2;
+	static constexpr uint16_t ScriptComponentBit = 1 << 3;
+	static constexpr uint16_t RelationshipComponentBit = 1 << 4;
+	static constexpr uint16_t RigidBodyComponentBit = 1 << 5;
+	static constexpr uint16_t BoxColliderComponentBit = 1 << 6;
+	static constexpr uint16_t SphereColliderComponentBit = 1 << 7;
+	static constexpr uint16_t CapsuleColliderComponentBit = 1 << 8;
+	static constexpr uint16_t CylinderColliderComponentBit = 1 << 9;
+	static constexpr uint16_t KnownComponentBits = (1 << 10) - 1;
+
+	template<typename T>
+	auto WriteRaw(BufferWriter& writer, const T& value) -> bool
+	{
+		static_assert(std::is_trivially_copyable_v<T>);
+		return writer.Write(value);
+	}
+
+	template<typename T>
+	auto ReadRaw(BufferReader& reader, T& value) -> bool
+	{
+		static_assert(std::is_trivially_copyable_v<T>);
+		return reader.Read(value);
+	}
 
 	namespace Utils
 	{
@@ -70,9 +96,27 @@ namespace Eppo
 		}
 	}
 
-	SceneSerializer::SceneSerializer(const Ref<Scene>& scene)
-		: m_SceneContext(scene)
+	SceneSerializer::SceneSerializer(const Ref<Scene>& scene, SceneSerializerOptions options)
+		: m_SceneContext(scene), m_Options(options)
 	{}
+
+	auto SceneSerializer::FindScriptFields(const UUID entityId) const -> const ScriptFieldMap*
+	{
+		if (m_Options.ScriptFields)
+		{
+			const auto fields = m_Options.ScriptFields->find(entityId);
+			return fields == m_Options.ScriptFields->end() ? nullptr : &fields->second;
+		}
+
+		return ScriptEngine::IsInitialized() ? ScriptEngine::Get().TryGetFieldMap(entityId) : nullptr;
+	}
+
+	auto SceneSerializer::GetScriptFields(const UUID entityId) const -> ScriptFieldMap*
+	{
+		if (m_Options.ScriptFields)
+			return &(*m_Options.ScriptFields)[entityId];
+		return ScriptEngine::IsInitialized() ? &ScriptEngine::Get().GetFieldMap(entityId) : nullptr;
+	}
 
 	auto SceneSerializer::ConsumeRelationshipRepairNotices() -> std::vector<std::string>
 	{
@@ -240,18 +284,17 @@ namespace Eppo
 
 				if (c.contains("Fields") && c["Fields"].is_array() && !c["Fields"].empty())
 				{
-					if (!ScriptEngine::IsInitialized())
+                    if (ScriptFieldMap* fieldMap = GetScriptFields(newEntity.GetUUID()); !fieldMap)
 					{
 						Log::Warn("Script field values for entity '{}' were not loaded: the script runtime is not initialized.", newEntity.GetName());
 					}
 					else
 					{
-						auto& fieldMap = ScriptEngine::Get().GetFieldMap(newEntity.GetUUID());
 						for (auto& field : c["Fields"])
 						{
 							const auto name = field["Name"].get<std::string>();
 							const auto type = static_cast<ScriptFieldType>(field["Type"].get<uint8_t>());
-							fieldMap[name] = Utils::DeserializeScriptFieldData(field["Data"], type);
+							(*fieldMap)[name] = Utils::DeserializeScriptFieldData(field["Data"], type);
 						}
 					}
 				}
@@ -317,6 +360,327 @@ namespace Eppo
 
 		RepairRelationships(sceneName);
 
+		return true;
+	}
+
+	auto SceneSerializer::Serialize(BufferWriter& writer) const -> bool
+	{
+		static_assert(std::is_trivially_copyable_v<EnvironmentSettings>);
+		static_assert(sizeof(EnvironmentSettings) == sizeof(AssetHandle) + sizeof(glm::vec3) * 3 + sizeof(float));
+		static_assert(sizeof(TransformComponent) == sizeof(glm::vec3) * 3);
+		static_assert(sizeof(MeshComponent) == sizeof(AssetHandle));
+		static_assert(sizeof(PointLightComponent) == sizeof(glm::vec3) + sizeof(float));
+		static_assert(offsetof(RigidBodyComponent, GravityScale) == sizeof(RigidBodyComponent::BodyType));
+		static_assert(sizeof(RigidBodyComponent) == sizeof(RigidBodyComponent::BodyType) + sizeof(float) * 3);
+		static_assert(sizeof(BoxColliderComponent) == sizeof(glm::vec3) * 2 + sizeof(float) * 3);
+		static_assert(sizeof(SphereColliderComponent) == sizeof(float) + sizeof(glm::vec3) + sizeof(float) * 3);
+		static_assert(sizeof(CapsuleColliderComponent) == sizeof(float) * 2 + sizeof(glm::vec3) + sizeof(float) * 3);
+		static_assert(sizeof(CylinderColliderComponent) == sizeof(float) * 2 + sizeof(glm::vec3) + sizeof(float) * 3);
+
+		std::vector<Entity> entities;
+		m_SceneContext->SortEntitiesByID();
+		m_SceneContext->ForEachEntity([&](const Entity entity)
+		{
+			entities.push_back(entity);
+		});
+
+		if (entities.size() > std::numeric_limits<uint32_t>::max())
+			return false;
+
+		if (!writer.Write(PackFormat::Scene.Magic)
+			|| !writer.Write(PackFormat::Scene.Version)
+			|| !writer.Write(static_cast<uint64_t>(m_SceneContext->Handle))
+			|| !WriteRaw(writer, m_SceneContext->GetEnvironment())
+			|| !writer.Write(static_cast<uint32_t>(entities.size())))
+			return false;
+
+		for (const Entity entity : entities)
+		{
+			uint16_t componentMask = 0;
+			componentMask |= entity.HasComponent<MeshComponent>() ? MeshComponentBit : 0;
+			componentMask |= entity.HasComponent<CameraComponent>() ? CameraComponentBit : 0;
+			componentMask |= entity.HasComponent<PointLightComponent>() ? PointLightComponentBit : 0;
+			componentMask |= entity.HasComponent<ScriptComponent>() ? ScriptComponentBit : 0;
+			componentMask |= entity.HasComponent<RelationshipComponent>() ? RelationshipComponentBit : 0;
+			componentMask |= entity.HasComponent<RigidBodyComponent>() ? RigidBodyComponentBit : 0;
+			componentMask |= entity.HasComponent<BoxColliderComponent>() ? BoxColliderComponentBit : 0;
+			componentMask |= entity.HasComponent<SphereColliderComponent>() ? SphereColliderComponentBit : 0;
+			componentMask |= entity.HasComponent<CapsuleColliderComponent>() ? CapsuleColliderComponentBit : 0;
+			componentMask |= entity.HasComponent<CylinderColliderComponent>() ? CylinderColliderComponentBit : 0;
+
+			if (!writer.Write(static_cast<uint64_t>(entity.GetUUID()))
+				|| !writer.WriteString(entity.GetName())
+				|| !WriteRaw(writer, entity.GetComponent<TransformComponent>())
+				|| !writer.Write(componentMask))
+				return false;
+
+			if (componentMask & MeshComponentBit)
+			{
+				if (!WriteRaw(writer, entity.GetComponent<MeshComponent>()))
+					return false;
+			}
+
+			if (componentMask & CameraComponentBit)
+			{
+				const auto& component = entity.GetComponent<CameraComponent>();
+				if (!writer.Write(static_cast<uint8_t>(component.Primary))
+					|| !writer.Write(component.Camera.GetPerspectiveVerticalFov())
+					|| !writer.Write(component.Camera.GetPerspectiveNearClip())
+					|| !writer.Write(component.Camera.GetPerspectiveFarClip()))
+					return false;
+			}
+
+			if (componentMask & PointLightComponentBit)
+			{
+				if (!WriteRaw(writer, entity.GetComponent<PointLightComponent>()))
+					return false;
+			}
+
+			if (componentMask & ScriptComponentBit)
+			{
+				const auto& component = entity.GetComponent<ScriptComponent>();
+				if (!writer.WriteString(component.ClassName))
+					return false;
+
+				std::vector<std::pair<std::string, ScriptFieldValue>> fields;
+				const auto* fieldMap = FindScriptFields(entity.GetUUID());
+				if (fieldMap)
+				{
+					fields.reserve(fieldMap->size());
+					for (const auto& field : *fieldMap)
+						fields.push_back(field);
+					std::sort(fields.begin(), fields.end(), [](const auto& left, const auto& right) { return left.first < right.first; });
+				}
+
+				if (fields.size() > std::numeric_limits<uint32_t>::max() || !writer.Write(static_cast<uint32_t>(fields.size())))
+					return false;
+
+				for (const auto& [name, value] : fields)
+				{
+					const uint32_t size = ScriptFieldTypeSize(value.Type);
+					if (value.Type == ScriptFieldType::None || size == 0 || size > value.Buffer.size()
+						|| !writer.WriteString(name)
+						|| !writer.Write(static_cast<uint8_t>(value.Type))
+						|| !writer.WriteBytes(value.Buffer.data(), size))
+						return false;
+				}
+			}
+
+			if (componentMask & RelationshipComponentBit)
+			{
+				const auto& component = entity.GetComponent<RelationshipComponent>();
+				if (component.Children.size() > std::numeric_limits<uint32_t>::max()
+					|| !writer.Write(static_cast<uint64_t>(component.Parent))
+					|| !writer.Write(static_cast<uint32_t>(component.Children.size())))
+					return false;
+
+				for (const UUID child : component.Children)
+				{
+					if (!writer.Write(static_cast<uint64_t>(child)))
+						return false;
+				}
+			}
+
+			if (componentMask & RigidBodyComponentBit)
+			{
+				if (!WriteRaw(writer, entity.GetComponent<RigidBodyComponent>()))
+					return false;
+			}
+
+			if (componentMask & BoxColliderComponentBit)
+			{
+				if (!WriteRaw(writer, entity.GetComponent<BoxColliderComponent>()))
+					return false;
+			}
+
+			if (componentMask & SphereColliderComponentBit)
+			{
+				if (!WriteRaw(writer, entity.GetComponent<SphereColliderComponent>()))
+					return false;
+			}
+
+			if (componentMask & CapsuleColliderComponentBit)
+			{
+				if (!WriteRaw(writer, entity.GetComponent<CapsuleColliderComponent>()))
+					return false;
+			}
+
+			if (componentMask & CylinderColliderComponentBit)
+			{
+				if (!WriteRaw(writer, entity.GetComponent<CylinderColliderComponent>()))
+					return false;
+			}
+		}
+
+		return writer.IsValid();
+	}
+
+	auto SceneSerializer::Deserialize(BufferReader& reader) const -> bool
+	{
+		uint32_t magic = 0;
+		uint32_t version = 0;
+		uint64_t sceneHandle = 0;
+		EnvironmentSettings environment{};
+		uint32_t entityCount = 0;
+		if (!reader.Read(magic) || magic != PackFormat::Scene.Magic
+			|| !reader.Read(version) || version != PackFormat::Scene.Version
+			|| !reader.Read(sceneHandle) || sceneHandle != static_cast<uint64_t>(m_SceneContext->Handle)
+			|| !ReadRaw(reader, environment) || !reader.Read(entityCount))
+			return false;
+
+		constexpr uint64_t MinimumEntitySize = sizeof(uint64_t) + sizeof(uint32_t) + sizeof(TransformComponent) + sizeof(uint16_t);
+		if (entityCount > reader.GetRemaining() / MinimumEntitySize)
+			return false;
+
+		m_SceneContext->GetEnvironment() = environment;
+		std::unordered_set<UUID> entityIds;
+
+		for (uint32_t i = 0; i < entityCount; i++)
+		{
+			uint64_t entityId = 0;
+			if (!reader.Read(entityId) || entityId == 0 || !entityIds.insert(UUID(entityId)).second)
+				return false;
+
+			const std::string tag = reader.ReadString();
+			TransformComponent transform{};
+			uint16_t componentMask = 0;
+			if (!reader.IsValid() || !ReadRaw(reader, transform) || !reader.Read(componentMask) || (componentMask & ~KnownComponentBits) != 0)
+				return false;
+
+			Entity entity = m_SceneContext->CreateEntityWithUUID(UUID(entityId), tag);
+			entity.GetComponent<TransformComponent>() = transform;
+
+			if (componentMask & MeshComponentBit)
+			{
+				MeshComponent component{};
+				if (!ReadRaw(reader, component))
+					return false;
+				entity.AddComponent<MeshComponent>(component);
+			}
+
+			if (componentMask & CameraComponentBit)
+			{
+				uint8_t primary = 0;
+				float verticalFov = 0.0f;
+				float nearClip = 0.0f;
+				float farClip = 0.0f;
+				if (!reader.Read(primary) || primary > 1 || !reader.Read(verticalFov) || !reader.Read(nearClip) || !reader.Read(farClip))
+					return false;
+				auto& component = entity.AddComponent<CameraComponent>();
+				component.Primary = primary != 0;
+				component.Camera.SetPerspective(verticalFov, nearClip, farClip);
+			}
+
+			if (componentMask & PointLightComponentBit)
+			{
+				PointLightComponent component{};
+				if (!ReadRaw(reader, component))
+					return false;
+				entity.AddComponent<PointLightComponent>(component);
+			}
+
+			if (componentMask & ScriptComponentBit)
+			{
+				const std::string className = reader.ReadString();
+				uint32_t fieldCount = 0;
+				if (!reader.IsValid() || !reader.Read(fieldCount) || fieldCount > reader.GetRemaining() / 6)
+					return false;
+
+				ScriptFieldMap fields;
+				for (uint32_t fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++)
+				{
+					const std::string name = reader.ReadString();
+					uint8_t serializedType = 0;
+					if (!reader.IsValid() || !reader.Read(serializedType))
+						return false;
+
+					const auto type = static_cast<ScriptFieldType>(serializedType);
+					const uint32_t size = ScriptFieldTypeSize(type);
+					if (type == ScriptFieldType::None || type > ScriptFieldType::Entity || size == 0 || size > ScriptFieldValue{}.Buffer.size()
+						|| fields.contains(name))
+						return false;
+
+					ScriptFieldValue value;
+					value.Type = type;
+					if (!reader.ReadBytes(value.Buffer.data(), size))
+						return false;
+					fields.emplace(name, value);
+				}
+
+				entity.AddComponent<ScriptComponent>(className);
+				if (!fields.empty())
+				{
+					ScriptFieldMap* fieldMap = GetScriptFields(entity.GetUUID());
+					if (!fieldMap)
+						return false;
+					*fieldMap = std::move(fields);
+				}
+			}
+
+			if (componentMask & RelationshipComponentBit)
+			{
+				uint64_t parent = 0;
+				uint32_t childCount = 0;
+				if (!reader.Read(parent) || !reader.Read(childCount) || childCount > reader.GetRemaining() / sizeof(uint64_t))
+					return false;
+
+				auto& component = entity.AddComponent<RelationshipComponent>();
+				component.Parent = UUID(parent);
+				component.Children.reserve(childCount);
+				for (uint32_t childIndex = 0; childIndex < childCount; childIndex++)
+				{
+					uint64_t child = 0;
+					if (!reader.Read(child))
+						return false;
+					component.Children.emplace_back(child);
+				}
+			}
+
+			if (componentMask & RigidBodyComponentBit)
+			{
+				RigidBodyComponent component{};
+				if (!ReadRaw(reader, component) || component.Type > RigidBodyComponent::BodyType::Dynamic)
+					return false;
+				entity.AddComponent<RigidBodyComponent>(component);
+			}
+
+			if (componentMask & BoxColliderComponentBit)
+			{
+				BoxColliderComponent component{};
+				if (!ReadRaw(reader, component))
+					return false;
+				entity.AddComponent<BoxColliderComponent>(component);
+			}
+
+			if (componentMask & SphereColliderComponentBit)
+			{
+				SphereColliderComponent component{};
+				if (!ReadRaw(reader, component))
+					return false;
+				entity.AddComponent<SphereColliderComponent>(component);
+			}
+
+			if (componentMask & CapsuleColliderComponentBit)
+			{
+				CapsuleColliderComponent component{};
+				if (!ReadRaw(reader, component))
+					return false;
+				entity.AddComponent<CapsuleColliderComponent>(component);
+			}
+
+			if (componentMask & CylinderColliderComponentBit)
+			{
+				CylinderColliderComponent component{};
+				if (!ReadRaw(reader, component))
+					return false;
+				entity.AddComponent<CylinderColliderComponent>(component);
+			}
+		}
+
+		if (!reader.IsValid() || reader.GetRemaining() != 0)
+			return false;
+
+		RepairRelationships(std::to_string(sceneHandle));
 		return true;
 	}
 
@@ -407,7 +771,8 @@ namespace Eppo
 		for (const std::string& repair : repairs)
 		{
 			Log::Warn("Scene '{}' relationship repaired: {}", sceneName, repair);
-			s_RelationshipRepairNotices.push_back(fmt::format("Scene '{}': {}", sceneName, repair));
+			if (m_Options.CollectRelationshipRepairNotices)
+				s_RelationshipRepairNotices.push_back(fmt::format("Scene '{}': {}", sceneName, repair));
 		}
 	}
 
@@ -472,7 +837,7 @@ namespace Eppo
 			e["ScriptComponent"]["ClassName"] = c.ClassName;
 
 			auto fields = json::array();
-			const auto* fieldMap = ScriptEngine::IsInitialized() ? ScriptEngine::Get().TryGetFieldMap(entity.GetUUID()) : nullptr;
+			const auto* fieldMap = FindScriptFields(entity.GetUUID());
 			if (fieldMap)
 			{
 				for (const auto& [name, value] : *fieldMap)

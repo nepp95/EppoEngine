@@ -121,6 +121,8 @@ namespace Eppo
 		EP_PROFILE_FN("SceneRenderer::RenderGui")
 
 		const auto& app = Application::Get();
+		if (!app.GetImGuiLayer())
+			return;
 		const auto& dm = DeviceManager::Get();
 		const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
 		EP_ASSERT(frameIndex < dm->GetBackBufferCount());

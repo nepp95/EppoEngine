@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Asset/Asset.h"
-#include "Utility/Filesystem.h"
 
 namespace Eppo
 {
@@ -21,5 +20,11 @@ namespace Eppo
 		{
 			return Filepath.filename().string();
 		}
+	};
+
+	struct PackedAssetData
+	{
+		AssetType Type = AssetType::None;
+		std::vector<uint8_t> Payload;
 	};
 }

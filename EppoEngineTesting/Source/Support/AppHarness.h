@@ -13,6 +13,7 @@ namespace Eppo::Testing
 	public:
 		// The shared app, booted on first call; nullptr if it can't boot (no display/GPU).
 		[[nodiscard]] static auto Get() -> Application*;
+		[[nodiscard]] static auto Get(ApplicationParams params) -> Application*;
 
 		[[nodiscard]] static auto IsAvailable() -> bool;
 
