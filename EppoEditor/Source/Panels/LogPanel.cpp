@@ -53,6 +53,8 @@ namespace Eppo
 
     auto LogPanel::RenderToolbar() -> void
     {
+        ImGui::Text("Log Level:");
+        ImGui::SameLine();
         m_FilterDirty |= MaskToggle("Trace", m_LevelMask, LevelBit(spdlog::level::trace));
         ImGui::SameLine();
         m_FilterDirty |= MaskToggle("Info", m_LevelMask, LevelBit(spdlog::level::info));
@@ -61,6 +63,12 @@ namespace Eppo
         ImGui::SameLine();
         m_FilterDirty |= MaskToggle("Error", m_LevelMask, LevelBit(spdlog::level::err));
 
+        ImGui::SameLine();
+        ImGui::Text(" | ");
+        ImGui::SameLine();
+
+        ImGui::Text("Log Source:");
+        ImGui::SameLine();
         m_FilterDirty |= MaskToggle("Core", m_SourceMask, SourceBit(LogSource::Core));
         ImGui::SameLine();
         m_FilterDirty |= MaskToggle("Glfw", m_SourceMask, SourceBit(LogSource::Glfw));
