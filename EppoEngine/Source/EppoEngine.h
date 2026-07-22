@@ -8,6 +8,8 @@
 
 #include "Core/Application.h"
 #include "Core/Buffer.h"
+#include "Core/BufferReader.h"
+#include "Core/BufferWriter.h"
 #include "Core/Input.h"
 #include "Core/KeyCodes.h"
 #include "Core/Layer.h"
@@ -22,7 +24,10 @@
 
 #include <ImGuizmo.h>
 
+#include "Project/GameData.h"
 #include "Project/Project.h"
+#include "Project/ProjectExporter.h"
+#include "Project/ProjectSerializer.h"
 
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Camera/SceneCamera.h"
@@ -35,6 +40,7 @@
 
 #include "Scripting/ScriptEngine.h"
 
+#include "Utility/ErrorDialog.h"
 #include "Utility/Filesystem.h"
 #include "Utility/FileWatcher.h"
 #include "Utility/Json.h"

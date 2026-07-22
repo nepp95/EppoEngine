@@ -10,6 +10,21 @@
 
 namespace Eppo
 {
+	namespace
+	{
+		auto VulkanFormatToNvrhi(const VkFormat format) -> nvrhi::Format
+		{
+			switch (format)
+			{
+				case VK_FORMAT_R8G8B8A8_UNORM: return nvrhi::Format::RGBA8_UNORM;
+				case VK_FORMAT_B8G8R8A8_UNORM: return nvrhi::Format::BGRA8_UNORM;
+				case VK_FORMAT_R8G8B8A8_SRGB: return nvrhi::Format::SRGBA8_UNORM;
+				case VK_FORMAT_B8G8R8A8_SRGB: return nvrhi::Format::SBGRA8_UNORM;
+				default: return nvrhi::Format::UNKNOWN;
+			}
+		}
+	}
+
 	Swapchain::Swapchain(const VkSurfaceKHR surface)
 		: m_Surface(surface)
 	{
@@ -19,7 +34,7 @@ namespace Eppo
 		// Get swapchain support details
 		auto [capabilities, formats, presentModes] = QuerySwapchainSupportDetails();
 		m_SurfaceFormat = SelectSurfaceFormat(formats);
-		m_PresentMode = SelectPresentMode(presentModes);
+		m_PresentMode = SelectPresentMode(presentModes, dm->GetParams().VSync);
 		m_Format = m_SurfaceFormat.format;
 		m_Extent = SelectExtent(capabilities);
 
@@ -202,8 +217,10 @@ namespace Eppo
 			auto& image = m_Images.emplace_back();
 			image.NativeImage = images.at(i);
 
+			const nvrhi::Format imageFormat = VulkanFormatToNvrhi(m_Format);
+			EP_ASSERT(imageFormat != nvrhi::Format::UNKNOWN);
 			ImageSpecification imageSpec{
-				.ImageFormat = nvrhi::Format::RGBA8_UNORM,
+				.ImageFormat = imageFormat,
 				.Width = m_Extent.width,
 				.Height = m_Extent.height,
 				.IsRenderTarget = true,
@@ -286,40 +303,40 @@ namespace Eppo
 
 	auto Swapchain::SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats) -> VkSurfaceFormatKHR
 	{
-		VkSurfaceFormatKHR surfaceFormat{};
+	    EP_ASSERT(!surfaceFormats.empty(), "The Vulkan device reported no supported surface formats.");
 
-		for (const auto& format : surfaceFormats)
+		constexpr std::array preferredFormats{
+			VK_FORMAT_R8G8B8A8_UNORM,
+			VK_FORMAT_B8G8R8A8_UNORM,
+			VK_FORMAT_R8G8B8A8_SRGB,
+			VK_FORMAT_B8G8R8A8_SRGB,
+		};
+
+		for (const VkFormat preferred : preferredFormats)
 		{
-			if (format.format == VK_FORMAT_R8G8B8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			for (const auto& format : surfaceFormats)
 			{
-				surfaceFormat = format;
-				break;
+				if (format.format == preferred && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+					return format;
 			}
 		}
 
-		if (surfaceFormat.format == VK_FORMAT_UNDEFINED)
-		{
-			Log::Warn("Can't find requested swapchain format, falling back to first found!");
-			surfaceFormat = surfaceFormats.back();
-		}
-
-		return surfaceFormat;
+		Log::Warn("Can't find a supported RGBA8 swapchain format, falling back to first found!");
+		return surfaceFormats.front();
 	}
 
-	auto Swapchain::SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes) -> VkPresentModeKHR
+	auto Swapchain::SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes, const bool vsync) -> VkPresentModeKHR
 	{
-		VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+		if (vsync)
+			return VK_PRESENT_MODE_FIFO_KHR;
 
 		for (const auto& mode : presentModes)
 		{
 			if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
-			{
-				presentMode = mode;
-				break;
-			}
+				return mode;
 		}
 
-		return presentMode;
+		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
 	auto Swapchain::SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities) const -> VkExtent2D
@@ -328,11 +345,9 @@ namespace Eppo
 
 		if (capabilities.currentExtent.width == UINT32_MAX)
 		{
-			int width = 0;
-			int height = 0;
-			glfwGetFramebufferSize(Application::Get().GetWindow()->GetNative(), &width, &height);
+			const auto [width, height] = Application::Get().GetWindow()->GetFramebufferSize();
 
-			extent = { .width = static_cast<uint32_t>(width), .height = static_cast<uint32_t>(height) };
+			extent = { .width = width, .height = height };
 			extent.width = std::clamp(extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
 			extent.height = std::clamp(extent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 		}

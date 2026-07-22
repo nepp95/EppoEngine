@@ -103,7 +103,7 @@ namespace Eppo
 
 	struct RigidBodyComponent
 	{
-		enum class BodyType : uint8_t { Static = 0, Kinematic, Dynamic };
+		enum class BodyType : uint32_t { Static = 0, Kinematic, Dynamic };
 
 		BodyType Type = BodyType::Static;
 		float GravityScale = 1.0f;

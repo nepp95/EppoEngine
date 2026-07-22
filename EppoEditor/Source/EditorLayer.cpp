@@ -1,13 +1,10 @@
 #include "EditorLayer.h"
 
-#include "Renderer/Image.h"
-
-#include <glm/gtc/type_ptr.hpp>
-
 #include "Panels/ContentBrowserPanel.h"
 #include "Panels/PropertyPanel.h"
 #include "Panels/SceneHierarchyPanel.h"
 
+#include <glm/gtc/type_ptr.hpp>
 #include <imgui_stdlib.h>
 
 namespace Eppo
@@ -74,6 +71,8 @@ namespace Eppo
 
 	auto EditorLayer::OnDetach() -> void
 	{
+		if (m_ExportFuture.valid())
+			m_ExportFuture.wait();
 		ScriptEngine::Shutdown();
 		Project::SetActive(nullptr);
 	}
@@ -220,6 +219,9 @@ namespace Eppo
 				if (ImGui::MenuItem("Save Project", "CTRL+S"))
 					SaveProject();
 
+				if (ImGui::MenuItem("Export Game...", nullptr, false, Project::GetActive() != nullptr && !m_ExportInProgress))
+					m_ExportOptionsPopup = true;
+
 				if (ImGui::MenuItem("Open Project", "CTRL+O"))
 					OpenProject();
 
@@ -292,6 +294,9 @@ namespace Eppo
     // Popups
 	UI_NewProjectPopup();
 	UI_RelationshipRepairPopup();
+	UI_ExportOptionsPopup();
+	UI_ExportProgressPopup();
+	UI_ExportResultPopup();
 
 	// Scene render
 	m_SceneRenderer->RenderGui();
@@ -339,6 +344,9 @@ namespace Eppo
 	auto EditorLayer::OnKeyPressed(const KeyPressedEvent& e) -> bool
 	{
 	    EP_PROFILE_FN("EditorLayer::OnKeyPressed");
+
+		if (m_ExportInProgress)
+			return false;
 
 		if (e.IsRepeat())
 			return false;
@@ -557,7 +565,7 @@ namespace Eppo
 
 		const auto path = FileDialog::OpenFile({
 			{ "EppoEngine Project", "epproj" }
-		}, FS::GetRootDirectory());
+		}, Project::GetProjectsDirectory());
 
 		if (path.empty())
 			return false;
@@ -614,6 +622,63 @@ namespace Eppo
 		return Project::SaveActive();
 	}
 
+	auto EditorLayer::ExportGame() -> void
+	{
+		const Ref<Project> project = Project::GetActive();
+		if (!project)
+			return;
+
+		if (!SaveProject())
+		{
+			m_ExportResult = {};
+			m_ExportResult.Errors.emplace_back("The project could not be saved before export.");
+			m_ExportResultPopup = true;
+			return;
+		}
+
+		const auto parentDirectory = FileDialog::OpenFolder(project->GetSpecification().ProjectDirectory.parent_path());
+		if (parentDirectory.empty())
+			return;
+
+		ProjectExportOptions options{
+			.ParentDirectory = parentDirectory,
+			.SourceDirectory = FS::GetRootDirectory().parent_path().parent_path().parent_path(),
+			.ExportDebug = m_ExportDebug,
+			.ExportRelease = m_ExportRelease,
+		};
+
+		options.ProgressCallback = [this](const float progress, const std::string_view phase)
+		{
+			const std::scoped_lock lock(m_ExportProgressMutex);
+			m_ExportProgress = progress;
+			m_ExportPhase = phase;
+		};
+
+		{
+			const std::scoped_lock lock(m_ExportProgressMutex);
+			m_ExportProgress = 0.0f;
+			m_ExportPhase = "Starting export";
+		}
+
+		m_ExportInProgress = true;
+		try
+		{
+			m_ExportFuture = std::async(std::launch::async, [project, options = std::move(options)]() mutable -> ProjectExportResult
+			    {
+					return ProjectExporter(project).Export(options);
+				}
+			);
+			m_ExportProgressPopup = true;
+		}
+		catch (const std::exception& exception)
+		{
+			m_ExportInProgress = false;
+			m_ExportResult = {};
+			m_ExportResult.Errors.emplace_back(std::format("Failed to start export: {}", exception.what()));
+			m_ExportResultPopup = true;
+		}
+	}
+
 	auto EditorLayer::NewScene() -> void
 	{
 	    EP_PROFILE_FN("EditorLayer::NewScene");
@@ -630,7 +695,7 @@ namespace Eppo
 
 		const auto path = FileDialog::OpenFile({
 			{ "EppoEngine Scene", "epscene" }
-		}, FS::GetRootDirectory());
+		}, Project::GetAssetsDirectory());
 
 		if (path.empty())
 			return false;
@@ -706,7 +771,7 @@ namespace Eppo
 
 		const auto path = FileDialog::SaveFile({
 			{ "EppoEngine Scene", "epscene" }
-		}, FS::GetRootDirectory());
+		}, Project::GetAssetsDirectory());
 
 		if (path.empty())
 			return false;
@@ -935,7 +1000,109 @@ namespace Eppo
 		}
 	}
 
-	auto EditorLayer::UI_ViewportNotices() -> void
+	auto EditorLayer::UI_ExportOptionsPopup() -> void
+	{
+		if (m_ExportOptionsPopup)
+		{
+			ImGui::OpenPopup("Export Game");
+			m_ExportOptionsPopup = false;
+		}
+
+		constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		if (ImGui::BeginPopupModal("Export Game", nullptr, windowFlags))
+		{
+			ImGui::TextUnformatted("Configurations");
+			ImGui::Checkbox("Debug", &m_ExportDebug);
+			ImGui::Checkbox("Release", &m_ExportRelease);
+			ImGui::Separator();
+
+			ImGui::BeginDisabled(!m_ExportDebug && !m_ExportRelease);
+			if (ImGui::Button("Export", ImVec2(100.0f, 30.0f)))
+			{
+				ImGui::CloseCurrentPopup();
+				ExportGame();
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(100.0f, 30.0f)))
+				ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
+	}
+
+	auto EditorLayer::UI_ExportProgressPopup() -> void
+	{
+		if (m_ExportProgressPopup)
+		{
+			ImGui::OpenPopup("Exporting Game");
+			m_ExportProgressPopup = false;
+		}
+
+		constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		if (ImGui::BeginPopupModal("Exporting Game", nullptr, windowFlags))
+		{
+			float progress = 0.0f;
+			std::string phase;
+			{
+				const std::scoped_lock lock(m_ExportProgressMutex);
+				progress = m_ExportProgress;
+				phase = m_ExportPhase;
+			}
+
+			ImGui::TextUnformatted(phase.c_str());
+			const auto progressText = std::format("{:.0f}%", progress * 100.0f);
+			ImGui::ProgressBar(progress, ImVec2(440.0f, 0.0f), progressText.c_str());
+
+			if (m_ExportFuture.valid() && m_ExportFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+			{
+				try
+				{
+					m_ExportResult = m_ExportFuture.get();
+				}
+				catch (const std::exception& exception)
+				{
+					m_ExportResult = {};
+					m_ExportResult.Errors.emplace_back(std::format("Export failed unexpectedly: {}", exception.what()));
+				}
+				m_ExportInProgress = false;
+				m_ExportResultPopup = true;
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+	}
+
+	auto EditorLayer::UI_ExportResultPopup() -> void
+	{
+		if (m_ExportResultPopup)
+		{
+			ImGui::OpenPopup("Export Result");
+			m_ExportResultPopup = false;
+		}
+
+		constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		ImGui::SetNextWindowSizeConstraints(ImVec2(460.0f, 0.0f), ImVec2(760.0f, FLT_MAX));
+		if (ImGui::BeginPopupModal("Export Result", nullptr, windowFlags))
+		{
+			ImGui::TextUnformatted(m_ExportResult.Success ? "Export succeeded" : "Export failed");
+			if (m_ExportResult.Success)
+				ImGui::TextWrapped("Output: %s", m_ExportResult.OutputPath.string().c_str());
+
+			for (const auto& warning : m_ExportResult.Warnings)
+				ImGui::BulletText("Warning: %s", warning.c_str());
+			for (const auto& error : m_ExportResult.Errors)
+				ImGui::BulletText("Error: %s", error.c_str());
+
+			if (ImGui::Button("OK", ImVec2(100.0f, 30.0f)))
+				ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
+	}
+
+	auto EditorLayer::UI_ViewportNotices() const -> void
 	{
 		ImDrawList* drawList = ImGui::GetWindowDrawList();
 		const ImVec2 imageMin = ImGui::GetItemRectMin();

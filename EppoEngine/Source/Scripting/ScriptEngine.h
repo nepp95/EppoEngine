@@ -4,6 +4,7 @@
 #include "Scripting/Assembly.h"
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptField.h"
+#include "Scripting/ScriptFieldStorage.h"
 #include "Scripting/ScriptInstance.h"
 #include "Utility/FileWatcher.h"
 
@@ -11,33 +12,6 @@ namespace Eppo
 {
     class PhysicsWorld;
 
-    // Editor-time value of a single script field. Buffer is sized to the widest
-    // field type (Vector4 = 16 bytes) so any field fits without allocation.
-    struct ScriptFieldValue
-    {
-        ScriptFieldType Type = ScriptFieldType::None;
-        // Aligned to 8 so callers (ImGui, marshalling) may read typed values
-        // directly from the buffer without unaligned access.
-        alignas(8) std::array<uint8_t, 16> Buffer{};
-
-        template<typename T>
-        [[nodiscard]] auto Get() const -> T
-        {
-            static_assert(sizeof(T) <= 16, "ScriptFieldValue buffer too small for type");
-            T value{};
-            std::memcpy(&value, Buffer.data(), sizeof(T));
-            return value;
-        }
-
-        template<typename T>
-        auto Set(const T& value) -> void
-        {
-            static_assert(sizeof(T) <= 16, "ScriptFieldValue buffer too small for type");
-            std::memcpy(Buffer.data(), &value, sizeof(T));
-        }
-    };
-
-    using ScriptFieldMap = std::unordered_map<std::string, ScriptFieldValue>;
     [[nodiscard]] auto ScriptFieldTypeSize(ScriptFieldType type) -> uint32_t;
 
     class ScriptEngine
@@ -59,7 +33,7 @@ namespace Eppo
         [[nodiscard]] static auto Get() -> ScriptEngine&;
 
         // Assembly management
-        auto LoadUserAssembly(const std::filesystem::path& path) const -> void;
+        auto LoadUserAssembly(const std::filesystem::path& path) -> bool;
         auto UnloadUserAssembly() -> void;
         auto ReloadProjectAssembly() -> bool;
 
@@ -112,7 +86,7 @@ namespace Eppo
         WeakRef<Scene> m_SceneContext;
 
         std::unordered_map<UUID, ScriptInstance> m_EntityInstances;
-        std::unordered_map<UUID, ScriptFieldMap> m_FieldStorage;
+        ScriptFieldStorage m_FieldStorage;
 
         static ScopedPtr<ScriptEngine> s_Instance;
     };

@@ -15,6 +15,7 @@ namespace Eppo
 		auto PrepareRender() -> void;
 		auto Render() -> void;
 		auto BlockEvents(bool blockEvents) -> void;
+		auto SetClearMainSwapchainTarget(bool clear) -> void { m_ClearMainSwapchainTarget = clear; }
 		[[nodiscard]] constexpr auto GetMainImGuiRenderer() const -> const ScopedPtr<ImGuiRenderer>& { return m_ImGuiRenderer; }
 
 	private:
@@ -28,5 +29,6 @@ namespace Eppo
 	private:
 		ScopedPtr<ImGuiRenderer> m_ImGuiRenderer = nullptr;
 		bool m_BlockEvents = false;
+		bool m_ClearMainSwapchainTarget = true;
 	};
 }

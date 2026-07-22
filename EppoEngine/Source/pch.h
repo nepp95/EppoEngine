@@ -18,6 +18,8 @@
 
 #include "Core/Base.h"
 #include "Core/Buffer.h"
+#include "Core/BufferReader.h"
+#include "Core/BufferWriter.h"
 #include "Core/Hash.h"
 #include "Core/UUID.h"
 #include "Utility/Filesystem.h"

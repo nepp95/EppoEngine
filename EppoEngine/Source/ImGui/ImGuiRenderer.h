@@ -20,8 +20,8 @@ namespace Eppo
 
 		auto Resize() -> void;
 		auto UpdateFontTexture() -> void;
-		auto RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain) -> void;
-		auto Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline) -> void;
+		auto RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain, bool clearSwapchainTarget = true) -> void;
+		auto Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline, bool clearTarget = true) -> void;
 
 	    [[nodiscard]] auto GetGPUTime(uint32_t frameIndex) const -> float;
 		[[nodiscard]] auto GetOwnGPUTime(uint32_t frameIndex) const -> float;

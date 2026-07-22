@@ -5,10 +5,10 @@
 
 namespace Eppo
 {
-	class Editor : public Application
+	class Editor final : public Application
 	{
 	public:
-		Editor(ApplicationParams&& params)
+        explicit Editor(ApplicationParams&& params)
 			: Application(std::move(params))
 		{
 			PushLayer<EditorLayer>();
@@ -17,7 +17,7 @@ namespace Eppo
 
 	auto CreateApplication(const int argc, char** argv) -> Application*
 	{
-		CommandLineArgs args(argc, argv);
+        const CommandLineArgs args(argc, argv);
 		ApplicationParams params{
 			.Args = args,
 		};
