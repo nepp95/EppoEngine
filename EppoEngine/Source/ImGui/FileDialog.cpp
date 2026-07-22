@@ -30,4 +30,17 @@ namespace Eppo
 
 		return outPath;
 	}
+
+	auto FileDialog::OpenFolder(const std::filesystem::path& initialDir) -> std::filesystem::path
+	{
+		NFD::UniquePath nfdPath = nullptr;
+		const auto result = NFD::PickFolder(nfdPath, initialDir.empty() ? nullptr : initialDir.string().c_str());
+
+		std::filesystem::path outPath;
+		if (result == NFD_OKAY)
+			outPath = nfdPath.get();
+		else if (result == NFD_ERROR)
+			Log::Error("NFD Failed: {}", NFD::GetError());
+		return outPath;
+	}
 }

@@ -23,6 +23,7 @@ namespace Eppo
 
 		static auto New() -> Ref<Project>;
 		static auto New(const ProjectSpecification& spec) -> Ref<Project>;
+		static auto New(const ProjectSpecification& spec, const Ref<AssetManager>& assetManager) -> Ref<Project>;
 		static auto Open(const std::filesystem::path& path) -> Ref<Project>;
 		static auto SaveActive() -> bool;
 

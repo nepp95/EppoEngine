@@ -12,13 +12,21 @@ namespace Eppo
 	Application* Application::s_Instance = nullptr;
 
 	Application::Application(ApplicationParams&& params)
-		: m_Params(params)
+		: m_Params(std::move(params))
 	{
 		EP_ASSERT(!s_Instance, "There can only be one instance of the application!");
 		s_Instance = this;
 
 		// Create window
-		m_Window = CreateRef<Window>(1600, 900);
+		m_Window = CreateRef<Window>(WindowSpecification{
+			.Title = m_Params.Title,
+			.Width = m_Params.Width,
+			.Height = m_Params.Height,
+			.Fullscreen = m_Params.Fullscreen,
+			.Decorated = m_Params.Decorated,
+			.EnableFileDialogs = m_Params.EnableFileDialogs,
+		});
+
 		m_Window->SetEventCallback(
 			[this](Event& e) -> void
 			{
@@ -29,6 +37,7 @@ namespace Eppo
 		// Create device manager (dx11/dx12/vk)
         const DeviceParams deviceParams{
 			.API = RendererAPI::Vulkan,
+			.VSync = m_Params.VSync,
 		};
 
 		m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
@@ -36,7 +45,8 @@ namespace Eppo
 		m_DeviceManager->InitRenderer();
 
 		// Create UI layer
-		m_ImGuiLayer = PushLayer<ImGuiLayer>();
+		if (m_Params.EnableImGui)
+			m_ImGuiLayer = PushLayer<ImGuiLayer>();
 	}
 
 	Application::~Application()
@@ -86,13 +96,15 @@ namespace Eppo
 			for (const auto& layer : m_LayerStack)
 				layer->OnUpdate(timestep);
 
-			// UI
-			m_ImGuiLayer->PrepareRender();
+			if (m_ImGuiLayer)
+			{
+				m_ImGuiLayer->PrepareRender();
 
-			for (const auto& layer : m_LayerStack)
-				layer->OnUIRender();
+				for (const auto& layer : m_LayerStack)
+					layer->OnUIRender();
 
-			m_ImGuiLayer->Render();
+				m_ImGuiLayer->Render();
+			}
 
 			// Present
 			m_DeviceManager->Present();
@@ -137,6 +149,6 @@ namespace Eppo
 
 		m_IsMinimized = false;
 
-		return true;
+		return false;
 	}
 }

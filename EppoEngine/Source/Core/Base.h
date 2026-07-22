@@ -30,6 +30,13 @@ namespace Eppo
 				raise(SIGTRAP);
 				#endif
 			}
+	    #elif defined(EP_DIST)
+	        if (!condition)
+	        {
+	            if (message)
+	                throw std::runtime_error(message);
+	            throw std::runtime_error("Assertion hit!");
+	        }
 		#endif
 	}
 

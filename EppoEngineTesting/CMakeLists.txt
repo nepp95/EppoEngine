@@ -76,15 +76,18 @@ add_dependencies(EppoEngineTesting EppoTestingHarness)
 # Copy the editor's Resources/ + TestData/Scenes/ next to the exe (stamp-gated)
 # so the graphical suites can boot the renderer and load harness.epscene.
 set(EDITOR_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/EppoEditor/Resources")
-file(GLOB_RECURSE TEST_RESOURCE_FILES CONFIGURE_DEPENDS "${EDITOR_RESOURCES_DIR}/*")
+set(ENGINE_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/EppoEngine/Resources")
+file(GLOB_RECURSE ENGINE_RESOURCE_FILES CONFIGURE_DEPENDS "${ENGINE_RESOURCES_DIR}/*")
+file(GLOB_RECURSE EDITOR_RESOURCE_FILES CONFIGURE_DEPENDS "${EDITOR_RESOURCES_DIR}/*")
 file(GLOB TEST_SCENE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scenes/*")
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoEngineTesting>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_RESOURCES_DIR}" "$<TARGET_FILE_DIR:EppoEngineTesting>/Resources"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${EDITOR_RESOURCES_DIR}" "$<TARGET_FILE_DIR:EppoEngineTesting>/Resources"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/TestData/Scenes" "$<TARGET_FILE_DIR:EppoEngineTesting>/TestData/Scenes"
     COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/_TestResourcesSync"
-    DEPENDS ${TEST_RESOURCE_FILES} ${TEST_SCENE_FILES}
+    DEPENDS ${ENGINE_RESOURCE_FILES} ${EDITOR_RESOURCE_FILES} ${TEST_SCENE_FILES}
     COMMENT "Copying Resources + scenario TestData (tests)"
     VERBATIM
 )
@@ -100,6 +103,7 @@ endfunction()
 
 AddTestingSuite(Core core)
 AddTestingSuite(Physics core)
+AddTestingSuite(Project unit)
 AddTestingSuite(Scene core)
 AddTestingSuite(Scripting scripting)
 AddTestingSuite(ScriptMarshalling scripting)

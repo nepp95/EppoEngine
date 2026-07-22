@@ -8,16 +8,20 @@
 namespace Eppo
 {
 	std::map<AssetType, importFn> AssetImporter::s_AssetImportFns = {
-		{ AssetType::Mesh, AssetImporter::ImportMesh },
-		{ AssetType::Scene, AssetImporter::ImportScene }
+		{ AssetType::Mesh, ImportMesh },
+		{ AssetType::Scene, ImportScene },
 	};
+
+    std::map<AssetType, importPackedFn> AssetImporter::s_AssetImportPackedFns = {
+        { AssetType::Scene, ImportPackedScene },
+    };
 
 	std::map<AssetType, exportFn> AssetImporter::s_AssetExportFns = {
-		{ AssetType::Mesh, AssetImporter::ExportMesh },
-		{ AssetType::Scene, AssetImporter::ExportScene },
+		{ AssetType::Mesh, ExportMesh },
+		{ AssetType::Scene, ExportScene },
 	};
 
-	auto AssetImporter::ImportAsset(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Asset>
+	auto AssetImporter::ImportAsset(const AssetHandle handle, const AssetMetadata& metadata) -> Ref<Asset>
 	{
 		EP_PROFILE_FN("AssetImporter::ImportAsset");
 
@@ -30,7 +34,20 @@ namespace Eppo
 		return s_AssetImportFns.at(metadata.Type)(handle, metadata);
 	}
 
-	auto AssetImporter::ImportMesh(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Mesh>
+	auto AssetImporter::ImportAsset(const AssetHandle handle, const AssetType type, BufferReader& reader) -> Ref<Asset>
+	{
+	    EP_PROFILE_FN("AssetImporter::ImportAsset");
+
+	    if (!s_AssetImportPackedFns.contains(type))
+	    {
+	        Log::Error("No packed importer available for asset type: {}", Utils::AssetTypeToString(type));
+	        return nullptr;
+	    }
+
+		return s_AssetImportPackedFns.at(type)(handle, reader);
+	}
+
+	auto AssetImporter::ImportMesh(const AssetHandle handle, const AssetMetadata& metadata) -> Ref<Mesh>
 	{
 		EP_PROFILE_FN("AssetImporter::ImportMesh");
 
@@ -56,14 +73,25 @@ namespace Eppo
 		return mesh;
 	}
 
-	auto AssetImporter::ImportScene(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Scene>
+	auto AssetImporter::ImportScene(const AssetHandle handle, const AssetMetadata& metadata) -> Ref<Scene>
 	{
 		EP_PROFILE_FN("AssetImporter::ImportScene");
 
 		Ref<Scene> scene = CreateRef<Scene>();
+		scene->Handle = handle;
 		SceneSerializer serializer(scene);
-		serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath));
+		if (!serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath)))
+			return nullptr;
 
+		return scene;
+	}
+
+	auto AssetImporter::ImportPackedScene(const AssetHandle handle, BufferReader& reader) -> Ref<Scene>
+	{
+		Ref<Scene> scene = CreateRef<Scene>();
+		scene->Handle = handle;
+		if (!SceneSerializer(scene).Deserialize(reader))
+			return nullptr;
 		return scene;
 	}
 

@@ -33,7 +33,7 @@ namespace Eppo
 	private:
 		[[nodiscard]] auto QuerySwapchainSupportDetails() const -> SwapchainSupportDetails;
 		[[nodiscard]] auto SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats) -> VkSurfaceFormatKHR;
-		[[nodiscard]] auto SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes) -> VkPresentModeKHR;
+		[[nodiscard]] auto SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes, bool vsync) -> VkPresentModeKHR;
 		[[nodiscard]] auto SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities) const -> VkExtent2D;
 
 	private:

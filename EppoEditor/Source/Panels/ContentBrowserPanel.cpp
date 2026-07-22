@@ -424,7 +424,7 @@ namespace Eppo
 	{
 		const auto source = FileDialog::OpenFile({
 			{ "Importable Assets", "gltf,glb,epscene,png,jpg,jpeg,tga,bmp,hdr" }
-		}, FS::GetRootDirectory());
+		}, m_CurrentDirectory);
 
 		if (source.empty())
 			return;

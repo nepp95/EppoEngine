@@ -4,6 +4,8 @@
 
 #include <EppoEngine.h>
 
+#include <future>
+
 namespace Eppo
 {
 	class EditorLayer : public Layer
@@ -29,6 +31,7 @@ namespace Eppo
 		auto OpenProject() -> bool;
 		auto OpenProject(const std::filesystem::path& path) -> bool;
 		auto SaveProject() -> bool;
+		auto ExportGame() -> void;
 
 		auto NewScene() -> void;
 		auto OpenScene() -> bool;
@@ -41,7 +44,10 @@ namespace Eppo
 		auto UI_Toolbar() -> void;
 		auto UI_NewProjectPopup() -> void;
 		auto UI_RelationshipRepairPopup() -> void;
-		auto UI_ViewportNotices() -> void;
+		auto UI_ExportOptionsPopup() -> void;
+		auto UI_ExportProgressPopup() -> void;
+		auto UI_ExportResultPopup() -> void;
+		auto UI_ViewportNotices() const -> void;
 
 	private:
 		Ref<PanelManager> m_PanelManager = nullptr;
@@ -75,7 +81,20 @@ namespace Eppo
 
 		// Popups
 		bool m_NewProjectPopup = false;
+		bool m_ExportOptionsPopup = false;
+		bool m_ExportProgressPopup = false;
+		bool m_ExportResultPopup = false;
 		std::vector<std::string> m_RelationshipRepairNotices;
+
+	    // Export
+		bool m_ExportDebug = true;
+		bool m_ExportRelease = true;
+		bool m_ExportInProgress = false;
+		float m_ExportProgress = 0.0f;
+		std::string m_ExportPhase;
+		std::mutex m_ExportProgressMutex;
+		std::future<ProjectExportResult> m_ExportFuture;
+		ProjectExportResult m_ExportResult;
 
 		// Gizmo
 		ImGuizmo::OPERATION m_GizmoType = ImGuizmo::TRANSLATE;

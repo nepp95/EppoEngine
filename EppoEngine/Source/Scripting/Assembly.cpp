@@ -33,17 +33,18 @@ namespace Eppo
         RebuildClassIndex();
     }
 
-    auto Assembly::LoadUserAssembly(const EP_NativeString& path) -> void
+    auto Assembly::LoadUserAssembly(const EP_NativeString& path) -> bool
     {
         if (!m_ManagedFns)
         {
             Log::Error("No managed functions loaded!");
-            return;
+            return false;
         }
 
         const auto pathStr = std::filesystem::path(path).string();
-        m_ManagedFns->LoadUserAssembly(pathStr.c_str());
+        const bool loaded = m_ManagedFns->LoadUserAssembly(pathStr.c_str()) != 0;
         RebuildClassIndex();
+        return loaded;
     }
 
     auto Assembly::UnloadUserAssembly() -> void

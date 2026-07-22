@@ -19,6 +19,13 @@ namespace Eppo
 		return s_ActiveProject;
 	}
 
+	auto Project::New(const ProjectSpecification& spec, const Ref<AssetManager>& assetManager) -> Ref<Project>
+	{
+		New(spec);
+		s_ActiveProject->m_AssetManager = assetManager;
+		return s_ActiveProject;
+	}
+
 	auto Project::Open(const std::filesystem::path& path) -> Ref<Project>
 	{
 		EP_PROFILE_FN("Project::Open");

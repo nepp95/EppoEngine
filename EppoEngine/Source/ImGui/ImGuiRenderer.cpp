@@ -112,14 +112,14 @@ namespace Eppo
 		io.Fonts->TexRef = ImTextureRef(m_FontTexture.Get());
 	}
 
-	auto ImGuiRenderer::RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain) -> void
+	auto ImGuiRenderer::RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain, const bool clearSwapchainTarget) -> void
 	{
 		EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain")
 
-		Render(viewport, GetOrCreatePipeline(swapchain));
+		Render(viewport, GetOrCreatePipeline(swapchain), clearSwapchainTarget);
 	}
 
-	auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline) -> void
+	auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline, const bool clearTarget) -> void
 	{
 		EP_PROFILE_FN("ImGuiRenderer::Render")
 
@@ -131,7 +131,8 @@ namespace Eppo
 		nvrhi::GraphicsState state{};
 
 		const auto& framebuffer = pipeline->GetSpecification().Framebuffer->GetFramebuffer();
-		nvrhi::utils::ClearColorAttachment(m_RenderCommandBuffer.GetCommandList(), framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
+		if (clearTarget)
+			nvrhi::utils::ClearColorAttachment(m_RenderCommandBuffer.GetCommandList(), framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
 
 		// Update geometry
 		ImDrawData* drawData = viewport->DrawData;

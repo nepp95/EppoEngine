@@ -14,6 +14,8 @@
 
 namespace Eppo
 {
+	static bool s_FontFallbackWarningLogged = false;
+
 	struct ImGuiViewportData
 	{
 		bool WindowOwned = false;
@@ -117,7 +119,19 @@ namespace Eppo
 		// Load font
 		constexpr float fontSize = 14.0f;
 		const auto fontPath = FS::GetResourcesDirectory() / "Fonts" / "Roboto-Regular.ttf";
-		io.FontDefault = io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), fontSize);
+		if (FS::Exists(fontPath))
+		{
+			io.FontDefault = io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), fontSize);
+		}
+		else
+		{
+			io.FontDefault = io.Fonts->AddFontDefault();
+			if (!s_FontFallbackWarningLogged)
+			{
+				Log::Warn("Font '{}' was not found; using the ImGui default font.", fontPath);
+				s_FontFallbackWarningLogged = true;
+			}
+		}
 
 		// Setup style
 		ImGui::StyleColorsDark();
@@ -184,7 +198,7 @@ namespace Eppo
 		const auto& dm = static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
 
 		ImGui::Render();
-		m_ImGuiRenderer->RenderToSwapchain(ImGui::GetMainViewport(), dm->GetSwapchain());
+		m_ImGuiRenderer->RenderToSwapchain(ImGui::GetMainViewport(), dm->GetSwapchain(), m_ClearMainSwapchainTarget);
 
 		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
