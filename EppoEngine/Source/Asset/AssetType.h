@@ -2,7 +2,7 @@
 
 namespace Eppo
 {
-	enum class AssetType
+	enum class AssetType : uint8_t
 	{
 		None = 0,
 		Mesh,

@@ -18,7 +18,10 @@ namespace Eppo::PackFormat
 
 	inline constexpr FormatId Package{ .Magic = MakeMagic('E', 'P', 'A', 'K'), .Version = 1 };
 
-	// Per-asset payloads packed inside the container.
+    // Global payloads
+    inline constexpr FormatId Shader{ .Magic = MakeMagic('E', 'S', 'H', 'D'), .Version = 1 };
+
+	// Per-asset payloads
     inline constexpr FormatId Mesh{ .Magic = MakeMagic('E', 'M', 'S', 'H'), .Version = 1 };
 	inline constexpr FormatId Scene{ .Magic = MakeMagic('E', 'S', 'C', 'N'), .Version = 1 };
 
@@ -27,6 +30,8 @@ namespace Eppo::PackFormat
 	{
 		switch (type)
 		{
+		    case AssetType::Mesh:
+		        return Mesh;
 			case AssetType::Scene:
 				return Scene;
 			default:

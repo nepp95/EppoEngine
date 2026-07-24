@@ -32,8 +32,7 @@ namespace Eppo
 		tg3_error_stack_init(&errors);
 
 		// Parse
-		auto err = tg3_parse_file(&model, &errors, path.data(), static_cast<uint32_t>(path.size()), &options);
-		if (err != TG3_OK)
+        if (auto err = tg3_parse_file(&model, &errors, path.data(), static_cast<uint32_t>(path.size()), &options); err != TG3_OK)
 		{
 			Log::Error("Failed loading mesh '{}'", path);
 			for (uint32_t i = 0; i < errors.count; i++)

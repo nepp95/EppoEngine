@@ -44,6 +44,9 @@ namespace Eppo
 		m_DeviceManager->Init();
 		m_DeviceManager->InitRenderer();
 
+		// Shaders load from disk here; a deployed runtime reloads them from its pack once it has read one.
+		m_DeviceManager->GetRenderer()->LoadShaders();
+
 		// Create UI layer
 		if (m_Params.EnableImGui)
 			m_ImGuiLayer = PushLayer<ImGuiLayer>();

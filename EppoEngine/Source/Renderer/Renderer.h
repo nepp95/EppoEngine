@@ -14,15 +14,16 @@ namespace Eppo
 	public:
 		Renderer();
 
-		// DeviceManager publishes Renderer before this loads shaders that need its descriptor manager.
 		auto Init() -> void;
+		auto LoadShaders(const std::map<std::string, PackedShaderData>& packedSources = {}) -> void;
 
 		static auto BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<RenderPass>& renderPass) -> void;
 		static auto EndRenderPass(const Ref<RenderCommandBuffer>& commandBuffer) -> void;
 		auto CompositeToSwapchain(const Ref<Image>& image) -> void;
 
 		[[nodiscard]] auto GetShader(const std::string& name) const -> Ref<Shader>;
-		[[nodiscard]] auto GetDescriptorManager() const -> const Ref<DescriptorManager>&;
+		[[nodiscard]] auto GetAllShaders() const -> const std::unordered_map<std::string, Ref<Shader>>& { return m_ShaderLibrary.GetAll(); }
+	    [[nodiscard]] auto GetDescriptorManager() const -> const Ref<DescriptorManager>&;
 
 	private:
 		ShaderLibrary m_ShaderLibrary;

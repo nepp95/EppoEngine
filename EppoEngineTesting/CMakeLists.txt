@@ -111,5 +111,6 @@ AddTestingSuite(ScriptMarshalling scripting)
 # Graphical suites: boot the real Application (need a display + GPU). Excluded on
 # headless CI via `ctest --label-exclude graphical`.
 AddTestingSuite(App graphical)
+AddTestingSuite(ProjectExport graphical)
 AddTestingSuite(Renderer graphical)
 AddTestingSuite(Scenario graphical)

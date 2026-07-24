@@ -3,14 +3,12 @@
 
 namespace Eppo
 {
-	auto ShaderLibrary::Load(const std::string& name) -> void
+	auto ShaderLibrary::Load(const std::string& name, const std::unordered_map<nvrhi::ShaderType, std::string>& sources) -> void
 	{
 		if (m_Shaders.contains(name))
 			Log::Warn("Shader with name '{}' already exists, reloading shader!", name);
-	
-		const ShaderSpecification shaderSpec{ .Name = name };
 
-		m_Shaders[name] = Shader::Create(shaderSpec);
+		m_Shaders[name] = Shader::Create(ShaderSpecification{ .Name = name, .Sources = sources });
 	}
 
 	auto ShaderLibrary::Get(const std::string& name) const -> Ref<Shader>

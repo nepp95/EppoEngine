@@ -10,7 +10,7 @@ auto main(int argc, char** argv) -> int;
 
 namespace Eppo
 {
-	struct CommandLineArgs
+    struct CommandLineArgs
 	{
 		int Argc;
 		char** Argv;
@@ -45,11 +45,13 @@ namespace Eppo
 	class Application
 	{
 	public:
-		Application(ApplicationParams&& params);
+        explicit Application(ApplicationParams&& params);
 		virtual ~Application();
 
-		auto Close() -> void { m_IsRunning = false; }
+        /// Signals to the application that an application close is requested. This frame will end and then initiate shutdown.
+        auto Close() -> void { m_IsRunning = false; }
 
+	    /// Run the application
 		auto Run() -> void;
 
 		// Advance the application by exactly one frame with the given timestep:
