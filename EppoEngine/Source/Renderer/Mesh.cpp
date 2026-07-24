@@ -15,6 +15,23 @@
 
 namespace Eppo
 {
+	namespace
+	{
+		auto GetNodeTransform(const tg3_node& node) -> glm::mat4
+		{
+			if (node.has_matrix)
+				return glm::mat4(glm::make_mat4(node.matrix));
+
+			const glm::vec3 translation = glm::make_vec3(node.translation);
+			const glm::quat rotation = glm::make_quat(node.rotation);
+			const glm::vec3 scale = glm::make_vec3(node.scale);
+
+			return glm::translate(glm::mat4(1.0f), translation)
+				* glm::mat4(rotation)
+				* glm::scale(glm::mat4(1.0f), scale);
+		}
+	}
+
 	Mesh::Mesh(std::string_view path)
 	{
 		EP_PROFILE_FN("Mesh::Mesh")
@@ -51,10 +68,38 @@ namespace Eppo
 		m_Name = pos == std::string_view::npos ? path : path.substr(pos + 1);
 		ProcessImages(model, pos == std::string_view::npos ? "" : path.substr(0, pos + 1));
 
-		for (uint32_t i = 0; i < model.nodes_count; i++)
+		if (model.scenes_count > 0)
 		{
-			const auto& node = model.nodes[i];
-			ProcessNode(model, node);
+			const int32_t sceneIndex = model.default_scene >= 0 ? model.default_scene : 0;
+			EP_ASSERT(sceneIndex < static_cast<int32_t>(model.scenes_count));
+
+			const auto& scene = model.scenes[sceneIndex];
+			for (uint32_t i = 0; i < scene.nodes_count; i++)
+			{
+				const int32_t nodeIndex = scene.nodes[i];
+				EP_ASSERT(nodeIndex >= 0 && nodeIndex < static_cast<int32_t>(model.nodes_count));
+				ProcessNode(model, model.nodes[nodeIndex], glm::mat4(1.0f));
+			}
+		}
+		else
+		{
+			std::vector<bool> childNodes(model.nodes_count, false);
+			for (uint32_t i = 0; i < model.nodes_count; i++)
+			{
+				const auto& node = model.nodes[i];
+				for (uint32_t childIndex = 0; childIndex < node.children_count; childIndex++)
+				{
+					const int32_t child = node.children[childIndex];
+					EP_ASSERT(child >= 0 && child < static_cast<int32_t>(model.nodes_count));
+					childNodes[child] = true;
+				}
+			}
+
+			for (uint32_t i = 0; i < model.nodes_count; i++)
+			{
+				if (!childNodes[i])
+					ProcessNode(model, model.nodes[i], glm::mat4(1.0f));
+			}
 		}
 
 		// Free
@@ -116,24 +161,22 @@ namespace Eppo
 		return mesh;
 	}
 
-	auto Mesh::ProcessNode(const tg3_model& model, const tg3_node& node) -> void
+	auto Mesh::ProcessNode(const tg3_model& model, const tg3_node& node, const glm::mat4& parentTransform) -> void
 	{
 		EP_PROFILE_FN("Mesh::ProcessNode")
 
+		const glm::mat4 localTransform = parentTransform * GetNodeTransform(node);
+
 		if (const int32_t meshIndex = node.mesh; meshIndex > -1)
 		{
-			auto localTransform = glm::mat4(1.0f);
-
-			const glm::vec3 translation = glm::make_vec3(node.translation);
-			localTransform = glm::translate(localTransform, translation);
-
-			const glm::quat rotation = glm::make_quat(node.rotation);
-			localTransform *= glm::mat4(rotation);
-
-			const glm::vec3 scale = glm::make_vec3(node.scale);
-			localTransform = glm::scale(localTransform, scale);
-
 			ProcessMesh(model, model.meshes[meshIndex], localTransform);
+		}
+
+		for (uint32_t i = 0; i < node.children_count; i++)
+		{
+			const int32_t childIndex = node.children[i];
+			EP_ASSERT(childIndex >= 0 && childIndex < static_cast<int32_t>(model.nodes_count));
+			ProcessNode(model, model.nodes[childIndex], localTransform);
 		}
 	}
 
