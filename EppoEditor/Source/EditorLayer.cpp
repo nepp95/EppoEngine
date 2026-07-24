@@ -59,11 +59,12 @@ namespace Eppo
 		if (FS::Exists(logoPath))
 			Application::Get().GetWindow()->SetIcon(logoPath);
 
-		if (!OpenProject())
-		{
-			m_ActiveScene = CreateRef<Scene>();
-			m_PanelManager->SetSceneContext(m_ActiveScene);
-		}
+		const auto& args = Application::Get().GetParams().Args;
+		const auto defaultProject = FS::GetRootDirectory() / "Projects" / "Test" / "Test.epproj";
+		const auto startupProject = args.Argc > 1 ? std::filesystem::path(args[1]) : defaultProject;
+
+		if (!OpenProject(startupProject) && !OpenProject())
+			NewProject("Test");
 
 		m_SceneRenderer = CreateRef<SceneRenderer>(m_ActiveScene, SceneRendererSpecification{
 			.Width = m_ViewportWidth,
