@@ -13,3 +13,11 @@
 
 *Instructions:*
 - `cmake --preset=debug`
+
+## Editor
+
+`EppoEditor` loads the bundled test project by default. Pass a project file path to open a different project:
+
+```bash
+EppoEditor "path/to/MyProject.epproj"
+```

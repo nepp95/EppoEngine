@@ -39,16 +39,20 @@ add_custom_command(TARGET EppoEditor POST_BUILD
 
 # Copy resources incrementally — only re-copies when files change
 set(ENGINE_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/EppoEngine/Resources")
+set(TEST_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Projects/Test")
 file(GLOB_RECURSE ENGINE_RESOURCE_FILES CONFIGURE_DEPENDS "${ENGINE_RESOURCES_DIR}/*")
 file(GLOB_RECURSE EDITOR_RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Resources/*")
+file(GLOB_RECURSE TEST_PROJECT_FILES CONFIGURE_DEPENDS "${TEST_PROJECT_DIR}/*")
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoEditor>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoEditor>/Projects"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_RESOURCES_DIR}" "$<TARGET_FILE_DIR:EppoEditor>/Resources"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/Resources" "$<TARGET_FILE_DIR:EppoEditor>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${TEST_PROJECT_DIR}" "$<TARGET_FILE_DIR:EppoEditor>/Projects/Test"
     COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync"
-    DEPENDS ${ENGINE_RESOURCE_FILES} ${EDITOR_RESOURCE_FILES}
-    COMMENT "Copying Resources"
+    DEPENDS ${ENGINE_RESOURCE_FILES} ${EDITOR_RESOURCE_FILES} ${TEST_PROJECT_FILES}
+    COMMENT "Copying Resources + default test project"
     VERBATIM
 )
 add_custom_target(EppoResources ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync")
