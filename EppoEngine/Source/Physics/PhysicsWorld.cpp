@@ -46,6 +46,12 @@ namespace Eppo
 		bodyDef.gravityScale = rigidBody.GravityScale;
 		bodyDef.linearDamping = rigidBody.LinearDamping;
 		bodyDef.angularDamping = rigidBody.AngularDamping;
+		bodyDef.motionLocks.linearX = rigidBody.LockLinearX;
+		bodyDef.motionLocks.linearY = rigidBody.LockLinearY;
+		bodyDef.motionLocks.linearZ = rigidBody.LockLinearZ;
+		bodyDef.motionLocks.angularX = rigidBody.LockAngularX;
+		bodyDef.motionLocks.angularY = rigidBody.LockAngularY;
+		bodyDef.motionLocks.angularZ = rigidBody.LockAngularZ;
 
 		const b3BodyId body = b3CreateBody(m_WorldId, &bodyDef);
 		// Tag the body with its entity UUID so world queries can map a shape back

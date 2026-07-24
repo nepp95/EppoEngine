@@ -308,6 +308,12 @@ namespace Eppo
 				nc.GravityScale = c["GravityScale"].get<float>();
 				nc.LinearDamping = c["LinearDamping"].get<float>();
 				nc.AngularDamping = c["AngularDamping"].get<float>();
+				nc.LockLinearX = c.value("LockLinearX", false);
+				nc.LockLinearY = c.value("LockLinearY", false);
+				nc.LockLinearZ = c.value("LockLinearZ", false);
+				nc.LockAngularX = c.value("LockAngularX", false);
+				nc.LockAngularY = c.value("LockAngularY", false);
+				nc.LockAngularZ = c.value("LockAngularZ", false);
 			}
 
 			if (entity.contains("BoxColliderComponent"))
@@ -863,6 +869,12 @@ namespace Eppo
 			e["RigidBodyComponent"]["GravityScale"] = c.GravityScale;
 			e["RigidBodyComponent"]["LinearDamping"] = c.LinearDamping;
 			e["RigidBodyComponent"]["AngularDamping"] = c.AngularDamping;
+			e["RigidBodyComponent"]["LockLinearX"] = c.LockLinearX;
+			e["RigidBodyComponent"]["LockLinearY"] = c.LockLinearY;
+			e["RigidBodyComponent"]["LockLinearZ"] = c.LockLinearZ;
+			e["RigidBodyComponent"]["LockAngularX"] = c.LockAngularX;
+			e["RigidBodyComponent"]["LockAngularY"] = c.LockAngularY;
+			e["RigidBodyComponent"]["LockAngularZ"] = c.LockAngularZ;
 		}
 
 		if (entity.HasComponent<BoxColliderComponent>())

@@ -355,6 +355,22 @@ namespace Eppo
 			ImGui::DragFloat("Gravity Scale", &component.GravityScale, 0.05f, 0.0f, 0.0f);
 			ImGui::DragFloat("Linear Damping", &component.LinearDamping, 0.01f, 0.0f, 0.0f);
 			ImGui::DragFloat("Angular Damping", &component.AngularDamping, 0.01f, 0.0f, 0.0f);
+
+			ImGui::Text("Lock Position");
+			ImGui::SameLine();
+			ImGui::Checkbox("X##LockLinearX", &component.LockLinearX);
+			ImGui::SameLine();
+			ImGui::Checkbox("Y##LockLinearY", &component.LockLinearY);
+			ImGui::SameLine();
+			ImGui::Checkbox("Z##LockLinearZ", &component.LockLinearZ);
+
+			ImGui::Text("Lock Rotation");
+			ImGui::SameLine();
+			ImGui::Checkbox("X##LockAngularX", &component.LockAngularX);
+			ImGui::SameLine();
+			ImGui::Checkbox("Y##LockAngularY", &component.LockAngularY);
+			ImGui::SameLine();
+			ImGui::Checkbox("Z##LockAngularZ", &component.LockAngularZ);
 		});
 
 		DrawComponent<BoxColliderComponent>(entity, [](auto& component)

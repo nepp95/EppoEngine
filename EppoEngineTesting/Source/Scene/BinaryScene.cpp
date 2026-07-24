@@ -89,6 +89,8 @@ SUITE(Scene)
         rigidBody.GravityScale = 2.0f;
         rigidBody.LinearDamping = 0.25f;
         rigidBody.AngularDamping = 0.5f;
+        rigidBody.LockLinearZ = true;
+        rigidBody.LockAngularY = true;
         auto& box = child.AddComponent<BoxColliderComponent>();
         box.HalfSize = { 1.0f, 2.0f, 3.0f };
         box.Offset = { 0.1f, 0.2f, 0.3f };
@@ -138,6 +140,12 @@ SUITE(Scene)
         CHECK_CLOSE(2.0f, loadedRigidBody.GravityScale, 0.0001f);
         CHECK_CLOSE(0.25f, loadedRigidBody.LinearDamping, 0.0001f);
         CHECK_CLOSE(0.5f, loadedRigidBody.AngularDamping, 0.0001f);
+        CHECK(!loadedRigidBody.LockLinearX);
+        CHECK(!loadedRigidBody.LockLinearY);
+        CHECK(loadedRigidBody.LockLinearZ);
+        CHECK(!loadedRigidBody.LockAngularX);
+        CHECK(loadedRigidBody.LockAngularY);
+        CHECK(!loadedRigidBody.LockAngularZ);
         CHECK_CLOSE(3.0f, loadedChild.GetComponent<BoxColliderComponent>().HalfSize.z, 0.0001f);
         CHECK_CLOSE(4.0f, loadedChild.GetComponent<SphereColliderComponent>().Radius, 0.0001f);
         CHECK_CLOSE(6.0f, loadedChild.GetComponent<CapsuleColliderComponent>().Height, 0.0001f);

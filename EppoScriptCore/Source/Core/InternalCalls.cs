@@ -365,6 +365,66 @@ namespace EppoScriptCore.Core
             ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("RigidBodyComponent_SetAngularDamping"))(id, angularDamping);
         }
 
+        internal static bool RigidBodyComponent_GetLockLinearX(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("RigidBodyComponent_GetLockLinearX"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetLockLinearX(ulong id, bool locked)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("RigidBodyComponent_SetLockLinearX"))(id, locked);
+        }
+
+        internal static bool RigidBodyComponent_GetLockLinearY(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("RigidBodyComponent_GetLockLinearY"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetLockLinearY(ulong id, bool locked)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("RigidBodyComponent_SetLockLinearY"))(id, locked);
+        }
+
+        internal static bool RigidBodyComponent_GetLockLinearZ(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("RigidBodyComponent_GetLockLinearZ"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetLockLinearZ(ulong id, bool locked)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("RigidBodyComponent_SetLockLinearZ"))(id, locked);
+        }
+
+        internal static bool RigidBodyComponent_GetLockAngularX(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("RigidBodyComponent_GetLockAngularX"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetLockAngularX(ulong id, bool locked)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("RigidBodyComponent_SetLockAngularX"))(id, locked);
+        }
+
+        internal static bool RigidBodyComponent_GetLockAngularY(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("RigidBodyComponent_GetLockAngularY"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetLockAngularY(ulong id, bool locked)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("RigidBodyComponent_SetLockAngularY"))(id, locked);
+        }
+
+        internal static bool RigidBodyComponent_GetLockAngularZ(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("RigidBodyComponent_GetLockAngularZ"))(id);
+        }
+
+        internal static void RigidBodyComponent_SetLockAngularZ(ulong id, bool locked)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, bool, void>)Get("RigidBodyComponent_SetLockAngularZ"))(id, locked);
+        }
+
         internal static Vector3 BoxColliderComponent_GetHalfSize(ulong id)
         {
             Vector3 result = default;
