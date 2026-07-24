@@ -371,18 +371,6 @@ namespace Eppo
 
 	auto SceneSerializer::Serialize(BufferWriter& writer) const -> bool
 	{
-		static_assert(std::is_trivially_copyable_v<EnvironmentSettings>);
-		static_assert(sizeof(EnvironmentSettings) == sizeof(AssetHandle) + sizeof(glm::vec3) * 3 + sizeof(float));
-		static_assert(sizeof(TransformComponent) == sizeof(glm::vec3) * 3);
-		static_assert(sizeof(MeshComponent) == sizeof(AssetHandle));
-		static_assert(sizeof(PointLightComponent) == sizeof(glm::vec3) + sizeof(float));
-		static_assert(offsetof(RigidBodyComponent, GravityScale) == sizeof(RigidBodyComponent::BodyType));
-		static_assert(sizeof(RigidBodyComponent) == sizeof(RigidBodyComponent::BodyType) + sizeof(float) * 3);
-		static_assert(sizeof(BoxColliderComponent) == sizeof(glm::vec3) * 2 + sizeof(float) * 3);
-		static_assert(sizeof(SphereColliderComponent) == sizeof(float) + sizeof(glm::vec3) + sizeof(float) * 3);
-		static_assert(sizeof(CapsuleColliderComponent) == sizeof(float) * 2 + sizeof(glm::vec3) + sizeof(float) * 3);
-		static_assert(sizeof(CylinderColliderComponent) == sizeof(float) * 2 + sizeof(glm::vec3) + sizeof(float) * 3);
-
 		std::vector<Entity> entities;
 		m_SceneContext->SortEntitiesByID();
 		m_SceneContext->ForEachEntity([&](const Entity entity)

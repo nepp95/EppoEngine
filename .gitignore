@@ -5,21 +5,17 @@
 
 # Build / Cache
 /build
-/EppoEditor/Resources/Shaders/Cache
-/EppoScriptCore/bin
-/EppoScriptCore/obj
-
-# .NET intermediate/output for the test script assembly (built into the build
-# tree, but guard against a stray in-source build too)
-/EppoEngineTesting/TestData/Scripts/bin
-/EppoEngineTesting/TestData/Scripts/obj
-
-# Same for the editor's script projects: an IDE or language server restore
-# creates these in-source even though the real builds go to the build tree.
 /EppoEditor/Projects/Test/Scripts/bin
 /EppoEditor/Projects/Test/Scripts/obj
+/EppoEditor/Resources/Shaders/Cache
 /EppoEditor/Resources/Templates/NewProject/Scripts/bin
 /EppoEditor/Resources/Templates/NewProject/Scripts/obj
+/EppoEngineTesting/TestData/Scripts/bin
+/EppoEngineTesting/TestData/Scripts/obj
+/EppoScriptCore/bin
+/EppoScriptCore/obj
+*.epmesh
+*.epmesh.hash
 
 # Log files
 latest.log
