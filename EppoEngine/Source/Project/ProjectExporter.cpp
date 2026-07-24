@@ -283,8 +283,6 @@ namespace Eppo
 				std::format("Packed scene {} of {}", packedSceneCount, sceneCount));
 		}
 
-		ReportProgress(options, 0.15f, "Scenes packed");
-
 		// Phase: Write shaders — the engine shaders are already compiled in memory, so pack their sources.
 		ReportProgress(options, 0.15f, "Packing shaders");
 		for (const auto& [name, shader] : DeviceManager::Get()->GetRenderer()->GetAllShaders())
