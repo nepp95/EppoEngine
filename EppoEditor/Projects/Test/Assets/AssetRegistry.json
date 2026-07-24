@@ -1,6 +1,11 @@
 {
     "Assets": [
         {
+            "Filepath": "Meshes\\player.glb",
+            "Handle": 17559226157527298045,
+            "Type": "Mesh"
+        },
+        {
             "Filepath": "Scenes\\Def.epscene",
             "Handle": 18159251541775323644,
             "Type": "Scene"

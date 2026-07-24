@@ -4,7 +4,7 @@
             {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.8,
+                    "Friction": 0.800000011920929,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -53,7 +53,7 @@
             {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.8,
+                    "Friction": 0.800000011920929,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -102,7 +102,7 @@
             {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.8,
+                    "Friction": 0.800000011920929,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -151,7 +151,7 @@
             {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.8,
+                    "Friction": 0.800000011920929,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -219,12 +219,12 @@
                     ],
                     "Scale": [
                         0.5,
-                        0.2,
+                        0.20000000298023224,
                         0.5
                     ],
                     "Translation": [
                         3.0,
-                        1.7,
+                        1.7000000476837158,
                         0.0
                     ]
                 }
@@ -232,7 +232,7 @@
             {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.8,
+                    "Friction": 0.800000011920929,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -281,7 +281,7 @@
             {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.8,
+                    "Friction": 0.800000011920929,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -330,7 +330,7 @@
             {
                 "BoxColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.8,
+                    "Friction": 0.800000011920929,
                     "HalfSize": [
                         1.0,
                         1.0,
@@ -429,9 +429,9 @@
                         0.0
                     ],
                     "Scale": [
-                        0.4,
-                        0.4,
-                        0.4
+                        0.4000000059604645,
+                        0.4000000059604645,
+                        0.4000000059604645
                     ],
                     "Translation": [
                         0.0,
@@ -461,9 +461,9 @@
                         0.0
                     ],
                     "Scale": [
-                        0.4,
-                        0.4,
-                        0.4
+                        0.4000000059604645,
+                        0.4000000059604645,
+                        0.4000000059604645
                     ],
                     "Translation": [
                         3.0,
@@ -493,9 +493,9 @@
                         0.0
                     ],
                     "Scale": [
-                        0.4,
-                        0.4,
-                        0.4
+                        0.4000000059604645,
+                        0.4000000059604645,
+                        0.4000000059604645
                     ],
                     "Translation": [
                         0.0,
@@ -511,8 +511,8 @@
                 "PointLightComponent": {
                     "Color": [
                         1.0,
-                        0.9,
-                        0.7
+                        0.8999999761581421,
+                        0.699999988079071
                     ],
                     "Intensity": 8.0
                 },
@@ -544,7 +544,7 @@
                 "PointLightComponent": {
                     "Color": [
                         0.5,
-                        0.7,
+                        0.699999988079071,
                         1.0
                     ],
                     "Intensity": 10.0
@@ -573,18 +573,21 @@
             {
                 "CapsuleColliderComponent": {
                     "Density": 1.0,
-                    "Friction": 0.6,
+                    "Friction": 0.6000000238418579,
                     "Height": 1.0,
                     "Offset": [
                         0.0,
                         0.0,
                         0.0
                     ],
-                    "Radius": 0.4,
+                    "Radius": 0.4000000059604645,
                     "Restitution": 0.0
                 },
                 "IDComponent": {
                     "ID": 1015
+                },
+                "MeshComponent": {
+                    "MeshHandle": 17559226157527298045
                 },
                 "RigidBodyComponent": {
                     "AngularDamping": 50.0,
@@ -647,7 +650,7 @@
                     ],
                     "Translation": [
                         0.0,
-                        1.7,
+                        1.7000000476837158,
                         10.0
                     ]
                 }
