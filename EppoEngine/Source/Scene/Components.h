@@ -109,6 +109,12 @@ namespace Eppo
 		float GravityScale = 1.0f;
 		float LinearDamping = 0.0f;
 		float AngularDamping = 0.0f;
+		bool LockLinearX = false;
+		bool LockLinearY = false;
+		bool LockLinearZ = false;
+		bool LockAngularX = false;
+		bool LockAngularY = false;
+		bool LockAngularZ = false;
 
 		RigidBodyComponent() = default;
 		RigidBodyComponent(const RigidBodyComponent&) = default;

@@ -112,6 +112,18 @@ namespace EppoTesting
         public void RigidBodyComponent_SetLinearDamping(float v) => InternalCalls.RigidBodyComponent_SetLinearDamping(ID, v);
         public float RigidBodyComponent_GetAngularDamping() => InternalCalls.RigidBodyComponent_GetAngularDamping(ID);
         public void RigidBodyComponent_SetAngularDamping(float v) => InternalCalls.RigidBodyComponent_SetAngularDamping(ID, v);
+        public bool RigidBodyComponent_GetLockLinearX() => InternalCalls.RigidBodyComponent_GetLockLinearX(ID);
+        public void RigidBodyComponent_SetLockLinearX(bool v) => InternalCalls.RigidBodyComponent_SetLockLinearX(ID, v);
+        public bool RigidBodyComponent_GetLockLinearY() => InternalCalls.RigidBodyComponent_GetLockLinearY(ID);
+        public void RigidBodyComponent_SetLockLinearY(bool v) => InternalCalls.RigidBodyComponent_SetLockLinearY(ID, v);
+        public bool RigidBodyComponent_GetLockLinearZ() => InternalCalls.RigidBodyComponent_GetLockLinearZ(ID);
+        public void RigidBodyComponent_SetLockLinearZ(bool v) => InternalCalls.RigidBodyComponent_SetLockLinearZ(ID, v);
+        public bool RigidBodyComponent_GetLockAngularX() => InternalCalls.RigidBodyComponent_GetLockAngularX(ID);
+        public void RigidBodyComponent_SetLockAngularX(bool v) => InternalCalls.RigidBodyComponent_SetLockAngularX(ID, v);
+        public bool RigidBodyComponent_GetLockAngularY() => InternalCalls.RigidBodyComponent_GetLockAngularY(ID);
+        public void RigidBodyComponent_SetLockAngularY(bool v) => InternalCalls.RigidBodyComponent_SetLockAngularY(ID, v);
+        public bool RigidBodyComponent_GetLockAngularZ() => InternalCalls.RigidBodyComponent_GetLockAngularZ(ID);
+        public void RigidBodyComponent_SetLockAngularZ(bool v) => InternalCalls.RigidBodyComponent_SetLockAngularZ(ID, v);
         public void Physics_ApplyLinearImpulseUp() => Physics.ApplyLinearImpulse(this, new Vector3(0.0f, 5.0f, 0.0f));
 
         public Vector3 BoxColliderComponent_GetHalfSize() => InternalCalls.BoxColliderComponent_GetHalfSize(ID);

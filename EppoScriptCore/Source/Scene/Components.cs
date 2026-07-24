@@ -135,6 +135,42 @@ namespace EppoScriptCore.Scene
             get => InternalCalls.RigidBodyComponent_GetAngularDamping(Entity.ID);
             set => InternalCalls.RigidBodyComponent_SetAngularDamping(Entity.ID, value);
         }
+
+        public bool LockLinearX
+        {
+            get => InternalCalls.RigidBodyComponent_GetLockLinearX(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetLockLinearX(Entity.ID, value);
+        }
+
+        public bool LockLinearY
+        {
+            get => InternalCalls.RigidBodyComponent_GetLockLinearY(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetLockLinearY(Entity.ID, value);
+        }
+
+        public bool LockLinearZ
+        {
+            get => InternalCalls.RigidBodyComponent_GetLockLinearZ(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetLockLinearZ(Entity.ID, value);
+        }
+
+        public bool LockAngularX
+        {
+            get => InternalCalls.RigidBodyComponent_GetLockAngularX(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetLockAngularX(Entity.ID, value);
+        }
+
+        public bool LockAngularY
+        {
+            get => InternalCalls.RigidBodyComponent_GetLockAngularY(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetLockAngularY(Entity.ID, value);
+        }
+
+        public bool LockAngularZ
+        {
+            get => InternalCalls.RigidBodyComponent_GetLockAngularZ(Entity.ID);
+            set => InternalCalls.RigidBodyComponent_SetLockAngularZ(Entity.ID, value);
+        }
     }
 
     public class BoxColliderComponent : Component

@@ -1886,6 +1886,59 @@ SUITE(Scripting)
         engine.OnDestroyEntity(entity);
     }
 
+    TEST(RigidBodyComponent_MotionLocks_RoundTripSceneValues)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& engine = ScriptEngine::Get();
+        Entity entity = MakeContextEntity(scene);
+        auto& rb = entity.AddComponent<RigidBodyComponent>();
+        rb.LockLinearZ = true;
+        rb.LockAngularX = true;
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+
+        const std::pair<const char*, bool> getters[] = {
+            { "RigidBodyComponent_GetLockLinearX", false },
+            { "RigidBodyComponent_GetLockLinearY", false },
+            { "RigidBodyComponent_GetLockLinearZ", true },
+            { "RigidBodyComponent_GetLockAngularX", true },
+            { "RigidBodyComponent_GetLockAngularY", false },
+            { "RigidBodyComponent_GetLockAngularZ", false },
+        };
+        for (const auto& [name, expected] : getters)
+        {
+            const ScriptMethod* getter = c->GetMethod(name);
+            REQUIRE CHECK(getter != nullptr);
+            bool got = !expected;
+            c->InvokeMethod(entity, *getter, nullptr, &got);
+            CHECK_EQUAL(expected, got);
+        }
+
+        const char* setters[] = {
+            "RigidBodyComponent_SetLockLinearX",
+            "RigidBodyComponent_SetLockLinearY",
+            "RigidBodyComponent_SetLockLinearZ",
+            "RigidBodyComponent_SetLockAngularX",
+            "RigidBodyComponent_SetLockAngularY",
+            "RigidBodyComponent_SetLockAngularZ",
+        };
+        for (const char* name : setters)
+        {
+            const ScriptMethod* setter = c->GetMethod(name);
+            REQUIRE CHECK(setter != nullptr);
+            bool next = true;
+            c->InvokeMethod(entity, *setter, &next, nullptr);
+        }
+
+        CHECK(rb.LockLinearX && rb.LockLinearY && rb.LockLinearZ);
+        CHECK(rb.LockAngularX && rb.LockAngularY && rb.LockAngularZ);
+
+        engine.OnDestroyEntity(entity);
+    }
+
     TEST(Entity_SetName_MutatesScene)
     {
         REQUIRE CHECK(EnsureRuntime());

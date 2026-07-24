@@ -274,6 +274,80 @@ SUITE(Physics)
         CHECK(world.GetPosition(id).x > 0.0f);
     }
 
+    TEST(PhysicsWorld_LockedLinearY_BodyDoesNotFallUnderGravity)
+    {
+        PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+        const UUID id;
+        {
+            RigidBodyComponent rb;
+            rb.Type = RigidBodyComponent::BodyType::Dynamic;
+            rb.LockLinearY = true;
+
+            world.CreateBody(id, rb, { 0.0f, 10.0f, 0.0f }, s_Identity, { ColliderData{} });
+        }
+
+        for (int i = 0; i < 60; ++i)
+            world.Step(1.0f / 60.0f);
+
+        CHECK_CLOSE(10.0f, world.GetPosition(id).y, 1e-3f);
+
+        // The lock is per-axis: X/Z must still translate freely.
+        world.ApplyLinearImpulse(id, { 2.0f, 0.0f, 0.0f });
+        for (int i = 0; i < 30; ++i)
+            world.Step(1.0f / 60.0f);
+
+        CHECK(world.GetPosition(id).x > 0.1f);
+        CHECK_CLOSE(10.0f, world.GetPosition(id).y, 1e-3f);
+    }
+
+    TEST(PhysicsWorld_LockedAngularAxes_BodyDoesNotTipOffLedge)
+    {
+        // A body resting with its center of mass past the slab edge has a contact
+        // torque that tips an unlocked body; locking all angular axes must keep it level.
+        const auto restOnLedge = [](const bool lockAngular) -> glm::quat
+        {
+            PhysicsWorld world({ 0.0f, -9.81f, 0.0f });
+
+            const UUID slabId;
+            {
+                RigidBodyComponent rb; // static
+
+                ColliderData slab;
+                slab.HalfExtents = { 2.0f, 0.1f, 2.0f };
+
+                world.CreateBody(slabId, rb, glm::vec3(0.0f), s_Identity, { slab });
+            }
+
+            const UUID bodyId;
+            {
+                RigidBodyComponent rb;
+                rb.Type = RigidBodyComponent::BodyType::Dynamic;
+                rb.LockAngularX = lockAngular;
+                rb.LockAngularY = lockAngular;
+                rb.LockAngularZ = lockAngular;
+
+                ColliderData box;
+                box.HalfExtents = { 0.25f, 0.75f, 0.25f };
+
+                // Slab spans x in [-2, 2]; the tall body's center at x = 2.1 is
+                // past the edge, so gravity tips an unlocked body over it.
+                world.CreateBody(bodyId, rb, { 2.1f, 0.85f, 0.0f }, s_Identity, { box });
+            }
+
+            for (int i = 0; i < 120; ++i)
+                world.Step(1.0f / 60.0f);
+
+            return world.GetRotation(bodyId);
+        };
+
+        const glm::quat unlocked = restOnLedge(false);
+        CHECK(glm::abs(unlocked.w) < 0.99f);
+
+        const glm::quat locked = restOnLedge(true);
+        CHECK_CLOSE(1.0f, glm::abs(locked.w), 0.001f);
+    }
+
     TEST(PhysicsWorld_CreateBody_UsesWorldPose)
     {
         PhysicsWorld world({ 0.0f, 0.0f, 0.0f });
@@ -1118,6 +1192,9 @@ SUITE(Physics)
             rb.GravityScale = 2.0f;
             rb.LinearDamping = 0.3f;
             rb.AngularDamping = 0.4f;
+            rb.LockLinearY = true;
+            rb.LockAngularX = true;
+            rb.LockAngularZ = true;
 
             auto& box = entity.AddComponent<BoxColliderComponent>();
             box.HalfSize = { 1.0f, 2.0f, 3.0f };
@@ -1155,6 +1232,12 @@ SUITE(Physics)
         CHECK_CLOSE(2.0f, rb.GravityScale, 1e-5f);
         CHECK_CLOSE(0.3f, rb.LinearDamping, 1e-5f);
         CHECK_CLOSE(0.4f, rb.AngularDamping, 1e-5f);
+        CHECK(!rb.LockLinearX);
+        CHECK(rb.LockLinearY);
+        CHECK(!rb.LockLinearZ);
+        CHECK(rb.LockAngularX);
+        CHECK(!rb.LockAngularY);
+        CHECK(rb.LockAngularZ);
 
         const auto& box = entity.GetComponent<BoxColliderComponent>();
         CHECK_VEC3_CLOSE(glm::vec3(1.0f, 2.0f, 3.0f), box.HalfSize, 1e-5f);

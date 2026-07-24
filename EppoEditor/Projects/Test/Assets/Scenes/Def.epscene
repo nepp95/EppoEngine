@@ -590,9 +590,12 @@
                     "MeshHandle": 17559226157527298045
                 },
                 "RigidBodyComponent": {
-                    "AngularDamping": 50.0,
+                    "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.5,
+                    "LockAngularX": true,
+                    "LockAngularY": true,
+                    "LockAngularZ": true,
                     "Type": 2
                 },
                 "ScriptComponent": {

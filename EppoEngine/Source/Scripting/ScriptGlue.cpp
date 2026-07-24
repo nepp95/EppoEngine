@@ -665,6 +665,114 @@ namespace Eppo
             entity.GetComponent<RigidBodyComponent>().AngularDamping = angularDamping;
         }
 
+        auto RigidBodyComponent_GetLockLinearX(const uint64_t id) -> bool
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return false;
+
+            return entity.GetComponent<RigidBodyComponent>().LockLinearX;
+        }
+
+        auto RigidBodyComponent_SetLockLinearX(const uint64_t id, const bool locked) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().LockLinearX = locked;
+        }
+
+        auto RigidBodyComponent_GetLockLinearY(const uint64_t id) -> bool
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return false;
+
+            return entity.GetComponent<RigidBodyComponent>().LockLinearY;
+        }
+
+        auto RigidBodyComponent_SetLockLinearY(const uint64_t id, const bool locked) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().LockLinearY = locked;
+        }
+
+        auto RigidBodyComponent_GetLockLinearZ(const uint64_t id) -> bool
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return false;
+
+            return entity.GetComponent<RigidBodyComponent>().LockLinearZ;
+        }
+
+        auto RigidBodyComponent_SetLockLinearZ(const uint64_t id, const bool locked) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().LockLinearZ = locked;
+        }
+
+        auto RigidBodyComponent_GetLockAngularX(const uint64_t id) -> bool
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return false;
+
+            return entity.GetComponent<RigidBodyComponent>().LockAngularX;
+        }
+
+        auto RigidBodyComponent_SetLockAngularX(const uint64_t id, const bool locked) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().LockAngularX = locked;
+        }
+
+        auto RigidBodyComponent_GetLockAngularY(const uint64_t id) -> bool
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return false;
+
+            return entity.GetComponent<RigidBodyComponent>().LockAngularY;
+        }
+
+        auto RigidBodyComponent_SetLockAngularY(const uint64_t id, const bool locked) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().LockAngularY = locked;
+        }
+
+        auto RigidBodyComponent_GetLockAngularZ(const uint64_t id) -> bool
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return false;
+
+            return entity.GetComponent<RigidBodyComponent>().LockAngularZ;
+        }
+
+        auto RigidBodyComponent_SetLockAngularZ(const uint64_t id, const bool locked) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<RigidBodyComponent>())
+                return;
+
+            entity.GetComponent<RigidBodyComponent>().LockAngularZ = locked;
+        }
+
         auto BoxColliderComponent_GetHalfSize(const uint64_t id, glm::vec3* outHalfSize) -> void
         {
             const Entity entity = GetEntity(id);
@@ -1115,6 +1223,18 @@ namespace Eppo
             { "RigidBodyComponent_SetLinearDamping",      reinterpret_cast<void*>(&RigidBodyComponent_SetLinearDamping)      },
             { "RigidBodyComponent_GetAngularDamping",     reinterpret_cast<void*>(&RigidBodyComponent_GetAngularDamping)     },
             { "RigidBodyComponent_SetAngularDamping",     reinterpret_cast<void*>(&RigidBodyComponent_SetAngularDamping)     },
+            { "RigidBodyComponent_GetLockLinearX",        reinterpret_cast<void*>(&RigidBodyComponent_GetLockLinearX)        },
+            { "RigidBodyComponent_SetLockLinearX",        reinterpret_cast<void*>(&RigidBodyComponent_SetLockLinearX)        },
+            { "RigidBodyComponent_GetLockLinearY",        reinterpret_cast<void*>(&RigidBodyComponent_GetLockLinearY)        },
+            { "RigidBodyComponent_SetLockLinearY",        reinterpret_cast<void*>(&RigidBodyComponent_SetLockLinearY)        },
+            { "RigidBodyComponent_GetLockLinearZ",        reinterpret_cast<void*>(&RigidBodyComponent_GetLockLinearZ)        },
+            { "RigidBodyComponent_SetLockLinearZ",        reinterpret_cast<void*>(&RigidBodyComponent_SetLockLinearZ)        },
+            { "RigidBodyComponent_GetLockAngularX",       reinterpret_cast<void*>(&RigidBodyComponent_GetLockAngularX)       },
+            { "RigidBodyComponent_SetLockAngularX",       reinterpret_cast<void*>(&RigidBodyComponent_SetLockAngularX)       },
+            { "RigidBodyComponent_GetLockAngularY",       reinterpret_cast<void*>(&RigidBodyComponent_GetLockAngularY)       },
+            { "RigidBodyComponent_SetLockAngularY",       reinterpret_cast<void*>(&RigidBodyComponent_SetLockAngularY)       },
+            { "RigidBodyComponent_GetLockAngularZ",       reinterpret_cast<void*>(&RigidBodyComponent_GetLockAngularZ)       },
+            { "RigidBodyComponent_SetLockAngularZ",       reinterpret_cast<void*>(&RigidBodyComponent_SetLockAngularZ)       },
             { "BoxColliderComponent_GetHalfSize",         reinterpret_cast<void*>(&BoxColliderComponent_GetHalfSize)         },
             { "BoxColliderComponent_SetHalfSize",         reinterpret_cast<void*>(&BoxColliderComponent_SetHalfSize)         },
             { "BoxColliderComponent_GetOffset",           reinterpret_cast<void*>(&BoxColliderComponent_GetOffset)           },
