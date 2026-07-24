@@ -105,7 +105,7 @@ namespace Eppo
 		static auto GenerateMeshPrimitive(MeshPrimitiveType type) -> Ref<Mesh>;
 
 	private:
-		auto ProcessNode(const tg3_model& model, const tg3_node& node) -> void;
+		auto ProcessNode(const tg3_model& model, const tg3_node& node, const glm::mat4& parentTransform) -> void;
 		auto ProcessMesh(const tg3_model& model, const tg3_mesh& mesh, const glm::mat4& localTransform) -> void;
 		auto ProcessMaterials(const tg3_model& model) -> void;
 		auto ProcessImages(const tg3_model& model, std::string_view basePath) -> void;
