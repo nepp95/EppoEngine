@@ -74,6 +74,10 @@ SUITE(Project)
                         return false;
                 }
 
+                // Empty shader section (magic, version, zero shaders) keeps the raw pack a valid baseline.
+                if (!writer.Write(PackFormat::Shader.Magic) || !writer.Write(PackFormat::Shader.Version) || !writer.Write(uint32_t{ 0 }))
+                    return false;
+
                 return !trailingByte || writer.Write(uint8_t{ 0xff });
             };
 
@@ -192,6 +196,52 @@ SUITE(Project)
         CHECK(!loaded.Deserialize(dir.File("unknown-type.eppak")));
         REQUIRE CHECK(WriteRawPack(dir.File("absolute.eppak"), { { 100, 2, "C:/Game/start.epscene" } }, { { 100, 2, payload } }));
         CHECK(!loaded.Deserialize(dir.File("absolute.eppak")));
+    }
+
+    TEST(GameData_RoundTripPreservesPackedShaderSources)
+    {
+        const Testing::TempDir dir;
+        const auto path = dir.File("shaders.eppak");
+
+        GameData data;
+        data.ProjectName = "Game";
+        data.StartScene = AssetHandle(100);
+        data.AssetRegistry.emplace(100, AssetMetadata{ AssetHandle(100), AssetType::Scene, "Scenes/start.epscene" });
+        data.PackedAssets.emplace(100, PackedAssetData{ AssetType::Scene, ScenePayload(100) });
+        data.PackedShaders.emplace("geometry", PackedShaderData{ {
+            { nvrhi::ShaderType::Vertex, "vertex-source" },
+            { nvrhi::ShaderType::Pixel, "pixel-source" },
+        } });
+        data.PackedShaders.emplace("composite", PackedShaderData{ {
+            { nvrhi::ShaderType::Vertex, "composite-vertex" },
+        } });
+        REQUIRE CHECK(data.Serialize(path));
+
+        GameData loaded;
+        REQUIRE CHECK(loaded.Deserialize(path));
+        CHECK_EQUAL(2, loaded.PackedShaders.size());
+        CHECK_EQUAL(2, loaded.PackedShaders.at("geometry").ShaderSources.size());
+        CHECK_EQUAL(std::string("vertex-source"), loaded.PackedShaders.at("geometry").ShaderSources.at(nvrhi::ShaderType::Vertex));
+        CHECK_EQUAL(std::string("pixel-source"), loaded.PackedShaders.at("geometry").ShaderSources.at(nvrhi::ShaderType::Pixel));
+        CHECK_EQUAL(1, loaded.PackedShaders.at("composite").ShaderSources.size());
+        CHECK_EQUAL(std::string("composite-vertex"), loaded.PackedShaders.at("composite").ShaderSources.at(nvrhi::ShaderType::Vertex));
+    }
+
+    TEST(GameData_RoundTripAllowsNoPackedShaders)
+    {
+        const Testing::TempDir dir;
+        const auto path = dir.File("no-shaders.eppak");
+
+        GameData data;
+        data.ProjectName = "Game";
+        data.StartScene = AssetHandle(100);
+        data.AssetRegistry.emplace(100, AssetMetadata{ AssetHandle(100), AssetType::Scene, "Scenes/start.epscene" });
+        data.PackedAssets.emplace(100, PackedAssetData{ AssetType::Scene, ScenePayload(100) });
+        REQUIRE CHECK(data.Serialize(path));
+
+        GameData loaded;
+        REQUIRE CHECK(loaded.Deserialize(path));
+        CHECK(loaded.PackedShaders.empty());
     }
 
     TEST(GameData_RejectsInvalidPackedAssetRecords)

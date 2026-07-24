@@ -44,10 +44,17 @@ namespace Eppo
 		nvrhi::ShaderType Stage = nvrhi::ShaderType::None;
 	};
 
+    struct PackedShaderData
+    {
+        std::unordered_map<nvrhi::ShaderType, std::string> ShaderSources;
+    };
+
 	struct ShaderSpecification
 	{
 		std::string Name;
 		bool IsCompute = false;
+		// When non-empty, these sources are compiled instead of reading them from disk (e.g. from a packed game).
+		std::unordered_map<nvrhi::ShaderType, std::string> Sources;
 	};
 
 	class Shader
@@ -57,9 +64,10 @@ namespace Eppo
 		virtual ~Shader() = default;
 
 		[[nodiscard]] auto GetShaderHandle(nvrhi::ShaderType type) -> nvrhi::ShaderHandle;
-		[[nodiscard]] auto GetInputLayout() -> nvrhi::InputLayoutHandle { return m_InputLayout; }
-		// Ordered by ascending set: nvrhi legacy mode maps a set to its index in the pipeline's layout array.
+	    // Ordered by ascending set: nvrhi legacy mode maps a set to its index in the pipeline's layout array.
 		[[nodiscard]] auto GetBindingLayouts() const -> const std::map<uint32_t, nvrhi::BindingLayoutHandle>& { return m_BindingLayouts; }
+		[[nodiscard]] auto GetShaderSources() const -> const std::unordered_map<nvrhi::ShaderType, std::string>& { return m_ShaderSources; }
+	    [[nodiscard]] auto GetInputLayout() -> nvrhi::InputLayoutHandle { return m_InputLayout; }
 
 		[[nodiscard]] auto GetShaderResources() const -> const std::unordered_map<uint32_t, std::vector<ShaderResourceBinding>>& { return m_ShaderResources; }
 		[[nodiscard]] auto GetPushConstants() const -> const PushConstantRange& { return m_PushConstants; }
@@ -88,8 +96,6 @@ namespace Eppo
 		uint32_t m_InputAttributeStride = 0;
 		nvrhi::InputLayoutHandle m_InputLayout = nullptr;
 
-		// Necessary for compilation/reflection only
-		// TODO: We clear them now after use, but maybe remove them from here altogether
 		std::unordered_map<nvrhi::ShaderType, std::string> m_ShaderSources;
 		std::unordered_map<nvrhi::ShaderType, std::vector<char>> m_ShaderBytes;
 	};

@@ -17,14 +17,24 @@ namespace Eppo
 		m_DescriptorManager = CreateRef<DescriptorManager>();
 	}
 
+	auto Renderer::LoadShaders(const std::map<std::string, PackedShaderData>& packedSources) -> void
+	{
+		if (packedSources.empty())
+		{
+		    m_ShaderLibrary.Load("composite");
+		    m_ShaderLibrary.Load("geometry");
+		    m_ShaderLibrary.Load("imgui");
+		    m_ShaderLibrary.Load("skybox");
+		    m_ShaderLibrary.Load("wireframe");
+		} else
+		{
+		    for (const auto& [name, packedShader] : packedSources)
+		        m_ShaderLibrary.Load(name, packedShader.ShaderSources);
+		}
+	}
+
 	auto Renderer::Init() -> void
 	{
-		m_ShaderLibrary.Load("geometry");
-		m_ShaderLibrary.Load("skybox");
-		m_ShaderLibrary.Load("imgui");
-		m_ShaderLibrary.Load("wireframe");
-		m_ShaderLibrary.Load("composite");
-
 		nvrhi::SamplerDesc samplerDesc{};
 		samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Clamp);
 		samplerDesc.setAllFilters(true);

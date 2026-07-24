@@ -2,6 +2,8 @@
 #include "Project/ProjectExporter.h"
 
 #include "Project/GameData.h"
+#include "Renderer/DeviceManager.h"
+#include "Renderer/Renderer.h"
 #include "Scene/SceneSerializer.h"
 #include "Utility/Process.h"
 
@@ -216,102 +218,53 @@ namespace Eppo
 
 	auto ProjectExporter::Export(const ProjectExportOptions& options) const -> ProjectExportResult
 	{
+	    EP_PROFILE_FN("ProjectExporter::Export");
+
 		ProjectExportResult result;
 
 		// Phase: validate the project, name, configurations, and start scene before touching the filesystem.
 		ReportProgress(options, 0.02f, "Validating project");
-		if (!m_Project || !m_Project->GetAssetManager())
-		{
-			result.Errors.emplace_back("No valid project is available for export.");
-			return result;
-		}
+        ValidateProject(options, result);
+	    if (!result.Errors.empty())
+	        return result;
 
-		const auto& specification = m_Project->GetSpecification();
-		if (specification.Name.empty())
-		{
-			result.Errors.emplace_back("Project name cannot be empty.");
-			return result;
-		}
+	    const auto& [projectName, projectDirectory, startScene] = m_Project->GetSpecification();
 
-		const std::string exportName = SanitizeProjectName(specification.Name);
-		if (exportName.empty())
-		{
-			result.Errors.emplace_back("Project name cannot be used as an export name.");
-			return result;
-		}
-		if (exportName != specification.Name)
-			result.Warnings.emplace_back(std::format("Project name was sanitized to '{}'.", exportName));
+	    GameData gameData;
+	    gameData.ProjectName = SanitizeProjectName(projectName);
+	    gameData.StartScene = startScene;
+	    gameData.AssetRegistry = m_Project->GetAssetManager()->GetAssetRegistry();
 
-		const auto configurations = GetExportConfigurations(options);
-		if (configurations.empty())
-		{
-			result.Errors.emplace_back("At least one export configuration must be selected.");
-			return result;
-		}
+	    // Phase: Serialize scenes
+		ReportProgress(options, 0.05f, "Packing scenes");
 
-		result.OutputPath = (options.ParentDirectory / exportName).lexically_normal();
-		if (FS::Exists(result.OutputPath))
-		{
-			if (!FS::IsDirectory(result.OutputPath))
-			{
-				result.Errors.emplace_back("Export target exists and is not a directory.");
-				return result;
-			}
-			if (!FS::IsEmpty(result.OutputPath))
-			{
-				result.Errors.emplace_back("Export target directory is not empty.");
-				return result;
-			}
-		}
-
-		if (!specification.StartScene)
-		{
-			result.Errors.emplace_back("A start scene is not configured.");
-			return result;
-		}
-
-		const auto& registry = m_Project->GetAssetManager()->GetAssetRegistry();
-		const auto startSceneMetadata = registry.find(specification.StartScene);
-		if (startSceneMetadata == registry.end())
-		{
-			result.Errors.emplace_back("The configured start scene is not registered.");
-			return result;
-		}
-		if (startSceneMetadata->second.Type != AssetType::Scene)
-		{
-			result.Errors.emplace_back("The configured start scene is not a scene asset.");
-			return result;
-		}
-
-		GameData gameData;
-		gameData.ProjectName = exportName;
-		gameData.StartScene = specification.StartScene;
-		gameData.AssetRegistry = registry;
-		const size_t sceneCount = std::ranges::count_if(registry, [](const auto& entry)
-			{
-				return entry.second.Type == AssetType::Scene && !entry.second.IsRuntimeAsset;
-			}
+		const size_t sceneCount = std::ranges::count_if(gameData.AssetRegistry, [](const auto& entry)
+		    {
+			    return entry.second.Type == AssetType::Scene && !entry.second.IsRuntimeAsset;
+		    }
 		);
 		size_t packedSceneCount = 0;
 
 		// Phase: load every scene and serialize it into the in-memory GameData container.
-		ReportProgress(options, 0.05f, "Packing scenes");
-		for (const auto& [handle, metadata] : registry)
+		for (const auto& [handle, metadata] : gameData.AssetRegistry)
 		{
 			if (metadata.Type != AssetType::Scene || metadata.IsRuntimeAsset)
 				continue;
 
 			const Ref<Scene> scene = CreateRef<Scene>();
 			scene->Handle = handle;
+
 			ScriptFieldStorage scriptFields;
 			const SceneSerializer serializer(scene, { .ScriptFields = &scriptFields, .CollectRelationshipRepairNotices = false });
-			const auto sourcePath = specification.ProjectDirectory / "Assets" / metadata.Filepath;
+
+		    const auto sourcePath = projectDirectory / "Assets" / metadata.Filepath;
 			if (!serializer.Deserialize(sourcePath))
 			{
 				result.Errors.emplace_back(std::format("Scene '{}' could not be loaded.", metadata.Filepath.generic_string()));
 				return result;
 			}
-			if (handle == specification.StartScene && !scene->GetPrimaryCameraEntity())
+
+			if (handle == startScene && !scene->GetPrimaryCameraEntity())
 			{
 				result.Errors.emplace_back("The start scene does not contain a primary camera.");
 				return result;
@@ -323,33 +276,45 @@ namespace Eppo
 				result.Errors.emplace_back(std::format("Scene '{}' could not be packed.", metadata.Filepath.generic_string()));
 				return result;
 			}
+
 			gameData.PackedAssets.emplace(handle, std::move(packedAsset));
 			++packedSceneCount;
-			ReportProgress(options, 0.05f + 0.13f * static_cast<float>(packedSceneCount) / static_cast<float>(sceneCount),
+			ReportProgress(options, 0.05f + 0.10f * static_cast<float>(packedSceneCount) / static_cast<float>(sceneCount),
 				std::format("Packed scene {} of {}", packedSceneCount, sceneCount));
 		}
-		ReportProgress(options, 0.18f, "Scenes packed");
+
+		ReportProgress(options, 0.15f, "Scenes packed");
+
+		// Phase: Write shaders — the engine shaders are already compiled in memory, so pack their sources.
+		ReportProgress(options, 0.15f, "Packing shaders");
+		for (const auto& [name, shader] : DeviceManager::Get()->GetRenderer()->GetAllShaders())
+			gameData.PackedShaders.emplace(name, PackedShaderData{ .ShaderSources = shader->GetShaderSources() });
 
 		// Phase: build (optional) and validate the standalone runtime for each requested configuration.
-		if (options.CopyRuntime)
+	    const auto configurations = GetExportConfigurations(options);
+	    if (options.CopyRuntime)
 		{
 			const auto sourceDirectory = GetSourceDirectory(options);
+
 			for (size_t index = 0; index < configurations.size(); ++index)
 			{
 				const auto& configuration = configurations[index];
 				const float progressStart = 0.20f + 0.32f * static_cast<float>(index) / static_cast<float>(configurations.size());
 				const float progressSpan = 0.32f / static_cast<float>(configurations.size());
 				std::string runtimeError;
+
 				if (options.BuildRuntime && !BuildRuntime(options, sourceDirectory, configuration, progressStart, progressSpan, runtimeError))
 				{
 					result.Errors.emplace_back(std::move(runtimeError));
 					return result;
 				}
+
 				if (!ValidateRuntimeFiles(configuration, runtimeError))
 				{
 					result.Errors.emplace_back(std::move(runtimeError));
 					return result;
 				}
+
 				ReportProgress(options, progressStart + progressSpan, std::format("Validated {} runtime", configuration.Name));
 			}
 		}
@@ -370,8 +335,8 @@ namespace Eppo
 			return result;
 		};
 
-		const auto scriptsDirectory = specification.ProjectDirectory / "Scripts";
-		const auto scriptProject = scriptsDirectory / (specification.Name + ".csproj");
+		const auto scriptsDirectory = projectDirectory / "Scripts";
+		const auto scriptProject = scriptsDirectory / (projectName + ".csproj");
 		if (!options.BuildScripts)
 		{
 			result.Warnings.emplace_back("Script build was skipped.");
@@ -396,7 +361,7 @@ namespace Eppo
 				ReportProgress(options, progressStart, std::format("Compiling {} scripts", configuration.Name));
 				std::vector<std::string> args{
 					"build", scriptProject.string(), "-c", configuration.ScriptConfiguration, "-o", outputDirectory.string(),
-					"-p:AssemblyName=" + exportName,
+					"-p:AssemblyName=" + gameData.ProjectName,
 					"-p:CoreManagedDll=" + (configuration.ManagedDirectory / "EppoScriptCore.dll").string(),
 					"--nologo",
 				};
@@ -415,7 +380,7 @@ namespace Eppo
 			{
 				ReportProgress(options, progressStart + progressSpan * 0.25f, std::format("Staging {} runtime", configuration.Name));
 				#if defined(EP_PLATFORM_WINDOWS)
-				const auto exportedExecutable = outputDirectory / (exportName + ".exe");
+				const auto exportedExecutable = outputDirectory / (gameData.ProjectName + ".exe");
 				#else
 				const auto exportedExecutable = outputDirectory / exportName;
 				#endif
@@ -449,7 +414,7 @@ namespace Eppo
 			}
 
 			// Phase: copy the loose project assets (Game.eppak carries the scenes and registry).
-			const auto assetsDirectory = specification.ProjectDirectory / "Assets";
+			const auto assetsDirectory = projectDirectory / "Assets";
 			ReportProgress(options, progressStart + progressSpan * 0.70f, std::format("Copying {} assets", configuration.Name));
 			if (FS::Exists(assetsDirectory) && !CopyAssets(assetsDirectory, outputDirectory / "Assets"))
 				return fail("Failed to copy project assets.");
@@ -464,5 +429,46 @@ namespace Eppo
 		result.Success = true;
 		ReportProgress(options, 1.0f, "Export complete");
 		return result;
+	}
+
+    auto ProjectExporter::ValidateProject(const ProjectExportOptions& options, ProjectExportResult& result) const -> void
+	{
+	    EP_PROFILE_FN("ProjectExporter::ValidateProject");
+
+	    if (!m_Project || !m_Project->GetAssetManager())
+	        result.Errors.emplace_back("No valid project is available for export.");
+
+	    const auto& specification = m_Project->GetSpecification();
+	    if (specification.Name.empty())
+	        result.Errors.emplace_back("Project name cannot be empty.");
+
+	    const std::string exportName = SanitizeProjectName(specification.Name);
+	    if (exportName.empty())
+	        result.Errors.emplace_back("Project name cannot be used as an export name.");
+
+	    if (exportName != specification.Name)
+	        result.Warnings.emplace_back(std::format("Project name was sanitized to '{}'.", exportName));
+
+        if (const auto configurations = GetExportConfigurations(options); configurations.empty())
+	        result.Errors.emplace_back("At least one export configuration must be selected.");
+
+	    result.OutputPath = (options.ParentDirectory / exportName).lexically_normal();
+	    if (FS::Exists(result.OutputPath))
+	    {
+	        if (!FS::IsDirectory(result.OutputPath))
+	            result.Errors.emplace_back("Export target exists and is not a directory.");
+	        if (!FS::IsEmpty(result.OutputPath))
+	            result.Errors.emplace_back("Export target directory is not empty.");
+	    }
+
+	    if (!specification.StartScene)
+	        result.Errors.emplace_back("A start scene is not configured.");
+
+	    const auto& registry = m_Project->GetAssetManager()->GetAssetRegistry();
+	    const auto startSceneMetadata = registry.find(specification.StartScene);
+	    if (startSceneMetadata == registry.end())
+	        result.Errors.emplace_back("The configured start scene is not registered.");
+	    else if (startSceneMetadata->second.Type != AssetType::Scene)
+	        result.Errors.emplace_back("The configured start scene is not a scene asset.");
 	}
 }

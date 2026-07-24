@@ -38,6 +38,9 @@ namespace Eppo
 		[[nodiscard]] auto Export(const ProjectExportOptions& options) const -> ProjectExportResult;
 
 	private:
+	    auto ValidateProject(const ProjectExportOptions& options, ProjectExportResult& result) const -> void;
+
+	private:
 		Ref<Project> m_Project = nullptr;
 	};
 }

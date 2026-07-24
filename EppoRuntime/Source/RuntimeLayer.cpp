@@ -16,6 +16,11 @@ namespace Eppo
 
 		const AssetHandle startScene = gameData.StartScene;
 		const std::string projectName = gameData.ProjectName;
+
+		// Recompile engine shaders from the pack's baked-in sources (base ctor loaded them from disk for ImGui).
+		if (!gameData.PackedShaders.empty())
+			Application::Get().GetDeviceManager()->GetRenderer()->LoadShaders(gameData.PackedShaders);
+
 		m_AssetManager = CreateRef<AssetManager>(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
 		m_Project = Project::New(ProjectSpecification{
 			.Name = projectName,

@@ -54,6 +54,19 @@ namespace Eppo
 			// adding to the registry from the browser.
 			return type == AssetType::Mesh || type == AssetType::Scene;
 		}
+
+		auto GetImportDirectory(const std::filesystem::path& assetsDirectory, AssetType type) -> std::filesystem::path
+		{
+			switch (type)
+			{
+				case AssetType::Mesh:    return assetsDirectory / "Meshes";
+				case AssetType::Scene:   return assetsDirectory / "Scenes";
+				case AssetType::Texture: return assetsDirectory / "Textures";
+				case AssetType::Script:  return assetsDirectory / "Scripts";
+				case AssetType::None:
+				default:                 return assetsDirectory;
+			}
+		}
 	}
 
 	auto ContentBrowserPanel::RenderGui() -> void
@@ -429,7 +442,12 @@ namespace Eppo
 		if (source.empty())
 			return;
 
-		auto destination = m_CurrentDirectory / source.filename();
+		const AssetType type = AssetManager::GetAssetTypeFromPath(source);
+		const auto destinationDirectory = GetImportDirectory(m_BaseDirectory, type);
+		if (!FS::CreateDir(destinationDirectory))
+			return;
+
+		auto destination = destinationDirectory / source.filename();
 		if (FS::Exists(destination))
 			destination = MakeUniquePath(destination);
 
@@ -441,7 +459,7 @@ namespace Eppo
 			return;
 		}
 
-		if (IsImportable(AssetManager::GetAssetTypeFromPath(destination)))
+		if (IsImportable(type))
 			Project::GetActive()->GetAssetManager()->CreateAsset(destination);
 	}
 

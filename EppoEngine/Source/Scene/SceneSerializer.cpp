@@ -522,6 +522,7 @@ namespace Eppo
 		uint64_t sceneHandle = 0;
 		EnvironmentSettings environment{};
 		uint32_t entityCount = 0;
+
 		if (!reader.Read(magic) || magic != PackFormat::Scene.Magic
 			|| !reader.Read(version) || version != PackFormat::Scene.Version
 			|| !reader.Read(sceneHandle) || sceneHandle != static_cast<uint64_t>(m_SceneContext->Handle)

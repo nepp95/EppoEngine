@@ -91,21 +91,23 @@ namespace Eppo
 		Log::Info("==================================");
 
 		CreateBindingLayout();
-
-		// Release some unneeded memory
-		m_ShaderSources.clear();
-		m_ShaderBytes.clear();
 	}
 
 	auto VulkanShader::CompileOrGetCache() -> void
 	{
-		const auto& dm = DeviceManager::Get();
-
-		const std::filesystem::path cacheDir = FS::GetShaderCacheDirectory();
-		const std::filesystem::path vertPath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.vert", m_Specification.Name);
-		const std::filesystem::path pixelPath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.frag", m_Specification.Name);
-		m_ShaderSources[nvrhi::ShaderType::Vertex] = FS::ReadText(vertPath);
-		m_ShaderSources[nvrhi::ShaderType::Pixel] = FS::ReadText(pixelPath);
+		// Provided sources (e.g. from a packed game) take precedence; otherwise read them from disk.
+		// #include directives still resolve against Resources/Shaders on disk in either case.
+		if (!m_Specification.Sources.empty())
+		{
+			m_ShaderSources = m_Specification.Sources;
+		}
+		else
+		{
+			const std::filesystem::path vertPath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.vert", m_Specification.Name);
+			const std::filesystem::path pixelPath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.frag", m_Specification.Name);
+			m_ShaderSources[nvrhi::ShaderType::Vertex] = FS::ReadText(vertPath);
+			m_ShaderSources[nvrhi::ShaderType::Pixel] = FS::ReadText(pixelPath);
+		}
 
 		bool verified = true;
 		for (const auto& [type, source] : m_ShaderSources)
@@ -131,7 +133,7 @@ namespace Eppo
 		{
 			Log::Info("Loading shader cache for '{}'", m_Specification.Name);
 
-			for (const auto& [type, source] : m_ShaderSources)
+			for (const auto& type : m_ShaderSources | std::views::keys)
 			{
 				const std::filesystem::path shaderBinaryPath = FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
 				m_ShaderBytes[type] = FS::ReadBytes(shaderBinaryPath);
@@ -141,7 +143,7 @@ namespace Eppo
 		{
 			Log::Info("Compiling shader '{}'", m_Specification.Name);
 
-			for (const auto& [type, bytes] : m_ShaderSources)
+			for (const auto& type : m_ShaderSources | std::views::keys)
 			{
 				// Compile shader
 				Compile(type);
@@ -154,9 +156,9 @@ namespace Eppo
 		}
 	}
 
-	auto VulkanShader::Compile(nvrhi::ShaderType type) -> void
+	auto VulkanShader::Compile(const nvrhi::ShaderType type) -> void
 	{
-		// Create compiler
+	    // Create compiler
 		CComPtr<IDxcUtils> utils;
 		CComPtr<IDxcCompiler3> compiler;
 		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
@@ -169,7 +171,7 @@ namespace Eppo
 		// Command line args for compiler
 		const std::wstring shaderPath = std::filesystem::path(FS::GetResourcesDirectory() / "Shaders" / std::format("{}.{}", m_Specification.Name, NvrhiShaderTypeToSuffix(type))).wstring();
 		const std::wstring binaryPath = std::filesystem::path(FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type))).wstring();
-		
+
 		const bool isVertex = type == nvrhi::ShaderType::Vertex ? true : false;
 		LPCWSTR args[] = {
 			L"-E", L"Main",
@@ -226,9 +228,9 @@ namespace Eppo
 	{
 		const spirv_cross::Compiler compiler(reinterpret_cast<uint32_t*>(m_ShaderBytes.at(type).data()), m_ShaderBytes.at(type).size() / 4);
 		const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
-		nvrhi::VulkanBindingOffsets vulkanOffsets{};
+        constexpr nvrhi::VulkanBindingOffsets vulkanOffsets{};
 
-		Log::Info("Stage: {}", nvrhi::utils::ShaderStageToString(type));
+	    Log::Info("Stage: {}", nvrhi::utils::ShaderStageToString(type));
 
 		if (!resources.stage_inputs.empty() && type == nvrhi::ShaderType::Vertex)
 		{
@@ -266,7 +268,7 @@ namespace Eppo
 			const auto& resource = resources.push_constant_buffers[0];
 			const auto& bufferType = compiler.get_type(resource.base_type_id);
 			const size_t bufferSize = compiler.get_declared_struct_size(bufferType);
-			const uint32_t pushConstantSize = static_cast<uint32_t>(bufferSize);
+			const auto pushConstantSize = static_cast<uint32_t>(bufferSize);
 
 			m_PushConstants.Binding = 0;
 			if (pushConstantSize > m_PushConstants.Size)
@@ -297,7 +299,7 @@ namespace Eppo
 						}
 					}
 				}
-				
+
 				if (!bindingExists)
 				{
 					ShaderResourceBinding& shaderResource = m_ShaderResources[set].emplace_back();
@@ -321,7 +323,7 @@ namespace Eppo
 			{
 				const uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				const uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding) - vulkanOffsets.shaderResource;
-				
+
 				auto& spirvType = compiler.get_type(resource.type_id);
 				uint32_t arraySize = 1;
 				if (!spirvType.array.empty())
@@ -365,7 +367,7 @@ namespace Eppo
 			{
 				const uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				const uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding) - vulkanOffsets.sampler;
-			
+
 				bool bindingExists = false;
 				if (m_ShaderResources.contains(set))
 				{
@@ -398,12 +400,12 @@ namespace Eppo
 		if (!resources.storage_buffers.empty())
 		{
 			Log::Info("Found {} storage_buffers", resources.storage_buffers.size());
-			
+
 			for (const auto& resource : resources.storage_buffers)
 			{
 				const uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 				const uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding) - vulkanOffsets.shaderResource;
-			
+
 				bool bindingExists = false;
 				if (m_ShaderResources.contains(set))
 				{
@@ -425,14 +427,13 @@ namespace Eppo
 					shaderResource.Binding = binding;
 					shaderResource.Stage = type;
 					shaderResource.Type = nvrhi::ResourceType::StructuredBuffer_SRV;
-				
+
 					Log::Info("\t\tName: {}", shaderResource.Name);
 					Log::Info("\t\tBinding: {} (set: {})", shaderResource.Binding, set);
 					Log::Info("\t\tType: {}", nvrhi::utils::ResourceTypeToString(shaderResource.Type));
 				}
 			}
 		}
-
 		Log::Trace("Found {} sampled_images", resources.sampled_images.size());
 		Log::Trace("Found {} storage_images", resources.storage_images.size());
 	}

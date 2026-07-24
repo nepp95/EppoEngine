@@ -52,17 +52,14 @@ namespace Eppo
 
 	auto Shader::GetShaderHandle(const nvrhi::ShaderType type) -> nvrhi::ShaderHandle
 	{
-		auto it = m_ShaderHandles.find(type);
-		if (it != m_ShaderHandles.end())
+        if (const auto it = m_ShaderHandles.find(type); it != m_ShaderHandles.end())
 			return it->second;
 		return nullptr;
 	}
 
 	auto Shader::Create(ShaderSpecification spec) -> Ref<Shader>
 	{
-		const auto& dm = DeviceManager::Get();
-
-		switch (dm->GetParams().API)
+        switch (const auto& dm = DeviceManager::Get(); dm->GetParams().API)
 		{
 			case RendererAPI::Vulkan:
 				return CreateRef<VulkanShader>(std::move(spec));

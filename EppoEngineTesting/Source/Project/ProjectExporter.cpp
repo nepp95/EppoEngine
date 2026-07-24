@@ -1,4 +1,5 @@
 #include "Support/EppoTest.h"
+#include "Support/AppHarness.h"
 #include "Support/TempDir.h"
 
 #include "Core/Buffer.h"
@@ -11,7 +12,8 @@
 
 using namespace Eppo;
 
-SUITE(Project)
+// Export reads the engine shaders from the live renderer, so these boot the graphical harness.
+SUITE(ProjectExport)
 {
     namespace
     {
@@ -80,6 +82,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_ExportsAssetsAndPackedScenes)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         fixture.AddScene(500, "start.epscene");
         fixture.AddScene(501, "other.epscene");
@@ -108,8 +113,12 @@ SUITE(Project)
         CHECK(scene->GetPrimaryCameraEntity());
     }
 
+
     TEST(ProjectExporter_RejectsNonEmptyTargetWithoutMutation)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         fixture.AddScene(500, "start.epscene");
         fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
@@ -127,6 +136,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_AcceptsExistingEmptyTarget)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         fixture.AddScene(500, "start.epscene");
         fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
@@ -139,6 +151,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_RequiresAnExportConfiguration)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         ProjectExportOptions options = fixture.Options();
         options.ExportDebug = false;
@@ -151,6 +166,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_ReportsMonotonicProgress)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         fixture.AddScene(500, "start.epscene");
         fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
@@ -174,6 +192,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_IsolatesScriptFieldsAndRelationshipNotices)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         const Ref<Scene> scene = CreateRef<Scene>();
         scene->Handle = AssetHandle(500);
@@ -214,6 +235,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_ValidatesStartSceneBeforeCreatingTarget)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         const auto options = fixture.Options();
 
@@ -236,6 +260,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_RejectsUnloadableOrCameraLessStartScene)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         fixture.AddScene(500, "start.epscene", false);
         fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
@@ -252,6 +279,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_SanitizesTargetNameAndSkipsExternalSteps)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture("Bad/Game");
         fixture.AddScene(500, "start.epscene");
         fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
@@ -264,6 +294,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_CopiesRelocatableRuntimeDeployment)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         fixture.AddScene(500, "start.epscene");
         fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
@@ -331,6 +364,9 @@ SUITE(Project)
 
     TEST(ProjectExporter_PackagesTheManagedCoreUsedToBuildScripts)
     {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
         ExportProjectFixture fixture;
         fixture.AddScene(500, "start.epscene");
         fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
