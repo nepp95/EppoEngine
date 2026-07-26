@@ -188,7 +188,7 @@ namespace Eppo
 					{
 						const AssetHandle handle = *static_cast<const uint64_t*>(payload->Data);
 						const auto& assetManager = Project::GetActive()->GetAssetManager();
-						if (assetManager->GetMetadata(handle).Type == AssetType::Mesh)
+						if (assetManager->HasAssetData(handle) && assetManager->GetMetadata(handle).Type == AssetType::Mesh)
 							component.MeshHandle = handle;
 						else
 							Log::Warn("Dropped asset is not a mesh; ignoring.");

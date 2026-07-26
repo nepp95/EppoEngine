@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Panels/LogSink.h"
 #include "Panels/Panel.h"
 
 #include <imgui.h>
@@ -9,7 +10,7 @@ namespace Eppo
     class LogPanel : public Panel
     {
     public:
-        LogPanel() = default;
+        LogPanel();
         virtual ~LogPanel() = default;
 
         auto RenderGui() -> void override;
@@ -24,6 +25,7 @@ namespace Eppo
         uint8_t m_SourceMask = 0xFF;
         ImGuiTextFilter m_TextFilter;
 
+        Ref<LogSink> m_Sink;
         std::vector<LogEntry> m_Entries;
         std::vector<uint32_t> m_FilteredIndices;
         uint64_t m_Version = 0;

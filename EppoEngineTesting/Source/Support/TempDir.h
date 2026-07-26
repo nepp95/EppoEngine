@@ -12,17 +12,18 @@ namespace Eppo::Testing
     class TempDir
     {
     public:
-        TempDir()
+        explicit TempDir(const std::filesystem::path& parent = std::filesystem::temp_directory_path())
         {
-            m_Path = std::filesystem::temp_directory_path()
-                / ("eppo-test-" + std::to_string(Utils::GenerateRandomUInt64()));
+            m_Path = parent / ("eppo-test-" + std::to_string(Utils::GenerateRandomUInt64()));
             std::filesystem::create_directories(m_Path);
         }
 
         ~TempDir()
         {
-            std::error_code ec;
-            std::filesystem::remove_all(m_Path, ec);
+            // Never throw out of the destructor: a directory a test left watched or
+            // otherwise open can fail to remove, and that must not abort the run.
+            std::error_code error;
+            std::filesystem::remove_all(m_Path, error);
         }
 
         TempDir(const TempDir&) = delete;

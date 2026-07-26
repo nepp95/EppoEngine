@@ -11,11 +11,6 @@ using json = nlohmann::json;
 
 namespace Eppo
 {
-    namespace
-    {
-        const AssetMetadata s_NullMetadata;
-    }
-
 	AssetManager::AssetManager(std::map<AssetHandle, AssetMetadata>&& assetData, std::map<AssetHandle, PackedAssetData>&& packedAssets)
 		: m_AssetData(std::move(assetData)), m_PackedAssets(std::move(packedAssets)), m_UsesPackedAssets(true)
 	{}
@@ -111,11 +106,7 @@ namespace Eppo
             {
                 if (const auto packedAsset = m_PackedAssets.find(handle); packedAsset != m_PackedAssets.end())
                 {
-                    if (packedAsset->second.Type != metadata.Type)
-                        return nullptr;
-                    Buffer payload(packedAsset->second.Payload.data(), packedAsset->second.Payload.size());
-                    BufferReader reader(payload);
-                    asset = AssetImporter::ImportAsset(handle, packedAsset->second.Type, reader);
+                    asset = AssetImporter::ImportPackedAsset(handle, metadata, packedAsset->second.Payload);
                 }
                 else if (m_UsesPackedAssets && metadata.Type == AssetType::Scene)
                 {
@@ -152,11 +143,14 @@ namespace Eppo
         return m_AssetData.contains(handle) && m_LoadedAssets.contains(handle);
     }
 
+    auto AssetManager::GetMetadata(AssetHandle handle) -> AssetMetadata&
+    {
+        return m_AssetData.at(handle);
+    }
+
     auto AssetManager::GetMetadata(AssetHandle handle) const -> const AssetMetadata&
     {
-        if (m_AssetData.contains(handle))
-            return m_AssetData.at(handle);
-        return s_NullMetadata;
+        return m_AssetData.at(handle);
     }
 
     auto AssetManager::GetHandleForPath(const std::filesystem::path& path) const -> AssetHandle
@@ -188,24 +182,6 @@ namespace Eppo
 
             m_AssetData.erase(handle);
             m_LoadedAssets.erase(handle);
-        }
-
-        SerializeAssetRegistry();
-    }
-
-    auto AssetManager::UpdateAssetPath(AssetHandle handle, const std::filesystem::path& newPath) -> void
-    {
-        {
-            std::scoped_lock lock(m_Mutex);
-
-            const auto it = m_AssetData.find(handle);
-            if (it == m_AssetData.end())
-            {
-                Log::Warn("Tried to update path of asset '{}' which is not in the registry!", handle);
-                return;
-            }
-
-            it->second.Filepath = newPath.is_absolute() ? Project::GetAssetRelativeFilepath(newPath) : newPath;
         }
 
         SerializeAssetRegistry();

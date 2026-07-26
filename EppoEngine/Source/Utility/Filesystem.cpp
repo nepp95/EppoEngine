@@ -61,13 +61,8 @@ namespace Eppo::FS
 			return true;
 		}
 
-		std::error_code error;
-		const auto normalized = std::filesystem::absolute(path, error).lexically_normal();
-		if (error)
-			return false;
-		std::filesystem::create_directories(normalized, error);
-		if (error)
-			return false;
+		const auto normalized = std::filesystem::absolute(path).lexically_normal();
+		std::filesystem::create_directories(normalized);
 
 		s_WritableDirectory = normalized;
 		return true;
@@ -83,8 +78,7 @@ namespace Eppo::FS
 		const auto cacheDirectory = s_WritableDirectory.empty()
 			? GetResourcesDirectory() / "Shaders" / "Cache"
 			: s_WritableDirectory / "ShaderCache";
-		std::error_code error;
-		std::filesystem::create_directories(cacheDirectory, error);
+		std::filesystem::create_directories(cacheDirectory);
 		return cacheDirectory;
 	}
 

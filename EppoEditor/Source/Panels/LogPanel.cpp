@@ -40,6 +40,12 @@ namespace Eppo
         }
     }
 
+    LogPanel::LogPanel()
+        : m_Sink(CreateRef<LogSink>(LOG_BUFFER_CAPACITY))
+    {
+        Log::AddSink(m_Sink);
+    }
+
     auto LogPanel::RenderGui() -> void
     {
         ScopedBegin scopedBegin("Log");
@@ -83,13 +89,9 @@ namespace Eppo
 
     auto LogPanel::SyncEntries() -> void
     {
-        const auto& buffer = Log::GetBuffer();
-        if (!buffer)
-            return;
-
         // Only the new messages are copied under the sink lock; filtering and drawing run unlocked.
         const size_t firstNew = m_Entries.size();
-        m_Version = buffer->CopySince(m_Version, m_Entries);
+        m_Version = m_Sink->CopySince(m_Version, m_Entries);
 
         if (m_Entries.size() > MAX_ENTRIES)
         {

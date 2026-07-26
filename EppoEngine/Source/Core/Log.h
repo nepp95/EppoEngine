@@ -3,13 +3,10 @@
 #include "Core/UUID.h"
 
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/base_sink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <filesystem>
-#include <mutex>
-#include <vector>
 
 namespace Eppo
 {
@@ -21,44 +18,14 @@ namespace Eppo
 		Vulkan
 	};
 
-	inline constexpr size_t LOG_BUFFER_CAPACITY = 8192;
-
-	struct LogEntry
-	{
-		LogSource Source = LogSource::Core;
-		spdlog::level::level_enum Level = spdlog::level::trace;
-		std::string Text;
-	};
-
-	class LogBufferSink final : public spdlog::sinks::base_sink<std::mutex>
-	{
-	public:
-		explicit LogBufferSink(size_t capacity);
-
-		// Appends every entry logged since fromVersion to out and returns the version to pass in next time.
-		auto CopySince(uint64_t fromVersion, std::vector<LogEntry>& out) -> uint64_t;
-
-	protected:
-		auto sink_it_(const spdlog::details::log_msg& msg) -> void override;
-		auto flush_() -> void override {}
-
-		// This sink owns its layout; the loggers sharing it must not repattern it.
-		auto set_pattern_(const std::string&) -> void override {}
-		auto set_formatter_(std::unique_ptr<spdlog::formatter>) -> void override {}
-
-	private:
-		std::vector<LogEntry> m_Entries;
-		size_t m_Head = 0;
-		size_t m_Count = 0;
-		uint64_t m_Version = 0;
-	};
-
 	class Log
 	{
 	public:
 		static auto Init() -> void;
 
-		static auto GetBuffer() -> const std::shared_ptr<LogBufferSink>& { return s_BufferSink; }
+		// Attach an extra sink to every logger. The editor uses this to feed its log panel;
+		// non-editor hosts never do, so they don't pay for in-memory log retention.
+		static auto AddSink(const spdlog::sink_ptr& sink) -> void;
 
 		template<typename... Args>
 		static constexpr auto Trace(fmt::format_string<Args...> fmt, Args&&... args) -> void
@@ -211,7 +178,6 @@ namespace Eppo
 	private:
 		static std::shared_ptr<spdlog::sinks::basic_file_sink_mt> s_FileLoggerSink;
 		static std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> s_ConsoleLoggerSink;
-		static std::shared_ptr<LogBufferSink> s_BufferSink;
 		static std::shared_ptr<spdlog::logger> s_CoreLogger;
 		static std::shared_ptr<spdlog::logger> s_GlfwLogger;
 	    static std::shared_ptr<spdlog::logger> s_ScriptLogger;

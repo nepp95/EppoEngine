@@ -55,10 +55,10 @@ namespace Eppo
 		auto CreateBody(UUID entityId, const RigidBodyComponent& rigidBody, const glm::vec3& position, const glm::quat& rotation,
 			const std::vector<ColliderData>& colliders) -> void;
 
-		auto Step(float timestep, int subStepCount = 4) -> void;
+		auto Step(float timestep, uint32_t subStepCount = 4) -> void;
 
 		[[nodiscard]] auto HasBody(UUID entityId) const -> bool;
-		[[nodiscard]] auto GetShapeCount(UUID entityId) const -> int;
+		[[nodiscard]] auto GetShapeCount(UUID entityId) const -> uint32_t;
 
 		[[nodiscard]] auto GetPosition(UUID entityId) const -> glm::vec3;
 		[[nodiscard]] auto GetRotation(UUID entityId) const -> glm::quat;
@@ -72,7 +72,7 @@ namespace Eppo
 
 	private:
 		auto AttachCollider(b3BodyId body, const ColliderData& collider) const -> void;
-		[[nodiscard]] auto TryGetBody(UUID entityId, b3BodyId& outBody) const -> bool;
+		[[nodiscard]] auto GetBody(UUID entityId) const -> b3BodyId;
 
 		b3WorldId m_WorldId;
 		std::unordered_map<UUID, b3BodyId> m_Bodies;

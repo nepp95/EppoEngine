@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "Core/Buffer.h"
 
 namespace Eppo
 {
@@ -25,6 +26,6 @@ namespace Eppo
 	struct PackedAssetData
 	{
 		AssetType Type = AssetType::None;
-		std::vector<uint8_t> Payload;
+		Buffer Payload;
 	};
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Buffer.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
 #include "Scripting/ScriptFieldStorage.h"
@@ -8,24 +9,21 @@
 
 namespace Eppo
 {
-	struct SceneSerializerOptions
-	{
-		ScriptFieldStorage* ScriptFields = nullptr;
-		bool CollectRelationshipRepairNotices = true;
-	};
-
 	class SceneSerializer
 	{
 	public:
-		explicit SceneSerializer(const Ref<Scene>& scene, SceneSerializerOptions options = {});
+		explicit SceneSerializer(const Ref<Scene>& scene);
 
 		auto Serialize(const std::filesystem::path& path) const -> bool;
 		auto Deserialize(const std::filesystem::path& path) const -> bool;
-		auto Serialize(BufferWriter& writer) const -> bool;
-		auto Deserialize(BufferReader& reader) const -> bool;
+
+		// Deserializes a scene straight from its .epscene bytes (a packed scene payload).
+		auto Deserialize(const Buffer& buffer) const -> bool;
+
 		static auto ConsumeRelationshipRepairNotices() -> std::vector<std::string>;
 
 	private:
+		auto DeserializeScene(const nlohmann::json& data) const -> bool;
 		auto SerializeEntity(nlohmann::json& data, Entity entity) const -> void;
 		[[nodiscard]] auto FindScriptFields(UUID entityId) const -> const ScriptFieldMap*;
 		[[nodiscard]] auto GetScriptFields(UUID entityId) const -> ScriptFieldMap*;
@@ -35,6 +33,5 @@ namespace Eppo
 
 	private:
 		Ref<Scene> m_SceneContext = nullptr;
-		SceneSerializerOptions m_Options;
 	};
 }

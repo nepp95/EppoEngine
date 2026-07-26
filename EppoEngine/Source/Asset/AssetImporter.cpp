@@ -34,19 +34,6 @@ namespace Eppo
 		return s_AssetImportFns.at(metadata.Type)(handle, metadata);
 	}
 
-	auto AssetImporter::ImportAsset(const AssetHandle handle, const AssetType type, BufferReader& reader) -> Ref<Asset>
-	{
-	    EP_PROFILE_FN("AssetImporter::ImportAsset");
-
-	    if (!s_AssetImportPackedFns.contains(type))
-	    {
-	        Log::Error("No packed importer available for asset type: {}", Utils::AssetTypeToString(type));
-	        return nullptr;
-	    }
-
-		return s_AssetImportPackedFns.at(type)(handle, reader);
-	}
-
 	auto AssetImporter::ImportMesh(const AssetHandle handle, const AssetMetadata& metadata) -> Ref<Mesh>
 	{
 		EP_PROFILE_FN("AssetImporter::ImportMesh");
@@ -79,19 +66,36 @@ namespace Eppo
 
 		Ref<Scene> scene = CreateRef<Scene>();
 		scene->Handle = handle;
-		SceneSerializer serializer(scene);
-		if (!serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath)))
+
+        if (const SceneSerializer serializer(scene); !serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath)))
 			return nullptr;
 
 		return scene;
 	}
 
-	auto AssetImporter::ImportPackedScene(const AssetHandle handle, BufferReader& reader) -> Ref<Scene>
+    auto AssetImporter::ImportPackedAsset(const AssetHandle handle, const AssetMetadata& metadata, const Buffer payload) -> Ref<Asset>
+    {
+	    EP_PROFILE_FN("AssetImporter::ImportPackedAsset");
+
+	    if (!s_AssetImportPackedFns.contains(metadata.Type))
+	    {
+	        Log::Error("No packed importer available for asset type: {}", Utils::AssetTypeToString(metadata.Type));
+	        return nullptr;
+	    }
+
+	    return s_AssetImportPackedFns.at(metadata.Type)(handle, metadata, payload);
+    }
+
+    auto AssetImporter::ImportPackedScene(const AssetHandle handle, const AssetMetadata& metadata, const Buffer payload) -> Ref<Scene>
 	{
+		EP_PROFILE_FN("AssetImporter::ImportPackedScene");
+
 		Ref<Scene> scene = CreateRef<Scene>();
 		scene->Handle = handle;
-		if (!SceneSerializer(scene).Deserialize(reader))
+
+		if (const SceneSerializer serializer(scene); !serializer.Deserialize(payload))
 			return nullptr;
+
 		return scene;
 	}
 
@@ -100,8 +104,13 @@ namespace Eppo
 		EP_PROFILE_FN("AssetImporter::ExportAsset");
 
 		const auto& assetManager = Project::GetActive()->GetAssetManager();
-		const auto& metadata = assetManager->GetMetadata(asset->Handle);
+		if (!assetManager->HasAssetData(asset->Handle))
+		{
+			Log::Error("Cannot export asset '{}': it is not registered.", asset->Handle);
+			return false;
+		}
 
+		const auto& metadata = assetManager->GetMetadata(asset->Handle);
 		if (!s_AssetExportFns.contains(metadata.Type))
 		{
 			Log::Error("No exporter available for type: {}", Utils::AssetTypeToString(metadata.Type));

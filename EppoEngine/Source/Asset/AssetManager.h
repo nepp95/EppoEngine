@@ -22,7 +22,7 @@ namespace Eppo
 
 		template<typename T>
 			requires(std::derived_from<T, Asset>)
-		auto GetOrLoadAsset(AssetHandle handle, bool async = false) -> Ref<T>
+		auto GetOrLoadAsset(const AssetHandle handle, const bool async = false) -> Ref<T>
 		{
 			return std::static_pointer_cast<T>(GetOrLoadAsset(handle, async));
 		}
@@ -31,6 +31,7 @@ namespace Eppo
 
 		[[nodiscard]] auto HasAssetData(AssetHandle handle) const -> bool;
 		[[nodiscard]] auto IsAssetLoaded(AssetHandle handle) const -> bool;
+		[[nodiscard]] auto GetMetadata(AssetHandle handle) -> AssetMetadata&;
 		[[nodiscard]] auto GetMetadata(AssetHandle handle) const -> const AssetMetadata&;
 
 		// Reverse lookup used by the content browser to tell whether a file on disk
@@ -41,10 +42,6 @@ namespace Eppo
 		// Drop an asset from the registry (does not touch the file on disk) and
 		// re-serialize. Used when the content browser deletes a registered asset.
 		auto RemoveAsset(AssetHandle handle) -> void;
-
-		// Point an existing asset at a new file location (after a move/rename on
-		// disk) and re-serialize. No-op for unknown handles.
-		auto UpdateAssetPath(AssetHandle handle, const std::filesystem::path& newPath) -> void;
 
 		[[nodiscard]] auto GetAssetRegistry() const -> const std::map<AssetHandle, AssetMetadata>& { return m_AssetData; };
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Buffer.h"
+
 #include <filesystem>
 #include <fstream>
 
@@ -7,14 +9,7 @@ namespace Eppo::FS
 {
 	inline auto CreateDir(const std::filesystem::path& path) -> bool
 	{
-		std::error_code error;
-		std::filesystem::create_directories(path, error);
-		if (error)
-		{
-			Log::Error("Failed to create directory '{}': {}", path, error.message());
-			return false;
-		}
-		return true;
+		return std::filesystem::create_directories(path);
 	}
 
 	inline auto Exists(const std::filesystem::path& path) -> bool
@@ -24,83 +19,59 @@ namespace Eppo::FS
 
 	inline auto IsDirectory(const std::filesystem::path& path) -> bool
 	{
-		std::error_code error;
-		return std::filesystem::is_directory(path, error) && !error;
+		return std::filesystem::is_directory(path);
 	}
 
 	inline auto IsEmpty(const std::filesystem::path& path) -> bool
 	{
-		std::error_code error;
-		return std::filesystem::is_empty(path, error) && !error;
+		return std::filesystem::is_empty(path);
 	}
 
 	inline auto RemoveAll(const std::filesystem::path& path) -> bool
 	{
-		std::error_code error;
-		std::filesystem::remove_all(path, error);
-		if (error)
-		{
-			Log::Error("Failed to remove '{}': {}", path, error.message());
-			return false;
-		}
+		std::filesystem::remove_all(path);
 		return true;
 	}
 
-	// Copies a single file, creating parent directories as needed. Non-throwing: logs and returns false on failure.
+	// Copies a single file, creating parent directories as needed.
 	inline auto CopyFile(const std::filesystem::path& source, const std::filesystem::path& destination, const bool overwrite) -> bool
 	{
-		std::error_code error;
 		if (const auto parent = destination.parent_path(); !parent.empty())
-		{
-			std::filesystem::create_directories(parent, error);
-			if (error)
-			{
-				Log::Error("Failed to create directory '{}': {}", parent, error.message());
-				return false;
-			}
-		}
+			std::filesystem::create_directories(parent);
 
 		const auto options = overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none;
-		std::filesystem::copy_file(source, destination, options, error);
-		if (error)
-		{
-			Log::Error("Failed to copy '{}' to '{}': {}", source, destination, error.message());
-			return false;
-		}
-		return true;
+		return std::filesystem::copy_file(source, destination, options);
 	}
 
 	// Copies the files under source into destination for which predicate(path) is true, preserving the tree
-	// when recursive. Non-throwing.
+	// when recursive.
 	template<typename Predicate>
 	inline auto CopyDirectory(const std::filesystem::path& source, const std::filesystem::path& destination, Predicate predicate,
 		const bool recursive = true) -> bool
 	{
-		std::error_code error;
 		if (recursive)
 		{
-			for (std::filesystem::recursive_directory_iterator it(source, error), end; !error && it != end; it.increment(error))
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(source))
 			{
-				if (!it->is_regular_file() || !predicate(it->path()))
+				if (!entry.is_regular_file() || !predicate(entry.path()))
 					continue;
 
-				const auto relative = std::filesystem::relative(it->path(), source, error);
-				if (error || !CopyFile(it->path(), destination / relative, true))
+				if (!CopyFile(entry.path(), destination / std::filesystem::relative(entry.path(), source), true))
 					return false;
 			}
 		}
 		else
 		{
-			for (std::filesystem::directory_iterator it(source, error), end; !error && it != end; it.increment(error))
+			for (const auto& entry : std::filesystem::directory_iterator(source))
 			{
-				if (!it->is_regular_file() || !predicate(it->path()))
+				if (!entry.is_regular_file() || !predicate(entry.path()))
 					continue;
 
-				if (!CopyFile(it->path(), destination / it->path().filename(), true))
+				if (!CopyFile(entry.path(), destination / entry.path().filename(), true))
 					return false;
 			}
 		}
-		return !error;
+		return true;
 	}
 
 	inline auto Copy(const std::filesystem::path& from, const std::filesystem::path& to) -> bool
@@ -148,7 +119,7 @@ namespace Eppo::FS
 	{
 		return GetRootDirectory() / "Resources";
 	}
-	
+
 	auto GetShaderCacheDirectory() -> std::filesystem::path;
 
 	inline auto ReadBytes(const std::filesystem::path& path) -> std::vector<char>
@@ -207,6 +178,11 @@ namespace Eppo::FS
 		out.write(static_cast<const char*>(data), size);
 
 		return true;
+	}
+
+	inline auto WriteBytes(const std::filesystem::path& path, const Buffer& buffer, const bool overwrite) -> bool
+	{
+		return WriteBytes(path, buffer.Data, buffer.Size, overwrite);
 	}
 
 	inline auto ReadText(const std::filesystem::path& path) -> std::string

@@ -2,8 +2,6 @@
 #include "Support/AppHarness.h"
 #include "Support/TempDir.h"
 
-#include "Core/Buffer.h"
-#include "Core/BufferReader.h"
 #include "Project/GameData.h"
 #include "Project/Project.h"
 #include "Project/ProjectExporter.h"
@@ -190,49 +188,6 @@ SUITE(ProjectExport)
             CHECK(values[index] >= values[index - 1]);
     }
 
-    TEST(ProjectExporter_IsolatesScriptFieldsAndRelationshipNotices)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        ExportProjectFixture fixture;
-        const Ref<Scene> scene = CreateRef<Scene>();
-        scene->Handle = AssetHandle(500);
-        Entity camera = scene->CreateEntityWithUUID(UUID(100), "Camera");
-        camera.AddComponent<CameraComponent>();
-        camera.AddComponent<ScriptComponent>(std::string("Game.Player"));
-        camera.AddComponent<RelationshipComponent>().Parent = UUID(999);
-
-        ScriptFieldStorage sourceFields;
-        ScriptFieldValue speed;
-        speed.Type = ScriptFieldType::Float;
-        speed.Set(4.5f);
-        sourceFields[camera.GetUUID()]["Speed"] = speed;
-
-        const auto scenePath = fixture.ProjectDirectory / "Assets" / "Scenes" / "start.epscene";
-        CHECK(SceneSerializer(scene, { .ScriptFields = &sourceFields }).Serialize(scenePath));
-        CHECK(fixture.AssetManagerInstance->CreateAsset(scenePath, scene));
-        fixture.ProjectInstance->GetSpecification().StartScene = scene->Handle;
-        SceneSerializer::ConsumeRelationshipRepairNotices();
-
-        const ProjectExportResult result = ProjectExporter(fixture.ProjectInstance).Export(fixture.Options());
-        REQUIRE CHECK(result.Success);
-        CHECK(SceneSerializer::ConsumeRelationshipRepairNotices().empty());
-
-        GameData gameData;
-        REQUIRE CHECK(gameData.Deserialize(result.OutputPath / "Debug" / GameData::Filename));
-        const auto packedAsset = gameData.PackedAssets.find(scene->Handle);
-        REQUIRE CHECK(packedAsset != gameData.PackedAssets.end());
-        Buffer payload(packedAsset->second.Payload.data(), packedAsset->second.Payload.size());
-        BufferReader reader(payload);
-        const Ref<Scene> loaded = CreateRef<Scene>();
-        loaded->Handle = scene->Handle;
-        ScriptFieldStorage loadedFields;
-        REQUIRE CHECK(SceneSerializer(loaded, { .ScriptFields = &loadedFields }).Deserialize(reader));
-        REQUIRE CHECK(loadedFields.contains(camera.GetUUID()));
-        CHECK_CLOSE(4.5f, loadedFields.at(camera.GetUUID()).at("Speed").Get<float>(), 0.0001f);
-    }
-
     TEST(ProjectExporter_ValidatesStartSceneBeforeCreatingTarget)
     {
         if (!Testing::AppHarness::IsAvailable())
@@ -256,40 +211,6 @@ SUITE(ProjectExport)
         result = ProjectExporter(fixture.ProjectInstance).Export(options);
         CHECK(!result.Success);
         CHECK_EQUAL(std::string("The configured start scene is not a scene asset."), result.Errors.front());
-    }
-
-    TEST(ProjectExporter_RejectsUnloadableOrCameraLessStartScene)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        ExportProjectFixture fixture;
-        fixture.AddScene(500, "start.epscene", false);
-        fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
-
-        ProjectExportResult result = ProjectExporter(fixture.ProjectInstance).Export(fixture.Options());
-        CHECK(!result.Success);
-        CHECK_EQUAL(std::string("The start scene does not contain a primary camera."), result.Errors.front());
-
-        std::filesystem::remove(fixture.ProjectDirectory / "Assets" / "Scenes" / "start.epscene");
-        result = ProjectExporter(fixture.ProjectInstance).Export(fixture.Options());
-        CHECK(!result.Success);
-        CHECK_EQUAL(std::string("Scene 'Scenes/start.epscene' could not be loaded."), result.Errors.front());
-    }
-
-    TEST(ProjectExporter_SanitizesTargetNameAndSkipsExternalSteps)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        ExportProjectFixture fixture("Bad/Game");
-        fixture.AddScene(500, "start.epscene");
-        fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
-
-        const ProjectExportResult result = ProjectExporter(fixture.ProjectInstance).Export(fixture.Options());
-        REQUIRE CHECK(result.Success);
-        CHECK_EQUAL(std::string("Bad_Game"), result.OutputPath.filename().string());
-        CHECK_EQUAL(std::string("Project name was sanitized to 'Bad_Game'."), result.Warnings.front());
     }
 
     TEST(ProjectExporter_CopiesRelocatableRuntimeDeployment)

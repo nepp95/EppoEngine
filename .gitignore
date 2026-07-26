@@ -5,6 +5,7 @@
 
 # Build / Cache
 /build
+/EppoEditor/Projects/Test/Cache
 /EppoEditor/Projects/Test/Scripts/bin
 /EppoEditor/Projects/Test/Scripts/obj
 /EppoEditor/Resources/Shaders/Cache
