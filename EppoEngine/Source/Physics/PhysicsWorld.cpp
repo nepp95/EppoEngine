@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Physics/PhysicsWorld.h"
 
-#include "Physics/PhysicsTypes.h"
 #include "Scene/Components.h"
 
 #include <box3d/box3d.h>
@@ -10,18 +9,12 @@ namespace Eppo
 {
 	namespace Utils
 	{
-		static auto ToB3BodyType(RigidBodyComponent::BodyType type) -> b3BodyType
-		{
-			switch (type)
-			{
-				case RigidBodyComponent::BodyType::Static:    return b3_staticBody;
-				case RigidBodyComponent::BodyType::Kinematic: return b3_kinematicBody;
-				case RigidBodyComponent::BodyType::Dynamic:   return b3_dynamicBody;
-			}
-
-			EP_ASSERT(false, "Unknown body type!");
-			return b3_staticBody;
-		}
+		// glm <-> Box3D. Single precision here, so b3Pos == b3Vec3 and the vec3
+		// overload doubles as the position converter. b3Quat is {v, s}, glm is {w,x,y,z}.
+		static auto ToB3(const glm::vec3& v) -> b3Vec3 { return b3Vec3{ v.x, v.y, v.z }; }
+		static auto FromB3(const b3Vec3& v) -> glm::vec3 { return { v.x, v.y, v.z }; }
+		static auto ToB3(const glm::quat& q) -> b3Quat { return b3Quat{ b3Vec3{ q.x, q.y, q.z }, q.w }; }
+		static auto FromB3(const b3Quat& q) -> glm::quat { return { q.s, q.v.x, q.v.y, q.v.z }; }
 	}
 
 	PhysicsWorld::PhysicsWorld(const glm::vec3& gravity)
@@ -40,7 +33,8 @@ namespace Eppo
 		const std::vector<ColliderData>& colliders) -> void
 	{
 		b3BodyDef bodyDef = b3DefaultBodyDef();
-		bodyDef.type = Utils::ToB3BodyType(rigidBody.Type);
+		// BodyType maps one to one onto b3BodyType.
+		bodyDef.type = static_cast<b3BodyType>(rigidBody.Type);
 		bodyDef.position = Utils::ToB3(position);
 		bodyDef.rotation = Utils::ToB3(rotation);
 		bodyDef.gravityScale = rigidBody.GravityScale;
@@ -117,19 +111,9 @@ namespace Eppo
 		}
 	}
 
-	auto PhysicsWorld::Step(const float timestep, const int subStepCount) -> void
+	auto PhysicsWorld::Step(const float timestep, const uint32_t subStepCount) -> void
 	{
-		b3World_Step(m_WorldId, timestep, subStepCount);
-	}
-
-	auto PhysicsWorld::TryGetBody(const UUID entityId, b3BodyId& outBody) const -> bool
-	{
-		const auto it = m_Bodies.find(entityId);
-		if (it == m_Bodies.end())
-			return false;
-
-		outBody = it->second;
-		return true;
+		b3World_Step(m_WorldId, timestep, static_cast<int>(subStepCount));
 	}
 
 	auto PhysicsWorld::HasBody(const UUID entityId) const -> bool
@@ -137,67 +121,66 @@ namespace Eppo
 		return m_Bodies.contains(entityId);
 	}
 
-	auto PhysicsWorld::GetShapeCount(const UUID entityId) const -> int
+	auto PhysicsWorld::GetBody(const UUID entityId) const -> b3BodyId
 	{
-		b3BodyId body;
-		if (!TryGetBody(entityId, body))
+		return m_Bodies.at(entityId);
+	}
+
+	auto PhysicsWorld::GetShapeCount(const UUID entityId) const -> uint32_t
+	{
+		if (!HasBody(entityId))
 			return 0;
 
-		return b3Body_GetShapeCount(body);
+		return static_cast<uint32_t>(b3Body_GetShapeCount(GetBody(entityId)));
 	}
 
 	auto PhysicsWorld::GetPosition(const UUID entityId) const -> glm::vec3
 	{
-		b3BodyId body;
-		if (!TryGetBody(entityId, body))
+		if (!HasBody(entityId))
 			return glm::vec3(0.0f);
 
-		return Utils::FromB3(b3Body_GetPosition(body));
+		return Utils::FromB3(b3Body_GetPosition(GetBody(entityId)));
 	}
 
 	auto PhysicsWorld::GetRotation(const UUID entityId) const -> glm::quat
 	{
-		b3BodyId body;
-		if (!TryGetBody(entityId, body))
+		if (!HasBody(entityId))
 			return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
-		return Utils::FromB3(b3Body_GetRotation(body));
+		return Utils::FromB3(b3Body_GetRotation(GetBody(entityId)));
 	}
 
 	auto PhysicsWorld::ApplyLinearImpulse(const UUID entityId, const glm::vec3& impulse) -> void
 	{
-		b3BodyId body;
-		if (!TryGetBody(entityId, body))
+		if (!HasBody(entityId))
 		{
 			Log::Warn("Physics: ApplyLinearImpulse on entity {} which has no physics body.", static_cast<uint64_t>(entityId));
 			return;
 		}
 
-		b3Body_ApplyLinearImpulseToCenter(body, Utils::ToB3(impulse), true);
+		b3Body_ApplyLinearImpulseToCenter(GetBody(entityId), Utils::ToB3(impulse), true);
 	}
 
 	auto PhysicsWorld::GetLinearVelocity(const UUID entityId) const -> glm::vec3
 	{
-		b3BodyId body;
-		if (!TryGetBody(entityId, body))
+		if (!HasBody(entityId))
 		{
 			Log::Warn("Physics: GetLinearVelocity on entity {} which has no physics body.", static_cast<uint64_t>(entityId));
 			return glm::vec3(0.0f);
 		}
 
-		return Utils::FromB3(b3Body_GetLinearVelocity(body));
+		return Utils::FromB3(b3Body_GetLinearVelocity(GetBody(entityId)));
 	}
 
 	auto PhysicsWorld::SetLinearVelocity(const UUID entityId, const glm::vec3& velocity) -> void
 	{
-		b3BodyId body;
-		if (!TryGetBody(entityId, body))
+		if (!HasBody(entityId))
 		{
 			Log::Warn("Physics: SetLinearVelocity on entity {} which has no physics body.", static_cast<uint64_t>(entityId));
 			return;
 		}
 
-		b3Body_SetLinearVelocity(body, Utils::ToB3(velocity));
+		b3Body_SetLinearVelocity(GetBody(entityId), Utils::ToB3(velocity));
 	}
 
 	auto PhysicsWorld::CastRay(const glm::vec3& origin, const glm::vec3& direction, const float maxDistance) const -> RayHit

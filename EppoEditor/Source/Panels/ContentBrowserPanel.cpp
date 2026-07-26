@@ -375,7 +375,10 @@ namespace Eppo
 
                     if (const AssetHandle handle = assetManager->GetHandleForPath(m_RenameTarget);
                         FS::Move(m_RenameTarget, newPath) && handle)
-						assetManager->UpdateAssetPath(handle, newPath);
+					{
+						assetManager->GetMetadata(handle).Filepath = Project::GetAssetRelativeFilepath(newPath);
+						assetManager->SerializeAssetRegistry();
+					}
 				}
 				else
 				{
@@ -451,13 +454,8 @@ namespace Eppo
 		if (FS::Exists(destination))
 			destination = MakeUniquePath(destination);
 
-		std::error_code ec;
-		std::filesystem::copy_file(source, destination, ec);
-		if (ec)
-		{
-			Log::Error("Failed to import '{}': {}", source, ec.message());
+		if (!FS::CopyFile(source, destination, false))
 			return;
-		}
 
 		if (IsImportable(type))
 			Project::GetActive()->GetAssetManager()->CreateAsset(destination);
@@ -469,13 +467,6 @@ namespace Eppo
 		if (const AssetHandle handle = assetManager->GetHandleForPath(path))
 			assetManager->RemoveAsset(handle);
 
-		std::error_code ec;
-		if (std::filesystem::is_directory(path))
-			std::filesystem::remove_all(path, ec);
-		else
-			std::filesystem::remove(path, ec);
-
-		if (ec)
-			Log::Error("Failed to delete '{}': {}", path, ec.message());
+		FS::RemoveAll(path);
 	}
 }

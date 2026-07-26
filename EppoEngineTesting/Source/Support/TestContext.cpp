@@ -4,8 +4,6 @@
 #include "Support/AppHarness.h"
 #include "Support/ScenarioLayer.h"
 
-#include "Core/Input.h"
-
 namespace Eppo::Testing
 {
 	namespace
@@ -34,15 +32,11 @@ namespace Eppo::Testing
 	TestContext::TestContext()
 		: m_Scene(CreateRef<Scene>())
 	{
-		// Boot the shared app (no-op if up) and route input through this scenario.
+		// Boot the shared app (no-op if already up).
 		(void)AppHarness::Get();
-		Input::SetBackend(&m_Input);
 	}
 
-	TestContext::~TestContext()
-	{
-		Input::SetBackend(nullptr);
-	}
+	TestContext::~TestContext() = default;
 
 	auto TestContext::IsAvailable() const -> bool
 	{

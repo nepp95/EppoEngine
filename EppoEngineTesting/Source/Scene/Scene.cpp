@@ -7,6 +7,9 @@
 #include "Scene/SceneSerializer.h"
 
 #include <glm/gtc/constants.hpp>
+#include <nlohmann/json.hpp>
+
+#include <fstream>
 
 using namespace Eppo;
 
@@ -255,5 +258,30 @@ SUITE(Scene)
         REQUIRE CHECK(duplicateGrandchild);
         CHECK(duplicateGrandchild.GetUUID() != grandchild.GetUUID());
         CHECK_EQUAL(static_cast<uint64_t>(duplicateChild.GetUUID()), static_cast<uint64_t>(ParentOf(duplicateGrandchild)));
+    }
+
+    // The committed harness scene must round-trip through JSON serialization intact.
+    // Scene has no entity enumeration, so read the result back through the serializer.
+    TEST(SceneSerializer_HarnessScene_LoadsThreeEntities)
+    {
+        const auto scenePath = FS::GetRootDirectory() / "TestData" / "Scenes" / "harness.epscene";
+        REQUIRE CHECK(FS::Exists(scenePath));
+
+        const Ref<Scene> scene = CreateRef<Scene>();
+        REQUIRE CHECK(SceneSerializer(scene).Deserialize(scenePath));
+
+        const Testing::TempDir dir;
+        const auto out = dir.File("readback.epscene");
+        REQUIRE CHECK(SceneSerializer(scene).Serialize(out));
+
+        std::ifstream stream(out);
+        const nlohmann::json data = nlohmann::json::parse(stream);
+        const auto& entities = data["Scene"]["Entities"];
+
+        CHECK_EQUAL(3u, entities.size());
+        // Entities are ID-sorted (1001 Ground, 1002 Player, 1003 Prop).
+        CHECK_EQUAL(std::string("Ground"), entities[0]["TagComponent"]["Tag"].get<std::string>());
+        CHECK_EQUAL(std::string("Player"), entities[1]["TagComponent"]["Tag"].get<std::string>());
+        CHECK_EQUAL(1003ull, entities[2]["IDComponent"]["ID"].get<uint64_t>());
     }
 }

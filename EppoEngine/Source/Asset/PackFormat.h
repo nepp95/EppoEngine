@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Asset/AssetType.h"
+#include <cstdint>
 
 namespace Eppo::PackFormat
 {
@@ -24,18 +24,4 @@ namespace Eppo::PackFormat
 	// Per-asset payloads
     inline constexpr FormatId Mesh{ .Magic = MakeMagic('E', 'M', 'S', 'H'), .Version = 1 };
 	inline constexpr FormatId Scene{ .Magic = MakeMagic('E', 'S', 'C', 'N'), .Version = 1 };
-
-	// The packed payload format for an asset type, or nullopt when the type is not packable yet.
-	constexpr auto PayloadFormat(const AssetType type) -> std::optional<FormatId>
-	{
-		switch (type)
-		{
-		    case AssetType::Mesh:
-		        return Mesh;
-			case AssetType::Scene:
-				return Scene;
-			default:
-				return std::nullopt;
-		}
-	}
 }

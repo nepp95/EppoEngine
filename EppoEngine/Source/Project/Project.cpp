@@ -92,6 +92,11 @@ namespace Eppo
 		return GetProjectDirectory() / "Assets";
 	}
 
+	auto Project::GetCacheDirectory() -> std::filesystem::path
+	{
+		return GetProjectDirectory() / "Cache";
+	}
+
 	auto Project::GetScriptsDirectory() -> std::filesystem::path
 	{
 		return GetProjectDirectory() / "Scripts";

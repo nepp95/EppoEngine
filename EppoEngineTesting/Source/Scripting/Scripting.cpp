@@ -1,14 +1,10 @@
 #include "Support/EppoTest.h"
 #include "Support/GlmCheck.h"
+#include "Support/TempDir.h"
 #include "Asset/Asset.h"
 #include "Asset/AssetManager.h"
-#include "Core/Input.h"
-#include "Core/BufferReader.h"
-#include "Core/BufferWriter.h"
-#include "Core/KeyCodes.h"
-#include "Core/MouseCodes.h"
-#include "Core/SimulatedInput.h"
 #include "Physics/PhysicsWorld.h"
+#include "Project/Project.h"
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
@@ -577,6 +573,60 @@ SUITE(Scripting)
         CHECK_EQUAL(false, ScriptEngine::Get().ReloadProjectAssembly());
     }
 
+    // Editor-managed projects live under the root directory, so a script build that
+    // writes above them compiles an empty assembly: the .NET SDK excludes everything
+    // under OutputPath from the default compile glob, and reports success anyway.
+    TEST(ScriptEngine_ReloadProjectAssembly_ForProjectUnderTheProjectsDirectory_DiscoversScriptClasses)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+
+        const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
+        const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
+        std::filesystem::create_directories(scriptsDirectory / "Source");
+
+        // Mirrors the new-project template: default compile items, core resolved
+        // through the CoreManagedDll property the engine passes.
+        REQUIRE CHECK(FS::WriteText(scriptsDirectory / "ScriptProbe.csproj", R"(<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="EppoScriptCore">
+      <HintPath>$(CoreManagedDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
+)", true));
+
+        REQUIRE CHECK(FS::WriteText(scriptsDirectory / "Source" / "ProbeScript.cs", R"(using EppoScriptCore.Scene;
+
+namespace EppoTesting
+{
+    public class ProbeScript : Entity
+    {
+    }
+}
+)", true));
+
+        Project::New(ProjectSpecification{
+            .Name = "ScriptProbe",
+            .ProjectDirectory = projectDirectory.Path(),
+        });
+
+        const bool reloaded = ScriptEngine::Get().ReloadProjectAssembly();
+        const bool discovered = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript");
+
+        // The suite shares one runtime, so hand the harness assembly back before
+        // asserting — a failure here must not take every later test with it.
+        Project::SetActive(nullptr);
+        ScriptEngine::Get().LoadUserAssembly(FS::GetRootDirectory() / "EppoTesting.Scripts.dll");
+
+        CHECK_EQUAL(true, reloaded);
+        CHECK_EQUAL(true, discovered);
+    }
+
     // Covers the addition case only, and passes with or without the snapshot: entt's
     // storage is paged and views iterate in reverse, so appends fall outside the walk.
     // Component removal is the genuinely unsafe mutation and is not covered here.
@@ -625,165 +675,8 @@ SUITE(Scripting)
         CHECK(ScriptEngine::Get().GetSceneContext() == nullptr);
     }
 
-    // --- Internal calls (ScriptGlue): each test invokes the 1:1 harness forwarder
-    // for one internal call and asserts on native state / the returned value. ---
-    TEST(Input_IsKeyPressed_ReturnsNativeState)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* isKeyPressed = c->GetMethod("Input_IsKeyPressed");
-        REQUIRE CHECK(isKeyPressed != nullptr);
-
-        SimulatedInput pressed;
-        pressed.PressKey(Key::Space);
-        Input::SetBackend(&pressed);
-        bool down = false;
-        c->InvokeMethod(entity, *isKeyPressed, nullptr, &down);
-        CHECK_EQUAL(true, down);
-
-        SimulatedInput released; // nothing pressed
-        Input::SetBackend(&released);
-        bool up = true;
-        c->InvokeMethod(entity, *isKeyPressed, nullptr, &up);
-        CHECK_EQUAL(false, up);
-
-        Input::SetBackend(nullptr);
-        engine.OnDestroyEntity(entity);
-    }
-
-    TEST(Input_IsMouseButtonPressed_ReturnsNativeState)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* isPressed = c->GetMethod("Input_IsMouseButtonPressed");
-        REQUIRE CHECK(isPressed != nullptr);
-
-        SimulatedInput input;
-        Input::SetBackend(&input);
-
-        input.PressMouseButton(Mouse::ButtonRight);
-        bool down = false;
-        c->InvokeMethod(entity, *isPressed, nullptr, &down);
-        CHECK_EQUAL(true, down);
-
-        // A different button held down must not report as this one.
-        input.ReleaseMouseButton(Mouse::ButtonRight);
-        input.PressMouseButton(Mouse::ButtonLeft);
-        bool up = true;
-        c->InvokeMethod(entity, *isPressed, nullptr, &up);
-        CHECK_EQUAL(false, up);
-
-        Input::SetBackend(nullptr);
-        engine.OnDestroyEntity(entity);
-    }
-
-    TEST(Input_GetMousePosition_ReturnsNativeState)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* getPosition = c->GetMethod("Input_GetMousePosition");
-        REQUIRE CHECK(getPosition != nullptr);
-
-        SimulatedInput input;
-        input.SetMousePosition(glm::vec2(640.0f, 360.0f));
-        Input::SetBackend(&input);
-
-        glm::vec2 position{};
-        c->InvokeMethod(entity, *getPosition, nullptr, &position);
-        CHECK_VEC2_CLOSE(glm::vec2(640.0f, 360.0f), position, 1e-5f);
-
-        Input::SetBackend(nullptr);
-        engine.OnDestroyEntity(entity);
-    }
-
-    // GetMouseX/GetMouseY are derived on the C# side from GetMousePosition, so they
-    // need cover of their own: an asymmetric position catches either one reading the
-    // wrong component.
-    TEST(Input_GetMouseXY_ReturnMousePositionComponents)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* getX = c->GetMethod("Input_GetMouseX");
-        const ScriptMethod* getY = c->GetMethod("Input_GetMouseY");
-        REQUIRE CHECK(getX != nullptr);
-        REQUIRE CHECK(getY != nullptr);
-
-        SimulatedInput input;
-        input.SetMousePosition(glm::vec2(12.0f, 34.0f));
-        Input::SetBackend(&input);
-
-        float x = 0.0f;
-        c->InvokeMethod(entity, *getX, nullptr, &x);
-        CHECK_CLOSE(12.0f, x, 1e-5f);
-
-        float y = 0.0f;
-        c->InvokeMethod(entity, *getY, nullptr, &y);
-        CHECK_CLOSE(34.0f, y, 1e-5f);
-
-        Input::SetBackend(nullptr);
-        engine.OnDestroyEntity(entity);
-    }
-
-    // The world-input gate silences polled key/button input when the editor viewport
-    // doesn't own it. Mouse position is deliberately not gated, so a script keeps
-    // reading the cursor while keys and buttons go quiet.
-    TEST(Input_ViewportInputDisabled_SilencesButtonsButNotMousePosition)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> scene = CreateRef<Scene>();
-        auto& engine = ScriptEngine::Get();
-        Entity entity = MakeLiveEntity(scene);
-
-        const ScriptClass* c = FindClass(kUserClass);
-        REQUIRE CHECK(c != nullptr);
-        const ScriptMethod* isPressed = c->GetMethod("Input_IsMouseButtonPressed");
-        const ScriptMethod* getPosition = c->GetMethod("Input_GetMousePosition");
-        REQUIRE CHECK(isPressed != nullptr);
-        REQUIRE CHECK(getPosition != nullptr);
-
-        SimulatedInput input;
-        input.PressMouseButton(Mouse::ButtonRight);
-        input.SetMousePosition(glm::vec2(5.0f, 7.0f));
-        Input::SetBackend(&input);
-        Input::SetViewportInputEnabled(false);
-
-        bool down = true;
-        c->InvokeMethod(entity, *isPressed, nullptr, &down);
-        CHECK_EQUAL(false, down);
-
-        glm::vec2 position{};
-        c->InvokeMethod(entity, *getPosition, nullptr, &position);
-        CHECK_VEC2_CLOSE(glm::vec2(5.0f, 7.0f), position, 1e-5f);
-
-        Input::SetViewportInputEnabled(true);
-        Input::SetBackend(nullptr);
-        engine.OnDestroyEntity(entity);
-    }
+    // --- Internal calls (ScriptGlue): each test invokes the 1:1 harness forwarder for one
+    // internal call and asserts on native state / the returned value. ---
 
     // --- Writable mesh handles: a script can make a spawned entity visible. ---
 
@@ -2178,146 +2071,5 @@ SUITE(Scripting)
         CHECK(engine.GetEntityInstance(selfId) == nullptr);           // instance torn down
 
         engine.OnDestroyEntity(survivor);
-    }
-
-    TEST(SceneSerializer_Binary_ScriptFieldsRoundTripDeterministically)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const Ref<Scene> source = CreateRef<Scene>();
-        source->Handle = AssetHandle(8100);
-        Entity entity = source->CreateEntityWithUUID(Eppo::UUID(8101), "Scripted");
-        entity.AddComponent<ScriptComponent>(std::string(kUserClass));
-
-        ScriptFieldValue speed;
-        speed.Type = ScriptFieldType::Float;
-        speed.Set(12.5f);
-        ScriptFieldValue count;
-        count.Type = ScriptFieldType::Int32;
-        count.Set(int32_t{ 37 });
-
-        auto& engine = ScriptEngine::Get();
-        auto& fields = engine.GetFieldMap(entity.GetUUID());
-        fields["Speed"] = speed;
-        fields["Count"] = count;
-
-        BufferWriter sizingWriter;
-        REQUIRE CHECK(SceneSerializer(source).Serialize(sizingWriter));
-        Buffer first(sizingWriter.GetSize());
-        BufferWriter firstWriter(first);
-        REQUIRE CHECK(SceneSerializer(source).Serialize(firstWriter));
-
-        fields.clear();
-        fields["Count"] = count;
-        fields["Speed"] = speed;
-        Buffer second(sizingWriter.GetSize());
-        BufferWriter secondWriter(second);
-        REQUIRE CHECK(SceneSerializer(source).Serialize(secondWriter));
-        CHECK_EQUAL(first.Size, second.Size);
-        CHECK_ARRAY_EQUAL(first.Data, second.Data, first.Size);
-
-        const Ref<Scene> loaded = CreateRef<Scene>();
-        loaded->Handle = source->Handle;
-        BufferReader reader(first);
-        REQUIRE CHECK(SceneSerializer(loaded).Deserialize(reader));
-
-        const Entity loadedEntity = loaded->GetEntityByUUID(entity.GetUUID());
-        REQUIRE CHECK(loadedEntity);
-        REQUIRE CHECK(loadedEntity.HasComponent<ScriptComponent>());
-        CHECK_EQUAL(std::string(kUserClass), loadedEntity.GetComponent<ScriptComponent>().ClassName);
-        const auto* loadedFields = engine.TryGetFieldMap(loadedEntity.GetUUID());
-        REQUIRE CHECK(loadedFields != nullptr);
-        CHECK_EQUAL(2, loadedFields->size());
-        CHECK_CLOSE(12.5f, loadedFields->at("Speed").Get<float>(), 0.0001f);
-        CHECK_EQUAL(37, loadedFields->at("Count").Get<int32_t>());
-
-        engine.RemoveFieldMap(entity.GetUUID());
-        first.Release();
-        second.Release();
-    }
-
-    TEST(SceneSerializer_Binary_RejectsDuplicateAndTruncatedScriptFields)
-    {
-        REQUIRE CHECK(EnsureRuntime());
-
-        const EnvironmentSettings environment{};
-        const TransformComponent transform{};
-        BufferWriter sizingWriter;
-        REQUIRE CHECK(sizingWriter.Write(uint64_t{ 8200 }));
-        REQUIRE CHECK(sizingWriter.Write(environment));
-        REQUIRE CHECK(sizingWriter.Write(uint32_t{ 1 }));
-        REQUIRE CHECK(sizingWriter.Write(uint64_t{ 8201 }));
-        REQUIRE CHECK(sizingWriter.WriteString("Scripted"));
-        REQUIRE CHECK(sizingWriter.Write(transform));
-        REQUIRE CHECK(sizingWriter.Write(uint16_t{ 1u << 3 }));
-        REQUIRE CHECK(sizingWriter.WriteString(kUserClass));
-        REQUIRE CHECK(sizingWriter.Write(uint32_t{ 2 }));
-        for (uint32_t i = 0; i < 2; i++)
-        {
-            REQUIRE CHECK(sizingWriter.WriteString("Speed"));
-            REQUIRE CHECK(sizingWriter.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
-            REQUIRE CHECK(sizingWriter.Write(3.0f));
-        }
-
-        Buffer buffer(sizingWriter.GetSize());
-        BufferWriter writer(buffer);
-        REQUIRE CHECK(writer.Write(uint64_t{ 8200 }));
-        REQUIRE CHECK(writer.Write(environment));
-        REQUIRE CHECK(writer.Write(uint32_t{ 1 }));
-        REQUIRE CHECK(writer.Write(uint64_t{ 8201 }));
-        REQUIRE CHECK(writer.WriteString("Scripted"));
-        REQUIRE CHECK(writer.Write(transform));
-        REQUIRE CHECK(writer.Write(uint16_t{ 1u << 3 }));
-        REQUIRE CHECK(writer.WriteString(kUserClass));
-        REQUIRE CHECK(writer.Write(uint32_t{ 2 }));
-        for (uint32_t i = 0; i < 2; i++)
-        {
-            REQUIRE CHECK(writer.WriteString("Speed"));
-            REQUIRE CHECK(writer.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
-            REQUIRE CHECK(writer.Write(3.0f));
-        }
-
-        const Ref<Scene> duplicateScene = CreateRef<Scene>();
-        duplicateScene->Handle = AssetHandle(8200);
-        BufferReader duplicateReader(buffer);
-        CHECK(!SceneSerializer(duplicateScene).Deserialize(duplicateReader));
-
-        BufferWriter validSizingWriter;
-        REQUIRE CHECK(validSizingWriter.Write(uint64_t{ 8200 }));
-        REQUIRE CHECK(validSizingWriter.Write(environment));
-        REQUIRE CHECK(validSizingWriter.Write(uint32_t{ 1 }));
-        REQUIRE CHECK(validSizingWriter.Write(uint64_t{ 8201 }));
-        REQUIRE CHECK(validSizingWriter.WriteString("Scripted"));
-        REQUIRE CHECK(validSizingWriter.Write(transform));
-        REQUIRE CHECK(validSizingWriter.Write(uint16_t{ 1u << 3 }));
-        REQUIRE CHECK(validSizingWriter.WriteString(kUserClass));
-        REQUIRE CHECK(validSizingWriter.Write(uint32_t{ 1 }));
-        REQUIRE CHECK(validSizingWriter.WriteString("Speed"));
-        REQUIRE CHECK(validSizingWriter.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
-        REQUIRE CHECK(validSizingWriter.Write(3.0f));
-        Buffer validBuffer(validSizingWriter.GetSize());
-        BufferWriter validWriter(validBuffer);
-        REQUIRE CHECK(validWriter.Write(uint64_t{ 8200 }));
-        REQUIRE CHECK(validWriter.Write(environment));
-        REQUIRE CHECK(validWriter.Write(uint32_t{ 1 }));
-        REQUIRE CHECK(validWriter.Write(uint64_t{ 8201 }));
-        REQUIRE CHECK(validWriter.WriteString("Scripted"));
-        REQUIRE CHECK(validWriter.Write(transform));
-        REQUIRE CHECK(validWriter.Write(uint16_t{ 1u << 3 }));
-        REQUIRE CHECK(validWriter.WriteString(kUserClass));
-        REQUIRE CHECK(validWriter.Write(uint32_t{ 1 }));
-        REQUIRE CHECK(validWriter.WriteString("Speed"));
-        REQUIRE CHECK(validWriter.Write(static_cast<uint8_t>(ScriptFieldType::Float)));
-        REQUIRE CHECK(validWriter.Write(3.0f));
-
-        Buffer truncated(validBuffer.Data, validBuffer.Size - 1);
-        const Ref<Scene> truncatedScene = CreateRef<Scene>();
-        truncatedScene->Handle = AssetHandle(8200);
-        BufferReader truncatedReader(truncated);
-        CHECK(!SceneSerializer(truncatedScene).Deserialize(truncatedReader));
-
-        ScriptEngine::Get().RemoveFieldMap(Eppo::UUID(8201));
-        buffer.Release();
-        validBuffer.Release();
     }
 }

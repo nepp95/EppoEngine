@@ -1,10 +1,7 @@
 #include "Support/EppoTest.h"
+#include "Support/TempDir.h"
 
-#include "Asset/AssetImporter.h"
 #include "Asset/AssetManager.h"
-#include "Core/BufferReader.h"
-#include "Core/BufferWriter.h"
-#include "Project/GameData.h"
 #include "Project/Project.h"
 #include "Scene/Entity.h"
 #include "Scene/SceneSerializer.h"
@@ -13,70 +10,66 @@ using namespace Eppo;
 
 SUITE(Project)
 {
-    namespace
-    {
-        auto MakePackedScene(const uint64_t handle) -> PackedAssetData
-        {
-            const Ref<Scene> scene = CreateRef<Scene>();
-            scene->Handle = AssetHandle(handle);
-            scene->CreateEntityWithUUID(Eppo::UUID(501), "PackedEntity");
-
-            BufferWriter sizingWriter;
-            if (!SceneSerializer(scene).Serialize(sizingWriter))
-                return {};
-            Buffer buffer(sizingWriter.GetSize());
-            BufferWriter writer(buffer);
-            if (!SceneSerializer(scene).Serialize(writer))
-            {
-                buffer.Release();
-                return {};
-            }
-
-            PackedAssetData result{ AssetType::Scene, { buffer.Data, buffer.Data + buffer.Size } };
-            buffer.Release();
-            return result;
-        }
-    }
-
     TEST(AssetManager_PackedScene_LoadsLazilyFromOwnedPayload)
     {
+        const Ref<Project> previous = Project::GetActive();
+        const Testing::TempDir dir;
+        const auto projectDirectory = dir.File("Project");
+        std::filesystem::create_directories(projectDirectory / "Assets" / "Scenes");
+
+        // A packed scene is the .epscene file's bytes; author one, capture its bytes, then remove
+        // the file so the lazy load has to materialize it back from the owned payload.
+        const auto scenePath = projectDirectory / "Assets" / "Scenes" / "packed.epscene";
+        const Ref<Scene> authored = CreateRef<Scene>();
+        authored->Handle = AssetHandle(500);
+        authored->CreateEntityWithUUID(Eppo::UUID(501), "PackedEntity");
+        REQUIRE CHECK(SceneSerializer(authored).Serialize(scenePath));
+        const auto bytes = FS::ReadBytes(scenePath);
+        const Buffer payload = Buffer::Copy(reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
+        std::filesystem::remove(scenePath);
+
         std::map<AssetHandle, AssetMetadata> registry;
         registry.emplace(500, AssetMetadata{ AssetHandle(500), AssetType::Scene, "Scenes/packed.epscene" });
         std::map<AssetHandle, PackedAssetData> packedAssets;
-        packedAssets.emplace(500, MakePackedScene(500));
+        packedAssets.emplace(500, PackedAssetData{ AssetType::Scene, payload });
 
-        AssetManager manager(std::move(registry), std::move(packedAssets));
-        REQUIRE CHECK(manager.HasAssetData(AssetHandle(500)));
-        CHECK(!manager.IsAssetLoaded(AssetHandle(500)));
+        const Ref<AssetManager> manager = CreateRef<AssetManager>(std::move(registry), std::move(packedAssets));
+        Project::New(ProjectSpecification{ .Name = "Packed", .ProjectDirectory = projectDirectory }, manager);
 
-        const Ref<Scene> scene = manager.GetOrLoadAsset<Scene>(AssetHandle(500));
+        REQUIRE CHECK(manager->HasAssetData(AssetHandle(500)));
+        CHECK(!manager->IsAssetLoaded(AssetHandle(500)));
+
+        const Ref<Scene> scene = manager->GetOrLoadAsset<Scene>(AssetHandle(500));
         REQUIRE CHECK(scene != nullptr);
-        CHECK(manager.IsAssetLoaded(AssetHandle(500)));
+        CHECK(manager->IsAssetLoaded(AssetHandle(500)));
         CHECK_EQUAL(500, static_cast<uint64_t>(scene->Handle));
         const Entity entity = scene->GetEntityByUUID(Eppo::UUID(501));
         REQUIRE CHECK(entity);
         CHECK_EQUAL(std::string("PackedEntity"), entity.GetName());
+
+        Project::SetActive(previous);
     }
 
     TEST(AssetManager_InvalidPackedScene_ReturnsNullWithoutCaching)
     {
+        const Ref<Project> previous = Project::GetActive();
+        const Testing::TempDir dir;
+        const auto projectDirectory = dir.File("Project");
+        std::filesystem::create_directories(projectDirectory / "Assets" / "Scenes");
+
+        const std::array<uint8_t, 3> garbage{ 1, 2, 3 };
         std::map<AssetHandle, AssetMetadata> registry;
         registry.emplace(500, AssetMetadata{ AssetHandle(500), AssetType::Scene, "Scenes/packed.epscene" });
         std::map<AssetHandle, PackedAssetData> packedAssets;
-        packedAssets.emplace(500, PackedAssetData{ AssetType::Scene, { 1, 2, 3 } });
-        AssetManager manager(std::move(registry), std::move(packedAssets));
+        packedAssets.emplace(500, PackedAssetData{ AssetType::Scene, Buffer::Copy(garbage.data(), garbage.size()) });
 
-        CHECK(manager.GetOrLoadAsset(AssetHandle(500)) == nullptr);
-        CHECK(!manager.IsAssetLoaded(AssetHandle(500)));
-    }
+        const Ref<AssetManager> manager = CreateRef<AssetManager>(std::move(registry), std::move(packedAssets));
+        Project::New(ProjectSpecification{ .Name = "Packed", .ProjectDirectory = projectDirectory }, manager);
 
-    TEST(AssetImporter_PackedUnsupportedType_ReturnsNull)
-    {
-        std::array<uint8_t, 4> bytes{};
-        Buffer buffer(bytes.data(), bytes.size());
-        BufferReader reader(buffer);
-        CHECK(AssetImporter::ImportAsset(AssetHandle(500), AssetType::Mesh, reader) == nullptr);
-        CHECK_EQUAL(0, reader.GetOffset());
+        CHECK(manager->GetOrLoadAsset(AssetHandle(500)) == nullptr);
+        CHECK(!manager->IsAssetLoaded(AssetHandle(500)));
+
+        Project::SetActive(previous);
     }
 
     TEST(Project_RuntimeConstruction_UsesProvidedAssetManager)

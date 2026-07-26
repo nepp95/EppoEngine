@@ -169,14 +169,14 @@ namespace Eppo
             m_WatchedScriptsDirectory = scriptsDirectory;
         }
 
-        const auto outputDirectory = FS::GetRootDirectory();
-        const int exitCode = RunProcess("dotnet", {
+        const auto outputDirectory = Project::GetCacheDirectory() / "Scripts";
+        const int32_t exitCode = RunProcess("dotnet", {
             "build", projectFile.string(),
             "-c", "Debug",
             "-o", outputDirectory.string(),
             // Point the project at this build's core assembly instead of a baked-in
             // path that goes stale when the output layout changes.
-            "-p:CoreManagedDll=" + (outputDirectory / "EppoScriptCore.dll").string(),
+            "-p:CoreManagedDll=" + (FS::GetRootDirectory() / "EppoScriptCore.dll").string(),
             "--nologo"
         });
 

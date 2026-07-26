@@ -9,84 +9,62 @@
 	#include <spawn.h>
 	#include <sys/wait.h>
 
-extern char** environ;
+    extern char** environ;
 #endif
 
 namespace Eppo
 {
 #if defined(EP_PLATFORM_WINDOWS)
-	namespace
+    namespace
+    {
+        // Windows takes a single command line, not an argument vector, so each argument
+        // has to be re-quoted the way CommandLineToArgvW parses it back: backslashes are
+        // only special immediately before a quote, where they double. Getting this wrong
+        // silently corrupts paths containing spaces.
+        auto QuoteArgument(const std::string& arg) -> std::string
+        {
+            if (!arg.empty() && arg.find_first_of(" \t\"") == std::string::npos)
+                return arg;
+
+            std::string quoted = "\"";
+            for (auto it = arg.begin();; ++it)
+            {
+                size_t backslashes = 0;
+                while (it != arg.end() && *it == '\\')
+                {
+                    ++it;
+                    ++backslashes;
+                }
+
+                if (it == arg.end())
+                {
+                    quoted.append(backslashes * 2, '\\');
+                    break;
+                }
+
+                quoted.append(*it == '"' ? backslashes * 2 + 1 : backslashes, '\\');
+                quoted += *it;
+            }
+
+            return quoted + '"';
+        }
+
+        // UTF-8 -> UTF-16, needed because CreateProcessW takes a wide command line.
+        auto ToWide(const std::string& text) -> std::wstring
+        {
+            if (text.empty())
+                return {};
+
+            const int length = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
+            std::wstring wide(static_cast<size_t>(length), L'\0');
+            MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), wide.data(), length);
+
+            return wide;
+        }
+    }
+
+	auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int32_t
 	{
-		// Windows takes a single command line, not an argument vector, so each
-		// argument has to be re-quoted the way CommandLineToArgvW parses it back:
-		// backslashes are only special immediately before a quote, where they
-		// double. Getting this wrong silently corrupts paths containing spaces.
-		auto QuoteArgument(const std::string& arg) -> std::string
-		{
-			if (!arg.empty() && arg.find_first_of(" \t\"") == std::string::npos)
-				return arg;
-
-			std::string quoted = "\"";
-			for (auto it = arg.begin();; ++it)
-			{
-				size_t backslashes = 0;
-				while (it != arg.end() && *it == '\\')
-				{
-					++it;
-					++backslashes;
-				}
-
-				if (it == arg.end())
-				{
-					quoted.append(backslashes * 2, '\\');
-					break;
-				}
-
-				quoted.append(*it == '"' ? backslashes * 2 + 1 : backslashes, '\\');
-				quoted += *it;
-			}
-
-			return quoted + '"';
-		}
-
-		auto ToWide(const std::string& text) -> std::wstring
-		{
-			if (text.empty())
-				return {};
-
-			const int length = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
-			std::wstring wide(static_cast<size_t>(length), L'\0');
-			MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), wide.data(), length);
-
-			return wide;
-		}
-
-		class ScopedHandle
-		{
-		public:
-			explicit ScopedHandle(HANDLE handle) : m_Handle(handle) {}
-			~ScopedHandle()
-			{
-				if (m_Handle)
-					CloseHandle(m_Handle);
-			}
-
-			ScopedHandle(const ScopedHandle&) = delete;
-			ScopedHandle& operator=(const ScopedHandle&) = delete;
-			ScopedHandle(ScopedHandle&&) = delete;
-			ScopedHandle& operator=(ScopedHandle&&) = delete;
-
-			[[nodiscard]] auto Get() const -> HANDLE { return m_Handle; }
-
-		private:
-			HANDLE m_Handle;
-		};
-	}
-
-	auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int
-	{
-		EP_PROFILE_FN("RunProcess");
-
 		std::string commandLine = QuoteArgument(executable);
 		for (const auto& arg : args)
 			commandLine += " " + QuoteArgument(arg);
@@ -105,25 +83,24 @@ namespace Eppo
 			return -1;
 		}
 
-		const ScopedHandle process(processInfo.hProcess);
-		const ScopedHandle thread(processInfo.hThread);
-
-		WaitForSingleObject(process.Get(), INFINITE);
+		WaitForSingleObject(processInfo.hProcess, INFINITE);
 
 		DWORD exitCode = 0;
-		if (!GetExitCodeProcess(process.Get(), &exitCode))
+		const bool read = GetExitCodeProcess(processInfo.hProcess, &exitCode);
+		CloseHandle(processInfo.hProcess);
+		CloseHandle(processInfo.hThread);
+
+		if (!read)
 		{
 			Log::Error("Failed to read the exit code of '{}'", executable);
 			return -1;
 		}
 
-		return static_cast<int>(exitCode);
+		return static_cast<int32_t>(exitCode);
 	}
 #else
-	auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int
+	auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int32_t
 	{
-		EP_PROFILE_FN("RunProcess");
-
 		std::vector<char*> argv;
 		argv.reserve(args.size() + 2);
 		argv.push_back(const_cast<char*>(executable.c_str()));
