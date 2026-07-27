@@ -4,5 +4,5 @@
 
 namespace Eppo::ErrorDialog
 {
-	auto Show(std::string_view title, std::string_view message) -> void;
+    auto Show(std::string_view title, std::string_view message) -> void;
 }

@@ -78,11 +78,10 @@ namespace Eppo
                     Log::Error(LogSource::Script, "{}", message);
                     break;
                 }
-
             }
         }
 
-        #pragma region Core
+#pragma region Core
         auto Input_IsKeyPressed(const uint16_t keyCode) -> bool
         {
             return Input::IsKeyPressed(keyCode);
@@ -97,9 +96,9 @@ namespace Eppo
         {
             *outPosition = Input::GetMousePosition();
         }
-        #pragma endregion
+#pragma endregion
 
-        #pragma region Physics
+#pragma region Physics
         auto Physics_ApplyLinearImpulse(const uint64_t id, const glm::vec3* impulse) -> void
         {
             const Entity entity = GetEntity(id);
@@ -184,9 +183,9 @@ namespace Eppo
 
             return world->OverlapsSphere(UUID(id), *center, radius);
         }
-        #pragma endregion
+#pragma endregion
 
-        #pragma region Scene
+#pragma region Scene
         auto Entity_HasComponent(const uint64_t id, const char* typeName) -> bool
         {
             const Entity entity = GetEntity(id);
@@ -412,8 +411,8 @@ namespace Eppo
 
             // 0 clears the assignment; primitives are generated on demand and need no
             // registry entry.
-            const bool isPrimitive = meshHandle >= static_cast<uint64_t>(MeshPrimitiveType::Cone)
-                                  && meshHandle <= static_cast<uint64_t>(MeshPrimitiveType::Capsule);
+            const bool isPrimitive = meshHandle >= static_cast<uint64_t>(MeshPrimitiveType::Cone) &&
+                meshHandle <= static_cast<uint64_t>(MeshPrimitiveType::Capsule);
 
             if (meshHandle != 0 && !isPrimitive)
             {
@@ -565,8 +564,8 @@ namespace Eppo
                 return;
 
             const Entity entity = scene->GetEntityByUUID(UUID(id));
-			if (!entity)
-				return;
+            if (!entity)
+                return;
 
             scene->SetParent(entity, scene->GetEntityByUUID(UUID(parent)));
         }
@@ -1168,7 +1167,7 @@ namespace Eppo
 
             entity.GetComponent<CylinderColliderComponent>().Restitution = restitution;
         }
-        #pragma endregion
+#pragma endregion
     }
 
     auto ScriptGlue::GetInternalCalls() -> std::span<const InternalCall>

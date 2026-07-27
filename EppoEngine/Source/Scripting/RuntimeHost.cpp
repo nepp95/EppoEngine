@@ -62,17 +62,25 @@ namespace Eppo
         load_assembly_and_get_function_pointer_fn loadFn = nullptr;
         void* methodPtr = nullptr;
 
-        if (const int result = m_DotNetClrData->GetDelegateFn(m_DotNetClrData->HostContext, hdt_load_assembly_and_get_function_pointer, reinterpret_cast<void**>(&loadFn));
+        if (const int result = m_DotNetClrData->GetDelegateFn(
+                m_DotNetClrData->HostContext, hdt_load_assembly_and_get_function_pointer, reinterpret_cast<void**>(&loadFn)
+            );
             result != 0 || !loadFn)
         {
-            Log::Error(LogSource::Script, "{}", std::format("hostfxr_get_runtime_delegate failed: 0x{:08X}", static_cast<uint32_t>(result)));
+            Log::Error(
+                LogSource::Script, "{}", std::format("hostfxr_get_runtime_delegate failed: 0x{:08X}", static_cast<uint32_t>(result))
+            );
             return nullptr;
         }
 
-        if (const int result = loadFn(assemblyPath.c_str(), typeName.c_str(), methodName.c_str(), UNMANAGEDCALLERSONLY_METHOD, nullptr, &methodPtr);
+        if (const int result =
+                loadFn(assemblyPath.c_str(), typeName.c_str(), methodName.c_str(), UNMANAGEDCALLERSONLY_METHOD, nullptr, &methodPtr);
             result != 0 || !methodPtr)
         {
-            Log::Error(LogSource::Script, "{}", std::format("load_assembly_and_get_function_pointer failed: 0x{:08X}", static_cast<uint32_t>(result)));
+            Log::Error(
+                LogSource::Script, "{}",
+                std::format("load_assembly_and_get_function_pointer failed: 0x{:08X}", static_cast<uint32_t>(result))
+            );
             return nullptr;
         }
 
@@ -86,15 +94,15 @@ namespace Eppo
             if (const auto* envRoot = std::getenv("DOTNET_ROOT"))
                 return envRoot;
 
-            #if defined(EP_PLATFORM_WINDOWS)
+#if defined(EP_PLATFORM_WINDOWS)
             TCHAR programFiles[MAX_PATH];
             SHGetSpecialFolderPath(nullptr, programFiles, CSIDL_PROGRAM_FILES, FALSE);
             return std::filesystem::path(programFiles) / "dotnet";
-            #elif defined(EP_PLATFORM_LINUX)
+#elif defined(EP_PLATFORM_LINUX)
             return "/usr/share/dotnet"
-            #else
-            #error "Unsupported platform!
-            #endif
+#else
+    #error "Unsupported platform!
+#endif
         };
 
         const auto dotnetRoot = GetDotNetRoot();
@@ -131,10 +139,17 @@ namespace Eppo
             return false;
         }
 
-        m_DotNetClrData->InitFn = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_initialize_for_runtime_config"));
-        m_DotNetClrData->GetDelegateFn = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_get_runtime_delegate"));
-        m_DotNetClrData->CloseFn = reinterpret_cast<hostfxr_close_fn>(GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_close"));
-        m_DotNetClrData->ErrorWriterFn = reinterpret_cast<hostfxr_set_error_writer_fn>(GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_set_error_writer"));
+        m_DotNetClrData->InitFn = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(
+            GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_initialize_for_runtime_config")
+        );
+        m_DotNetClrData->GetDelegateFn = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(
+            GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_get_runtime_delegate")
+        );
+        m_DotNetClrData->CloseFn =
+            reinterpret_cast<hostfxr_close_fn>(GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_close"));
+        m_DotNetClrData->ErrorWriterFn = reinterpret_cast<hostfxr_set_error_writer_fn>(
+            GetSymbol(static_cast<EP_LIBRARY>(m_DotNetClrData->HostFxrLib), "hostfxr_set_error_writer")
+        );
 
         return true;
     }
@@ -157,7 +172,10 @@ namespace Eppo
 
         if (result != Success || hostContext == nullptr)
         {
-            Log::Error(LogSource::Script, "{}", std::format("hostfxr_initialize_for_runtime_config failed: 0x{:08X}", static_cast<uint32_t>(result)));
+            Log::Error(
+                LogSource::Script, "{}",
+                std::format("hostfxr_initialize_for_runtime_config failed: 0x{:08X}", static_cast<uint32_t>(result))
+            );
             return false;
         }
 

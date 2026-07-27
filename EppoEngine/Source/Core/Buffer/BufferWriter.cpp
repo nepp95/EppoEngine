@@ -11,9 +11,7 @@ namespace Eppo
 
     BufferWriter::BufferWriter(const Buffer buffer, const uint64_t offset)
         : m_Buffer(buffer), m_Offset(offset)
-    {
-
-    }
+    {}
 
     BufferWriter::~BufferWriter()
     {

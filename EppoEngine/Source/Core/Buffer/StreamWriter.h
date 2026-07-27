@@ -7,8 +7,7 @@ namespace Eppo
     class StreamWriter;
 
     template<typename T>
-    concept StreamSerializable = requires(StreamWriter* writer, const T& value)
-    {
+    concept StreamSerializable = requires(StreamWriter* writer, const T& value) {
         { T::Serialize(writer, value) } -> std::same_as<bool>;
     };
 

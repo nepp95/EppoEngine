@@ -2,14 +2,14 @@
 #include "Utility/Process.h"
 
 #if defined(EP_PLATFORM_WINDOWS)
-	#define WIN32_LEAN_AND_MEAN
-	#define NOMINMAX
-	#include <Windows.h>
+    #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX
+    #include <Windows.h>
 #else
-	#include <spawn.h>
-	#include <sys/wait.h>
+    #include <spawn.h>
+    #include <sys/wait.h>
 
-    extern char** environ;
+extern char** environ;
 #endif
 
 namespace Eppo
@@ -63,67 +63,66 @@ namespace Eppo
         }
     }
 
-	auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int32_t
-	{
-		std::string commandLine = QuoteArgument(executable);
-		for (const auto& arg : args)
-			commandLine += " " + QuoteArgument(arg);
+    auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int32_t
+    {
+        std::string commandLine = QuoteArgument(executable);
+        for (const auto& arg : args)
+            commandLine += " " + QuoteArgument(arg);
 
-		// CreateProcessW writes into the command line buffer, so it cannot be const.
-		std::wstring wideCommandLine = ToWide(commandLine);
+        // CreateProcessW writes into the command line buffer, so it cannot be const.
+        std::wstring wideCommandLine = ToWide(commandLine);
 
-		STARTUPINFOW startupInfo{};
-		startupInfo.cb = sizeof(startupInfo);
-		PROCESS_INFORMATION processInfo{};
+        STARTUPINFOW startupInfo{};
+        startupInfo.cb = sizeof(startupInfo);
+        PROCESS_INFORMATION processInfo{};
 
-		if (!CreateProcessW(nullptr, wideCommandLine.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr,
-			&startupInfo, &processInfo))
-		{
-			Log::Error("Failed to start '{}' (error {})", executable, GetLastError());
-			return -1;
-		}
+        if (!CreateProcessW(nullptr, wideCommandLine.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startupInfo, &processInfo))
+        {
+            Log::Error("Failed to start '{}' (error {})", executable, GetLastError());
+            return -1;
+        }
 
-		WaitForSingleObject(processInfo.hProcess, INFINITE);
+        WaitForSingleObject(processInfo.hProcess, INFINITE);
 
-		DWORD exitCode = 0;
-		const bool read = GetExitCodeProcess(processInfo.hProcess, &exitCode);
-		CloseHandle(processInfo.hProcess);
-		CloseHandle(processInfo.hThread);
+        DWORD exitCode = 0;
+        const bool read = GetExitCodeProcess(processInfo.hProcess, &exitCode);
+        CloseHandle(processInfo.hProcess);
+        CloseHandle(processInfo.hThread);
 
-		if (!read)
-		{
-			Log::Error("Failed to read the exit code of '{}'", executable);
-			return -1;
-		}
+        if (!read)
+        {
+            Log::Error("Failed to read the exit code of '{}'", executable);
+            return -1;
+        }
 
-		return static_cast<int32_t>(exitCode);
-	}
+        return static_cast<int32_t>(exitCode);
+    }
 #else
-	auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int32_t
-	{
-		std::vector<char*> argv;
-		argv.reserve(args.size() + 2);
-		argv.push_back(const_cast<char*>(executable.c_str()));
-		for (const auto& arg : args)
-			argv.push_back(const_cast<char*>(arg.c_str()));
-		argv.push_back(nullptr);
+    auto RunProcess(const std::string& executable, const std::vector<std::string>& args) -> int32_t
+    {
+        std::vector<char*> argv;
+        argv.reserve(args.size() + 2);
+        argv.push_back(const_cast<char*>(executable.c_str()));
+        for (const auto& arg : args)
+            argv.push_back(const_cast<char*>(arg.c_str()));
+        argv.push_back(nullptr);
 
-		pid_t pid = 0;
-		if (posix_spawnp(&pid, executable.c_str(), nullptr, nullptr, argv.data(), environ) != 0)
-		{
-			Log::Error("Failed to start '{}': {}", executable, strerror(errno));
-			return -1;
-		}
+        pid_t pid = 0;
+        if (posix_spawnp(&pid, executable.c_str(), nullptr, nullptr, argv.data(), environ) != 0)
+        {
+            Log::Error("Failed to start '{}': {}", executable, strerror(errno));
+            return -1;
+        }
 
-		int status = 0;
-		if (waitpid(pid, &status, 0) == -1)
-		{
-			Log::Error("Failed to wait for '{}': {}", executable, strerror(errno));
-			return -1;
-		}
+        int status = 0;
+        if (waitpid(pid, &status, 0) == -1)
+        {
+            Log::Error("Failed to wait for '{}': {}", executable, strerror(errno));
+            return -1;
+        }
 
-		// A child killed by a signal has no exit code of its own.
-		return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-	}
+        // A child killed by a signal has no exit code of its own.
+        return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+    }
 #endif
 }

@@ -5,9 +5,7 @@ namespace Eppo
 {
     BufferReader::BufferReader(const Buffer buffer, const uint64_t offset)
         : m_Buffer(buffer), m_Offset(offset)
-    {
-
-    }
+    {}
 
     auto BufferReader::ReadData(char* outData, const size_t size) -> bool
     {

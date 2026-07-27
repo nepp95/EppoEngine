@@ -3,8 +3,7 @@
 
 namespace Eppo
 {
-	Entity::Entity(const EntityHandle entityHandle, Scene* scene)
-		: m_EntityHandle(entityHandle), m_Scene(scene)
-	{
-	}
+    Entity::Entity(const EntityHandle entityHandle, Scene* scene)
+        : m_EntityHandle(entityHandle), m_Scene(scene)
+    {}
 }

@@ -11,7 +11,11 @@ namespace Eppo
     class ScriptGlue
     {
     public:
-        struct InternalCall { const char* Name; void* Function; };
+        struct InternalCall
+        {
+            const char* Name;
+            void* Function;
+        };
         [[nodiscard]] static auto GetInternalCalls() -> std::span<const InternalCall>;
     };
 }

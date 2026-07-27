@@ -6,111 +6,111 @@
 
 namespace Eppo
 {
-	auto Project::New() -> Ref<Project>
-	{
-		s_ActiveProject = CreateRef<Project>();
-		return s_ActiveProject;
-	}
+    auto Project::New() -> Ref<Project>
+    {
+        s_ActiveProject = CreateRef<Project>();
+        return s_ActiveProject;
+    }
 
-	auto Project::New(const ProjectSpecification& spec) -> Ref<Project>
-	{
-		New();
-		s_ActiveProject->m_Specification = spec;
-		return s_ActiveProject;
-	}
+    auto Project::New(const ProjectSpecification& spec) -> Ref<Project>
+    {
+        New();
+        s_ActiveProject->m_Specification = spec;
+        return s_ActiveProject;
+    }
 
-	auto Project::New(const ProjectSpecification& spec, const Ref<AssetManager>& assetManager) -> Ref<Project>
-	{
-		New(spec);
-		s_ActiveProject->m_AssetManager = assetManager;
-		return s_ActiveProject;
-	}
+    auto Project::New(const ProjectSpecification& spec, const Ref<AssetManager>& assetManager) -> Ref<Project>
+    {
+        New(spec);
+        s_ActiveProject->m_AssetManager = assetManager;
+        return s_ActiveProject;
+    }
 
-	auto Project::Open(const std::filesystem::path& path) -> Ref<Project>
-	{
-		EP_PROFILE_FN("Project::Open");
+    auto Project::Open(const std::filesystem::path& path) -> Ref<Project>
+    {
+        EP_PROFILE_FN("Project::Open");
 
-		const auto project = CreateRef<Project>();
+        const auto project = CreateRef<Project>();
 
-		if (ProjectSerializer serializer(project); !serializer.Deserialize(path))
-			return nullptr;
+        if (ProjectSerializer serializer(project); !serializer.Deserialize(path))
+            return nullptr;
 
-		project->GetSpecification().ProjectDirectory = path.parent_path();
-		s_ActiveProject = project;
+        project->GetSpecification().ProjectDirectory = path.parent_path();
+        s_ActiveProject = project;
 
-		const auto assetManager = CreateRef<AssetManager>();
-		s_ActiveProject->m_AssetManager = assetManager;
-		assetManager->DeserializeAssetRegistry();
+        const auto assetManager = CreateRef<AssetManager>();
+        s_ActiveProject->m_AssetManager = assetManager;
+        assetManager->DeserializeAssetRegistry();
 
-		return s_ActiveProject;
-	}
+        return s_ActiveProject;
+    }
 
-	auto Project::SaveActive() -> bool
-	{
-		EP_PROFILE_FN("Project::SaveActive");
+    auto Project::SaveActive() -> bool
+    {
+        EP_PROFILE_FN("Project::SaveActive");
 
-		const auto& assetManager = s_ActiveProject->GetAssetManager();
-		const auto& registry = assetManager->GetAssetRegistry();
-		
-		for (const auto& [handle, metadata] : registry)
-		{
-			if (metadata.Type != AssetType::Scene)
-				continue;
+        const auto& assetManager = s_ActiveProject->GetAssetManager();
+        const auto& registry = assetManager->GetAssetRegistry();
 
-			Ref<Scene> scene = assetManager->GetOrLoadAsset<Scene>(handle);
+        for (const auto& [handle, metadata] : registry)
+        {
+            if (metadata.Type != AssetType::Scene)
+                continue;
 
-			SceneSerializer serializer(scene);
-			serializer.Serialize(GetAssetFilepath(metadata.Filepath));
-		}
+            Ref<Scene> scene = assetManager->GetOrLoadAsset<Scene>(handle);
 
-		assetManager->SerializeAssetRegistry();
+            SceneSerializer serializer(scene);
+            serializer.Serialize(GetAssetFilepath(metadata.Filepath));
+        }
 
-		ProjectSerializer serializer(s_ActiveProject);
-		return serializer.Serialize();
-	}
+        assetManager->SerializeAssetRegistry();
 
-	auto Project::GetProjectDirectory() -> const std::filesystem::path&
-	{
-		EP_ASSERT(s_ActiveProject != nullptr);
-		return s_ActiveProject->m_Specification.ProjectDirectory;
-	}
+        ProjectSerializer serializer(s_ActiveProject);
+        return serializer.Serialize();
+    }
 
-	auto Project::GetProjectsDirectory() -> std::filesystem::path
-	{
-		return FS::GetRootDirectory() / "Projects";
-	}
+    auto Project::GetProjectDirectory() -> const std::filesystem::path&
+    {
+        EP_ASSERT(s_ActiveProject != nullptr);
+        return s_ActiveProject->m_Specification.ProjectDirectory;
+    }
 
-	auto Project::GetProjectFile() -> std::filesystem::path
-	{
-		EP_ASSERT(s_ActiveProject != nullptr);
-		return GetProjectDirectory() / std::filesystem::path(s_ActiveProject->m_Specification.Name + ".epproj");
-	}
+    auto Project::GetProjectsDirectory() -> std::filesystem::path
+    {
+        return FS::GetRootDirectory() / "Projects";
+    }
 
-	auto Project::GetAssetsDirectory() -> std::filesystem::path
-	{
-		EP_ASSERT(s_ActiveProject != nullptr);
-		return GetProjectDirectory() / "Assets";
-	}
+    auto Project::GetProjectFile() -> std::filesystem::path
+    {
+        EP_ASSERT(s_ActiveProject != nullptr);
+        return GetProjectDirectory() / std::filesystem::path(s_ActiveProject->m_Specification.Name + ".epproj");
+    }
 
-	auto Project::GetCacheDirectory() -> std::filesystem::path
-	{
-		return GetProjectDirectory() / "Cache";
-	}
+    auto Project::GetAssetsDirectory() -> std::filesystem::path
+    {
+        EP_ASSERT(s_ActiveProject != nullptr);
+        return GetProjectDirectory() / "Assets";
+    }
 
-	auto Project::GetScriptsDirectory() -> std::filesystem::path
-	{
-		return GetProjectDirectory() / "Scripts";
-	}
+    auto Project::GetCacheDirectory() -> std::filesystem::path
+    {
+        return GetProjectDirectory() / "Cache";
+    }
 
-	auto Project::GetAssetFilepath(const std::filesystem::path& filepath) -> std::filesystem::path
-	{
-		EP_ASSERT(s_ActiveProject != nullptr);
-		return GetAssetsDirectory() / filepath;
-	}
+    auto Project::GetScriptsDirectory() -> std::filesystem::path
+    {
+        return GetProjectDirectory() / "Scripts";
+    }
 
-	auto Project::GetAssetRelativeFilepath(const std::filesystem::path& filepath) -> std::filesystem::path
-	{
-		EP_ASSERT(s_ActiveProject != nullptr);
-		return std::filesystem::relative(filepath, GetAssetsDirectory());
-	}
+    auto Project::GetAssetFilepath(const std::filesystem::path& filepath) -> std::filesystem::path
+    {
+        EP_ASSERT(s_ActiveProject != nullptr);
+        return GetAssetsDirectory() / filepath;
+    }
+
+    auto Project::GetAssetRelativeFilepath(const std::filesystem::path& filepath) -> std::filesystem::path
+    {
+        EP_ASSERT(s_ActiveProject != nullptr);
+        return std::filesystem::relative(filepath, GetAssetsDirectory());
+    }
 }

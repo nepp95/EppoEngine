@@ -18,7 +18,9 @@ namespace Eppo
 
         [[nodiscard]] auto IsHostContextLoaded() const -> bool;
 
-        auto GetManagedFnPointer(const EP_NativeString& assemblyPath, const EP_NativeString& typeName, const EP_NativeString& methodName) const -> void*;
+        auto
+        GetManagedFnPointer(const EP_NativeString& assemblyPath, const EP_NativeString& typeName, const EP_NativeString& methodName) const
+            -> void*;
 
     private:
         auto GetHostFxrPath() -> std::filesystem::path;

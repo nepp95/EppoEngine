@@ -8,9 +8,7 @@ namespace Eppo
 {
     BindlessHandle::BindlessHandle(const Ref<DescriptorManager>& manager, const uint32_t index, const BindlessHeapType heapType)
         : Manager(manager), Index(index), HeapType(heapType)
-    {
-
-    }
+    {}
 
     BindlessHandle::BindlessHandle(BindlessHandle&& other) noexcept
     {
@@ -135,13 +133,16 @@ namespace Eppo
             // Capacity reached, grow
             auto newSize = static_cast<uint32_t>(heap->Capacity * 1.5);
             const uint32_t maxSize =
-                    heap->BindingLayout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv
-                    ? s_MaxSlots
-                    : s_MaxSamplerSlots;
+                heap->BindingLayout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv
+                ? s_MaxSlots
+                : s_MaxSamplerSlots;
 
             if (newSize > maxSize)
             {
-                Log::Warn("Trying to resize descriptor heap to a size larger than the maximum: {} (Max: {}). Resizing to max size instead.", newSize, maxSize);
+                Log::Warn(
+                    "Trying to resize descriptor heap to a size larger than the maximum: {} (Max: {}). Resizing to max size instead.",
+                    newSize, maxSize
+                );
                 newSize = maxSize;
             }
 

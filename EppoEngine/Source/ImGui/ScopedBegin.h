@@ -4,17 +4,11 @@
 
 namespace Eppo
 {
-	class ScopedBegin
-	{
-	public:
-		ScopedBegin(const char* identifier)
-		{
-			ImGui::Begin(identifier);
-		}
+    class ScopedBegin
+    {
+    public:
+        ScopedBegin(const char* identifier) { ImGui::Begin(identifier); }
 
-		~ScopedBegin()
-		{
-			ImGui::End();
-		}
-	};
+        ~ScopedBegin() { ImGui::End(); }
+    };
 }

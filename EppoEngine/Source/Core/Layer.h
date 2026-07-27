@@ -4,17 +4,17 @@
 
 namespace Eppo
 {
-	class Layer
-	{
-	public:
-		Layer() = default;
-		virtual ~Layer() = default;
+    class Layer
+    {
+    public:
+        Layer() = default;
+        virtual ~Layer() = default;
 
-		virtual auto OnAttach() -> void {}
-		virtual auto OnDetach() -> void {}
+        virtual auto OnAttach() -> void {}
+        virtual auto OnDetach() -> void {}
 
-		virtual auto OnUpdate(float timestep) -> void {}
-		virtual auto OnUIRender() -> void {}
-		virtual auto OnEvent(Event& e) -> void {}
-	};
+        virtual auto OnUpdate(float timestep) -> void {}
+        virtual auto OnUIRender() -> void {}
+        virtual auto OnEvent(Event& e) -> void {}
+    };
 }
