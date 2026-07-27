@@ -1,6 +1,6 @@
 ---
 name: eppo-scripting-integration
-description: Develop and diagnose Eppo's C++/C# scripting integration across CoreCLR hosting, managed assembly discovery, native internal calls, field and method marshalling, entity script lifecycle, managed build deployment, and scripting tests. Use for changes under EppoEngine/Source/Scripting, EppoScriptCore, script-aware scene/editor code, CMake/Dotnet.cmake, or the Scripting and ScriptMarshalling suites.
+description: Develop and diagnose Eppo's C++/C# scripting integration across CoreCLR hosting, managed assembly discovery, native internal calls, field and method marshalling, entity script lifecycle, script hot reload and the managed build, deployment, and scripting tests. Use for changes under EppoEngine/Source/Scripting, EppoScriptCore, script-aware scene/editor code, Utility/FileWatcher or Process when driving script rebuilds, CMake/Dotnet.cmake, or the Scripting and ScriptMarshalling suites.
 ---
 
 # Eppo Scripting Integration
@@ -22,4 +22,6 @@ Read [references/architecture.md](references/architecture.md) before changing th
 - Keep editor field storage authoritative. Push it into new managed instances at runtime start; do not serialize transient managed values.
 - Keep `ScriptEngine`'s entity-instance registry authoritative for live script existence.
 - Clear scene and physics contexts before their native objects can expire.
+- Never reload the user assembly while a scene context is published; defer to a later frame instead of unloading under live managed instances.
+- A project with no `.csproj` is a valid, script-free project — do not turn its absence into an error that blocks play.
 - Route reusable runtime APIs through `EppoEngine` and `EppoScriptCore`, not the editor.

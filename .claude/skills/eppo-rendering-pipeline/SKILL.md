@@ -1,6 +1,6 @@
 ---
 name: eppo-rendering-pipeline
-description: Develop and diagnose Eppo's Vulkan and NVRHI renderer, including device and swapchain lifecycle, shader compilation and reflection, binding layouts, bindless descriptors, GPU resources, pipelines, render passes, command buffers, SceneRenderer passes, ImGui rendering, and graphical tests. Use for changes under EppoEngine/Source/Renderer, EppoEngine/Source/Platform/Vulkan, renderer-facing ImGui code, editor shaders, or Renderer and Scenario tests.
+description: Develop and diagnose Eppo's Vulkan and NVRHI renderer, including device and swapchain lifecycle, shader compilation and reflection, binding layouts, bindless descriptors, GPU resources, pipelines, render passes, command buffers, SceneRenderer passes, swapchain compositing, ImGui rendering, and graphical tests. Use for changes under EppoEngine/Source/Renderer, EppoEngine/Source/Platform/Vulkan, renderer-facing ImGui code, editor shaders, or the Renderer test suite.
 ---
 
 # Eppo Rendering Pipeline
@@ -13,7 +13,7 @@ Read [references/architecture.md](references/architecture.md) before changing re
 2. Trace initialization and frame order before editing. Respect the publication order between `DeviceManager`, `Renderer`, the descriptor manager, shader loading, swapchain images, and ImGui.
 3. For shader changes, update source, reflected resource expectations, C++ set/binding declarations, pipeline layouts, pass inputs, and tests together.
 4. For resources, define lifetime and resize behavior. Preserve bindless handle move-only ownership and avoid retaining stale framebuffer or descriptor handles.
-5. Add the smallest renderer regression. Use non-graphical construction tests only where no live device is required; otherwise use the `Renderer` graphical suite or `Scenario` for end-to-end scene rendering.
+5. Add the smallest renderer regression. Use non-graphical construction tests only where no live device is required; otherwise use the `Renderer` graphical suite, whose `SceneRendering` tests drive end-to-end `Scene -> SceneRenderer` behavior through `TestContext`/`ScenarioLayer`.
 6. Build before running graphical tests. Run from the executable output directory or through CTest so shaders and resources resolve correctly.
 
 ## Guardrails

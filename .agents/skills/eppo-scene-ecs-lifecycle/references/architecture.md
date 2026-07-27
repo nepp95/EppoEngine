@@ -126,4 +126,5 @@ Check every applicable surface:
 - `Scene`: entity APIs, sparse relationships, repair, deletion during iteration, and duplication.
 - `Physics`: runtime bodies, hierarchy/scale transforms, collider serialization, and copied-scene behavior.
 - `Scripting`: component wrappers and script field storage, including duplicate field-map independence under the suite's shared CoreCLR harness.
-- `Scenario`: camera movement, loaded scene behavior, and scene-to-renderer integration.
+- graphical `Renderer` (its `SceneRendering` tests): camera movement, loaded scene behavior, and scene-to-renderer integration.
+- `Project`: scene persistence as a packed asset, when a change affects what `Game.eppak` carries.

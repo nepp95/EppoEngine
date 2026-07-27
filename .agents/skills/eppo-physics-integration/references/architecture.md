@@ -96,6 +96,6 @@ When adding or changing a physics property or shape, inspect:
 | Persistence/copy | serialized physics components, copied scene collider gathering |
 | Asset-derived shape | fit every collider type to primitive mesh bounds |
 
-Also run `Scripting` when a managed property or physics call changes and `Scenario` when debug rendering or frame-level behavior changes.
+Also run `Scripting` when a managed property or physics call changes, and the graphical `Renderer` suite when debug rendering or frame-level behavior changes.
 
 Use `PhysicsWorld::HasBody`, `GetShapeCount`, and `GetPosition` to observe body boundaries, gathered shapes, and authored-to-world pose mapping without reaching into Box3D internals.

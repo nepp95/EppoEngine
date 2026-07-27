@@ -23,6 +23,23 @@
 
 CoreCLR is process-global in practice. `ScriptEngine::Shutdown` ends engine ownership, but tests must share one initialization rather than repeatedly booting CoreCLR.
 
+## Build and hot reload
+
+`ReloadProjectAssembly` is the single path that turns C# sources into a loaded assembly, used both for the initial project open and for reloads. It:
+
+1. Clears `m_UserAssemblyValid` up front, so a failure anywhere below leaves scripting explicitly invalid rather than stale-but-apparently-fine.
+2. Treats a project with no `<Name>.csproj` as a **valid** state — logs, marks valid, returns true. Absence of scripts must not block play.
+3. Installs the `FileWatcher` on `Project::GetScriptsDirectory()` *before* building, so a project that opens with broken sources still reloads once the user fixes them.
+4. Runs `dotnet build` through `Utility/Process::RunProcess` into `Project::GetCacheDirectory() / "Scripts"`, passing `-p:CoreManagedDll=` pointed at this build's `EppoScriptCore.dll` rather than a baked-in path.
+5. Verifies the assembly exists, then `UnloadUserAssembly` (which also clears `m_EntityInstances`) followed by `LoadUserAssembly`.
+
+`ScriptEngine::VerifyRuntime`, called per frame, is the reload trigger and deliberately does nothing eagerly:
+
+- A change reported by `FileWatcher::ConsumeChange` only sets `m_ReloadPending` and returns, so a burst of editor saves collapses into a single build one frame later.
+- A pending reload is skipped entirely while `GetSceneContext()` is non-null — that means play mode, and swapping assemblies under live managed instances is not supported.
+
+Editor field storage (`m_FieldStorage`) survives a reload because it is keyed by entity UUID and lives outside the assembly; live `ScriptInstance`s do not. Reflected `ScriptClass` metadata is rebuilt from scratch, so any cached class index is invalid after a reload.
+
 ## Runtime entity flow
 
 `EditorLayer::OnScenePlay` copies the authored scene. `Scene::OnRuntimeStart` creates physics, then calls `ScriptEngine::OnCreateEntity` for each `ScriptComponent`. Creation resolves the class index, creates a managed instance keyed by entity UUID, copies serialized editor fields into it, and invokes `OnCreate`.
