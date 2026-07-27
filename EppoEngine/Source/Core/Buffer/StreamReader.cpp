@@ -20,6 +20,12 @@ namespace Eppo
             return false;
 
         buffer.Allocate(size);
-        return ReadData(buffer.As<char>(), size);
+        if (!ReadData(buffer.As<char>(), size))
+        {
+            buffer.Release();
+            return false;
+        }
+
+        return true;
     }
 }

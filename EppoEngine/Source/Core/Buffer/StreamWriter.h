@@ -66,7 +66,7 @@ namespace Eppo
 
             for (const auto& [key, value] : map)
             {
-                if constexpr (std::is_trivial<typename Map::key_type>())
+                if constexpr (std::is_trivially_copyable_v<typename Map::key_type>)
                 {
                     if (!WriteRaw(key))
                         return false;
@@ -77,7 +77,7 @@ namespace Eppo
                         return false;
                 }
 
-                if constexpr (std::is_trivial<typename Map::mapped_type>())
+                if constexpr (std::is_trivially_copyable_v<typename Map::mapped_type>)
                 {
                     if (!WriteRaw(value))
                         return false;

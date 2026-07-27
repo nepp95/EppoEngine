@@ -163,10 +163,23 @@ SUITE(Core)
     {
         const Eppo::Testing::TempDir dir;
 
-        // Only the open failure is observable: writing to a bad stream runs into
-        // WriteRaw's EP_ASSERT, which breaks into the debugger in a Debug build.
-        const FileStreamWriter writer(dir.Path() / "missing" / "payload.bin");
+        FileStreamWriter writer(dir.Path() / "missing" / "payload.bin");
         CHECK(!writer.IsStreamGood());
+        CHECK(!writer.WriteData("eppo", 4));
+        CHECK_EQUAL(0, writer.GetStreamPosition());
+    }
+
+    // Every other test round-trips through the same build, so a change to the length prefix would move
+    // reader and writer together and stay invisible. This pins the bytes themselves.
+    TEST(StreamWriter_WritesStringsWithAUint64LengthPrefix)
+    {
+        BufferWriter writer(64);
+        REQUIRE CHECK(writer.WriteString("ab"));
+
+        constexpr std::array<uint8_t, 10> expected{ 0x02, 0, 0, 0, 0, 0, 0, 0, 'a', 'b' };
+        const Buffer written = writer.GetBuffer();
+        REQUIRE CHECK_EQUAL(expected.size(), written.Size);
+        CHECK_ARRAY_EQUAL(expected.data(), written.Data, expected.size());
     }
 
     TEST(FileStreamReader_ReportsBadStreamForMissingFile)
