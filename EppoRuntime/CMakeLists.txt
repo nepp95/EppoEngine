@@ -33,16 +33,3 @@ if (WIN32)
     )
 endif ()
 
-set(ENGINE_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/EppoEngine/Resources")
-file(GLOB_RECURSE ENGINE_RESOURCE_FILES CONFIGURE_DEPENDS "${ENGINE_RESOURCES_DIR}/*")
-add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:EppoRuntime>/Resources"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_RESOURCES_DIR}" "$<TARGET_FILE_DIR:EppoRuntime>/Resources"
-    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync"
-    DEPENDS ${ENGINE_RESOURCE_FILES}
-    COMMENT "Copying engine Resources (runtime)"
-    VERBATIM
-)
-add_custom_target(EppoRuntimeResources DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_ResourcesSync")
-add_dependencies(EppoRuntime EppoRuntimeResources)

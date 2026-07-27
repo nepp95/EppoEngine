@@ -8,6 +8,8 @@
 #include "Scene/Entity.h"
 #include "Scene/SceneSerializer.h"
 
+#include <ranges>
+
 using namespace Eppo;
 
 // Export reads the engine shaders from the live renderer, so these boot the graphical harness.
@@ -111,6 +113,43 @@ SUITE(ProjectExport)
         CHECK(scene->GetPrimaryCameraEntity());
     }
 
+
+    TEST(ProjectExporter_PacksEngineShadersInsteadOfShippingThemLoose)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        ExportProjectFixture fixture;
+        fixture.AddScene(500, "start.epscene");
+        fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
+
+        const ProjectExportResult result = ProjectExporter(fixture.ProjectInstance).Export(fixture.Options());
+        REQUIRE CHECK(result.Success);
+
+        GameData gameData;
+        REQUIRE CHECK(gameData.Deserialize(result.OutputPath / "Debug" / GameData::Filename));
+        for (const auto* name : { "composite", "geometry", "imgui", "skybox", "wireframe" })
+        {
+            REQUIRE CHECK(gameData.PackedShaders.contains(name));
+            for (const auto& source : gameData.PackedShaders.at(name).ShaderSources | std::views::values)
+                CHECK(!source.empty());
+        }
+
+        // Every #include the engine shaders name must travel with them.
+        REQUIRE CHECK(!gameData.PackedShaderIncludes.empty());
+        CHECK(gameData.PackedShaderIncludes.contains("Includes/platform.hlsli"));
+        CHECK(gameData.PackedShaderIncludes.contains("Includes/lighting.hlsli"));
+        for (const auto& source : gameData.PackedShaderIncludes | std::views::values)
+            CHECK(!source.empty());
+
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(result.OutputPath))
+        {
+            const auto extension = entry.path().extension();
+            CHECK(extension != ".vert");
+            CHECK(extension != ".frag");
+            CHECK(extension != ".hlsli");
+        }
+    }
 
     TEST(ProjectExporter_RejectsNonEmptyTargetWithoutMutation)
     {
@@ -273,8 +312,8 @@ SUITE(ProjectExport)
             CHECK(FS::Exists(outputDirectory / "EppoScriptCore.dll"));
             CHECK(FS::Exists(outputDirectory / "EppoScriptCore.deps.json"));
             CHECK(FS::Exists(outputDirectory / "runtimeconfig.json"));
-            CHECK(FS::Exists(outputDirectory / "Resources" / "Shaders" / "composite.vert"));
-            CHECK(!FS::Exists(outputDirectory / "Resources" / "Fonts"));
+            // Engine resources are carried by Game.eppak; the runtime never reads them from disk.
+            CHECK(!FS::Exists(outputDirectory / "Resources"));
             CHECK(FS::ReadText(outputDirectory / "EppoScriptCore.deps.json").find(fixture.ProjectDirectory.string()) == std::string::npos);
         }
         #if defined(EP_PLATFORM_WINDOWS)

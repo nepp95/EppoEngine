@@ -15,15 +15,25 @@ namespace Eppo
 	class RuntimeApplication final : public Application
 	{
 	public:
-		explicit RuntimeApplication(ApplicationParams&& params)
+		explicit RuntimeApplication(ApplicationParams&& params, GameData gameData)
 			: Application(std::move(params))
 		{
-			PushLayer<RuntimeLayer>();
+			PushLayer<RuntimeLayer>(std::move(gameData));
 		}
 	};
 
 	auto CreateApplication(int, char**) -> Application*
 	{
+		// Read here rather than in RunRuntime so it lands after RunApplication has started logging, and
+		// before the application exists: its shaders are needed during startup. The layer takes the rest.
+		GameData gameData;
+		if (!gameData.Deserialize(FS::GetRootDirectory() / GameData::Filename))
+			throw std::runtime_error("Game.eppak is missing, corrupt, or incompatible.");
+
+		// Without these the engine would compile its shaders from a Resources directory the game does not ship.
+		if (gameData.PackedShaders.empty())
+			throw std::runtime_error("Game.eppak contains no engine shaders.");
+
 		const auto title = FS::GetExecutablePath().stem().string();
 
         const CommandLineArgs args(0, nullptr);
@@ -39,18 +49,18 @@ namespace Eppo
                 true,
                 #endif
             .EnableFileDialogs = false,
+            // Moved out: the renderer owns the shader text from here, and the layer has no use for it.
+            .PackedShaders = std::move(gameData.PackedShaders),
+            .PackedShaderIncludes = std::move(gameData.PackedShaderIncludes),
 	    };
 
-	    const auto app = new RuntimeApplication(std::move(params));
-
-		return app;
+	    return new RuntimeApplication(std::move(params), std::move(gameData));
 	}
 
 	auto PrepareRuntimeStorage() -> bool
 	{
-		const auto applicationName = FS::GetExecutablePath().stem().string();
-		const auto writableDirectory = FS::GetUserStateDirectory(applicationName);
-		if (writableDirectory.empty() || !FS::ConfigureWritableDirectory(writableDirectory))
+		// Logs and the shader cache stay beside the game so its writes are visible in one place.
+		if (!FS::ConfigureWritableDirectory(FS::GetExecutableDirectory()))
 		{
 			ErrorDialog::Show("Eppo Runtime Error", "Failed to create the runtime writable directory.");
 			return false;
@@ -60,11 +70,13 @@ namespace Eppo
 
 	auto RunRuntime() -> int
 	{
-		if (!PrepareRuntimeStorage())
-			return 1;
-
+		// Everything runs inside the handler: creating the writable directory and reading the package both
+		// touch the filesystem, and an unhandled throw here would terminate without a log or a dialog.
 		try
 		{
+			if (!PrepareRuntimeStorage())
+				return 1;
+
 			return RunApplication(0, nullptr);
 		}
 		catch (const std::exception& exception)

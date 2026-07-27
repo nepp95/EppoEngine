@@ -36,6 +36,10 @@ namespace Eppo
     ///         per stage present:
     ///             uint16   stageType
     ///             string   source
+    ///     uint32   includeCount
+    ///     includeCount x:
+    ///         string   path
+    ///         string   source
     struct GameData
 	{
 		static constexpr std::string_view Filename = "Game.eppak";
@@ -46,6 +50,8 @@ namespace Eppo
         std::map<AssetHandle, AssetMetadata> AssetRegistry;
         std::map<AssetHandle, PackedAssetData> PackedAssets;
         std::map<std::string, PackedShaderData> PackedShaders;
+        // Keyed by path relative to Resources/Shaders, matching what the shader sources #include.
+        std::map<std::string, std::string> PackedShaderIncludes;
 
         /// @brief Serializes a project' data for use in a deployed application
         /// @param path Destination pak file path

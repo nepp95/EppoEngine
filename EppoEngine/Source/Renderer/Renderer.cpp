@@ -12,24 +12,37 @@
 
 namespace Eppo
 {
+	namespace
+	{
+		constexpr std::array s_EngineShaderNames{ "composite", "geometry", "imgui", "skybox", "wireframe" };
+	}
+
 	Renderer::Renderer()
 	{
 		m_DescriptorManager = CreateRef<DescriptorManager>();
 	}
 
-	auto Renderer::LoadShaders(const std::map<std::string, PackedShaderData>& packedSources) -> void
+	auto Renderer::LoadShaders(const std::map<std::string, PackedShaderData>& packed, const std::map<std::string, std::string>& includes) -> void
 	{
-		if (packedSources.empty())
+		for (const auto* name : s_EngineShaderNames)
 		{
-		    m_ShaderLibrary.Load("composite");
-		    m_ShaderLibrary.Load("geometry");
-		    m_ShaderLibrary.Load("imgui");
-		    m_ShaderLibrary.Load("skybox");
-		    m_ShaderLibrary.Load("wireframe");
-		} else
-		{
-		    for (const auto& [name, packedShader] : packedSources)
-		        m_ShaderLibrary.Load(name, packedShader.ShaderSources);
+			ShaderSpecification spec{ .Name = name };
+			if (!packed.empty())
+			{
+				const auto it = packed.find(name);
+				// An entry without sources would be compiled from disk, which a packaged game does not have.
+				if (it == packed.end() || it->second.ShaderSources.empty())
+				{
+					Log::Error("Shader '{}' is missing from the game package.", name);
+					EP_ASSERT(false, "Incomplete game package!");
+					continue;
+				}
+
+				spec.Sources = it->second.ShaderSources;
+				spec.Includes = includes;
+			}
+
+			m_ShaderLibrary.Load(std::move(spec));
 		}
 	}
 

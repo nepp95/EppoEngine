@@ -1,7 +1,10 @@
 #include "Support/EppoTest.h"
 #include "Support/TempDir.h"
 
+#include "Asset/PackFormat.h"
 #include "Project/GameData.h"
+
+#include <algorithm>
 
 using namespace Eppo;
 
@@ -127,5 +130,103 @@ SUITE(Project)
         GameData loaded;
         REQUIRE CHECK(loaded.Deserialize(path));
         CHECK(loaded.PackedShaders.empty());
+        CHECK(loaded.PackedShaderIncludes.empty());
+    }
+
+    TEST(GameData_RoundTripPreservesPackedShaderIncludes)
+    {
+        const Testing::TempDir dir;
+        const auto path = dir.File("includes.eppak");
+
+        GameData data;
+        data.ProjectName = "Game";
+        data.StartScene = AssetHandle(100);
+        data.PackedShaders.emplace("geometry", PackedShaderData{ {
+            { nvrhi::ShaderType::Vertex, "#include \"Includes/platform.hlsli\"\nvertex-source" },
+        } });
+        // Keyed by the path relative to Resources/Shaders, which is exactly what an #include names.
+        data.PackedShaderIncludes.emplace("Includes/platform.hlsli", "platform-source");
+        data.PackedShaderIncludes.emplace("Includes/lighting.hlsli", "lighting-source");
+        REQUIRE CHECK(data.Serialize(path));
+
+        GameData loaded;
+        REQUIRE CHECK(loaded.Deserialize(path));
+        CHECK_EQUAL(2, loaded.PackedShaderIncludes.size());
+        CHECK_EQUAL(std::string("platform-source"), loaded.PackedShaderIncludes.at("Includes/platform.hlsli"));
+        CHECK_EQUAL(std::string("lighting-source"), loaded.PackedShaderIncludes.at("Includes/lighting.hlsli"));
+    }
+
+    // The shader block kept its format version when includes were added to it, so a package written before
+    // that change is detected by running out of data rather than by the version check.
+    TEST(GameData_RejectsAPackageThatEndsBeforeItsShaderIncludes)
+    {
+        const Testing::TempDir dir;
+        const auto path = dir.File("older-build.eppak");
+
+        GameData data;
+        data.ProjectName = "Game";
+        data.StartScene = AssetHandle(100);
+        data.PackedShaders.emplace("geometry", PackedShaderData{ {
+            { nvrhi::ShaderType::Vertex, "vertex-source" },
+        } });
+        data.PackedShaderIncludes.emplace("Includes/platform.hlsli", "platform-source");
+        REQUIRE CHECK(data.Serialize(path));
+
+        std::vector<char> bytes = FS::ReadBytes(path);
+        const auto includeBlockSize = sizeof(uint32_t) + 2 * sizeof(uint32_t) + std::string("Includes/platform.hlsli").size()
+            + std::string("platform-source").size();
+        REQUIRE CHECK(bytes.size() > includeBlockSize);
+        bytes.resize(bytes.size() - includeBlockSize);
+        REQUIRE CHECK(FS::WriteBytes(path, bytes, true));
+
+        GameData loaded;
+        CHECK(!loaded.Deserialize(path));
+    }
+
+    TEST(GameData_RejectsUnknownPackageFormat)
+    {
+        const Testing::TempDir dir;
+        const auto path = dir.File("bad-package-format.eppak");
+
+        GameData data;
+        data.ProjectName = "Game";
+        data.StartScene = AssetHandle(100);
+        REQUIRE CHECK(data.Serialize(path));
+
+        std::vector<char> bytes = FS::ReadBytes(path);
+        REQUIRE CHECK(!bytes.empty());
+        bytes.front() = static_cast<char>(bytes.front() + 1);
+        REQUIRE CHECK(FS::WriteBytes(path, bytes, true));
+
+        GameData loaded;
+        CHECK(!loaded.Deserialize(path));
+    }
+
+    TEST(GameData_RejectsUnknownShaderFormat)
+    {
+        const Testing::TempDir dir;
+        const auto path = dir.File("bad-shader-format.eppak");
+
+        GameData data;
+        data.ProjectName = "Game";
+        data.StartScene = AssetHandle(100);
+        data.PackedShaders.emplace("geometry", PackedShaderData{ {
+            { nvrhi::ShaderType::Vertex, "vertex-source" },
+        } });
+        REQUIRE CHECK(data.Serialize(path));
+
+        // With no registry or packed assets the shader magic occurs exactly once, so corrupting
+        // the first occurrence targets the shader block without hard-coding a byte offset.
+        std::vector<char> bytes = FS::ReadBytes(path);
+        REQUIRE CHECK(!bytes.empty());
+        const auto magic = PackFormat::Shader.Magic;
+        const auto* magicBytes = reinterpret_cast<const char*>(&magic);
+        const auto position = std::search(bytes.begin(), bytes.end(), magicBytes, magicBytes + sizeof(magic));
+        REQUIRE CHECK(position != bytes.end());
+        *position = static_cast<char>(*position + 1);
+        REQUIRE CHECK(FS::WriteBytes(path, bytes, true));
+
+        GameData loaded;
+        CHECK(!loaded.Deserialize(path));
     }
 }

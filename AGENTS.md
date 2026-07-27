@@ -38,7 +38,7 @@ Required order: **configure -> build -> test**. After editing C# only, rebuild t
 - `EppoEditor/` — editor executable (`EppoEditor.cpp` -> `EditorLayer`). Depends on `EppoEngine` + `EppoScriptCore`. Owns `Resources/` and `runtimeconfig.json`.
 - `EppoScriptCore/` — C# class library (net10.0) built by `dotnet` via `CMake/Dotnet.cmake` (not msbuild). Produces `EppoScriptCore.dll` at the binary root.
 - `EppoEngineTesting/` — UnitTest++ test runner. `Source/` suites mirror engine modules; `Support/` has `AppHarness` (graphical) and `TestContext` (scenarios). `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites registered via `AddTestingSuite` in its `CMakeLists.txt`.
-- `EppoRuntime/` — scaffolded, currently **not wired into the top-level build** (no `add_subdirectory`); `BUILD_RUNTIME` option is unused.
+- `EppoRuntime/` — standalone player, built when `BUILD_RUNTIME` is ON (the default). Reads `Game.eppak` before creating the application, since its engine shaders come from there. It stages **no** `Resources/`: shader sources and their includes travel in the pack, and it never reads them from disk. Logs and its shader cache are written beside the executable.
 - `CMake/` — `Dependencies.cmake`, `Dotnet.cmake` (managed-core build + `CopyBuildScripts` helper), `Ports/` vcpkg overlays.
 
 Runtime behavior and reusable game functionality belong in `EppoEngine`, not `EppoEditor`. Editor code may call engine APIs, but must not own logic that a standalone game or runtime needs, such as deriving collider values from mesh bounds.

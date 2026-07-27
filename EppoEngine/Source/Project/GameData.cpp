@@ -110,6 +110,13 @@ namespace Eppo
 			}
 		}
 
+		Utils::Write(out, static_cast<uint32_t>(PackedShaderIncludes.size()));
+		for (const auto& [path, source] : PackedShaderIncludes)
+		{
+			Utils::WriteString(out, path);
+			Utils::WriteString(out, source);
+		}
+
 		return static_cast<bool>(out);
 	}
 
@@ -129,6 +136,12 @@ namespace Eppo
 		uint32_t version = 0;
 		Utils::Read(in, magic);
 		Utils::Read(in, version);
+		if (magic != PackFormat::Package.Magic || version != PackFormat::Package.Version)
+		{
+			Log::Error("'{}' is not a supported package format (magic {:#x}, version {})", path, magic, version);
+			return false;
+		}
+
 		ProjectName = Utils::ReadString(in);
 		uint64_t startScene = 0;
 		Utils::Read(in, startScene);
@@ -174,6 +187,12 @@ namespace Eppo
 		uint32_t shaderCount = 0;
 		Utils::Read(in, shaderMagic);
 		Utils::Read(in, shaderVersion);
+		if (shaderMagic != PackFormat::Shader.Magic || shaderVersion != PackFormat::Shader.Version)
+		{
+			Log::Error("Shader block in '{}' is not a supported format (magic {:#x}, version {})", path, shaderMagic, shaderVersion);
+			return false;
+		}
+
 		Utils::Read(in, shaderCount);
 		for (uint32_t i = 0; i < shaderCount; i++)
 		{
@@ -191,6 +210,22 @@ namespace Eppo
 			PackedShaders[name] = std::move(shader);
 		}
 
-		return static_cast<bool>(in);
+		uint32_t includeCount = 0;
+		Utils::Read(in, includeCount);
+		for (uint32_t i = 0; i < includeCount; i++)
+		{
+			const std::string includePath = Utils::ReadString(in);
+			PackedShaderIncludes[includePath] = Utils::ReadString(in);
+		}
+
+		// A package written before shader includes were carried runs out here rather than at the version check,
+		// since its shader block is otherwise identical.
+		if (!in)
+		{
+			Log::Error("'{}' ended before it was fully read; it is truncated or was written by an older build.", path);
+			return false;
+		}
+
+		return true;
 	}
 }

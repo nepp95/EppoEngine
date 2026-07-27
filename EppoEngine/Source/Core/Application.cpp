@@ -44,8 +44,9 @@ namespace Eppo
 		m_DeviceManager->Init();
 		m_DeviceManager->InitRenderer();
 
-		// Shaders load from disk here; a deployed runtime reloads them from its pack once it has read one.
-		m_DeviceManager->GetRenderer()->LoadShaders();
+		// A deployed runtime hands over the shaders it read from its game package; the editor and tests
+		// pass none and compile from Resources/Shaders. Loading happens once, before ImGui takes one.
+		m_DeviceManager->GetRenderer()->LoadShaders(m_Params.PackedShaders, m_Params.PackedShaderIncludes);
 
 		// Create UI layer
 		if (m_Params.EnableImGui)

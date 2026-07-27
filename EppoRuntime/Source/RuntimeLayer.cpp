@@ -7,21 +7,11 @@ namespace Eppo
 	auto RuntimeLayer::OnAttach() -> void
 	{
 		const auto rootDirectory = FS::GetRootDirectory();
-		GameData gameData;
-		if (!gameData.Deserialize(rootDirectory / GameData::Filename))
-		{
-			Fail("Game.eppak is missing, corrupt, or incompatible.");
-			return;
-		}
+		const AssetHandle startScene = m_GameData.StartScene;
+		const std::string projectName = m_GameData.ProjectName;
 
-		const AssetHandle startScene = gameData.StartScene;
-		const std::string projectName = gameData.ProjectName;
-
-		// Recompile engine shaders from the pack's baked-in sources (base ctor loaded them from disk for ImGui).
-		if (!gameData.PackedShaders.empty())
-			Application::Get().GetDeviceManager()->GetRenderer()->LoadShaders(gameData.PackedShaders);
-
-		m_AssetManager = CreateRef<AssetManager>(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
+		// The engine shaders were already loaded from m_GameData during application startup.
+		m_AssetManager = CreateRef<AssetManager>(std::move(m_GameData.AssetRegistry), std::move(m_GameData.PackedAssets));
 		m_Project = Project::New(ProjectSpecification{
 			.Name = projectName,
 			.ProjectDirectory = rootDirectory,

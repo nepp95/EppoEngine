@@ -40,7 +40,7 @@ Required order: **configure → build → test**. After editing C# only, rebuild
 - `EppoEditor/` — editor executable (`EppoEditor.cpp` → `EditorLayer`). Depends on `EppoEngine` + `EppoScriptCore`. Owns `Resources/` and `runtimeconfig.json`.
 - `EppoScriptCore/` — C# class library (net10.0) built by `dotnet` via `CMake/Dotnet.cmake` (not msbuild/IDE). Produces `EppoScriptCore.dll` at the binary root. Namespaces mirror the folder path minus `Source/`.
 - `EppoEngineTesting/` — UnitTest++ runner. `Source/` suites mirror engine modules; `Support/` has `AppHarness` (graphical) and `TestContext` (scenarios). `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites are registered via `AddTestingSuite` in its `CMakeLists.txt`.
-- `EppoRuntime/` — scaffolded, currently **not wired into the top-level build** (no `add_subdirectory`); `BUILD_RUNTIME` is unused.
+- `EppoRuntime/` — standalone player, built when `BUILD_RUNTIME` is ON (the default). Reads `Game.eppak` before creating the application, since its engine shaders come from there. It stages **no** `Resources/`: shader sources and their includes travel in the pack, and it never reads them from disk. Logs and its shader cache are written beside the executable.
 - `CMake/` — `Dependencies.cmake`, `Dotnet.cmake` (managed-core build + `CopyBuildScripts` helper), `Ports/` vcpkg overlays.
 
 Key libraries: entt (ECS), NVRHI (Vulkan RHI), GLFW + ImGui (docking), glm, box3d (physics), spdlog, tinygltf, Tracy, UnitTest++.

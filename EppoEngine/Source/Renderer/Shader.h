@@ -53,8 +53,10 @@ namespace Eppo
 	{
 		std::string Name;
 		bool IsCompute = false;
-		// When non-empty, these sources are compiled instead of reading them from disk (e.g. from a packed game).
+		// With sources the shader is packed: these and Includes are all it may read, never the filesystem.
+		// Without them it is compiled from Resources/Shaders. Includes are keyed by path relative to that directory.
 		std::unordered_map<nvrhi::ShaderType, std::string> Sources;
+		std::map<std::string, std::string> Includes;
 	};
 
 	class Shader
