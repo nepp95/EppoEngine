@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Asset/Asset.h"
-#include "Core/Buffer.h"
+#include "Core/Buffer/Buffer.h"
 
 namespace Eppo
 {

@@ -7,7 +7,11 @@
 #include "Asset/AssetType.h"
 
 #include "Core/Application.h"
-#include "Core/Buffer.h"
+#include "Core/Buffer/Buffer.h"
+#include "Core/Buffer/BufferReader.h"
+#include "Core/Buffer/BufferWriter.h"
+#include "Core/Buffer/FileStreamReader.h"
+#include "Core/Buffer/FileStreamWriter.h"
 #include "Core/Input.h"
 #include "Core/KeyCodes.h"
 #include "Core/Layer.h"

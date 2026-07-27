@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Buffer.h"
+#include "Core/Buffer/Buffer.h"
 
 #include <filesystem>
 #include <fstream>

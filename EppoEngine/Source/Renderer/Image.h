@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Core/Buffer.h"
-
 #include <nvrhi/nvrhi.h>
 
 #include <variant>

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace Eppo
 {
 	struct Buffer
@@ -9,13 +11,19 @@ namespace Eppo
 
 		Buffer() = default;
 
-		Buffer(uint64_t size)
+        explicit Buffer(const uint64_t size)
 		{
 			Size = size;
 			Data = new uint8_t[Size];
 		}
 
-		Buffer(uint8_t* data, uint64_t size)
+	    explicit Buffer(const Buffer& other, const uint64_t size)
+	        : Data(other.Data), Size(size)
+	    {
+
+        }
+
+		Buffer(uint8_t* data, const uint64_t size)
 		{
 			Data = data;
 			Size = size;

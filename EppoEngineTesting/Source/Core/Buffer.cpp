@@ -1,6 +1,6 @@
 #include "Support/EppoTest.h"
 
-#include "Core/Buffer.h"
+#include "Core/Buffer/Buffer.h"
 
 SUITE(Core)
 {
