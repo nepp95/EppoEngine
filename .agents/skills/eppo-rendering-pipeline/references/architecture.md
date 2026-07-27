@@ -10,7 +10,7 @@
 | Shader backend | `Renderer/Shader.*`, `ShaderLibrary.*`, `Platform/Vulkan/VulkanShader.*` | Load sources, compile/cache SPIR-V through DXC, reflect resources, and create NVRHI shader/layout handles. |
 | Resources | `Image`, `Sampler`, vertex/index/uniform/storage buffers, `Framebuffer` | Own NVRHI resources, upload data, resize, and participate in descriptors. |
 | Binding | `DescriptorManager.*`, `RenderPass.*` | Own global bindless tables and pass-local binding sets/push constants. |
-| Execution | `Pipeline.*`, `RenderCommandBuffer.*`, `Renderer.*` | Create graphics pipelines, record commands/timers, and begin/end passes. |
+| Execution | `Pipeline.*`, `RenderCommandBuffer.*`, `Renderer.*` | Create graphics pipelines, record commands/timers, begin/end passes, and composite a final image to the swapchain. |
 | Scene orchestration | `SceneRenderer.*`, editor shader resources | Batch scene submissions and execute geometry, sky, and wireframe passes. |
 | UI | `ImGui/ImGuiRenderer.*`, `ImGuiLayer.*` | Render ImGui draw data through the same NVRHI device and bindless infrastructure. |
 
@@ -19,11 +19,11 @@
 1. `Application` creates a GLFW window.
 2. `DeviceManager::Create` chooses `DeviceManagerVK`; its constructor gathers GLFW's required instance extensions, creates the Vulkan instance and physical/logical devices, and creates the NVRHI device.
 3. `DeviceManagerVK::Init` creates the window surface and swapchain resources.
-4. `DeviceManager::InitRenderer` publishes a `Renderer` owned by the device manager.
-5. `Renderer::Init` creates the descriptor manager and loads shaders that depend on its global binding layouts.
-6. ImGui attaches after the renderer is available; editor layers may then create images and `SceneRenderer` resources.
+4. `DeviceManager::InitRenderer` publishes a `Renderer` owned by the device manager. The `Renderer` **constructor** creates the descriptor manager, so its global binding layouts exist before anything else runs; `Renderer::Init` then creates the swapchain composite sampler and composite command buffer.
+5. `Application` calls `Renderer::LoadShaders(packedShaders, packedIncludes)` — a separate, explicit step, not part of `Renderer::Init`. It iterates the fixed `s_EngineShaderNames` set (`composite`, `geometry`, `imgui`, `skybox`, `wireframe`). Empty arguments mean compile from `Resources/Shaders`; a non-empty packed set that is missing a name, or has an entry with no sources, is an error rather than a silent disk fallback.
+6. ImGui attaches **after** shader loading, because `ImGuiRenderer` grabs `GetShader("imgui")` in its constructor during `ImGuiLayer::OnAttach`. Editor layers may then create images and `SceneRenderer` resources.
 
-Do not move shader/resource construction earlier without rechecking calls to `DeviceManager::Get()` and `GetRenderer()->GetDescriptorManager()`.
+Do not move shader/resource construction earlier without rechecking calls to `DeviceManager::Get()` and `GetRenderer()->GetDescriptorManager()`, and do not fold `LoadShaders` back into `Renderer::Init` — the runtime needs to supply packed sources between the two.
 
 ## Frame flow
 
@@ -51,6 +51,12 @@ Keep acquisition failure and zero-size/minimized paths safe. Swapchain resize re
 - `EndScene` records/submits the command buffer and exposes the final image to the editor viewport.
 
 `EditorLayer` calls `SetScene` every frame because edit/play transitions replace the active scene while the renderer object survives.
+
+## Presenting the final image
+
+The editor displays `SceneRenderer`'s final image as an ImGui viewport texture. A deployed runtime has no such panel, so `RuntimeLayer` calls `Renderer::CompositeToSwapchain(image)` instead: a full-screen three-vertex draw through the `composite` shader straight into the current swapchain framebuffer.
+
+Its pass state is **per back buffer and lazily built** — `m_CompositePasses` / `m_CompositeFramebuffers` are sized to the back-buffer count, and an entry is rebuilt when it is empty or when the swapchain handed back a different `nvrhi::FramebufferHandle` (which is what a resize looks like from here). Anything caching a framebuffer handle must follow the same compare-and-rebuild rule.
 
 ## Shader and binding contract
 
@@ -104,4 +110,4 @@ Images, uniform buffers, storage buffers, and samplers register through the appr
 
 Renderer tests are registered as graphical because most require a live Vulkan/NVRHI device. The suite covers device availability, descriptor allocation/lifetime/growth, pipeline layout order, pass binding-set baking, shader layouts, framebuffer creation, command submission/timers, sampler ownership, and mesh material indices.
 
-Use `Scenario` for behavior that must traverse `Scene -> SceneRenderer` or editor-camera input. Run graphical suites only with a real display and GPU. Headless CI excludes the `graphical` label, so report any unexecuted graphical coverage explicitly.
+Behavior that must traverse `Scene -> SceneRenderer` or editor-camera input belongs in the same suite's `SceneRendering` tests, which drive multiple frames through `TestContext`/`ScenarioLayer`. Run graphical suites only with a real display and GPU. Headless CI excludes the `graphical` label, so report any unexecuted graphical coverage explicitly.

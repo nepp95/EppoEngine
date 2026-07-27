@@ -14,7 +14,7 @@ Read [references/architecture.md](references/architecture.md) before changing co
 3. Keep `PhysicsWorld` responsible for Box3D handles and operations. Keep scene traversal, collider aggregation, and ECS synchronization in `Scene`.
 4. Update editor component controls, serialization, debug rendering, and C# APIs when changing a physics component.
 5. Preserve safe no-op/default behavior for missing bodies, expired worlds, invalid entities, and absent runtime contexts.
-6. Run `Physics`; also run `Scene`, `Scripting`, or `Scenario` when their boundary changes.
+6. Run `Physics`; also run `Scene`, `Scripting`, or the graphical `Renderer` suite when their boundary changes.
 
 ## Guardrails
 

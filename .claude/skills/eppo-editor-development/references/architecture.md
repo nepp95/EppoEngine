@@ -8,13 +8,17 @@
 - `m_ActiveScene`: the scene currently displayed and updated;
 - `m_SceneState`: edit or play;
 - `SceneRenderer` and `EditorCamera`;
-- `PanelManager`, toolbar icons, viewport state, gizmo state, and project/scene commands.
+- `PanelManager`, toolbar icons, viewport state, gizmo state, and project/scene commands;
+- the export-game command, which collects `ProjectExportOptions` from the UI and hands them to `ProjectExporter(project).Export(options)` — the editor supplies paths and toggles and reports progress, it does not gather packed payloads itself.
 
 `PanelManager` owns panels and centralizes scene context plus selected `Entity`. Panels receive a non-owning manager pointer through `Panel`. Current panels are:
 
 - `SceneHierarchyPanel`: tree display, selection, entity creation/deletion, and hierarchy interaction;
 - `PropertyPanel`: component editing, script fields, component addition/removal, collider fitting;
-- `ContentBrowserPanel`: filesystem navigation, asset icons, importing, moving/renaming/deleting, and opening scenes through a callback.
+- `ContentBrowserPanel`: filesystem navigation, asset icons, importing, moving/renaming/deleting, and opening scenes through a callback;
+- `LogPanel`: level/source/text filtering over engine log output.
+
+`LogPanel` reads through `LogSink`, an editor-only bounded ring buffer (`LOG_BUFFER_CAPACITY`) attached to the loggers via `Log::AddSink`. A shipped runtime never installs it, so it never retains log text in memory — keep it that way. The panel syncs from the sink by version rather than re-reading every frame, and recomputes its filtered index list only when the filter or the entry set changed; preserve that when adding filters.
 
 ## Edit/play state machine
 
@@ -112,4 +116,4 @@ The content browser displays both registered and unregistered filesystem entries
 
 ## Testing boundaries
 
-Prefer tests in engine suites for behavior extracted from editor UI: scene hierarchy, serialization, asset registry, collider fitting, scripting fields, and input semantics. Use `Scenario` for editor-camera and scene-render behavior over frames. `App` verifies real application/window/device boot. Direct editor UI automation is not currently part of the repository test harness, so keep UI handlers thin and engine behavior testable.
+Prefer tests in engine suites for behavior extracted from editor UI: scene hierarchy, serialization, asset registry, collider fitting, scripting fields, and input semantics. Use the `Renderer` suite's `SceneRendering` tests for editor-camera and scene-render behavior over frames. `App` verifies real application/window/device boot. Direct editor UI automation is not currently part of the repository test harness, so keep UI handlers thin and engine behavior testable.

@@ -14,7 +14,7 @@ Read [references/architecture.md](references/architecture.md) before changing `E
 3. Preserve UUID-based remapping whenever a scene copy or replacement invalidates EnTT handles and `Entity` wrappers.
 4. Route panel-wide scene context and selection through `PanelManager`. Route operations requiring editor authority, such as opening a scene, back through `EditorLayer` callbacks.
 5. Keep polled input gated by viewport focus and keep gizmo interaction from also moving the editor camera.
-6. Test extracted engine behavior in its matching headless suite. Use `App` or `Scenario` when the change requires the real frame, renderer, viewport, or editor-camera path.
+6. Test extracted engine behavior in its matching headless suite. Use `App` for real boot and frame advancement, or the `Renderer` suite's `SceneRendering` tests when the change requires the real renderer, viewport, or editor-camera path.
 
 ## Guardrails
 
