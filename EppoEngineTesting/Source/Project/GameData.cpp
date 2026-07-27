@@ -173,7 +173,7 @@ SUITE(Project)
         REQUIRE CHECK(data.Serialize(path));
 
         std::vector<char> bytes = FS::ReadBytes(path);
-        const auto includeBlockSize = sizeof(uint32_t) + 2 * sizeof(uint32_t) + std::string("Includes/platform.hlsli").size()
+        const auto includeBlockSize = sizeof(uint32_t) + 2 * sizeof(uint64_t) + std::string("Includes/platform.hlsli").size()
             + std::string("platform-source").size();
         REQUIRE CHECK(bytes.size() > includeBlockSize);
         bytes.resize(bytes.size() - includeBlockSize);
