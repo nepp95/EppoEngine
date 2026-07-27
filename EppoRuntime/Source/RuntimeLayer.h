@@ -9,6 +9,11 @@ namespace Eppo
 	class RuntimeLayer final : public Layer
 	{
 	public:
+		// The package is read before the application exists, because its shaders are needed during startup.
+		explicit RuntimeLayer(GameData gameData)
+			: m_GameData(std::move(gameData))
+		{}
+
 		auto OnAttach() -> void override;
 		auto OnDetach() -> void override;
 
@@ -27,6 +32,8 @@ namespace Eppo
 		auto Fail(const std::string& message) -> void;
 
 	private:
+		GameData m_GameData;
+
 		Ref<AssetManager> m_AssetManager = nullptr;
 		Ref<Project> m_Project = nullptr;
 		Ref<Scene> m_Scene = nullptr;

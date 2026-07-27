@@ -40,6 +40,11 @@ namespace Eppo
 		bool Decorated = true;
 		bool EnableImGui = true;
 		bool EnableFileDialogs = true;
+
+		// Supplied by a deployed runtime from its game package. Empty in the editor and tests, which
+		// compile the engine shaders from Resources/Shaders instead.
+		std::map<std::string, PackedShaderData> PackedShaders;
+		std::map<std::string, std::string> PackedShaderIncludes;
 	};
 
 	class Application
@@ -64,11 +69,11 @@ namespace Eppo
 
 		auto OnEvent(Event& e) -> void;
 
-		template<typename T>
+		template<typename T, typename... Args>
 			requires(std::derived_from<T, Layer>)
-		auto PushLayer() -> Ref<T>
+		auto PushLayer(Args&&... args) -> Ref<T>
 		{
-			Ref<T> layer = CreateRef<T>();
+			Ref<T> layer = CreateRef<T>(std::forward<Args>(args)...);
 			m_LayerStack.emplace_back(layer);
 			layer->OnAttach();
 			return layer;

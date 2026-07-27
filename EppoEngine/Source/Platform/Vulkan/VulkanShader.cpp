@@ -33,6 +33,118 @@ namespace Eppo
 			return "Unknown";
 		}
 
+		// Resolves #includes strictly from a packed game. A deployed runtime has no shader files on disk,
+		// and must not acquire any: an include that is not in the pack fails the compile instead.
+		class PackedIncludeHandler final : public IDxcIncludeHandler
+		{
+		public:
+			PackedIncludeHandler(IDxcUtils* utils, const std::map<std::string, std::string>& includes)
+				: m_Utils(utils), m_Includes(includes)
+			{
+			}
+
+			auto STDMETHODCALLTYPE LoadSource(LPCWSTR filename, IDxcBlob** includeSource) -> HRESULT override
+			{
+				if (!includeSource)
+					return E_INVALIDARG;
+				*includeSource = nullptr;
+
+				const auto* source = Find(std::filesystem::path(filename).lexically_normal().generic_string());
+				if (!source)
+				{
+					Log::Error("Packed shader include '{}' is not in the game package.", std::filesystem::path(filename).generic_string());
+					return E_FAIL;
+				}
+
+				CComPtr<IDxcBlobEncoding> blob;
+				if (FAILED(m_Utils->CreateBlob(source->data(), static_cast<uint32_t>(source->size()), DXC_CP_UTF8, &blob)))
+					return E_FAIL;
+
+				*includeSource = blob.Detach();
+				return S_OK;
+			}
+
+			auto STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) -> HRESULT override
+			{
+				if (!object)
+					return E_INVALIDARG;
+
+				if (riid == __uuidof(IDxcIncludeHandler) || riid == __uuidof(IUnknown))
+				{
+					*object = static_cast<IDxcIncludeHandler*>(this);
+					AddRef();
+					return S_OK;
+				}
+
+				*object = nullptr;
+				return E_NOINTERFACE;
+			}
+
+			// Scoped to a single Compile call, so reference counting has nothing to manage.
+			auto STDMETHODCALLTYPE AddRef() -> ULONG override { return 1; }
+			auto STDMETHODCALLTYPE Release() -> ULONG override { return 1; }
+
+		private:
+			// DXC resolves an include against the includer's name, so it may arrive prefixed. Keys are relative
+			// to Resources/Shaders; take the longest matching suffix, since a shorter one can match a different file.
+			[[nodiscard]] auto Find(const std::string& requested) const -> const std::string*
+			{
+				if (const auto it = m_Includes.find(requested); it != m_Includes.end())
+					return &it->second;
+
+				const std::string* match = nullptr;
+				size_t matched = 0;
+				for (const auto& [path, source] : m_Includes)
+				{
+					if (requested.size() <= path.size() || !requested.ends_with(path)
+						|| requested.at(requested.size() - path.size() - 1) != '/')
+						continue;
+
+					if (path.size() > matched)
+					{
+						match = &source;
+						matched = path.size();
+					}
+				}
+
+				return match;
+			}
+
+			IDxcUtils* m_Utils = nullptr;
+			const std::map<std::string, std::string>& m_Includes;
+		};
+
+		// Includes are part of a shader's compiled result, so the cache key has to cover them too. Lengths are
+		// folded in as well, otherwise a boundary can shift between two entries without changing the hash.
+		auto HashSource(const std::string& source, const std::map<std::string, std::string>& includes) -> std::string
+		{
+			std::string combined = std::format("{}:{}", source.size(), source);
+			for (const auto& [path, includeSource] : includes)
+				combined += std::format("{}:{}{}:{}", path.size(), path, includeSource.size(), includeSource);
+
+			return std::to_string(Hash::GenerateFnv(combined));
+		}
+
+		// Kept in step with the include walk in ProjectExporter::Export: if the two sets diverge, the editor
+		// and the deployed game hash the same shader differently and every shipped game recompiles on launch.
+		auto ReadIncludesFromDisk() -> std::map<std::string, std::string>
+		{
+			const auto shadersDirectory = FS::GetResourcesDirectory() / "Shaders";
+			if (!FS::Exists(shadersDirectory))
+				return {};
+
+			std::map<std::string, std::string> includes;
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(shadersDirectory))
+			{
+				if (!entry.is_regular_file() || entry.path().extension() != ".hlsli")
+					continue;
+
+				includes.emplace(std::filesystem::relative(entry.path(), shadersDirectory).generic_string(), FS::ReadText(entry.path()));
+			}
+
+			return includes;
+		}
+
 		auto SpirvTypeToNvrhiType(const std::string& semantic, const spirv_cross::SPIRType& type) -> nvrhi::Format
 		{
 			using spirv_cross::SPIRType;
@@ -74,7 +186,13 @@ namespace Eppo
 	VulkanShader::VulkanShader(ShaderSpecification spec)
 		: Shader(std::move(spec))
 	{
-		CompileOrGetCache();
+		if (!CompileOrGetCache())
+		{
+			Log::Error("Shader '{}' could not be compiled!", m_Specification.Name);
+			EP_ASSERT(false, "Shader compilation failed!");
+			return;
+		}
+
 		CreateShaderHandles();
 
 		Log::Info("==================================");
@@ -93,10 +211,11 @@ namespace Eppo
 		CreateBindingLayout();
 	}
 
-	auto VulkanShader::CompileOrGetCache() -> void
+	auto VulkanShader::CompileOrGetCache() -> bool
 	{
-		// Provided sources (e.g. from a packed game) take precedence; otherwise read them from disk.
-		// #include directives still resolve against Resources/Shaders on disk in either case.
+		// Packed sources are all a packed shader may read, along with its packed includes; it must not reach
+		// the filesystem for either. (The SPIR-V cache below is still on disk, but it is this shader's own
+		// output, keyed by a hash of the packed text.)
 		if (!m_Specification.Sources.empty())
 		{
 			m_ShaderSources = m_Specification.Sources;
@@ -107,6 +226,7 @@ namespace Eppo
 			const std::filesystem::path pixelPath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.frag", m_Specification.Name);
 			m_ShaderSources[nvrhi::ShaderType::Vertex] = FS::ReadText(vertPath);
 			m_ShaderSources[nvrhi::ShaderType::Pixel] = FS::ReadText(pixelPath);
+			m_Specification.Includes = ReadIncludesFromDisk();
 		}
 
 		bool verified = true;
@@ -114,10 +234,10 @@ namespace Eppo
 		{
 			const std::filesystem::path shaderBinaryPath = FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
 			const std::filesystem::path shaderHashPath = FS::GetShaderCacheDirectory() / std::format("{}.{}.hash", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
-		
+
 			if (FS::Exists(shaderBinaryPath) && FS::Exists(shaderHashPath))
 			{
-				std::string hash = std::to_string(Hash::GenerateFnv(source));
+				std::string hash = HashSource(source, m_Specification.Includes);
 				std::string cacheHash = FS::ReadText(shaderHashPath);
 
 				if (hash != cacheHash)
@@ -138,38 +258,54 @@ namespace Eppo
 				const std::filesystem::path shaderBinaryPath = FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
 				m_ShaderBytes[type] = FS::ReadBytes(shaderBinaryPath);
 			}
+
+			return true;
 		}
-		else
+
+		Log::Info("Compiling shader '{}'", m_Specification.Name);
+
+		for (const auto& type : m_ShaderSources | std::views::keys)
 		{
-			Log::Info("Compiling shader '{}'", m_Specification.Name);
+			// Compile shader
+			if (!Compile(type))
+				return false;
 
-			for (const auto& type : m_ShaderSources | std::views::keys)
-			{
-				// Compile shader
-				Compile(type);
-
-				// Write shader hash
-				const std::filesystem::path shaderHashPath = FS::GetShaderCacheDirectory() / std::format("{}.{}.hash", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
-				const std::string hash = std::to_string(Hash::GenerateFnv(m_ShaderSources.at(type)));
-				FS::WriteText(shaderHashPath, hash, true);
-			}
+			// Write shader hash
+			const std::filesystem::path shaderHashPath = FS::GetShaderCacheDirectory() / std::format("{}.{}.hash", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
+			const std::string hash = HashSource(m_ShaderSources.at(type), m_Specification.Includes);
+			FS::WriteText(shaderHashPath, hash, true);
 		}
+
+		return true;
 	}
 
-	auto VulkanShader::Compile(const nvrhi::ShaderType type) -> void
+	auto VulkanShader::Compile(const nvrhi::ShaderType type) -> bool
 	{
 	    // Create compiler
 		CComPtr<IDxcUtils> utils;
 		CComPtr<IDxcCompiler3> compiler;
-		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
-		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
+		if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)))
+			|| FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler))))
+		{
+			Log::Error("Could not create the DXC compiler; is dxcompiler.dll present next to the executable?");
+			return false;
+		}
 
-		// Create include handler
-		CComPtr<IDxcIncludeHandler> includeHandler;
-		utils->CreateDefaultIncludeHandler(&includeHandler);
+		// Create include handler. A packed shader gets the pack-backed one and never the default:
+		// the default reads from disk, which a deployed game has none of.
+		const bool packed = !m_Specification.Sources.empty();
+		PackedIncludeHandler packedIncludeHandler(utils, m_Specification.Includes);
+		CComPtr<IDxcIncludeHandler> diskIncludeHandler;
+		if (!packed)
+			utils->CreateDefaultIncludeHandler(&diskIncludeHandler);
+		IDxcIncludeHandler* includeHandler = packed ? static_cast<IDxcIncludeHandler*>(&packedIncludeHandler) : diskIncludeHandler.p;
 
-		// Command line args for compiler
-		const std::wstring shaderPath = std::filesystem::path(FS::GetResourcesDirectory() / "Shaders" / std::format("{}.{}", m_Specification.Name, NvrhiShaderTypeToSuffix(type))).wstring();
+		// Command line args for compiler. A packed shader is named relative to the virtual Resources/Shaders
+		// root, so DXC hands its #include paths to the handler the way the pack keys them.
+		const auto shaderFilename = std::format("{}.{}", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
+		const std::wstring shaderPath = packed
+			? std::filesystem::path(shaderFilename).wstring()
+			: std::filesystem::path(FS::GetResourcesDirectory() / "Shaders" / shaderFilename).wstring();
 		const std::wstring binaryPath = std::filesystem::path(FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type))).wstring();
 
 		const bool isVertex = type == nvrhi::ShaderType::Vertex ? true : false;
@@ -192,7 +328,11 @@ namespace Eppo
 
 		// Execute compiler
 		CComPtr<IDxcResult> result;
-		compiler->Compile(&srcBuffer, args, _countof(args), includeHandler, IID_PPV_ARGS(&result));
+		if (FAILED(compiler->Compile(&srcBuffer, args, _countof(args), includeHandler, IID_PPV_ARGS(&result))) || !result)
+		{
+			Log::Error("Invoking the compiler for shader '{}' failed!", m_Specification.Name);
+			return false;
+		}
 
 		CComPtr<IDxcBlobUtf8> errors = nullptr;
 		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
@@ -205,9 +345,8 @@ namespace Eppo
 			result->GetStatus(&status);
 			if (FAILED(status))
 			{
-				Log::Error("Compiling failed due to errors!");
-				EP_ASSERT(false);
-				return;
+				Log::Error("Compiling shader '{}' failed due to errors!", m_Specification.Name);
+				return false;
 			}
 		}
 
@@ -216,12 +355,17 @@ namespace Eppo
 		CComPtr<IDxcBlobWide> binaryName = nullptr;
 		result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&binary), &binaryName);
 
-		if (binary != nullptr)
+		if (binary == nullptr)
 		{
-			const char* pBinary = static_cast<const char*>(binary->GetBufferPointer());
-			FS::WriteBytes(binaryPath, pBinary, binary->GetBufferSize(), true);
-			m_ShaderBytes[type] = std::vector<char>(pBinary, pBinary + binary->GetBufferSize());
+			Log::Error("Compiling shader '{}' produced no binary!", m_Specification.Name);
+			return false;
 		}
+
+		const char* pBinary = static_cast<const char*>(binary->GetBufferPointer());
+		FS::WriteBytes(binaryPath, pBinary, binary->GetBufferSize(), true);
+		m_ShaderBytes[type] = std::vector<char>(pBinary, pBinary + binary->GetBufferSize());
+
+		return true;
 	}
 
 	auto VulkanShader::Reflect(nvrhi::ShaderType type) -> void

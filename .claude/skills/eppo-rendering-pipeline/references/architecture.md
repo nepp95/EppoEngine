@@ -54,7 +54,9 @@ Keep acquisition failure and zero-size/minimized paths safe. Swapchain resize re
 
 ## Shader and binding contract
 
-Shader sources live in `EppoEditor/Resources/Shaders`; compilation cache files live under `Resources/Shaders/Cache`. Includes live under `Resources/Shaders/Includes`.
+Shader sources live in `EppoEngine/Resources/Shaders` and are staged next to the editor/test executables; includes live under `Resources/Shaders/Includes`. Compiled SPIR-V is cached in `FS::GetShaderCacheDirectory()` — `Resources/Shaders/Cache` when no writable directory is configured, otherwise `<writable>/ShaderCache`.
+
+A `ShaderSpecification` carrying `Sources` is packed: it compiles those, and resolves `#include`s only from its `Includes` map through a handler that never touches the filesystem. A deployed runtime ships no shader files, so an include missing from the pack fails the compile rather than finding a stray file on disk. Without `Sources` the shader is compiled from `Resources/Shaders` with DXC's default (disk-reading) include handler. `Renderer::LoadShaders` takes the packed set or nothing, and treats a packed entry that has no sources as missing rather than letting it degrade into a disk compile. A failed compile logs and asserts in the constructor: it means a broken editor build, and `EP_ASSERT` throws under `EP_DIST`, so a deployed game surfaces it through the runtime error dialog.
 
 `VulkanShader` compiles and reflects each stage. Reflection populates:
 
@@ -72,7 +74,7 @@ When changing a shader binding:
 3. Update pass `SetInput(set, binding, resource)` or bindless registration.
 4. Update push-constant declaration if applicable.
 5. Confirm pipeline layout order and pass baking.
-6. Invalidate the affected cache after changing a file under `Resources/Shaders/Includes`: the current cache hash covers only the top-level `.vert`/`.frag` source and can otherwise reuse stale SPIR-V. Top-level shader edits invalidate through their source hash. If a shader edit appears ignored at runtime, delete `Resources/Shaders/Cache` next to the executable.
+6. Editing a file under `Resources/Shaders/Includes` invalidates the cache on its own: the cache hash covers the top-level `.vert`/`.frag` source plus every include's contents.
 7. Add or update `Shader`, `Pipeline`, or `RenderPass` tests.
 
 ## Bindless ownership

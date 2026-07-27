@@ -10,8 +10,8 @@ namespace Eppo
         explicit VulkanShader(ShaderSpecification spec);
 
 	private:
-		auto CompileOrGetCache() -> void;
-		auto Compile(nvrhi::ShaderType type) -> void;
+		auto CompileOrGetCache() -> bool;
+		auto Compile(nvrhi::ShaderType type) -> bool;
 		auto Reflect(nvrhi::ShaderType type) -> void;
 	};
 }

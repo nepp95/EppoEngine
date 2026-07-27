@@ -81,6 +81,31 @@ namespace Eppo
 		for (const auto& [name, shader] : DeviceManager::Get()->GetRenderer()->GetAllShaders())
 			gameData.PackedShaders.emplace(name, PackedShaderData{ .ShaderSources = shader->GetShaderSources() });
 
+		// Those sources #include by path relative to Resources/Shaders, so key the packed copies the same way.
+		const auto shadersDirectory = FS::GetResourcesDirectory() / "Shaders";
+		if (!FS::Exists(shadersDirectory))
+		{
+			result.Errors.emplace_back("Engine shader resources are missing; the packaged game would have no shaders.");
+			return result;
+		}
+
+		// Kept in step with ReadIncludesFromDisk in VulkanShader.cpp, which hashes the same set for the cache key.
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(shadersDirectory))
+		{
+			if (!entry.is_regular_file() || entry.path().extension() != ".hlsli")
+				continue;
+
+			const auto relativePath = std::filesystem::relative(entry.path(), shadersDirectory).generic_string();
+			auto source = FS::ReadText(entry.path());
+			if (source.empty())
+			{
+				result.Errors.emplace_back(std::format("Shader include '{}' could not be read.", relativePath));
+				return result;
+			}
+
+			gameData.PackedShaderIncludes.emplace(relativePath, std::move(source));
+		}
+
 		// Build (optional) and validate the standalone runtime for each requested configuration.
 		const auto configurations = GetExportConfigurations(options);
 		if (options.CopyRuntime)
@@ -195,9 +220,6 @@ namespace Eppo
 					&& !FS::CopyFile(configuration.ManagedDirectory / "EppoScriptCore.pdb", outputDirectory / "EppoScriptCore.pdb", true))
 					return fail("Failed to copy managed runtime debug symbols.");
 
-				if (!FS::CopyDirectory(configuration.RuntimeDirectory / "Resources", outputDirectory / "Resources",
-					[](const std::filesystem::path&) { return true; }))
-					return fail("Failed to copy engine resources.");
 			}
 
 			// Copy the loose project assets (Game.eppak carries the scenes and registry).
@@ -358,9 +380,8 @@ namespace Eppo
 	    std::vector<std::filesystem::path> required{
 	        RuntimeExecutableName(),
             "runtimeconfig.json",
-            "Resources",
         };
-	    
+
 	    #if defined(EP_PLATFORM_WINDOWS)
 	    required.emplace_back("dxcompiler.dll");
 	    if (configuration.IncludeDebugSymbols)

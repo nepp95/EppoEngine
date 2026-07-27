@@ -15,7 +15,9 @@ namespace Eppo
 		Renderer();
 
 		auto Init() -> void;
-		auto LoadShaders(const std::map<std::string, PackedShaderData>& packedSources = {}) -> void;
+		// With packed shaders the engine set is compiled from those and their includes; without them, from disk.
+		auto LoadShaders(const std::map<std::string, PackedShaderData>& packed = {},
+			const std::map<std::string, std::string>& includes = {}) -> void;
 
 		static auto BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<RenderPass>& renderPass) -> void;
 		static auto EndRenderPass(const Ref<RenderCommandBuffer>& commandBuffer) -> void;
