@@ -64,11 +64,12 @@ namespace Eppo
             if (!ReadRaw(size))
                 return false;
 
+            map.clear();
             for (uint32_t i = 0; i < size; i++)
             {
                 typename Map::key_type key;
 
-                if constexpr (std::is_trivial<typename Map::key_type>())
+                if constexpr (std::is_trivially_copyable_v<typename Map::key_type>)
                 {
                     if (!ReadRaw(key))
                         return false;
@@ -79,7 +80,7 @@ namespace Eppo
                         return false;
                 }
 
-                if constexpr (std::is_trivial<typename Map::mapped_type>())
+                if constexpr (std::is_trivially_copyable_v<typename Map::mapped_type>)
                 {
                     if (!ReadRaw(map[key]))
                         return false;

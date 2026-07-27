@@ -16,10 +16,11 @@ namespace Eppo
         auto WriteData(const char* data, size_t size) -> bool override;
 
         [[nodiscard]] auto IsStreamGood() const -> bool override { return m_Stream.good(); }
-        [[nodiscard]] auto GetStreamPosition() const -> uint64_t override;
+        [[nodiscard]] auto GetStreamPosition() const -> uint64_t override { return m_Position; }
 
     private:
         std::filesystem::path m_Path;
         std::ofstream m_Stream;
+        uint64_t m_Position = 0;
     };
 }

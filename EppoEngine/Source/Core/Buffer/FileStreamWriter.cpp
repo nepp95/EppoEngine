@@ -19,12 +19,8 @@ namespace Eppo
             return false;
         }
 
-        return true;
-    }
+        m_Position += size;
 
-    auto FileStreamWriter::GetStreamPosition() const -> uint64_t
-    {
-        const auto position = const_cast<std::ofstream&>(m_Stream).tellp();
-        return position < 0 ? 0 : static_cast<uint64_t>(position);
+        return true;
     }
 }
