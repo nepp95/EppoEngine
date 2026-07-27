@@ -5,11 +5,20 @@ namespace Eppo
     enum class ScriptFieldType : uint8_t
     {
         None = 0,
-        Float, Double,
+        Float,
+        Double,
         Bool,
-        Char, Int16, Int32, Int64,
-        Byte, UInt16, UInt32, UInt64,
-        Vector2, Vector3, Vector4,
+        Char,
+        Int16,
+        Int32,
+        Int64,
+        Byte,
+        UInt16,
+        UInt32,
+        UInt64,
+        Vector2,
+        Vector3,
+        Vector4,
         Entity,
     };
 

@@ -4,31 +4,30 @@
 
 namespace Eppo
 {
-	class WindowCloseEvent : public Event
-	{
-	public:
-		WindowCloseEvent() = default;
+    class WindowCloseEvent : public Event
+    {
+    public:
+        WindowCloseEvent() = default;
 
-		EVENT_CLASS_TYPE(WindowClose)
-		EVENT_CLASS_CATEGORY(EventCategoryApplication)
-	};
+        EVENT_CLASS_TYPE(WindowClose)
+        EVENT_CLASS_CATEGORY(EventCategoryApplication)
+    };
 
-	class WindowResizeEvent : public Event
-	{
-	public:
-		WindowResizeEvent(const uint32_t width, const uint32_t height)
-			: m_Width(width), m_Height(height)
-		{
-		}
+    class WindowResizeEvent : public Event
+    {
+    public:
+        WindowResizeEvent(const uint32_t width, const uint32_t height)
+            : m_Width(width), m_Height(height)
+        {}
 
-		[[nodiscard]] constexpr auto GetWidth() const -> uint32_t { return m_Width; }
-		[[nodiscard]] constexpr auto GetHeight() const -> uint32_t { return m_Height; }
+        [[nodiscard]] constexpr auto GetWidth() const -> uint32_t { return m_Width; }
+        [[nodiscard]] constexpr auto GetHeight() const -> uint32_t { return m_Height; }
 
-		EVENT_CLASS_TYPE(WindowResize)
-		EVENT_CLASS_CATEGORY(EventCategoryApplication)
+        EVENT_CLASS_TYPE(WindowResize)
+        EVENT_CLASS_CATEGORY(EventCategoryApplication)
 
-	private:
-		uint32_t m_Width;
-		uint32_t m_Height;
-	};
+    private:
+        uint32_t m_Width;
+        uint32_t m_Height;
+    };
 }

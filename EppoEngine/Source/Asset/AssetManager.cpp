@@ -11,9 +11,9 @@ using json = nlohmann::json;
 
 namespace Eppo
 {
-	AssetManager::AssetManager(std::map<AssetHandle, AssetMetadata>&& assetData, std::map<AssetHandle, PackedAssetData>&& packedAssets)
-		: m_AssetData(std::move(assetData)), m_PackedAssets(std::move(packedAssets)), m_UsesPackedAssets(true)
-	{}
+    AssetManager::AssetManager(std::map<AssetHandle, AssetMetadata>&& assetData, std::map<AssetHandle, PackedAssetData>&& packedAssets)
+        : m_AssetData(std::move(assetData)), m_PackedAssets(std::move(packedAssets)), m_UsesPackedAssets(true)
+    {}
 
     auto AssetManager::GetAssetTypeFromPath(const std::filesystem::path& path) -> AssetType
     {
@@ -37,9 +37,9 @@ namespace Eppo
 
         const AssetHandle handle = existingAsset ? existingAsset->Handle : UUID();
         const AssetMetadata metadata{
-			.Handle = handle,
-			.Type = GetAssetTypeFromPath(path),
-			.Filepath = Project::GetAssetRelativeFilepath(path),
+            .Handle = handle,
+            .Type = GetAssetTypeFromPath(path),
+            .Filepath = Project::GetAssetRelativeFilepath(path),
         };
 
         {
@@ -61,17 +61,17 @@ namespace Eppo
         return true;
     }
 
-	auto AssetManager::GetOrLoadAsset(AssetHandle handle, bool async) -> Ref<Asset>
+    auto AssetManager::GetOrLoadAsset(AssetHandle handle, bool async) -> Ref<Asset>
     {
         EP_PROFILE_FN("AssetManager::LoadAsset");
 
         std::scoped_lock lock(m_Mutex);
 
         // Asset already loaded
-	    if (m_LoadedAssets.contains(handle))
-		    return m_LoadedAssets.at(handle);
+        if (m_LoadedAssets.contains(handle))
+            return m_LoadedAssets.at(handle);
 
-		Ref<Asset> asset = nullptr;
+        Ref<Asset> asset = nullptr;
 
         // Create generated asset if handle is reserved
         if (auto id = static_cast<uint64_t>(handle); id < 100)
@@ -84,17 +84,17 @@ namespace Eppo
             return nullptr;
         }
 
-	    const auto& metadata = m_AssetData.at(handle);
+        const auto& metadata = m_AssetData.at(handle);
 
         if (!asset)
         {
             if (async)
             {
-                //EP_ASSERT(!m_LoadFutures.contains(handle));
+                // EP_ASSERT(!m_LoadFutures.contains(handle));
 
-                //m_LoadFutures[handle] = std::async(std::launch::async, [this, handle, asset, metadata]()
+                // m_LoadFutures[handle] = std::async(std::launch::async, [this, handle, asset, metadata]()
                 //{
-                //    EP_PROFILE_FN("AssetManager::LoadAsset::Lambda");
+                //     EP_PROFILE_FN("AssetManager::LoadAsset::Lambda");
 
                 //    // Load asset here
 
@@ -120,8 +120,8 @@ namespace Eppo
             }
         }
 
-		if (!asset)
-			return nullptr;
+        if (!asset)
+            return nullptr;
 
         asset->Handle = handle;
         m_LoadedAssets[handle] = asset;
@@ -129,14 +129,12 @@ namespace Eppo
         return asset;
     }
 
-    auto AssetManager::Tick() -> void
-    {
-    }
+    auto AssetManager::Tick() -> void {}
 
-	auto AssetManager::HasAssetData(AssetHandle handle) const -> bool
-	{
+    auto AssetManager::HasAssetData(AssetHandle handle) const -> bool
+    {
         return m_AssetData.contains(handle);
-	}
+    }
 
     auto AssetManager::IsAssetLoaded(AssetHandle handle) const -> bool
     {
@@ -187,7 +185,7 @@ namespace Eppo
         SerializeAssetRegistry();
     }
 
-	auto AssetManager::SerializeAssetRegistry() const -> void
+    auto AssetManager::SerializeAssetRegistry() const -> void
     {
         EP_PROFILE_FN("AssetManager::SerializeAssetRegistry");
 
@@ -211,54 +209,54 @@ namespace Eppo
         FS::WriteText(Project::GetAssetsDirectory() / "AssetRegistry.json", data.dump(4), true);
     }
 
-	auto AssetManager::DeserializeAssetRegistry() -> bool
-	{
+    auto AssetManager::DeserializeAssetRegistry() -> bool
+    {
         EP_PROFILE_FN("AssetManager::DeserializeAssetRegistry");
 
-		const auto path = Project::GetAssetsDirectory() / "AssetRegistry.json";
-		if (!FS::Exists(path))
-		{
-			Log::Error("Could not deserialize asset registry!");
-			return false;
-		}
+        const auto path = Project::GetAssetsDirectory() / "AssetRegistry.json";
+        if (!FS::Exists(path))
+        {
+            Log::Error("Could not deserialize asset registry!");
+            return false;
+        }
 
-		std::ifstream stream(path);
-		json data;
+        std::ifstream stream(path);
+        json data;
 
-		try
-		{
-			data = json::parse(stream);
-		}
-		catch (const json::exception& ex)
-		{
-			Log::Error("Failed to parse asset registry file '{}'!", path);
-			Log::Error("Parse error: {}", ex.what());
-			return false;
-		}
+        try
+        {
+            data = json::parse(stream);
+        }
+        catch (const json::exception& ex)
+        {
+            Log::Error("Failed to parse asset registry file '{}'!", path);
+            Log::Error("Parse error: {}", ex.what());
+            return false;
+        }
 
-		if (!data.contains("Assets"))
-			return false;
+        if (!data.contains("Assets"))
+            return false;
 
-		std::scoped_lock lock(m_Mutex);
+        std::scoped_lock lock(m_Mutex);
 
-		for (const auto& e : data["Assets"])
-		{
-			const AssetHandle handle = e["Handle"].get<UUID>();
+        for (const auto& e : data["Assets"])
+        {
+            const AssetHandle handle = e["Handle"].get<UUID>();
 
-			const AssetMetadata metadata{
-				.Handle = handle,
-				.Type = Utils::AssetTypeFromString(e["Type"].get<std::string>()),
-				.Filepath = e["Filepath"].get<std::string>(),
-			};
+            const AssetMetadata metadata{
+                .Handle = handle,
+                .Type = Utils::AssetTypeFromString(e["Type"].get<std::string>()),
+                .Filepath = e["Filepath"].get<std::string>(),
+            };
 
-			m_AssetData[handle] = metadata;
-		}
+            m_AssetData[handle] = metadata;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	auto AssetManager::GenerateAsset(AssetHandle handle) -> Ref<Asset>
-	{
+    auto AssetManager::GenerateAsset(AssetHandle handle) -> Ref<Asset>
+    {
         const auto id = static_cast<uint64_t>(handle);
 
         if (id > 0 && id < 10)
@@ -266,9 +264,9 @@ namespace Eppo
             Ref<Mesh> mesh = Mesh::GenerateMeshPrimitive(static_cast<MeshPrimitiveType>(id));
 
             const AssetMetadata metadata{
-				.Handle = handle,
-				.Type = AssetType::Mesh,
-				.IsRuntimeAsset = true,
+                .Handle = handle,
+                .Type = AssetType::Mesh,
+                .IsRuntimeAsset = true,
             };
 
             m_AssetData[handle] = metadata;
@@ -277,5 +275,5 @@ namespace Eppo
         }
 
         return nullptr;
-	}
+    }
 }

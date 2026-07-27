@@ -41,8 +41,8 @@ namespace Eppo
     ///         string   path
     ///         string   source
     struct GameData
-	{
-		static constexpr std::string_view Filename = "Game.eppak";
+    {
+        static constexpr std::string_view Filename = "Game.eppak";
 
         std::string ProjectName;
         AssetHandle StartScene = 0;
@@ -62,5 +62,5 @@ namespace Eppo
         /// @param path Source pak file path
         /// @return False if at any point the deserialization failed
         auto Deserialize(const std::filesystem::path& path) -> bool;
-	};
+    };
 }

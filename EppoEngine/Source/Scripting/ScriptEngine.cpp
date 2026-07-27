@@ -33,23 +33,39 @@ namespace Eppo
     {
         switch (type)
         {
-            case ScriptFieldType::Float:   return 4;
-            case ScriptFieldType::Double:  return 8;
-            case ScriptFieldType::Bool:    return 1;
-            case ScriptFieldType::Char:    return 2;
-            case ScriptFieldType::Int16:   return 2;
-            case ScriptFieldType::Int32:   return 4;
-            case ScriptFieldType::Int64:   return 8;
-            case ScriptFieldType::Byte:    return 1;
-            case ScriptFieldType::UInt16:  return 2;
-            case ScriptFieldType::UInt32:  return 4;
-            case ScriptFieldType::UInt64:  return 8;
-            case ScriptFieldType::Vector2: return 8;
-            case ScriptFieldType::Vector3: return 12;
-            case ScriptFieldType::Vector4: return 16;
-            case ScriptFieldType::Entity:  return 8;
+            case ScriptFieldType::Float:
+                return 4;
+            case ScriptFieldType::Double:
+                return 8;
+            case ScriptFieldType::Bool:
+                return 1;
+            case ScriptFieldType::Char:
+                return 2;
+            case ScriptFieldType::Int16:
+                return 2;
+            case ScriptFieldType::Int32:
+                return 4;
+            case ScriptFieldType::Int64:
+                return 8;
+            case ScriptFieldType::Byte:
+                return 1;
+            case ScriptFieldType::UInt16:
+                return 2;
+            case ScriptFieldType::UInt32:
+                return 4;
+            case ScriptFieldType::UInt64:
+                return 8;
+            case ScriptFieldType::Vector2:
+                return 8;
+            case ScriptFieldType::Vector3:
+                return 12;
+            case ScriptFieldType::Vector4:
+                return 16;
+            case ScriptFieldType::Entity:
+                return 8;
             case ScriptFieldType::None:
-            default:                       return 0;
+            default:
+                return 0;
         }
     }
 
@@ -71,9 +87,7 @@ namespace Eppo
         // Construct directly (not CreateScopedPtr): the constructor is private, so
         // make_unique cannot reach it, but this static member can.
         s_Instance = ScopedPtr<ScriptEngine>(new ScriptEngine());
-        s_Instance->m_CoreAssembly = CreateScopedPtr<Assembly>(
-            EP_NativeString(runtimeConfigPath)
-        );
+        s_Instance->m_CoreAssembly = CreateScopedPtr<Assembly>(EP_NativeString(runtimeConfigPath));
 
         return s_Instance->IsRuntimeLoaded();
     }
@@ -170,15 +184,13 @@ namespace Eppo
         }
 
         const auto outputDirectory = Project::GetCacheDirectory() / "Scripts";
-        const int32_t exitCode = RunProcess("dotnet", {
-            "build", projectFile.string(),
-            "-c", "Debug",
-            "-o", outputDirectory.string(),
-            // Point the project at this build's core assembly instead of a baked-in
-            // path that goes stale when the output layout changes.
-            "-p:CoreManagedDll=" + (FS::GetRootDirectory() / "EppoScriptCore.dll").string(),
-            "--nologo"
-        });
+        const int32_t exitCode = RunProcess(
+            "dotnet",
+            { "build", projectFile.string(), "-c", "Debug", "-o", outputDirectory.string(),
+              // Point the project at this build's core assembly instead of a baked-in
+              // path that goes stale when the output layout changes.
+              "-p:CoreManagedDll=" + (FS::GetRootDirectory() / "EppoScriptCore.dll").string(), "--nologo" }
+        );
 
         if (exitCode != 0)
         {

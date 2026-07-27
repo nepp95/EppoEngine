@@ -7,8 +7,7 @@ namespace Eppo
     class StreamReader;
 
     template<typename T>
-    concept StreamDeserializable = requires(StreamReader* reader, T& value)
-    {
+    concept StreamDeserializable = requires(StreamReader* reader, T& value) {
         { T::Deserialize(reader, value) } -> std::same_as<bool>;
     };
 

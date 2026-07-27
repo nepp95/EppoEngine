@@ -23,7 +23,10 @@ namespace Eppo
         // call becomes a guarded no-op — never dereference a null function pointer.
         if (!ResolveManagedFunctions())
         {
-            Log::Error(LogSource::Script, "Failed to resolve managed script functions from '{}'; scripts will be unavailable.", m_CoreAssemblyPath.string());
+            Log::Error(
+                LogSource::Script, "Failed to resolve managed script functions from '{}'; scripts will be unavailable.",
+                m_CoreAssemblyPath.string()
+            );
             m_ManagedFns.reset();
             return;
         }

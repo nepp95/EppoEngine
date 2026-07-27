@@ -12,69 +12,77 @@
 
 namespace Eppo
 {
-	struct RigidBodyComponent;
+    struct RigidBodyComponent;
 
-	enum class ColliderShape : uint8_t { Box, Sphere, Capsule, Cylinder };
+    enum class ColliderShape : uint8_t
+    {
+        Box,
+        Sphere,
+        Capsule,
+        Cylinder
+    };
 
-	// Shape-agnostic collider description: the scene translates each collider
-	// component into one of these, so adding a shape never changes CreateBody's
-	// signature (add an enum value + a case in AttachCollider).
-	struct ColliderData
-	{
-		ColliderShape Shape = ColliderShape::Box;
-		// Body-local shape pose; Rotation orients the shape but does not re-rotate Offset.
-		glm::vec3 Offset = glm::vec3(0.0f);
-		glm::quat Rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-		float Density = 1.0f;
-		float Friction = 0.5f;
-		float Restitution = 0.0f;
+    // Shape-agnostic collider description: the scene translates each collider
+    // component into one of these, so adding a shape never changes CreateBody's
+    // signature (add an enum value + a case in AttachCollider).
+    struct ColliderData
+    {
+        ColliderShape Shape = ColliderShape::Box;
+        // Body-local shape pose; Rotation orients the shape but does not re-rotate Offset.
+        glm::vec3 Offset = glm::vec3(0.0f);
+        glm::quat Rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        float Density = 1.0f;
+        float Friction = 0.5f;
+        float Restitution = 0.0f;
 
-		glm::vec3 HalfExtents = glm::vec3(0.5f); // Box
-		float Radius = 0.5f;                     // Sphere, Capsule
-		float Height = 1.0f;                     // Capsule
-	};
+        glm::vec3 HalfExtents = glm::vec3(0.5f); // Box
+        float Radius = 0.5f; // Sphere, Capsule
+        float Height = 1.0f; // Capsule
+    };
 
-	struct RayHit
-	{
-		bool Hit = false;
-		glm::vec3 Point = glm::vec3(0.0f);
-		glm::vec3 Normal = glm::vec3(0.0f);
-		float Distance = 0.0f;
-		UUID EntityId = 0;
-	};
+    struct RayHit
+    {
+        bool Hit = false;
+        glm::vec3 Point = glm::vec3(0.0f);
+        glm::vec3 Normal = glm::vec3(0.0f);
+        float Distance = 0.0f;
+        UUID EntityId = 0;
+    };
 
-	class PhysicsWorld
-	{
-	public:
-		explicit PhysicsWorld(const glm::vec3& gravity);
-		~PhysicsWorld();
+    class PhysicsWorld
+    {
+    public:
+        explicit PhysicsWorld(const glm::vec3& gravity);
+        ~PhysicsWorld();
 
-		PhysicsWorld(const PhysicsWorld&) = delete;
-		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
+        PhysicsWorld(const PhysicsWorld&) = delete;
+        PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-		auto CreateBody(UUID entityId, const RigidBodyComponent& rigidBody, const glm::vec3& position, const glm::quat& rotation,
-			const std::vector<ColliderData>& colliders) -> void;
+        auto CreateBody(
+            UUID entityId, const RigidBodyComponent& rigidBody, const glm::vec3& position, const glm::quat& rotation,
+            const std::vector<ColliderData>& colliders
+        ) -> void;
 
-		auto Step(float timestep, uint32_t subStepCount = 4) -> void;
+        auto Step(float timestep, uint32_t subStepCount = 4) -> void;
 
-		[[nodiscard]] auto HasBody(UUID entityId) const -> bool;
-		[[nodiscard]] auto GetShapeCount(UUID entityId) const -> uint32_t;
+        [[nodiscard]] auto HasBody(UUID entityId) const -> bool;
+        [[nodiscard]] auto GetShapeCount(UUID entityId) const -> uint32_t;
 
-		[[nodiscard]] auto GetPosition(UUID entityId) const -> glm::vec3;
-		[[nodiscard]] auto GetRotation(UUID entityId) const -> glm::quat;
+        [[nodiscard]] auto GetPosition(UUID entityId) const -> glm::vec3;
+        [[nodiscard]] auto GetRotation(UUID entityId) const -> glm::quat;
 
-		auto ApplyLinearImpulse(UUID entityId, const glm::vec3& impulse) -> void;
-		[[nodiscard]] auto GetLinearVelocity(UUID entityId) const -> glm::vec3;
-		auto SetLinearVelocity(UUID entityId, const glm::vec3& velocity) -> void;
+        auto ApplyLinearImpulse(UUID entityId, const glm::vec3& impulse) -> void;
+        [[nodiscard]] auto GetLinearVelocity(UUID entityId) const -> glm::vec3;
+        auto SetLinearVelocity(UUID entityId, const glm::vec3& velocity) -> void;
 
-		[[nodiscard]] auto CastRay(const glm::vec3& origin, const glm::vec3& direction, float maxDistance) const -> RayHit;
-		[[nodiscard]] auto OverlapsSphere(UUID entityId, const glm::vec3& center, float radius) const -> bool;
+        [[nodiscard]] auto CastRay(const glm::vec3& origin, const glm::vec3& direction, float maxDistance) const -> RayHit;
+        [[nodiscard]] auto OverlapsSphere(UUID entityId, const glm::vec3& center, float radius) const -> bool;
 
-	private:
-		auto AttachCollider(b3BodyId body, const ColliderData& collider) const -> void;
-		[[nodiscard]] auto GetBody(UUID entityId) const -> b3BodyId;
+    private:
+        auto AttachCollider(b3BodyId body, const ColliderData& collider) const -> void;
+        [[nodiscard]] auto GetBody(UUID entityId) const -> b3BodyId;
 
-		b3WorldId m_WorldId;
-		std::unordered_map<UUID, b3BodyId> m_Bodies;
-	};
+        b3WorldId m_WorldId;
+        std::unordered_map<UUID, b3BodyId> m_Bodies;
+    };
 }
