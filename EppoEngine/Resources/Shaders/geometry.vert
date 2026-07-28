@@ -1,3 +1,4 @@
+#include "Includes/lighting.hlsli"
 #include "Includes/platform.hlsli"
 
 struct Input
@@ -5,6 +6,7 @@ struct Input
 	float3 Position : POSITION0;
 	float3 Normal : NORMAL0;
 	float2 TexCoord : TEXCOORD0;
+	float4 Tangent : TANGENT0;
 	uint InstanceID : SV_InstanceID;
 };
 
@@ -33,6 +35,7 @@ struct Output
 	float3 WorldPos : POSITION0;
 	float3 Normal : NORMAL0;
 	float2 TexCoord : TEXCOORD0;
+	float4 WorldTangent : TANGENT0;
 };
 
 Output Main(Input input)
@@ -46,6 +49,7 @@ Output Main(Input input)
 	output.Normal = mul((float3x3)worldTransform, input.Normal);
 	output.Position = mul(uCamera.Projection, mul(uCamera.View, float4(output.WorldPos, 1.0)));
 	output.TexCoord = input.TexCoord;
+	output.WorldTangent = float4(mul((float3x3)worldTransform, input.Tangent.xyz), input.Tangent.w);
 
 	return output;
 }
