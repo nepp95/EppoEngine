@@ -7,6 +7,11 @@
 
 namespace Eppo
 {
+    class Image;
+    class Sampler;
+    class StorageBuffer;
+    class UniformBuffer;
+
     struct PassStatistics
     {
         uint32_t DrawCalls = 0;
@@ -59,14 +64,18 @@ namespace Eppo
         [[nodiscard]] auto GetPipeline() const -> const Ref<Pipeline>& { return m_Specification.Pipeline; }
         [[nodiscard]] auto GetName() const -> const std::string& { return m_Specification.Name; }
 
-        auto SetInput(uint32_t set, uint32_t binding, nvrhi::IResource* resource) -> void;
-        auto DeclarePushConstants(uint32_t set, uint32_t size) -> void;
+        auto SetInput(uint32_t set, uint32_t binding, const Ref<Image>& resource) -> void;
+        auto SetInput(uint32_t set, uint32_t binding, const Ref<Sampler>& resource) -> void;
+        auto SetInput(uint32_t set, uint32_t binding, const Ref<StorageBuffer>& resource) -> void;
+        auto SetInput(uint32_t set, uint32_t binding, const Ref<UniformBuffer>& resource) -> void;
 
+        auto Invalidate() -> void;
         auto Bake() -> void;
 
         [[nodiscard]] auto GetBindingSets() const -> const nvrhi::BindingSetVector& { return m_BindingSets; }
 
     private:
+        auto SetInputInternal(uint32_t set, uint32_t binding, nvrhi::ResourceType type, const Ref<void>& resource) -> void;
         [[nodiscard]] auto IsValid() const -> bool;
 
     private:
@@ -75,11 +84,13 @@ namespace Eppo
         struct BindingInput
         {
             uint32_t Binding = 0;
-            nvrhi::IResource* Resource = nullptr;
+            nvrhi::ResourceType Type = nvrhi::ResourceType::None;
+            Ref<void> Owner = nullptr;
         };
 
         std::unordered_map<uint32_t, std::vector<BindingInput>> m_Inputs;
-        std::unordered_map<uint32_t, uint32_t> m_PushConstantSizes;
+        std::unordered_map<uint32_t, nvrhi::BindingSetDesc> m_BakedBindingSetDescs;
+        bool m_Invalidated = true;
 
         std::vector<nvrhi::BindingSetHandle> m_OwnedBindingSets;
         nvrhi::BindingSetVector m_BindingSets;

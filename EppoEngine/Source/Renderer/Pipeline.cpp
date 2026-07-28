@@ -52,6 +52,7 @@ namespace Eppo
 
     auto Pipeline::Resize(const uint32_t width, const uint32_t height) const -> void
     {
-        m_Specification.Framebuffer->Resize(width, height);
+        if (m_Specification.OwnsFramebuffer)
+            m_Specification.Framebuffer->Resize(width, height);
     }
 }

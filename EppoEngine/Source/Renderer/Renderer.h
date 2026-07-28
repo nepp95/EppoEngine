@@ -8,6 +8,7 @@
 namespace Eppo
 {
     class DescriptorManager;
+    class Sampler;
 
     class Renderer
     {
@@ -33,7 +34,7 @@ namespace Eppo
         Ref<DescriptorManager> m_DescriptorManager = nullptr;
 
         Ref<RenderCommandBuffer> m_CompositeCommandBuffer = nullptr;
-        nvrhi::SamplerHandle m_CompositeSampler = nullptr;
+        Ref<Sampler> m_CompositeSampler = nullptr;
         std::vector<Ref<RenderPass>> m_CompositePasses;
         std::vector<nvrhi::FramebufferHandle> m_CompositeFramebuffers;
     };

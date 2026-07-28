@@ -72,7 +72,7 @@ SUITE(Renderer)
         const auto& manager = CreateRef<DescriptorManager>();
         REQUIRE CHECK(manager);
 
-        const auto sampler = Sampler::Create(manager);
+        const auto sampler = Sampler::Create({}, manager);
         REQUIRE CHECK(sampler);
 
         const auto& samplerHeap = manager->GetSamplerHeap();
@@ -106,7 +106,7 @@ SUITE(Renderer)
         const auto& manager = CreateRef<DescriptorManager>();
         REQUIRE CHECK(manager);
 
-        const auto sampler = Sampler::Create(manager);
+        const auto sampler = Sampler::Create({}, manager);
         REQUIRE CHECK(sampler);
 
         const auto& handle = sampler->GetBindlessHandle();
@@ -157,7 +157,7 @@ SUITE(Renderer)
         samplers.reserve(trySize);
         for (uint32_t i = 0; i < trySize; i++)
         {
-            samplers.emplace_back(Sampler::Create(manager));
+            samplers.emplace_back(Sampler::Create({}, manager));
             REQUIRE CHECK(samplers.back());
             CHECK(samplers.back()->GetBindlessHandle().Index != std::numeric_limits<uint32_t>::max());
             CHECK(samplers.back()->GetBindlessHandle().HeapType == BindlessHeapType::Sampler);
@@ -364,7 +364,7 @@ SUITE(Renderer)
         CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
         CHECK_EQUAL(0, samplerHeap->NextFreeSlot);
 
-        const auto sampler = Sampler::Create(manager);
+        const auto sampler = Sampler::Create({}, manager);
         REQUIRE CHECK(sampler);
         CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
         CHECK_EQUAL(1, samplerHeap->NextFreeSlot);
@@ -606,10 +606,10 @@ SUITE(Renderer)
 
         std::vector<Ref<Sampler>> samplers;
         for (uint32_t i = 0; i < 2048; i++)
-            samplers.emplace_back(Sampler::Create(manager));
+            samplers.emplace_back(Sampler::Create({}, manager));
         CHECK(samplerHeap->NextFreeSlot == 2048);
 
-        const auto sampler = Sampler::Create(manager);
+        const auto sampler = Sampler::Create({}, manager);
         CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), sampler->GetBindlessIndex());
         CHECK(samplerHeap->Capacity <= 2048);
     }
