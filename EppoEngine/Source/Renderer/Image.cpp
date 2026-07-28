@@ -13,9 +13,9 @@ namespace Eppo
         EP_PROFILE_FN("Image::Image")
 
         const auto& dm = DeviceManager::Get();
-        auto device = dm->GetDevice();
+        const auto device = dm->GetDevice();
 
-        nvrhi::TextureDesc textureDesc{
+        const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
             .format = spec.ImageFormat,
@@ -37,7 +37,7 @@ namespace Eppo
         const auto& dm = DeviceManager::Get();
         const auto device = dm->GetDevice();
 
-        nvrhi::TextureDesc textureDesc{
+        const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
             .format = spec.ImageFormat,
@@ -64,7 +64,7 @@ namespace Eppo
         const auto cmd = cmdList ? cmdList : device->createCommandList();
         auto* imageData = DecodeImageData(source);
 
-        nvrhi::TextureDesc textureDesc{
+        const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
             .format = spec.ImageFormat,
@@ -131,7 +131,7 @@ namespace Eppo
 
         // Copy into an engine-owned Buffer so the caller frees with delete[] (via
         // Buffer::Release) rather than needing stbi_image_free.
-        Buffer buffer = Buffer::Copy(pixels, static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4);
+        const Buffer buffer = Buffer::Copy(pixels, static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4);
         stbi_image_free(pixels);
         return buffer;
     }
@@ -163,13 +163,18 @@ namespace Eppo
 
         bool isHdr = false;
         if (buffer)
-            stbi_is_hdr_from_memory(buffer->Data, static_cast<int>(buffer->Size));
+            isHdr = stbi_is_hdr_from_memory(buffer->Data, static_cast<int>(buffer->Size));
         else if (path)
-            stbi_is_hdr(path->string().c_str());
+            isHdr = stbi_is_hdr(path->string().c_str());
 
         if (isHdr)
         {
-            EP_ASSERT(false);
+            if (buffer)
+                decodedData =
+                    stbi_loadf_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, STBI_rgb_alpha);
+            else if (path)
+                decodedData = stbi_loadf(path->string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+            channels = 4;
         }
         else
         {
@@ -195,14 +200,14 @@ namespace Eppo
         return decodedData;
     }
 
-    auto Image::SelectFormat(uint32_t channels, bool isHdr) -> nvrhi::Format
+    auto Image::SelectFormat(const uint32_t channels, const bool isHdr) -> nvrhi::Format
     {
-        nvrhi::Format format = nvrhi::Format::UNKNOWN;
+        auto format = nvrhi::Format::UNKNOWN;
 
         if (isHdr)
         {
             if (channels == 3 || channels == 4)
-                format = nvrhi::Format::RGBA16_FLOAT;
+                format = nvrhi::Format::RGBA32_FLOAT;
         }
         else
         {

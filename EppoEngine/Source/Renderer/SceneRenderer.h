@@ -92,6 +92,11 @@ namespace Eppo
             glm::vec4 Color = glm::vec4(1.0f);
         };
 
+        struct TonemapPushConstants
+        {
+            float Exposure;
+        };
+
         auto BeginSceneInternal() -> void;
         auto EnsureColliderMeshes() -> void;
         auto GatherWireframes() -> void;
@@ -99,6 +104,7 @@ namespace Eppo
 
         auto GeometryPass() -> void;
         auto SkyPass() -> void;
+        auto TonemapPass() const -> void;
         auto WireframePass() -> void;
 
     private:
@@ -114,10 +120,12 @@ namespace Eppo
 
         Ref<RenderPass> m_GeometryPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
+        Ref<RenderPass> m_TonemapPass = nullptr;
         Ref<RenderPass> m_WireframePass = nullptr;
         Ref<RenderCommandBuffer> m_RenderCommandBuffer = nullptr;
 
         Ref<Sampler> m_Sampler = nullptr;
+        Ref<Sampler> m_ClampSampler = nullptr;
 
         struct DrawKey
         {

@@ -15,7 +15,7 @@ namespace Eppo
 {
     namespace
     {
-        constexpr std::array s_EngineShaderNames{ "composite", "geometry", "imgui", "skybox", "wireframe" };
+        constexpr std::array s_EngineShaderNames{ "composite", "geometry", "imgui", "skybox", "tonemap", "wireframe" };
     }
 
     Renderer::Renderer()

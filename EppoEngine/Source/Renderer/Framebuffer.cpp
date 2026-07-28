@@ -40,7 +40,19 @@ namespace Eppo
         m_Framebuffer = device->createFramebuffer(framebufferDesc);
     }
 
-    auto Framebuffer::Resize(uint32_t width, uint32_t height) -> void
+    auto Framebuffer::GetDepthImage() const -> const Ref<Image>&
+    {
+        for (const auto& image : m_Images)
+        {
+            if (image->IsDepthImage())
+                return image;
+        }
+
+        EP_ASSERT(false, "Framebuffer has no depth image.");
+        return m_Images.front();
+    }
+
+    auto Framebuffer::Resize(const uint32_t width, const uint32_t height) -> void
     {
         EP_PROFILE_FN("Framebuffer::Resize")
 

@@ -42,8 +42,5 @@ float4 Main(Input input) : SV_Target
 	else
 		color = lerp(uEnvironment.HorizonColor.rgb, uEnvironment.GroundColor.rgb, pow(saturate(-t), 0.5));
 
-	// Gamma correction to match the geometry pass output.
-	color = pow(color, float3(0.4545, 0.4545, 0.4545));
-
 	return float4(color, 1.0);
 }

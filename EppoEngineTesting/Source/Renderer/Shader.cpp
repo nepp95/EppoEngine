@@ -129,6 +129,62 @@ SUITE(Renderer)
         CheckMeshVertexLayout(renderer->GetShader("wireframe"));
     }
 
+    TEST(Shader_TonemapReflectsTextureSamplerAndExposure)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+        const auto& shaders = renderer->GetAllShaders();
+        REQUIRE CHECK(shaders.contains("tonemap"));
+
+        const auto& shader = shaders.at("tonemap");
+        const auto& resources = shader->GetShaderResources();
+        REQUIRE CHECK(resources.contains(0));
+
+        const auto& setResources = resources.at(0);
+        const auto hasTexture = std::ranges::any_of(
+            setResources,
+            [](const ShaderResourceBinding& resource) -> bool
+            {
+                return resource.Binding == 0 && resource.Type == nvrhi::ResourceType::Texture_SRV;
+            }
+        );
+        const auto hasSampler = std::ranges::any_of(
+            setResources,
+            [](const ShaderResourceBinding& resource) -> bool
+            {
+                return resource.Binding == 0 && resource.Type == nvrhi::ResourceType::Sampler;
+            }
+        );
+
+        CHECK(hasTexture);
+        CHECK(hasSampler);
+        REQUIRE CHECK(shader->HasPushConstants());
+        CHECK_EQUAL(static_cast<uint32_t>(sizeof(float)), shader->GetPushConstants().Size);
+    }
+
+    TEST(Shader_WireframeReflectsSceneDepthTexture)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        const auto& shader = DeviceManager::Get()->GetRenderer()->GetShader("wireframe");
+        const auto& resources = shader->GetShaderResources();
+        REQUIRE CHECK(resources.contains(0));
+
+        const auto& setResources = resources.at(0);
+        const auto hasSceneDepth = std::ranges::any_of(
+            setResources,
+            [](const ShaderResourceBinding& resource) -> bool
+            {
+                return resource.Binding == 2 && resource.Type == nvrhi::ResourceType::Texture_SRV;
+            }
+        );
+
+        CHECK(hasSceneDepth);
+    }
+
 	TEST(Shader_ImGuiUsesSharedBindlessHeapLayoutsAlongsideStaticBindings)
 	{
 		if (!Testing::AppHarness::IsAvailable())

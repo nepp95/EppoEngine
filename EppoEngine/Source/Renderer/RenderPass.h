@@ -62,6 +62,10 @@ namespace Eppo
 
         [[nodiscard]] auto GetSpecification() const -> const RenderPassSpecification& { return m_Specification; }
         [[nodiscard]] auto GetPipeline() const -> const Ref<Pipeline>& { return m_Specification.Pipeline; }
+        [[nodiscard]] auto GetFramebuffer() const -> const Ref<Framebuffer>&
+        {
+            return m_Specification.Pipeline->GetSpecification().Framebuffer;
+        }
         [[nodiscard]] auto GetName() const -> const std::string& { return m_Specification.Name; }
         [[nodiscard]] auto GetStatistics() -> PassStatistics& { return m_Statistics; }
         [[nodiscard]] auto GetStatistics() const -> const PassStatistics& { return m_Statistics; }

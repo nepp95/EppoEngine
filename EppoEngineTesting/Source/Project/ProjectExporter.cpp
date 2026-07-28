@@ -128,7 +128,7 @@ SUITE(ProjectExport)
 
         GameData gameData;
         REQUIRE CHECK(gameData.Deserialize(result.OutputPath / "Debug" / GameData::Filename));
-        for (const auto* name : { "composite", "geometry", "imgui", "skybox", "wireframe" })
+        for (const auto* name : { "composite", "geometry", "imgui", "skybox", "tonemap", "wireframe" })
         {
             REQUIRE CHECK(gameData.PackedShaders.contains(name));
             for (const auto& source : gameData.PackedShaders.at(name).ShaderSources | std::views::values)
