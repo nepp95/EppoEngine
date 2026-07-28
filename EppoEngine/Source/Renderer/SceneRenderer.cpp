@@ -167,18 +167,21 @@ namespace Eppo
 
         // Scene passes and their subtotal.
         ImGui::SeparatorText("Scene");
+        const auto& geometryStats = m_GeometryPass->GetStatistics();
+        const auto& skyStats = m_SkyPass->GetStatistics();
+        const auto& wireframeStats = m_WireframePass->GetStatistics();
         renderPass(
-            m_GeometryPass->GetName().c_str(), m_GeometryStats, m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex)
+            m_GeometryPass->GetName().c_str(), geometryStats, m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex)
         );
-        renderPass(m_SkyPass->GetName().c_str(), m_SkyStats, m_RenderCommandBuffer->GetTimeMs(m_SkyPass->GetName(), frameIndex));
+        renderPass(m_SkyPass->GetName().c_str(), skyStats, m_RenderCommandBuffer->GetTimeMs(m_SkyPass->GetName(), frameIndex));
         renderPass(
-            m_WireframePass->GetName().c_str(), m_WireframeStats, m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex)
+            m_WireframePass->GetName().c_str(), wireframeStats, m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex)
         );
 
         PassStatistics sceneStats;
-        sceneStats += m_GeometryStats;
-        sceneStats += m_SkyStats;
-        sceneStats += m_WireframeStats;
+        sceneStats += geometryStats;
+        sceneStats += skyStats;
+        sceneStats += wireframeStats;
         const float sceneTime = m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex) +
             m_RenderCommandBuffer->GetTimeMs(m_SkyPass->GetName(), frameIndex) +
             m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex);
@@ -230,9 +233,9 @@ namespace Eppo
     {
         EP_PROFILE_FN("SceneRenderer::BeginSceneInternal")
 
-        m_GeometryStats = {};
-        m_SkyStats = {};
-        m_WireframeStats = {};
+        std::memset(&m_GeometryPass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_SkyPass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_WireframePass->GetStatistics(), 0, sizeof(PassStatistics));
 
         m_DrawCommands.clear();
         m_LightData.NumLights = 0;
@@ -486,6 +489,7 @@ namespace Eppo
         GeometryPushConstants pushConstants{};
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
+        auto& statistics = m_GeometryPass->GetStatistics();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_GeometryPass->GetName());
         renderer->BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
@@ -535,14 +539,14 @@ namespace Eppo
 
                     m_RenderCommandBuffer->GetCommandList()->drawIndexed(drawArgs);
 
-                    m_GeometryStats.DrawCalls++;
-                    m_GeometryStats.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
-                    m_GeometryStats.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                    statistics.DrawCalls++;
+                    statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
+                    statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
                 }
-                m_GeometryStats.Submeshes++;
+                statistics.Submeshes++;
             }
-            m_GeometryStats.Instances += instanceCount;
-            m_GeometryStats.Meshes++;
+            statistics.Instances += instanceCount;
+            statistics.Meshes++;
         }
 
         renderer->EndRenderPass(m_RenderCommandBuffer);
@@ -554,6 +558,7 @@ namespace Eppo
         EP_PROFILE_FN("SceneRenderer::SkyPass")
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
+        auto& statistics = m_SkyPass->GetStatistics();
         m_RenderCommandBuffer->BeginTimerQuery(m_SkyPass->GetName());
         renderer->BeginRenderPass(m_RenderCommandBuffer, m_SkyPass);
 
@@ -563,8 +568,8 @@ namespace Eppo
         };
         m_RenderCommandBuffer->GetCommandList()->draw(drawArgs);
 
-        m_SkyStats.DrawCalls++;
-        m_SkyStats.Vertices += drawArgs.vertexCount;
+        statistics.DrawCalls++;
+        statistics.Vertices += drawArgs.vertexCount;
 
         renderer->EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndTimerQuery(m_SkyPass->GetName());
@@ -591,6 +596,7 @@ namespace Eppo
         WireframePushConstants pushConstants{};
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
+        auto& statistics = m_WireframePass->GetStatistics();
         m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
         renderer->BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
@@ -629,14 +635,14 @@ namespace Eppo
 
                     m_RenderCommandBuffer->GetCommandList()->drawIndexed(drawArgs);
 
-                    m_WireframeStats.DrawCalls++;
-                    m_WireframeStats.Vertices += static_cast<uint32_t>(vertexCount);
-                    m_WireframeStats.Indices += static_cast<uint32_t>(indexCount);
+                    statistics.DrawCalls++;
+                    statistics.Vertices += static_cast<uint32_t>(vertexCount);
+                    statistics.Indices += static_cast<uint32_t>(indexCount);
                 }
-                m_WireframeStats.Submeshes++;
+                statistics.Submeshes++;
             }
-            m_WireframeStats.Meshes++;
-            m_WireframeStats.Instances++;
+            statistics.Meshes++;
+            statistics.Instances++;
             ++drawIndex;
         }
 
