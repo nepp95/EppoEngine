@@ -178,6 +178,17 @@ float4 Main() : SV_Target
 		CHECK(pass.GetBindingSets().empty());
 	}
 
+    TEST(RenderPass_StatisticsAreOwnedAndMutable)
+    {
+        RenderPass pass;
+        pass.GetStatistics().DrawCalls = 3;
+        pass.GetStatistics().Instances = 7;
+
+        const auto& constPass = pass;
+        CHECK_EQUAL(3u, constPass.GetStatistics().DrawCalls);
+        CHECK_EQUAL(7u, constPass.GetStatistics().Instances);
+    }
+
 	TEST(RenderPass_BakeMergesBoundAndBindlessSetsWithoutGaps)
 	{
 		if (!Testing::AppHarness::IsAvailable())

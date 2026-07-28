@@ -116,10 +116,6 @@ namespace Eppo
         Ref<RenderPass> m_WireframePass = nullptr;
         Ref<RenderCommandBuffer> m_RenderCommandBuffer = nullptr;
 
-        PassStatistics m_GeometryStats{};
-        PassStatistics m_SkyStats{};
-        PassStatistics m_WireframeStats{};
-
         Ref<Sampler> m_Sampler = nullptr;
 
         struct DrawKey
