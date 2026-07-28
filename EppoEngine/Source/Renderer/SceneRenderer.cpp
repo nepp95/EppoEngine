@@ -523,6 +523,7 @@ namespace Eppo
 
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
+                    pushConstants.BaseColor = material->BaseColor;
                     pushConstants.DiffuseMapIndex = material->GetDiffuseMapIndex();
                     pushConstants.NormalMapIndex = material->GetNormalMapIndex();
                     pushConstants.RoughMetMapIndex = material->GetRoughMetMapIndex();

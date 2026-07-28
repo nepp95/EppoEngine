@@ -28,6 +28,78 @@ namespace Eppo
 
             return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }
+
+        auto GenerateTangents(
+            std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const uint32_t firstVertex, const uint64_t vertexCount,
+            const uint32_t firstIndex, const uint64_t indexCount
+        ) -> void
+        {
+            EP_ASSERT(indexCount % 3 == 0, "Tangent generation requires triangle indices!");
+
+            constexpr float epsilon = 1e-8f;
+
+            std::vector tangentSums(vertexCount, glm::vec3(0.0f));
+            std::vector bitangentSums(vertexCount, glm::vec3(0.0f));
+
+            for (uint64_t i = 0; i < indexCount; i += 3)
+            {
+                const uint32_t i0 = indices[firstIndex + i];
+                const uint32_t i1 = indices[firstIndex + i + 1];
+                const uint32_t i2 = indices[firstIndex + i + 2];
+
+                EP_ASSERT(i0 < vertexCount && i1 < vertexCount && i2 < vertexCount, "Mesh index exceeds primitive vertex count!");
+
+                const Vertex& v0 = vertices[firstVertex + i0];
+                const Vertex& v1 = vertices[firstVertex + i1];
+                const Vertex& v2 = vertices[firstVertex + i2];
+
+                const glm::vec3 edge1 = v1.Position - v0.Position;
+                const glm::vec3 edge2 = v2.Position - v0.Position;
+                const glm::vec2 deltaUV1 = v1.TexCoord - v0.TexCoord;
+                const glm::vec2 deltaUV2 = v2.TexCoord - v0.TexCoord;
+
+                const float determinant = deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x;
+                if (glm::abs(determinant) <= epsilon)
+                    continue;
+
+                const float inverseDeterminant = 1.0f / determinant;
+                const glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * inverseDeterminant;
+                const glm::vec3 bitangent = (edge2 * deltaUV1.x - edge1 * deltaUV2.x) * inverseDeterminant;
+
+                tangentSums[i0] += tangent;
+                tangentSums[i1] += tangent;
+                tangentSums[i2] += tangent;
+                bitangentSums[i0] += bitangent;
+                bitangentSums[i1] += bitangent;
+                bitangentSums[i2] += bitangent;
+            }
+
+            for (uint64_t i = 0; i < vertexCount; i++)
+            {
+                Vertex& vertex = vertices[firstVertex + i];
+
+                glm::vec3 normal = vertex.Normal;
+                if (glm::dot(normal, normal) <= epsilon)
+                    normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                else
+                    normal = glm::normalize(normal);
+
+                glm::vec3 tangent = tangentSums[i] - normal * glm::dot(normal, tangentSums[i]);
+
+                if (glm::dot(tangent, tangent) <= epsilon)
+                {
+                    const glm::vec3 axis = glm::abs(normal.y) < 0.999f ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+                    tangent = glm::normalize(glm::cross(axis, normal));
+                }
+                else
+                {
+                    tangent = glm::normalize(tangent);
+                }
+
+                const float handedNess = glm::dot(glm::cross(normal, tangent), bitangentSums[i]) < 0.0f ? -1.0f : 1.0f;
+                vertex.Tangent = glm::vec4(tangent, handedNess);
+            }
+        }
     }
 
     Mesh::Mesh(std::string_view path)
@@ -204,6 +276,7 @@ namespace Eppo
             const float* positionData = nullptr;
             const float* normalData = nullptr;
             const float* texCoordData = nullptr;
+            const float* tangentData = nullptr;
 
             for (uint32_t j = 0; j < mp.attributes_count; j++)
             {
@@ -238,6 +311,16 @@ namespace Eppo
                         &model.buffers[bufferView.buffer].data.data[accessor.byte_offset + bufferView.byte_offset]
                     );
                 }
+
+                if (std::strncmp(attribute.key.data, "TANGENT", 7) == 0)
+                {
+                    EP_ASSERT(attribute.value <= static_cast<int32_t>(model.accessors_count) && attribute.value > -1);
+                    const auto& accessor = model.accessors[attribute.value];
+                    const auto& bufferView = model.buffer_views[accessor.buffer_view];
+                    tangentData = reinterpret_cast<const float*>(
+                        &model.buffers[bufferView.buffer].data.data[accessor.byte_offset + bufferView.byte_offset]
+                    );
+                }
             }
 
             const auto vtxOffset = vertices.size();
@@ -249,6 +332,9 @@ namespace Eppo
                 vertex.Position = glm::make_vec3(&positionData[j * 3]);
                 vertex.Normal = glm::make_vec3(&normalData[j * 3]);
                 vertex.TexCoord = glm::make_vec2(&texCoordData[j * 2]);
+
+                if (tangentData)
+                    vertex.Tangent = glm::make_vec4(&tangentData[j * 4]);
             }
 
             // Indices
@@ -283,6 +369,9 @@ namespace Eppo
 
             p.VertexCount = vertexCount;
             p.IndexCount = accessor.count;
+
+            if (!tangentData)
+                GenerateTangents(vertices, indices, p.FirstVertex, p.VertexCount, p.FirstIndex, p.IndexCount);
 
             if (mp.material != -1)
                 p.Material = m_Materials.at(mp.material);

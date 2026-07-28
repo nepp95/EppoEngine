@@ -68,6 +68,7 @@ namespace Eppo
         struct GeometryPushConstants
         {
             glm::mat4 Transform;
+            glm::vec4 BaseColor;
             uint32_t InstanceOffset;
             int32_t DiffuseMapIndex;
             int32_t NormalMapIndex;

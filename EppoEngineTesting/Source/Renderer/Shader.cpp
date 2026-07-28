@@ -4,6 +4,7 @@
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/Vertex.h"
 
 using namespace Eppo;
 
@@ -34,6 +35,32 @@ SUITE(Renderer)
 			FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.vert.spv", name));
 			FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.vert.hash", name));
 		}
+
+        auto CheckMeshVertexLayout(const Ref<Shader>& shader) -> void
+        {
+            REQUIRE CHECK(shader != nullptr);
+
+            const auto& inputLayout = shader->GetInputLayout();
+            REQUIRE CHECK(inputLayout != nullptr);
+            CHECK_EQUAL(4u, inputLayout->getNumAttributes());
+
+            bool foundTangent = false;
+            for (uint32_t i = 0; i < inputLayout->getNumAttributes(); i++)
+            {
+                const auto* attribute = inputLayout->getAttributeDesc(i);
+                REQUIRE CHECK(attribute != nullptr);
+                CHECK_EQUAL(static_cast<uint32_t>(sizeof(Vertex)), attribute->elementStride);
+
+                if (attribute->name.ends_with("TANGENT0"))
+                {
+                    foundTangent = true;
+                    CHECK(attribute->format == nvrhi::Format::RGBA32_FLOAT);
+                    CHECK_EQUAL(static_cast<uint32_t>(offsetof(Vertex, Tangent)), attribute->offset);
+                }
+            }
+
+            CHECK(foundTangent);
+        }
 	}
 
 	TEST(Shader_PackedSourcesResolveIncludesFromThePack)
@@ -91,6 +118,16 @@ SUITE(Renderer)
 		CHECK(layouts.at(1).Get() == descriptorManager->GetResourceHeap()->BindingLayout.Get());
 		CHECK(layouts.at(2).Get() == descriptorManager->GetSamplerHeap()->BindingLayout.Get());
 	}
+
+    TEST(Shader_MeshVertexLayoutsIncludeTangentsWithVertexStride)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+        CheckMeshVertexLayout(renderer->GetShader("geometry"));
+        CheckMeshVertexLayout(renderer->GetShader("wireframe"));
+    }
 
 	TEST(Shader_ImGuiUsesSharedBindlessHeapLayoutsAlongsideStaticBindings)
 	{

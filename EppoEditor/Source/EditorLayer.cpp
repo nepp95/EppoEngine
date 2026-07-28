@@ -31,7 +31,7 @@ namespace Eppo
 		m_PanelManager->GetPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL)
 			->SetOpenSceneCallback([this](const AssetHandle handle) -> void { OpenScene(handle); });
 
-		m_EditorCamera = EditorCamera(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
+		m_EditorCamera = EditorCamera(glm::vec3(0.0f, 5.0f, 20.0f), -25.0f, -90.0f);
 
 		const auto loadIcon = [](const char* fileName) -> Ref<Image>
 		{

@@ -5,6 +5,7 @@ struct Input
 	float3 Position : POSITION0;
 	float3 Normal : NORMAL0;
 	float2 TexCoord : TEXCOORD0;
+	float4 Tangent : TANGENT0;
 	uint InstanceID : SV_InstanceID;
 };
 
@@ -33,6 +34,7 @@ struct Output
 	float4 Position : SV_Position;
 	float3 Normal : NORMAL0;
 	float2 TexCoord : TEXCOORD0;
+	float4 Tangent : TANGENT0;
 };
 
 Output Main(Input input)
@@ -45,10 +47,9 @@ Output Main(Input input)
 
 	output.Position = mul(uCamera.Projection, mul(uCamera.View, float4(worldPos.xyz, 1.0)));
 
-	// Reference Normal/TexCoord so the compiler keeps them as stage inputs and
-	// the reflected vertex stride stays 32 bytes (matches the interleaved Vertex).
 	output.Normal = input.Normal;
 	output.TexCoord = input.TexCoord;
+	output.Tangent = input.Tangent;
 
 	return output;
 }
