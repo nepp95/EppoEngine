@@ -307,7 +307,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("SceneRenderer::GatherWireframes")
 
-        m_Wireframes.clear();
+        m_WireframeDrawCommands.clear();
         if (!m_DebugRenderingEnabled)
             return;
 
@@ -322,6 +322,26 @@ namespace Eppo
 
         if (m_ShowColliders)
         {
+            DrawCommand boxDraw{
+                .Mesh = m_BoxColliderMesh,
+                .Color = colliderColor,
+            };
+
+            DrawCommand sphereDraw{
+                .Mesh = m_SphereColliderMesh,
+                .Color = colliderColor,
+            };
+
+            DrawCommand capsuleDraw{
+                .Mesh = m_CapsuleColliderMesh,
+                .Color = colliderColor,
+            };
+
+            DrawCommand cylinderDraw{
+                .Mesh = m_CylinderColliderMesh,
+                .Color = colliderColor,
+            };
+
             m_Scene->ForEachEntity(
                 [&](const Entity entity) -> void
                 {
@@ -330,56 +350,55 @@ namespace Eppo
                     if (entity.HasComponent<BoxColliderComponent>())
                     {
                         const auto& c = entity.GetComponent<BoxColliderComponent>();
-                        m_Wireframes.push_back(
-                            { m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor }
-                        );
+                        boxDraw.Transforms.emplace_back(glm::scale(glm::translate(world, c.Offset), c.HalfSize));
                     }
 
                     if (entity.HasComponent<SphereColliderComponent>())
                     {
                         const auto& c = entity.GetComponent<SphereColliderComponent>();
-                        m_Wireframes.push_back(
-                            { m_SphereColliderMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius)), colliderColor }
-                        );
+                        sphereDraw.Transforms.emplace_back(glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius)));
                     }
 
                     if (entity.HasComponent<CapsuleColliderComponent>())
                     {
                         const auto& c = entity.GetComponent<CapsuleColliderComponent>();
-                        m_Wireframes.push_back(
-                            { m_CapsuleColliderMesh,
-                              glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor }
+                        capsuleDraw.Transforms.emplace_back(
+                            glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius))
                         );
                     }
 
                     if (entity.HasComponent<CylinderColliderComponent>())
                     {
                         const auto& c = entity.GetComponent<CylinderColliderComponent>();
-                        m_Wireframes.push_back(
-                            { m_CylinderColliderMesh,
-                              glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor }
+                        cylinderDraw.Transforms.emplace_back(
+                            glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius))
                         );
                     }
                 }
             );
+
+            if (!boxDraw.Transforms.empty())
+                m_WireframeDrawCommands.emplace_back(std::move(boxDraw));
+            if (!sphereDraw.Transforms.empty())
+                m_WireframeDrawCommands.emplace_back(std::move(sphereDraw));
+            if (!capsuleDraw.Transforms.empty())
+                m_WireframeDrawCommands.emplace_back(std::move(capsuleDraw));
+            if (!cylinderDraw.Transforms.empty())
+                m_WireframeDrawCommands.emplace_back(std::move(cylinderDraw));
         }
 
         if (m_ShowWireframes)
         {
-            m_Scene->ForEachEntity(
-                [&](Entity entity)
-                {
-                    if (!entity.HasComponent<MeshComponent>())
-                        return;
+            for (const auto& drawCmd : m_DrawCommands | std::views::values)
+            {
+                DrawCommand draw{
+                    .Mesh = drawCmd.Mesh,
+                    .Transforms = drawCmd.Transforms,
+                    .Color = meshWireframeColor,
+                };
 
-                    if (const auto& mc = entity.GetComponent<MeshComponent>(); mc.MeshHandle)
-                    {
-                        const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
-                        const glm::mat4 world = m_Scene->GetWorldTransform(entity);
-                        m_Wireframes.push_back({ mesh, world, meshWireframeColor });
-                    }
-                }
-            );
+                m_WireframeDrawCommands.emplace_back(std::move(draw));
+            }
         }
 
         if (m_HighlightedEntity && m_HighlightedEntity.HasComponent<MeshComponent>())
@@ -391,7 +410,14 @@ namespace Eppo
                 {
                     const glm::mat4 world = m_Scene->GetWorldTransform(m_HighlightedEntity);
                     const glm::mat4 boxTransform = glm::scale(glm::translate(world, bounds.GetCenter()), bounds.GetHalfExtent());
-                    m_Wireframes.push_back({ m_BoxColliderMesh, boxTransform, highlightColor });
+
+                    DrawCommand draw{
+                        .Mesh = m_BoxColliderMesh,
+                        .Transforms = { boxTransform },
+                        .Color = highlightColor,
+                    };
+
+                    m_WireframeDrawCommands.emplace_back(std::move(draw));
                 }
             }
         }
@@ -423,9 +449,11 @@ namespace Eppo
 
         // Upload one instance transform per gathered wireframe draw.
         std::vector<glm::mat4> wireframeTransforms;
-        wireframeTransforms.reserve(m_Wireframes.size());
-        for (const auto& draw : m_Wireframes)
-            wireframeTransforms.push_back(draw.Transform);
+        for (auto& draw : m_WireframeDrawCommands)
+        {
+            draw.InstanceOffset = static_cast<uint32_t>(wireframeTransforms.size());
+            wireframeTransforms.insert(wireframeTransforms.end(), draw.Transforms.begin(), draw.Transforms.end());
+        }
 
         const uint64_t wireframeSize = wireframeTransforms.size() * sizeof(glm::mat4);
         m_WireframeInstanceSB->SetData(cmdList, wireframeTransforms.data(), wireframeSize);
@@ -634,7 +662,7 @@ namespace Eppo
             return;
         }
 
-        if (m_Wireframes.empty())
+        if (m_WireframeDrawCommands.empty())
         {
             m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
             m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
@@ -649,9 +677,13 @@ namespace Eppo
         renderer->BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
 
-        for (uint32_t drawIndex = 0; const auto& draw : m_Wireframes)
+        for (const auto& drawCmd : m_WireframeDrawCommands)
         {
-            for (const auto& submesh : draw.Mesh->GetSubmeshes())
+            const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+            if (instanceCount == 0)
+                continue;
+
+            for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
             {
                 const nvrhi::VertexBufferBinding vtxBufBinding{
                     .buffer = submesh.VertexBuffer->GetBuffer(),
@@ -667,8 +699,8 @@ namespace Eppo
                 m_RenderCommandBuffer->CommitGraphicsState();
 
                 pushConstants.Transform = submesh.LocalTransform;
-                pushConstants.Color = draw.Color;
-                pushConstants.InstanceOffset = drawIndex;
+                pushConstants.Color = drawCmd.Color;
+                pushConstants.InstanceOffset = drawCmd.InstanceOffset;
 
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
@@ -676,7 +708,7 @@ namespace Eppo
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
-                        .instanceCount = 1,
+                        .instanceCount = instanceCount,
                         .startIndexLocation = firstIndex,
                         .startVertexLocation = firstVertex,
                     };
@@ -690,8 +722,7 @@ namespace Eppo
                 statistics.Submeshes++;
             }
             statistics.Meshes++;
-            statistics.Instances++;
-            ++drawIndex;
+            statistics.Instances += instanceCount;
         }
 
         renderer->EndRenderPass(m_RenderCommandBuffer);

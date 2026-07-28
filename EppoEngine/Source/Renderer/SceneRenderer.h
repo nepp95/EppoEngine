@@ -65,38 +65,6 @@ namespace Eppo
         auto SetScene(const Ref<Scene>& scene) -> void { m_Scene = scene; }
 
     private:
-        struct GeometryPushConstants
-        {
-            glm::mat4 Transform;
-            glm::vec4 BaseColor;
-            uint32_t InstanceOffset;
-            int32_t DiffuseMapIndex;
-            int32_t NormalMapIndex;
-            int32_t RoughMetMapIndex;
-            float Metallic;
-            float Roughness;
-            uint32_t SamplerIndex;
-        };
-
-        struct WireframePushConstants
-        {
-            glm::mat4 Transform;
-            glm::vec4 Color;
-            uint32_t InstanceOffset;
-        };
-
-        struct WireframeDraw
-        {
-            Ref<Mesh> Mesh = nullptr;
-            glm::mat4 Transform = glm::mat4(1.0f);
-            glm::vec4 Color = glm::vec4(1.0f);
-        };
-
-        struct TonemapPushConstants
-        {
-            float Exposure;
-        };
-
         auto BeginSceneInternal() -> void;
         auto EnsureColliderMeshes() -> void;
         auto GatherWireframes() -> void;
@@ -137,20 +105,45 @@ namespace Eppo
         struct DrawCommand
         {
             Ref<Mesh> Mesh = nullptr;
-            std::vector<glm::mat4> Transforms = { glm::mat4(1.0f) };
+            std::vector<glm::mat4> Transforms;
             uint32_t InstanceOffset = 0;
+            glm::vec4 Color = glm::vec4(1.0f);
         };
+
         std::map<DrawKey, DrawCommand> m_DrawCommands;
         Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
-
-        // WireframePass owns its own instance buffer (collider/highlight draws are
-        // separate from geometry instances).
+        std::vector<DrawCommand> m_WireframeDrawCommands;
         Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
-        std::vector<WireframeDraw> m_Wireframes;
+
         Ref<Mesh> m_BoxColliderMesh = nullptr;
         Ref<Mesh> m_SphereColliderMesh = nullptr;
         Ref<Mesh> m_CapsuleColliderMesh = nullptr;
         Ref<Mesh> m_CylinderColliderMesh = nullptr;
+
+        struct GeometryPushConstants
+        {
+            glm::mat4 Transform;
+            glm::vec4 BaseColor;
+            uint32_t InstanceOffset;
+            int32_t DiffuseMapIndex;
+            int32_t NormalMapIndex;
+            int32_t RoughMetMapIndex;
+            float Metallic;
+            float Roughness;
+            uint32_t SamplerIndex;
+        };
+
+        struct WireframePushConstants
+        {
+            glm::mat4 Transform;
+            glm::vec4 Color;
+            uint32_t InstanceOffset;
+        };
+
+        struct TonemapPushConstants
+        {
+            float Exposure;
+        };
 
         struct CameraData
         {
