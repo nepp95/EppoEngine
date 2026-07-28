@@ -43,6 +43,34 @@ SUITE(Renderer)
         CHECK(Testing::AppHarness::Get()->IsRunning());
     }
 
+    TEST(SceneRenderer_HdrSceneTonemapsBeforeDepthAwareWireframes)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        const Ref<Scene> scene = ctx.GetScene();
+        const Ref<SceneRenderer> sceneRenderer =
+            CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 64u, .Height = 64u });
+        Entity overlay = scene->CreateEntity("Depth-aware wireframe");
+        overlay.AddComponent<BoxColliderComponent>();
+        sceneRenderer->SetDebugRenderingEnabled(true);
+        sceneRenderer->SetShowColliders(true);
+
+        const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
+        ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+
+        sceneRenderer->Resize(96u, 48u);
+        ctx.AdvanceFrames(1, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+
+        const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
+        REQUIRE CHECK(finalImage != nullptr);
+        CHECK(finalImage->GetFormat() == nvrhi::Format::RGBA8_UNORM);
+        CHECK_EQUAL(96u, finalImage->GetWidth());
+        CHECK_EQUAL(48u, finalImage->GetHeight());
+        CHECK(Testing::AppHarness::Get()->IsRunning());
+    }
+
     TEST(Renderer_CompositeToSwapchain_SurvivesImageCyclingAndResize)
     {
         Testing::TestContext ctx;

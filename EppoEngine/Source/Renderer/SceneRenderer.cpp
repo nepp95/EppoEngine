@@ -26,6 +26,7 @@ namespace Eppo
         m_Height = specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height;
 
         m_Sampler = Sampler::Create();
+        m_ClampSampler = Sampler::Create(SamplerSpecification{ .AddressMode = nvrhi::SamplerAddressMode::Clamp });
         m_RenderCommandBuffer = CreateRef<RenderCommandBuffer>();
 
         // Create render passes
@@ -34,7 +35,7 @@ namespace Eppo
             const FramebufferSpecification framebufferSpec{
                 .Width = m_Width,
                 .Height = m_Height,
-                .Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
+                .Attachments = { nvrhi::Format::RGBA16_FLOAT, nvrhi::Format::D32 },
                 .DebugName = "Framebuffer Geometry",
             };
 
@@ -85,19 +86,47 @@ namespace Eppo
             m_SkyPass = CreateRef<RenderPass>(renderPassSpec);
         }
 
-        // Wireframes
+        // Tonemap
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = m_Width,
+                .Height = m_Height,
+                .Attachments = { nvrhi::Format::RGBA8_UNORM },
+                .DebugName = "Framebuffer Tonemap",
+            };
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("tonemap"),
+                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
+                .Width = m_Width,
+                .Height = m_Height,
+                .CullMode = nvrhi::RasterCullMode::None,
+            };
+
+            auto pipeline = CreateRef<Pipeline>(pipelineSpec);
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "Tonemap",
+                .Pipeline = pipeline,
+                .ClearColorOnLoad = true,
+                .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+            };
+
+            m_TonemapPass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
+        // Wireframe
         {
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("wireframe"),
-                .Framebuffer = m_GeometryPass->GetPipeline()->GetSpecification().Framebuffer,
+                .Framebuffer = m_TonemapPass->GetFramebuffer(),
                 .OwnsFramebuffer = false,
                 .Width = m_Width,
                 .Height = m_Height,
                 .CullMode = nvrhi::RasterCullMode::None,
                 .FillMode = nvrhi::RasterFillMode::Wireframe,
-                .DepthTestEnable = true,
+                .DepthTestEnable = false,
                 .DepthWriteEnable = false,
-                .DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
                 .DepthBias = -1,
                 .SlopeScaledDepthBias = -1.0f,
             };
@@ -105,7 +134,7 @@ namespace Eppo
             auto pipeline = CreateRef<Pipeline>(pipelineSpec);
 
             const RenderPassSpecification renderPassSpec{
-                .Name = "Wireframes",
+                .Name = "Wireframe",
                 .Pipeline = pipeline,
             };
 
@@ -117,8 +146,7 @@ namespace Eppo
         m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightData), "UniformBuffer Lights");
         m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), "UniformBuffer Environment");
 
-        m_InstanceTransformsSB =
-            CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
+        m_InstanceTransformsSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
         m_WireframeInstanceSB =
             CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Wireframe Instance Transforms");
 
@@ -133,6 +161,10 @@ namespace Eppo
 
         m_WireframePass->SetInput(0, 0, m_WireframeInstanceSB);
         m_WireframePass->SetInput(0, 1, m_CameraUB);
+        m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
+
+        m_TonemapPass->SetInput(0, 0, m_GeometryPass->GetFramebuffer()->GetFinalImage());
+        m_TonemapPass->SetInput(0, 0, m_ClampSampler);
     }
 
     auto SceneRenderer::RenderGui() const -> void
@@ -170,10 +202,12 @@ namespace Eppo
         const auto& geometryStats = m_GeometryPass->GetStatistics();
         const auto& skyStats = m_SkyPass->GetStatistics();
         const auto& wireframeStats = m_WireframePass->GetStatistics();
+        const auto& tonemapStats = m_TonemapPass->GetStatistics();
         renderPass(
             m_GeometryPass->GetName().c_str(), geometryStats, m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex)
         );
         renderPass(m_SkyPass->GetName().c_str(), skyStats, m_RenderCommandBuffer->GetTimeMs(m_SkyPass->GetName(), frameIndex));
+        renderPass(m_TonemapPass->GetName().c_str(), tonemapStats, m_RenderCommandBuffer->GetTimeMs(m_TonemapPass->GetName(), frameIndex));
         renderPass(
             m_WireframePass->GetName().c_str(), wireframeStats, m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex)
         );
@@ -182,9 +216,11 @@ namespace Eppo
         sceneStats += geometryStats;
         sceneStats += skyStats;
         sceneStats += wireframeStats;
+        sceneStats += tonemapStats;
         const float sceneTime = m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex) +
             m_RenderCommandBuffer->GetTimeMs(m_SkyPass->GetName(), frameIndex) +
-            m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex);
+            m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex) +
+            m_RenderCommandBuffer->GetTimeMs(m_TonemapPass->GetName(), frameIndex);
         ImGui::Text("Scene total: %u draw calls, %.2fms", sceneStats.DrawCalls, sceneTime);
 
         // UI is tracked and reported separately from the scene.
@@ -236,6 +272,7 @@ namespace Eppo
         std::memset(&m_GeometryPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_SkyPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_WireframePass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_TonemapPass->GetStatistics(), 0, sizeof(PassStatistics));
 
         m_DrawCommands.clear();
         m_LightData.NumLights = 0;
@@ -286,14 +323,16 @@ namespace Eppo
         if (m_ShowColliders)
         {
             m_Scene->ForEachEntity(
-                [&](const Entity entity)
-                -> void {
+                [&](const Entity entity) -> void
+                {
                     const glm::mat4 world = m_Scene->GetWorldTransform(entity);
 
                     if (entity.HasComponent<BoxColliderComponent>())
                     {
                         const auto& c = entity.GetComponent<BoxColliderComponent>();
-                        m_Wireframes.push_back({ m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor });
+                        m_Wireframes.push_back(
+                            { m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor }
+                        );
                     }
 
                     if (entity.HasComponent<SphereColliderComponent>())
@@ -391,9 +430,14 @@ namespace Eppo
         const uint64_t wireframeSize = wireframeTransforms.size() * sizeof(glm::mat4);
         m_WireframeInstanceSB->SetData(cmdList, wireframeTransforms.data(), wireframeSize);
 
+        // Framebuffer attachments are recreated on resize.
+        m_TonemapPass->SetInput(0, 0, m_GeometryPass->GetFramebuffer()->GetFinalImage());
+        m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
+
         // Rebuild binding sets for any pass whose resource handles changed.
         m_GeometryPass->Bake();
         m_SkyPass->Bake();
+        m_TonemapPass->Bake();
         m_WireframePass->Bake();
     }
 
@@ -432,6 +476,7 @@ namespace Eppo
 
         GeometryPass();
         SkyPass();
+        TonemapPass();
         WireframePass();
 
         m_RenderCommandBuffer->End();
@@ -440,7 +485,7 @@ namespace Eppo
 
     auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
     {
-        return m_GeometryPass->GetPipeline()->GetSpecification().Framebuffer->GetFinalImage();
+        return m_TonemapPass->GetPipeline()->GetSpecification().Framebuffer->GetFinalImage();
     }
 
     auto SceneRenderer::SubmitMesh(const AssetHandle meshHandle, const glm::mat4& transform) -> void
@@ -479,6 +524,7 @@ namespace Eppo
 
         m_GeometryPass->Resize(m_Width, m_Height);
         m_SkyPass->Resize(m_Width, m_Height);
+        m_TonemapPass->Resize(m_Width, m_Height);
         m_WireframePass->Resize(m_Width, m_Height);
     }
 
@@ -560,6 +606,7 @@ namespace Eppo
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
         auto& statistics = m_SkyPass->GetStatistics();
+
         m_RenderCommandBuffer->BeginTimerQuery(m_SkyPass->GetName());
         renderer->BeginRenderPass(m_RenderCommandBuffer, m_SkyPass);
 
@@ -649,5 +696,34 @@ namespace Eppo
 
         renderer->EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
+    }
+
+    auto SceneRenderer::TonemapPass() const -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::TonemapPass")
+
+        constexpr TonemapPushConstants pushConstants{
+            .Exposure = 1.0f,
+        };
+
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+        auto& statistics = m_TonemapPass->GetStatistics();
+
+        m_RenderCommandBuffer->BeginTimerQuery(m_TonemapPass->GetName());
+        renderer->BeginRenderPass(m_RenderCommandBuffer, m_TonemapPass);
+
+        m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(TonemapPushConstants));
+
+        constexpr nvrhi::DrawArguments drawArgs{
+            .vertexCount = 3,
+            .instanceCount = 1,
+        };
+        m_RenderCommandBuffer->GetCommandList()->draw(drawArgs);
+
+        statistics.DrawCalls++;
+        statistics.Vertices += drawArgs.vertexCount;
+
+        renderer->EndRenderPass(m_RenderCommandBuffer);
+        m_RenderCommandBuffer->EndTimerQuery(m_TonemapPass->GetName());
     }
 }

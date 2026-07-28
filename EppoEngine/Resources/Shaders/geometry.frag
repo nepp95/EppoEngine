@@ -114,7 +114,5 @@ float4 Main(Input input) : SV_Target
 	float3 outColor = albedo * ambient * uEnvironment.Params.x;
 	outColor += Lo;
 
-	// Gamma correction
-	outColor = pow(outColor, float3(0.4545, 0.4545, 0.4545));
 	return float4(outColor, 1.0);
 }

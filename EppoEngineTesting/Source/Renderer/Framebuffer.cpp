@@ -24,5 +24,7 @@ SUITE(Renderer)
 		CHECK(framebuffer->GetFramebuffer());
 		CHECK_EQUAL(256, framebuffer->GetWidth());
 		CHECK_EQUAL(256, framebuffer->GetHeight());
+        REQUIRE CHECK(framebuffer->GetDepthImage() != nullptr);
+        CHECK(framebuffer->GetDepthImage()->GetFormat() == nvrhi::Format::D32);
 	}
 }

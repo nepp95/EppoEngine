@@ -13,6 +13,7 @@ struct Input
 struct PushConstants
 {
 	float4x4 Transform;
+	float4 BaseColor;
 	uint InstanceOffset;
 };
 PUSH_CONSTANTS
