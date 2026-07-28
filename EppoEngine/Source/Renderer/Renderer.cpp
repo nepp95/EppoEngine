@@ -6,6 +6,7 @@
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderPass.h"
+#include "Renderer/Sampler.h"
 
 #include <nvrhi/utils.h>
 #include <nvrhi/nvrhi.h>
@@ -49,11 +50,7 @@ namespace Eppo
 
     auto Renderer::Init() -> void
     {
-        nvrhi::SamplerDesc samplerDesc{};
-        samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Clamp);
-        samplerDesc.setAllFilters(true);
-        m_CompositeSampler = DeviceManager::Get()->GetDevice()->createSampler(samplerDesc);
-        EP_ASSERT(m_CompositeSampler, "Failed to create the swapchain composite sampler.");
+        m_CompositeSampler = Sampler::Create({ .AddressMode = nvrhi::SamplerAddressMode::Clamp });
 
         m_CompositeCommandBuffer = CreateRef<RenderCommandBuffer>();
     }
@@ -145,7 +142,7 @@ namespace Eppo
             m_CompositeFramebuffers.at(backBufferIndex) = framebufferHandle;
         }
 
-        renderPass->SetInput(0, 0, image->GetTexture());
+        renderPass->SetInput(0, 0, image);
         renderPass->SetInput(0, 0, m_CompositeSampler);
         renderPass->Bake();
 

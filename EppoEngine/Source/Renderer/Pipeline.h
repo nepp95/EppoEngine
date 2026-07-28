@@ -9,6 +9,7 @@ namespace Eppo
     {
         Ref<Shader> Shader;
         Ref<Framebuffer> Framebuffer;
+        bool OwnsFramebuffer = true;
 
         uint32_t Width = 0;
         uint32_t Height = 0;
@@ -32,7 +33,7 @@ namespace Eppo
     class Pipeline
     {
     public:
-        Pipeline(PipelineSpecification spec);
+        explicit Pipeline(PipelineSpecification spec);
 
         auto Resize(uint32_t width, uint32_t height) const -> void;
         [[nodiscard]] auto GetWidth() const -> uint32_t { return m_Specification.Framebuffer->GetWidth(); }

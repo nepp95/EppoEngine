@@ -3,73 +3,14 @@
 
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/DeviceManager.h"
+#include "Renderer/Image.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/Sampler.h"
+#include "Renderer/StorageBuffer.h"
+#include "Renderer/UniformBuffer.h"
 
 namespace Eppo
 {
-    namespace
-    {
-        auto MakeBindingSetItem(uint32_t binding, nvrhi::IResource* resource, const std::vector<ShaderResourceBinding>& setResources)
-            -> nvrhi::BindingSetItem
-        {
-            if (auto* sampler = dynamic_cast<nvrhi::ISampler*>(resource))
-            {
-                for (const auto& r : setResources)
-                    if (r.Binding == binding && r.Type == nvrhi::ResourceType::Sampler)
-                        return nvrhi::BindingSetItem::Sampler(binding, sampler);
-
-                EP_ASSERT(false && "SetInput: no sampler reflected at this binding");
-                return nvrhi::BindingSetItem::None(binding);
-            }
-
-            if (auto* texture = dynamic_cast<nvrhi::ITexture*>(resource))
-            {
-                for (const auto& r : setResources)
-                    if (r.Binding == binding && r.Type == nvrhi::ResourceType::Texture_SRV)
-                        return nvrhi::BindingSetItem::Texture_SRV(binding, texture);
-
-                EP_ASSERT(false && "SetInput: no texture_srv reflected at this binding");
-                return nvrhi::BindingSetItem::None(binding);
-            }
-
-            if (auto* buffer = dynamic_cast<nvrhi::IBuffer*>(resource))
-            {
-                for (const auto& r : setResources)
-                {
-                    if (r.Binding != binding)
-                        continue;
-
-                    switch (r.Type)
-                    {
-                        case nvrhi::ResourceType::ConstantBuffer:
-                        case nvrhi::ResourceType::VolatileConstantBuffer:
-                            return nvrhi::BindingSetItem::ConstantBuffer(binding, buffer);
-                        case nvrhi::ResourceType::StructuredBuffer_SRV:
-                            return nvrhi::BindingSetItem::StructuredBuffer_SRV(binding, buffer);
-                        case nvrhi::ResourceType::StructuredBuffer_UAV:
-                            return nvrhi::BindingSetItem::StructuredBuffer_UAV(binding, buffer);
-                        case nvrhi::ResourceType::TypedBuffer_SRV:
-                            return nvrhi::BindingSetItem::TypedBuffer_SRV(binding, buffer);
-                        case nvrhi::ResourceType::TypedBuffer_UAV:
-                            return nvrhi::BindingSetItem::TypedBuffer_UAV(binding, buffer);
-                        case nvrhi::ResourceType::RawBuffer_SRV:
-                            return nvrhi::BindingSetItem::RawBuffer_SRV(binding, buffer);
-                        case nvrhi::ResourceType::RawBuffer_UAV:
-                            return nvrhi::BindingSetItem::RawBuffer_UAV(binding, buffer);
-                        default:
-                            break;
-                    }
-                }
-
-                EP_ASSERT(false && "SetInput: no buffer reflected at this binding");
-                return nvrhi::BindingSetItem::None(binding);
-            }
-
-            EP_ASSERT(false && "SetInput: unsupported IResource type");
-            return nvrhi::BindingSetItem::None(binding);
-        }
-    }
-
     RenderPass::RenderPass(RenderPassSpecification spec)
         : m_Specification(std::move(spec))
     {}
@@ -80,26 +21,66 @@ namespace Eppo
             m_Specification.Pipeline->Resize(width, height);
     }
 
-    auto RenderPass::SetInput(const uint32_t set, const uint32_t binding, nvrhi::IResource* resource) -> void
+    auto RenderPass::SetInput(const uint32_t set, const uint32_t binding, const Ref<Image>& resource) -> void
     {
-        m_Inputs[set].push_back({ .Binding = binding, .Resource = resource });
+        SetInputInternal(set, binding, nvrhi::ResourceType::Texture_SRV, resource);
     }
 
-    auto RenderPass::DeclarePushConstants(const uint32_t set, const uint32_t size) -> void
+    auto RenderPass::SetInput(const uint32_t set, const uint32_t binding, const Ref<Sampler>& resource) -> void
     {
-        m_PushConstantSizes[set] = size;
+        SetInputInternal(set, binding, nvrhi::ResourceType::Sampler, resource);
+    }
+
+    auto RenderPass::SetInput(const uint32_t set, const uint32_t binding, const Ref<StorageBuffer>& resource) -> void
+    {
+        SetInputInternal(set, binding, nvrhi::ResourceType::StructuredBuffer_SRV, resource);
+    }
+
+    auto RenderPass::SetInput(const uint32_t set, const uint32_t binding, const Ref<UniformBuffer>& resource) -> void
+    {
+        SetInputInternal(set, binding, nvrhi::ResourceType::ConstantBuffer, resource);
+    }
+
+    auto RenderPass::SetInputInternal(
+        const uint32_t set, const uint32_t binding, const nvrhi::ResourceType type, const Ref<void>& resource
+    ) -> void
+    {
+        EP_ASSERT(resource != nullptr, "Cannot bind a null resource to a render pass.");
+        if (!resource)
+            return;
+
+        auto& inputs = m_Inputs[set];
+        for (auto& input : inputs)
+        {
+            if (input.Binding != binding || input.Type != type)
+                continue;
+
+            if (input.Owner.get() == resource.get())
+                return;
+
+            input.Owner = resource;
+            Invalidate();
+            return;
+        }
+
+        inputs.push_back({
+            .Binding = binding,
+            .Type = type,
+            .Owner = resource,
+        });
+        Invalidate();
+    }
+
+    auto RenderPass::Invalidate() -> void
+    {
+        m_Invalidated = true;
     }
 
     auto RenderPass::Bake() -> void
     {
-        m_OwnedBindingSets.clear();
-        m_BindingSets = {};
-
         if (!IsValid())
         {
             Log::Warn("RenderPass::Bake failed because render pass is invalid!");
-            m_Inputs.clear();
-            m_PushConstantSizes.clear();
             return;
         }
 
@@ -108,7 +89,65 @@ namespace Eppo
         const auto& descriptorManager = dm->GetRenderer()->GetDescriptorManager();
         const auto& shader = m_Specification.Pipeline->GetSpecification().Shader;
         const auto& layouts = shader->GetBindingLayouts();
-        const auto& resources = shader->GetShaderResources();
+
+        std::unordered_map<uint32_t, nvrhi::BindingSetDesc> bindingSetDescs;
+        for (const auto& [set, layout] : layouts)
+        {
+            if (layout->getBindlessDesc())
+                continue;
+
+            nvrhi::BindingSetDesc desc{};
+
+            if (const auto& pc = shader->GetPushConstants(); set == 0 && pc.Size > 0)
+                desc.bindings.push_back(nvrhi::BindingSetItem::PushConstants(pc.Binding, pc.Size));
+
+            if (const auto inputIt = m_Inputs.find(set); inputIt != m_Inputs.end())
+            {
+                for (const auto& input : inputIt->second)
+                {
+                    switch (input.Type)
+                    {
+                        case nvrhi::ResourceType::Texture_SRV:
+                        {
+                            const auto* image = static_cast<const Image*>(input.Owner.get());
+                            desc.bindings.push_back(nvrhi::BindingSetItem::Texture_SRV(input.Binding, image->GetTexture(), image->GetFormat()));
+                            break;
+                        }
+                        case nvrhi::ResourceType::Sampler:
+                        {
+                            const auto* sampler = static_cast<const Sampler*>(input.Owner.get());
+                            desc.bindings.push_back(nvrhi::BindingSetItem::Sampler(input.Binding, sampler->GetSampler()));
+                            break;
+                        }
+                        case nvrhi::ResourceType::StructuredBuffer_SRV:
+                        {
+                            const auto* storageBuffer = static_cast<const StorageBuffer*>(input.Owner.get());
+                            desc.bindings.push_back(
+                                nvrhi::BindingSetItem::StructuredBuffer_SRV(input.Binding, storageBuffer->GetBuffer())
+                            );
+                            break;
+                        }
+                        case nvrhi::ResourceType::ConstantBuffer:
+                        {
+                            const auto* uniformBuffer = static_cast<const UniformBuffer*>(input.Owner.get());
+                            desc.bindings.push_back(nvrhi::BindingSetItem::ConstantBuffer(input.Binding, uniformBuffer->GetBuffer()));
+                            break;
+                        }
+                        default:
+                            EP_ASSERT(false, "Unsupported render pass input type.");
+                            break;
+                    }
+                }
+            }
+
+            bindingSetDescs.emplace(set, std::move(desc));
+        }
+
+        if (!m_Invalidated && bindingSetDescs == m_BakedBindingSetDescs)
+            return;
+
+        std::vector<nvrhi::BindingSetHandle> ownedBindingSets;
+        nvrhi::BindingSetVector bindingSets;
 
         uint32_t expectedSet = 0;
         for (const auto& [set, layout] : layouts)
@@ -119,39 +158,30 @@ namespace Eppo
             if (const auto* bindlessDesc = layout->getBindlessDesc())
             {
                 if (bindlessDesc->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv)
-                    m_BindingSets.push_back(descriptorManager->GetResourceDT());
+                    bindingSets.push_back(descriptorManager->GetResourceDT());
                 else if (bindlessDesc->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSampler)
-                    m_BindingSets.push_back(descriptorManager->GetSamplerDT());
+                    bindingSets.push_back(descriptorManager->GetSamplerDT());
                 else
                     EP_ASSERT(false);
                 continue;
             }
 
-            nvrhi::BindingSetDesc desc{};
-
-            if (const auto pcIt = m_PushConstantSizes.find(set); pcIt != m_PushConstantSizes.end())
+            auto bindingSet = device->createBindingSet(bindingSetDescs.at(set), layout);
+            if (!bindingSet)
             {
-                const auto& pc = shader->GetPushConstants();
-                desc.bindings.push_back(nvrhi::BindingSetItem::PushConstants(pc.Binding, pcIt->second));
+                Log::Error("Failed to create binding set for render pass '{}' at set {}.", m_Specification.Name, set);
+                EP_ASSERT(false, "Render pass inputs do not match the shader's binding layout.");
+                return;
             }
 
-            if (const auto inputIt = m_Inputs.find(set); inputIt != m_Inputs.end())
-            {
-                const auto resourceIt = resources.find(set);
-                EP_ASSERT(resourceIt != resources.end());
-
-                for (const auto& input : inputIt->second)
-                    desc.bindings.push_back(MakeBindingSetItem(input.Binding, input.Resource, resourceIt->second));
-            }
-
-            auto bindingSet = device->createBindingSet(desc, layout);
-            EP_ASSERT(bindingSet);
-            m_BindingSets.push_back(bindingSet.Get());
-            m_OwnedBindingSets.push_back(std::move(bindingSet));
+            bindingSets.push_back(bindingSet.Get());
+            ownedBindingSets.push_back(std::move(bindingSet));
         }
 
-        m_Inputs.clear();
-        m_PushConstantSizes.clear();
+        m_OwnedBindingSets = std::move(ownedBindingSets);
+        m_BindingSets = std::move(bindingSets);
+        m_BakedBindingSetDescs = std::move(bindingSetDescs);
+        m_Invalidated = false;
     }
 
     auto RenderPass::IsValid() const -> bool

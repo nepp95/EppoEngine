@@ -65,8 +65,35 @@ namespace Eppo
         auto SetScene(const Ref<Scene>& scene) -> void { m_Scene = scene; }
 
     private:
+        struct GeometryPushConstants
+        {
+            glm::mat4 Transform;
+            uint32_t InstanceOffset;
+            int32_t DiffuseMapIndex;
+            int32_t NormalMapIndex;
+            int32_t RoughMetMapIndex;
+            float Metallic;
+            float Roughness;
+            uint32_t SamplerIndex;
+        };
+
+        struct WireframePushConstants
+        {
+            glm::mat4 Transform;
+            glm::vec4 Color;
+            uint32_t InstanceOffset;
+        };
+
+        struct WireframeDraw
+        {
+            Ref<Mesh> Mesh = nullptr;
+            glm::mat4 Transform = glm::mat4(1.0f);
+            glm::vec4 Color = glm::vec4(1.0f);
+        };
+
         auto BeginSceneInternal() -> void;
         auto EnsureColliderMeshes() -> void;
+        auto GatherWireframes() -> void;
         auto PrepareRender() -> void;
 
         auto GeometryPass() -> void;
@@ -77,8 +104,8 @@ namespace Eppo
         Ref<Scene> m_Scene = nullptr;
 
         bool m_DebugRenderingEnabled = false;
-        bool m_ShowColliders = true;
-        bool m_ShowWireframes = true;
+        bool m_ShowColliders = false;
+        bool m_ShowWireframes = false;
         Entity m_HighlightedEntity;
 
         uint32_t m_Width = 0;
@@ -114,6 +141,7 @@ namespace Eppo
         // WireframePass owns its own instance buffer (collider/highlight draws are
         // separate from geometry instances).
         Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
+        std::vector<WireframeDraw> m_Wireframes;
         Ref<Mesh> m_BoxColliderMesh = nullptr;
         Ref<Mesh> m_SphereColliderMesh = nullptr;
         Ref<Mesh> m_CapsuleColliderMesh = nullptr;

@@ -16,6 +16,7 @@
 #include "Core/KeyCodes.h"
 #include "Core/Layer.h"
 #include "Core/MouseCodes.h"
+#include "Core/Timer.h"
 
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"

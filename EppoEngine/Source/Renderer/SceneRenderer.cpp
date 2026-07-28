@@ -66,6 +66,7 @@ namespace Eppo
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("skybox"),
                 .Framebuffer = m_GeometryPass->GetPipeline()->GetSpecification().Framebuffer,
+                .OwnsFramebuffer = false,
                 .Width = m_Width,
                 .Height = m_Height,
                 .CullMode = nvrhi::RasterCullMode::None,
@@ -89,6 +90,7 @@ namespace Eppo
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("wireframe"),
                 .Framebuffer = m_GeometryPass->GetPipeline()->GetSpecification().Framebuffer,
+                .OwnsFramebuffer = false,
                 .Width = m_Width,
                 .Height = m_Height,
                 .CullMode = nvrhi::RasterCullMode::None,
@@ -114,6 +116,23 @@ namespace Eppo
         m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Camera");
         m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightData), "UniformBuffer Lights");
         m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), "UniformBuffer Environment");
+
+        m_InstanceTransformsSB =
+            CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
+        m_WireframeInstanceSB =
+            CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Wireframe Instance Transforms");
+
+        // Inputs retain their resources and resolve current GPU handles whenever a pass bakes.
+        m_GeometryPass->SetInput(0, 0, m_InstanceTransformsSB);
+        m_GeometryPass->SetInput(0, 1, m_CameraUB);
+        m_GeometryPass->SetInput(0, 2, m_LightsUB);
+        m_GeometryPass->SetInput(0, 3, m_EnvironmentUB);
+
+        m_SkyPass->SetInput(0, 1, m_CameraUB);
+        m_SkyPass->SetInput(0, 3, m_EnvironmentUB);
+
+        m_WireframePass->SetInput(0, 0, m_WireframeInstanceSB);
+        m_WireframePass->SetInput(0, 1, m_CameraUB);
     }
 
     auto SceneRenderer::RenderGui() const -> void
@@ -209,6 +228,8 @@ namespace Eppo
 
     auto SceneRenderer::BeginSceneInternal() -> void
     {
+        EP_PROFILE_FN("SceneRenderer::BeginSceneInternal")
+
         m_GeometryStats = {};
         m_SkyStats = {};
         m_WireframeStats = {};
@@ -221,6 +242,8 @@ namespace Eppo
 
     auto SceneRenderer::EnsureColliderMeshes() -> void
     {
+        EP_PROFILE_FN("SceneRenderer::EnsureColliderMeshes")
+
         if (!m_DebugRenderingEnabled || (!m_ShowColliders && !m_HighlightedEntity))
             return;
 
@@ -240,12 +263,135 @@ namespace Eppo
             m_CylinderColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cylinder));
     }
 
+    auto SceneRenderer::GatherWireframes() -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::GatherWireframes")
+
+        m_Wireframes.clear();
+        if (!m_DebugRenderingEnabled)
+            return;
+
+        const auto& project = Project::GetActive();
+        if (!project)
+            return;
+
+        constexpr auto colliderColor = glm::vec4(0.2f, 0.8f, 0.3f, 1.0f);
+        constexpr auto highlightColor = glm::vec4(0.91f, 0.39f, 0.11f, 1.0f);
+        constexpr auto meshWireframeColor = glm::vec4(0.45f, 0.63f, 0.95f, 1.0f);
+        const auto& assetManager = project->GetAssetManager();
+
+        if (m_ShowColliders)
+        {
+            m_Scene->ForEachEntity(
+                [&](const Entity entity)
+                -> void {
+                    const glm::mat4 world = m_Scene->GetWorldTransform(entity);
+
+                    if (entity.HasComponent<BoxColliderComponent>())
+                    {
+                        const auto& c = entity.GetComponent<BoxColliderComponent>();
+                        m_Wireframes.push_back({ m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor });
+                    }
+
+                    if (entity.HasComponent<SphereColliderComponent>())
+                    {
+                        const auto& c = entity.GetComponent<SphereColliderComponent>();
+                        m_Wireframes.push_back(
+                            { m_SphereColliderMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius)), colliderColor }
+                        );
+                    }
+
+                    if (entity.HasComponent<CapsuleColliderComponent>())
+                    {
+                        const auto& c = entity.GetComponent<CapsuleColliderComponent>();
+                        m_Wireframes.push_back(
+                            { m_CapsuleColliderMesh,
+                              glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor }
+                        );
+                    }
+
+                    if (entity.HasComponent<CylinderColliderComponent>())
+                    {
+                        const auto& c = entity.GetComponent<CylinderColliderComponent>();
+                        m_Wireframes.push_back(
+                            { m_CylinderColliderMesh,
+                              glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor }
+                        );
+                    }
+                }
+            );
+        }
+
+        if (m_ShowWireframes)
+        {
+            m_Scene->ForEachEntity(
+                [&](Entity entity)
+                {
+                    if (!entity.HasComponent<MeshComponent>())
+                        return;
+
+                    if (const auto& mc = entity.GetComponent<MeshComponent>(); mc.MeshHandle)
+                    {
+                        const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
+                        const glm::mat4 world = m_Scene->GetWorldTransform(entity);
+                        m_Wireframes.push_back({ mesh, world, meshWireframeColor });
+                    }
+                }
+            );
+        }
+
+        if (m_HighlightedEntity && m_HighlightedEntity.HasComponent<MeshComponent>())
+        {
+            if (const auto& mc = m_HighlightedEntity.GetComponent<MeshComponent>(); mc.MeshHandle)
+            {
+                const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
+                if (const auto& bounds = mesh->GetBounds(); bounds.IsValid())
+                {
+                    const glm::mat4 world = m_Scene->GetWorldTransform(m_HighlightedEntity);
+                    const glm::mat4 boxTransform = glm::scale(glm::translate(world, bounds.GetCenter()), bounds.GetHalfExtent());
+                    m_Wireframes.push_back({ m_BoxColliderMesh, boxTransform, highlightColor });
+                }
+            }
+        }
+    }
+
     auto SceneRenderer::PrepareRender() -> void
     {
+        EP_PROFILE_FN("SceneRenderer::PrepareRender")
+
         const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+
         m_CameraUB->SetData(cmdList, &m_CameraData, sizeof(CameraData));
         m_LightsUB->SetData(cmdList, &m_LightData, sizeof(LightData));
         m_EnvironmentUB->SetData(cmdList, &m_EnvironmentData, sizeof(EnvironmentData));
+
+        // Instance storage buffer
+        std::vector<glm::mat4> instanceTransforms;
+        for (auto& drawCmd : m_DrawCommands | std::views::values)
+        {
+            drawCmd.InstanceOffset = static_cast<uint32_t>(instanceTransforms.size());
+            instanceTransforms.insert(instanceTransforms.end(), drawCmd.Transforms.begin(), drawCmd.Transforms.end());
+        }
+
+        const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
+        m_InstanceTransformsSB->SetData(cmdList, instanceTransforms.data(), requiredSize);
+
+        // Gather collider, mesh-overlay and selection wireframes.
+        GatherWireframes();
+
+        // Upload one instance transform per gathered wireframe draw.
+        std::vector<glm::mat4> wireframeTransforms;
+        wireframeTransforms.reserve(m_Wireframes.size());
+        for (const auto& draw : m_Wireframes)
+            wireframeTransforms.push_back(draw.Transform);
+
+        const uint64_t wireframeSize = wireframeTransforms.size() * sizeof(glm::mat4);
+        m_WireframeInstanceSB->SetData(cmdList, wireframeTransforms.data(), wireframeSize);
+
+        // Rebuild binding sets for any pass whose resource handles changed.
+        m_GeometryPass->Bake();
+        m_SkyPass->Bake();
+        m_WireframePass->Bake();
     }
 
     auto SceneRenderer::SubmitPointLight(const glm::vec3& position, const glm::vec3& color, const float intensity) -> void
@@ -277,21 +423,6 @@ namespace Eppo
         EP_PROFILE_FN("SceneRenderer::EndScene")
 
         EnsureColliderMeshes();
-
-        std::vector<glm::mat4> instanceTransforms;
-        for (auto& drawCmd : m_DrawCommands | std::views::values)
-        {
-            drawCmd.InstanceOffset = static_cast<uint32_t>(instanceTransforms.size());
-            instanceTransforms.insert(instanceTransforms.end(), drawCmd.Transforms.begin(), drawCmd.Transforms.end());
-        }
-
-        const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
-
-        if (!m_InstanceTransformsSB)
-            m_InstanceTransformsSB =
-                CreateRef<StorageBuffer>(static_cast<uint32_t>(sizeof(glm::mat4)), requiredSize, "StorageBuffer Instance Transforms");
-
-        m_InstanceTransformsSB->SetData(instanceTransforms.data(), requiredSize);
 
         m_RenderCommandBuffer->Begin();
         PrepareRender();
@@ -333,7 +464,7 @@ namespace Eppo
         }
     }
 
-    auto SceneRenderer::Resize(uint32_t width, uint32_t height) -> void
+    auto SceneRenderer::Resize(const uint32_t width, const uint32_t height) -> void
     {
         EP_PROFILE_FN("SceneRenderer::Resize")
 
@@ -344,34 +475,21 @@ namespace Eppo
         m_Height = height;
 
         m_GeometryPass->Resize(m_Width, m_Height);
+        m_SkyPass->Resize(m_Width, m_Height);
+        m_WireframePass->Resize(m_Width, m_Height);
     }
 
     auto SceneRenderer::GeometryPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::GeometryPass")
 
-        struct PushConstants
-        {
-            glm::mat4 Transform;
-            uint32_t InstanceOffset;
-            int32_t DiffuseMapIndex;
-            int32_t NormalMapIndex;
-            int32_t RoughMetMapIndex;
-            float Metallic;
-            float Roughness;
-            uint32_t SamplerIndex;
-        } pushConstants{};
-
-        m_GeometryPass->DeclarePushConstants(0, sizeof(PushConstants));
-        m_GeometryPass->SetInput(0, 1, m_CameraUB->GetBuffer());
-        m_GeometryPass->SetInput(0, 2, m_LightsUB->GetBuffer());
-        m_GeometryPass->SetInput(0, 3, m_EnvironmentUB->GetBuffer());
-        m_GeometryPass->SetInput(0, 0, m_InstanceTransformsSB->GetBuffer());
-        m_GeometryPass->Bake();
+        GeometryPushConstants pushConstants{};
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
+
         m_RenderCommandBuffer->BeginTimerQuery(m_GeometryPass->GetName());
         renderer->BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
+
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
         pushConstants.SamplerIndex = m_Sampler->GetBindlessIndex();
 
@@ -406,7 +524,7 @@ namespace Eppo
                     pushConstants.RoughMetMapIndex = material->GetRoughMetMapIndex();
                     pushConstants.Metallic = material->Metallic;
                     pushConstants.Roughness = material->Roughness;
-                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PushConstants));
+                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(GeometryPushConstants));
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
@@ -434,10 +552,6 @@ namespace Eppo
     auto SceneRenderer::SkyPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::SkyPass")
-
-        m_SkyPass->SetInput(0, 1, m_CameraUB->GetBuffer());
-        m_SkyPass->SetInput(0, 3, m_EnvironmentUB->GetBuffer());
-        m_SkyPass->Bake();
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
         m_RenderCommandBuffer->BeginTimerQuery(m_SkyPass->GetName());
@@ -467,147 +581,21 @@ namespace Eppo
             return;
         }
 
-        constexpr auto colliderColor = glm::vec4(0.2f, 0.8f, 0.3f, 1.0f);
-        constexpr auto highlightColor = glm::vec4(0.91f, 0.39f, 0.11f, 1.0f); // Eppo orange
-        constexpr auto meshWireframeColor = glm::vec4(0.45f, 0.63f, 0.95f, 1.0f); // Soft blue
-
-        // Gather this frame's wireframe draws. Each is a mesh + world transform +
-        // color; the unit collider primitives carry the collider's size in the
-        // transform scale. Wireframes are sourced from the scene, not the geometry
-        // draw list: that list is batched by mesh asset (no entity to recover) and
-        // misses collider-only entities entirely. An entity may carry more than one
-        // collider, so each type is checked independently (matching GatherColliders).
-        struct WireframeDraw
-        {
-            Ref<Mesh> Mesh = nullptr;
-            glm::mat4 Transform = glm::mat4(1.0f);
-            glm::vec4 Color = glm::vec4(1.0f);
-        };
-        std::vector<WireframeDraw> wireframes;
-
-        const auto& assetManager = Project::GetActive()->GetAssetManager();
-
-        if (m_ShowColliders)
-        {
-            // Dimensions match the scale math below: cube half-extent 1, sphere
-            // radius 1, capsule radius 1 / total height 2 (so Height maps to Height/2).
-            m_Scene->ForEachEntity(
-                [&](Entity entity)
-                {
-                    const glm::mat4 world = m_Scene->GetWorldTransform(entity);
-
-                    if (entity.HasComponent<BoxColliderComponent>())
-                    {
-                        const auto& c = entity.GetComponent<BoxColliderComponent>();
-                        wireframes.push_back({ m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor });
-                    }
-
-                    if (entity.HasComponent<SphereColliderComponent>())
-                    {
-                        const auto& c = entity.GetComponent<SphereColliderComponent>();
-                        wireframes.push_back(
-                            { m_SphereColliderMesh, glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius)), colliderColor }
-                        );
-                    }
-
-                    if (entity.HasComponent<CapsuleColliderComponent>())
-                    {
-                        const auto& c = entity.GetComponent<CapsuleColliderComponent>();
-                        // Unit capsule: radius 1, hemisphere centers at +-1, so height maps to Height/2.
-                        wireframes.push_back(
-                            { m_CapsuleColliderMesh,
-                              glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor }
-                        );
-                    }
-
-                    if (entity.HasComponent<CylinderColliderComponent>())
-                    {
-                        const auto& c = entity.GetComponent<CylinderColliderComponent>();
-                        wireframes.push_back(
-                            { m_CylinderColliderMesh,
-                              glm::scale(glm::translate(world, c.Offset), glm::vec3(c.Radius, c.Height / 2.0f, c.Radius)), colliderColor }
-                        );
-                    }
-                }
-            );
-        }
-
-        // Mesh wireframe overlay: every entity with a MeshComponent gets its full
-        // mesh drawn as a wireframe outline. Gives a scene-wide wireframe debug view
-        // independent of colliders or selection.
-        if (m_ShowWireframes)
-        {
-            m_Scene->ForEachEntity(
-                [&](Entity entity)
-                {
-                    if (entity.HasComponent<MeshComponent>())
-                    {
-                        if (const auto& mc = entity.GetComponent<MeshComponent>(); mc.MeshHandle)
-                        {
-                            const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
-                            const glm::mat4 world = m_Scene->GetWorldTransform(entity);
-                            wireframes.push_back({ mesh, world, meshWireframeColor });
-                        }
-                    }
-                }
-            );
-        }
-
-        // Selection highlight: a wireframe box around the entity's mesh AABB.
-        // Uses the unit cube (vertices at +-1) scaled to the mesh's local-space
-        // half-extent and centered at the AABB center, then transformed to world.
-        if (m_HighlightedEntity && m_HighlightedEntity.HasComponent<MeshComponent>())
-        {
-            if (const auto& mc = m_HighlightedEntity.GetComponent<MeshComponent>(); mc.MeshHandle)
-            {
-                const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
-                if (const auto& bounds = mesh->GetBounds(); bounds.IsValid())
-                {
-                    const glm::mat4 world = m_Scene->GetWorldTransform(m_HighlightedEntity);
-                    const glm::mat4 boxTransform = glm::scale(glm::translate(world, bounds.GetCenter()), bounds.GetHalfExtent());
-                    wireframes.push_back({ m_BoxColliderMesh, boxTransform, highlightColor });
-                }
-            }
-        }
-
-        if (wireframes.empty())
+        if (m_Wireframes.empty())
         {
             m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
             m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
             return;
         }
 
-        // One instance transform per draw; the shader indexes it by InstanceOffset.
-        std::vector<glm::mat4> instanceTransforms;
-        instanceTransforms.reserve(wireframes.size());
-        for (const auto& draw : wireframes)
-            instanceTransforms.push_back(draw.Transform);
-
-        const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
-        if (!m_WireframeInstanceSB)
-            m_WireframeInstanceSB =
-                CreateRef<StorageBuffer>(sizeof(glm::mat4), requiredSize, "StorageBuffer Wireframe Instance Transforms");
-        m_WireframeInstanceSB->SetData(m_RenderCommandBuffer->GetCommandList(), instanceTransforms.data(), requiredSize);
-
-        // Matches wireframe.vert: { Transform, WireframeColor, InstanceOffset }.
-        struct PushConstants
-        {
-            glm::mat4 Transform;
-            glm::vec4 Color;
-            uint32_t InstanceOffset;
-        } pushConstants{};
-
-        m_WireframePass->DeclarePushConstants(0, sizeof(PushConstants));
-        m_WireframePass->SetInput(0, 1, m_CameraUB->GetBuffer());
-        m_WireframePass->SetInput(0, 0, m_WireframeInstanceSB->GetBuffer());
-        m_WireframePass->Bake();
+        WireframePushConstants pushConstants{};
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
         m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
         renderer->BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
 
-        for (uint32_t drawIndex = 0; const auto& draw : wireframes)
+        for (uint32_t drawIndex = 0; const auto& draw : m_Wireframes)
         {
             for (const auto& submesh : draw.Mesh->GetSubmeshes())
             {
@@ -630,7 +618,7 @@ namespace Eppo
 
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
-                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PushConstants));
+                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(WireframePushConstants));
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),

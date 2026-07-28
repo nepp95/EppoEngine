@@ -69,6 +69,8 @@ namespace Eppo
         {
             return m_ShaderResources;
         }
+
+        [[nodiscard]] auto HasPushConstants() const -> bool { return m_HasPushConstants; }
         [[nodiscard]] auto GetPushConstants() const -> const PushConstantRange& { return m_PushConstants; }
 
         [[nodiscard]] constexpr auto GetName() const -> const std::string& { return m_Specification.Name; }

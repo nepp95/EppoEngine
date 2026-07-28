@@ -6,20 +6,20 @@
 
 namespace Eppo
 {
-    Sampler::Sampler()
+    Sampler::Sampler(const SamplerSpecification& specification)
     {
         const auto& dm = DeviceManager::Get();
         const auto device = dm->GetDevice();
 
         nvrhi::SamplerDesc samplerDesc{};
-        samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);
-        samplerDesc.setAllFilters(true);
+        samplerDesc.setAllAddressModes(specification.AddressMode);
+        samplerDesc.setAllFilters(specification.AllFilters);
         m_Sampler = device->createSampler(samplerDesc);
     }
 
-    auto Sampler::Create(const Ref<DescriptorManager>& descriptorManager) -> Ref<Sampler>
+    auto Sampler::Create(const SamplerSpecification& specification, const Ref<DescriptorManager>& descriptorManager) -> Ref<Sampler>
     {
-        const auto sampler = Ref<Sampler>(new Sampler());
+        const auto sampler = Ref<Sampler>(new Sampler(specification));
         const auto& manager = descriptorManager ? descriptorManager : DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
         sampler->m_BindlessHandle = manager->Register(sampler);
         return sampler;
