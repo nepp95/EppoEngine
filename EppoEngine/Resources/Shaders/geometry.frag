@@ -1,6 +1,23 @@
 #include "Includes/lighting.hlsli"
 #include "Includes/platform.hlsli"
 
+struct Input
+{
+	float3 WorldPos : POSITION0;
+	float3 Normal : NORMAL0;
+	float2 TexCoord : TEXCOORD0;
+	float4 WorldTangent : TANGENT0;
+};
+
+struct PushConstants
+{
+	uint DrawIndex;
+};
+PUSH_CONSTANTS
+ConstantBuffer<PushConstants> uPC : register(b0, space0);
+
+SamplerState uMaterialSampler : register(s0, space0);
+
 struct ShadowDepthData
 {
     float4x4 LightViewProjection;
@@ -51,28 +68,27 @@ struct Environment
 };
 ConstantBuffer<Environment> uEnvironment : register(b4, space0);
 
-struct Input
+struct DrawData
 {
-	float3 WorldPos : POSITION0;
-	float3 Normal : NORMAL0;
-	float2 TexCoord : TEXCOORD0;
-	float4 WorldTangent : TANGENT0;
+    float4x4 Transform;
+    uint InstanceOffset;
+    uint MaterialIndex;
 };
+StructuredBuffer<DrawData> uDrawData : register(t1, space0);
 
-struct PushConstants
+struct MaterialData
 {
-	float4x4 Transform;
-	float4 BaseColor;
-	uint InstanceOffset;
-	int DiffuseMapIndex;
-	int NormalMapIndex;
-	int RoughMetMapIndex;
-	float Metallic;
-	float Roughness;
-	uint SamplerIndex;
+    int DiffuseMapIndex;
+    int NormalMapIndex;
+    int RoughMetMapIndex;
+    int AOMapIndex;
+    int EmissiveMapIndex;
+    float4 BaseColor;
+    float3 EmissiveFactor;
+    float Metallic;
+    float Roughness;
 };
-PUSH_CONSTANTS
-ConstantBuffer<PushConstants> uPC : register(b0, space0);
+StructuredBuffer<MaterialData> uMaterialData : register(t2, space0);
 
 float CalcShadowFactor(const float3 worldPosition)
 {
@@ -110,40 +126,57 @@ float CalcShadowFactor(const float3 worldPosition)
 
 float4 Main(Input input) : SV_Target
 {
-	SamplerState samp = SamplerDescriptorHeap[uPC.SamplerIndex];
+    DrawData draw = uDrawData[uPC.DrawIndex];
+    MaterialData material = uMaterialData[draw.MaterialIndex];
 
 	// Albedo
-	float4 baseColor = uPC.BaseColor;
-	if (uPC.DiffuseMapIndex > -1)
+	float4 baseColor = material.BaseColor;
+	if (material.DiffuseMapIndex > -1)
 	{
-	    Texture2D diffuseMap = ResourceDescriptorHeap[NonUniformResourceIndex(uPC.DiffuseMapIndex)];
-	    baseColor *= diffuseMap.Sample(samp, input.TexCoord);
+	    Texture2D diffuseMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.DiffuseMapIndex)];
+	    baseColor *= diffuseMap.Sample(uMaterialSampler, input.TexCoord);
 	}
 
 	float3 albedo = baseColor.rgb;
 
 	// Metallic roughness
-	float metallic = uPC.Metallic;
-	float roughness = uPC.Roughness;
-	if (uPC.RoughMetMapIndex > -1)
+	float metallic = material.Metallic;
+	float roughness = material.Roughness;
+	if (material.RoughMetMapIndex > -1)
 	{
-	    Texture2D roughMetMap = ResourceDescriptorHeap[NonUniformResourceIndex(uPC.RoughMetMapIndex)];
-	    const float3 rm = roughMetMap.Sample(samp, input.TexCoord).rgb;
+	    Texture2D roughMetMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.RoughMetMapIndex)];
+	    const float3 rm = roughMetMap.Sample(uMaterialSampler, input.TexCoord).rgb;
 	    roughness *= rm.g;
 	    metallic *= rm.b;
 	}
 
 	// Normal map
 	float3 N = normalize(input.Normal);
-	if (uPC.NormalMapIndex > -1)
+	if (material.NormalMapIndex > -1)
 	{
-	    Texture2D normalMap = ResourceDescriptorHeap[NonUniformResourceIndex(uPC.NormalMapIndex)];
-	    const float3 tangentNormal = normalMap.Sample(samp, input.TexCoord).rgb * 2.0 - 1.0;
+	    Texture2D normalMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.NormalMapIndex)];
+	    const float3 tangentNormal = normalMap.Sample(uMaterialSampler, input.TexCoord).rgb * 2.0 - 1.0;
 
 	    float3 T = normalize(input.WorldTangent).xyz;
 	    T = normalize(T - N * dot(N, T));
 	    const float3 B = cross(N, T) * input.WorldTangent.w;
 	    N = normalize(mul(tangentNormal, float3x3(T, B, N)));
+	}
+
+	// Ambient occlusion
+	float materialAO = 1.0;
+	if (material.AOMapIndex > -1)
+	{
+	    Texture2D aoMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.AOMapIndex)];
+	    materialAO = aoMap.Sample(uMaterialSampler, input.TexCoord).r;
+	}
+
+	// Emissive
+	float3 emissive = material.EmissiveFactor;
+	if (material.EmissiveMapIndex > -1)
+	{
+	    Texture2D emissiveMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.EmissiveMapIndex)];
+	    emissive *= emissiveMap.Sample(uMaterialSampler, input.TexCoord).rgb;
 	}
 
 	const float3 V = normalize(uCamera.Position.xyz - input.WorldPos);
@@ -203,6 +236,6 @@ float4 Main(Input input) : SV_Target
 		ambient = albedo * lerp(uEnvironment.GroundColor.rgb, uEnvironment.ZenithColor.rgb, N.y * 0.5 + 0.5) * uEnvironment.Params.x;
 	}
 
-	float3 outColor = ambient + Lo;
+	float3 outColor = ambient * materialAO + Lo + emissive;
 	return float4(outColor, 1.0);
 }

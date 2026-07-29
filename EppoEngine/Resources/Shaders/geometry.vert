@@ -12,9 +12,7 @@ struct Input
 
 struct PushConstants
 {
-	float4x4 Transform;
-	float4 BaseColor;
-	uint InstanceOffset;
+	uint DrawIndex;
 };
 PUSH_CONSTANTS
 ConstantBuffer<PushConstants> uPC : register(b0, space0);
@@ -30,6 +28,28 @@ ConstantBuffer<Camera> uCamera : register(b2, space0);
 
 StructuredBuffer<float4x4> uInstanceTransforms : register(t0, space0);
 
+struct DrawData
+{
+    float4x4 Transform;
+    uint InstanceOffset;
+    uint MaterialIndex;
+};
+StructuredBuffer<DrawData> uDrawData : register(t1, space0);
+
+struct MaterialData
+{
+    int DiffuseMapIndex;
+    int NormalMapIndex;
+    int RoughMetMapIndex;
+    int AOMapIndex;
+    int EmissiveMapIndex;
+    float4 BaseColor;
+    float3 EmissiveFactor;
+    float Metallic;
+    float Roughness;
+};
+StructuredBuffer<MaterialData> uMaterialData : register(t2, space0);
+
 struct Output
 {
 	float4 Position : SV_Position;
@@ -42,9 +62,11 @@ struct Output
 Output Main(Input input)
 {
 	Output output;
-	
-	const float4x4 instanceTransform = uInstanceTransforms[uPC.InstanceOffset + input.InstanceID];
-	const float4x4 worldTransform = mul(instanceTransform, uPC.Transform);
+
+	DrawData draw = uDrawData[uPC.DrawIndex];
+
+	const float4x4 instanceTransform = uInstanceTransforms[draw.InstanceOffset + input.InstanceID];
+	const float4x4 worldTransform = mul(instanceTransform, draw.Transform);
 	
 	output.WorldPos = mul(worldTransform, float4(input.Position, 1.0)).xyz;
 	output.Normal = mul((float3x3)worldTransform, input.Normal);

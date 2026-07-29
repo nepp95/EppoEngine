@@ -402,6 +402,7 @@ namespace Eppo
             newMat->BaseColor = glm::make_vec4(material.pbr_metallic_roughness.base_color_factor);
             newMat->Roughness = static_cast<float>(material.pbr_metallic_roughness.roughness_factor);
             newMat->Metallic = static_cast<float>(material.pbr_metallic_roughness.metallic_factor);
+            newMat->EmissiveFactor = glm::make_vec3(material.emissive_factor);
 
             m_Materials[i] = newMat;
         }
@@ -424,6 +425,10 @@ namespace Eppo
                 imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
             if (const auto texture = material.pbr_metallic_roughness.metallic_roughness_texture.index; texture >= 0)
                 imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+            if (const auto texture = material.occlusion_texture.index; texture >= 0)
+                imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+            if (const auto texture = material.emissive_texture.index; texture >= 0)
+                imageFormats[model.textures[texture].source] = nvrhi::Format::SRGBA8_UNORM;
         }
 
         m_Images.resize(model.images_count);
@@ -452,9 +457,9 @@ namespace Eppo
                         const auto& buffer = model.buffers[bufferView.buffer];
                         const auto* imageData = &buffer.data.data[bufferView.byte_offset];
 
-                        std::string name = std::string(bufferView.name.data, bufferView.name.len);
+                        auto name = std::string(bufferView.name.data, bufferView.name.len);
 
-                        nvrhi::Format format = nvrhi::Format::UNKNOWN;
+                        auto format = nvrhi::Format::UNKNOWN;
                         if (auto it = imageFormats.find(idx); it != imageFormats.end())
                             format = it->second;
                         EP_ASSERT(format != nvrhi::Format::UNKNOWN);
@@ -521,7 +526,7 @@ namespace Eppo
                 imageHandles[i] = CreateRef<BindlessHandle>(std::move(handle));
         }
 
-        const auto getHandle = [&](const int32_t textureIndex) -> Ref<BindlessHandle>
+        const auto GetHandle = [&](const int32_t textureIndex) -> Ref<BindlessHandle>
         {
             if (textureIndex < 0)
                 return nullptr;
@@ -533,9 +538,11 @@ namespace Eppo
         {
             const auto& source = model.materials[i];
             const auto& material = m_Materials.at(i);
-            material->DiffuseMap = getHandle(source.pbr_metallic_roughness.base_color_texture.index);
-            material->NormalMap = getHandle(source.normal_texture.index);
-            material->RoughMetMap = getHandle(source.pbr_metallic_roughness.metallic_roughness_texture.index);
+            material->DiffuseMap = GetHandle(source.pbr_metallic_roughness.base_color_texture.index);
+            material->NormalMap = GetHandle(source.normal_texture.index);
+            material->RoughMetMap = GetHandle(source.pbr_metallic_roughness.metallic_roughness_texture.index);
+            material->AOMap = GetHandle(source.occlusion_texture.index);
+            material->EmissiveMap = GetHandle(source.emissive_texture.index);
         }
     }
 }

@@ -11,6 +11,11 @@
             "Type": "Mesh"
         },
         {
+            "Filepath": "Meshes\\pbr_showcase.gltf",
+            "Handle": 16319850260215055169,
+            "Type": "Mesh"
+        },
+        {
             "Filepath": "Scenes\\Def.epscene",
             "Handle": 18159251541775323644,
             "Type": "Scene"
