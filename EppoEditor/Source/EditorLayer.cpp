@@ -63,7 +63,9 @@ namespace Eppo
 		const auto defaultProject = FS::GetRootDirectory() / "Projects" / "Test" / "Test.epproj";
 		const auto startupProject = args.Argc > 1 ? std::filesystem::path(args[1]) : defaultProject;
 
-		if (!OpenProject(startupProject) && !OpenProject())
+		// Startup must establish a scene synchronously (the SceneRenderer below needs one),
+		// so a failed open falls back to a fresh project rather than an async file dialog.
+		if (!OpenProject(startupProject))
 			NewProject("Test");
 
 		m_SceneRenderer = CreateRef<SceneRenderer>(m_ActiveScene, SceneRendererSpecification{
@@ -304,6 +306,9 @@ namespace Eppo
 	UI_ExportOptionsPopup();
 	UI_ExportProgressPopup();
 	UI_ExportResultPopup();
+
+	// Drives every queued file dialog (editor + content browser) and fires its callback.
+	FileDialog::Render();
 
 	// Scene render
 	m_SceneRenderer->RenderGui();
@@ -567,18 +572,14 @@ namespace Eppo
 		OpenProject(projectPath / std::filesystem::path(name + ".epproj"));
 	}
 
-	auto EditorLayer::OpenProject() -> bool
+	auto EditorLayer::OpenProject() -> void
 	{
 	    EP_PROFILE_FN("EditorLayer::OpenProject");
 
-		const auto path = FileDialog::OpenFile({
-			{ "EppoEngine Project", "epproj" }
-		}, Project::GetProjectsDirectory());
-
-		if (path.empty())
-			return false;
-
-		return OpenProject(path);
+		FileDialog::OpenFile(
+			"OpenProject", "Open Project", FileDialog::BuildFilter("EppoEngine Project", { "epproj" }),
+			Project::GetProjectsDirectory(), [this](const std::filesystem::path& path) { OpenProject(path); }
+		);
 	}
 
 	auto EditorLayer::OpenProject(const std::filesystem::path& path) -> bool
@@ -644,47 +645,49 @@ namespace Eppo
 			return;
 		}
 
-		const auto parentDirectory = FileDialog::OpenFolder(project->GetSpecification().ProjectDirectory.parent_path());
-		if (parentDirectory.empty())
-			return;
+		FileDialog::OpenFolder(
+			"ExportGame", "Export To", project->GetSpecification().ProjectDirectory.parent_path(),
+			[this, project](const std::filesystem::path& parentDirectory)
+			{
+				ProjectExportOptions options{
+					.ParentDirectory = parentDirectory,
+					.SourceDirectory = FS::GetRootDirectory().parent_path().parent_path().parent_path(),
+					.ExportDebug = m_ExportDebug,
+					.ExportRelease = m_ExportRelease,
+				};
 
-		ProjectExportOptions options{
-			.ParentDirectory = parentDirectory,
-			.SourceDirectory = FS::GetRootDirectory().parent_path().parent_path().parent_path(),
-			.ExportDebug = m_ExportDebug,
-			.ExportRelease = m_ExportRelease,
-		};
+				options.ProgressCallback = [this](const float progress, const std::string_view phase)
+				{
+					const std::scoped_lock lock(m_ExportProgressMutex);
+					m_ExportProgress = progress;
+					m_ExportPhase = phase;
+				};
 
-		options.ProgressCallback = [this](const float progress, const std::string_view phase)
-		{
-			const std::scoped_lock lock(m_ExportProgressMutex);
-			m_ExportProgress = progress;
-			m_ExportPhase = phase;
-		};
-
-		{
-			const std::scoped_lock lock(m_ExportProgressMutex);
-			m_ExportProgress = 0.0f;
-			m_ExportPhase = "Starting export";
-		}
-
-		m_ExportInProgress = true;
-		try
-		{
-			m_ExportFuture = std::async(std::launch::async, [project, options = std::move(options)]() mutable -> ProjectExportResult
-			    {
-					return ProjectExporter(project).Export(options);
+				{
+					const std::scoped_lock lock(m_ExportProgressMutex);
+					m_ExportProgress = 0.0f;
+					m_ExportPhase = "Starting export";
 				}
-			);
-			m_ExportProgressPopup = true;
-		}
-		catch (const std::exception& exception)
-		{
-			m_ExportInProgress = false;
-			m_ExportResult = {};
-			m_ExportResult.Errors.emplace_back(std::format("Failed to start export: {}", exception.what()));
-			m_ExportResultPopup = true;
-		}
+
+				m_ExportInProgress = true;
+				try
+				{
+					m_ExportFuture = std::async(std::launch::async, [project, options = std::move(options)]() mutable -> ProjectExportResult
+					    {
+							return ProjectExporter(project).Export(options);
+						}
+					);
+					m_ExportProgressPopup = true;
+				}
+				catch (const std::exception& exception)
+				{
+					m_ExportInProgress = false;
+					m_ExportResult = {};
+					m_ExportResult.Errors.emplace_back(std::format("Failed to start export: {}", exception.what()));
+					m_ExportResultPopup = true;
+				}
+			}
+		);
 	}
 
 	auto EditorLayer::NewScene() -> void
@@ -697,18 +700,14 @@ namespace Eppo
 		m_PanelManager->SetSceneContext(m_ActiveScene);
 	}
 
-	auto EditorLayer::OpenScene() -> bool
+	auto EditorLayer::OpenScene() -> void
 	{
 	    EP_PROFILE_FN("EditorLayer::OpenScene");
 
-		const auto path = FileDialog::OpenFile({
-			{ "EppoEngine Scene", "epscene" }
-		}, Project::GetAssetsDirectory());
-
-		if (path.empty())
-			return false;
-
-		return OpenScene(path);
+		FileDialog::OpenFile(
+			"OpenScene", "Open Scene", FileDialog::BuildFilter("EppoEngine Scene", { "epscene" }),
+			Project::GetAssetsDirectory(), [this](const std::filesystem::path& path) { OpenScene(path); }
+		);
 	}
 
 	auto EditorLayer::OpenScene(const std::filesystem::path& path) -> bool
@@ -752,43 +751,39 @@ namespace Eppo
 		m_PanelManager->SetSceneContext(m_ActiveScene);
 	}
 
-	auto EditorLayer::SaveScene() -> bool
+	auto EditorLayer::SaveScene() -> void
 	{
 	    EP_PROFILE_FN("EditorLayer::SaveScene");
 
-		bool saved = false;
-
+		// An unsaved scene has no path yet; route through the async Save-As dialog, which
+		// sets the path and calls back into here once the user confirms.
 		if (m_ActiveScenePath.empty())
-			saved = SaveSceneAs();
-		else
 		{
-			const SceneSerializer serializer(m_ActiveScene);
-			saved = serializer.Serialize(m_ActiveScenePath);
+			SaveSceneAs();
+			return;
 		}
+
+		const SceneSerializer serializer(m_ActiveScene);
+		serializer.Serialize(m_ActiveScenePath);
 
 		const auto& assetManager = Project::GetActive()->GetAssetManager();
 		if (assetManager && !assetManager->HasAssetData(m_ActiveScene->Handle))
 			assetManager->CreateAsset(m_ActiveScenePath, m_ActiveScene);
-
-		return saved;
 	}
 
-	auto EditorLayer::SaveSceneAs() -> bool
+	auto EditorLayer::SaveSceneAs() -> void
 	{
 	    EP_PROFILE_FN("EditorLayer::SaveSceneAs");
 
-		const auto path = FileDialog::SaveFile({
-			{ "EppoEngine Scene", "epscene" }
-		}, Project::GetAssetsDirectory());
-
-		if (path.empty())
-			return false;
-
-		m_ActiveScenePath = path;
-		const SceneSerializer serializer(m_ActiveScene);
-		serializer.Serialize(m_ActiveScenePath);
-
-		return true;
+		FileDialog::SaveFile(
+			"SaveSceneAs", "Save Scene As", FileDialog::BuildFilter("EppoEngine Scene", { "epscene" }),
+			Project::GetAssetsDirectory(),
+			[this](const std::filesystem::path& path)
+			{
+				m_ActiveScenePath = path;
+				SaveScene();
+			}
+		);
 	}
 
     auto EditorLayer::UpdateImGuizmo() -> void

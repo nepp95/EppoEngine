@@ -7,8 +7,6 @@
 #include "Renderer/Image.h"
 
 #include <GLFW/glfw3.h>
-#include <nfd.hpp>
-#include <nfd_glfw3.h>
 
 namespace Eppo
 {
@@ -63,20 +61,6 @@ namespace Eppo
         {
             glfwTerminate();
             EP_ASSERT(false, "GLFW failed to create the application window.");
-        }
-
-        // Init file dialogs
-        if (m_Specification.EnableFileDialogs)
-        {
-            success = NFD::Init();
-            if (success != NFD_OKAY)
-            {
-                glfwDestroyWindow(m_Window);
-                m_Window = nullptr;
-                glfwTerminate();
-                EP_ASSERT(false, "Native file dialogs failed to initialize.");
-            }
-            m_FileDialogsInitialized = true;
         }
 
         // Set event callbacks
@@ -194,8 +178,6 @@ namespace Eppo
 
     auto Window::Shutdown() -> void
     {
-        if (m_FileDialogsInitialized)
-            NFD::Quit();
         glfwDestroyWindow(m_Window);
         glfwTerminate();
     }

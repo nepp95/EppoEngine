@@ -48,7 +48,6 @@ namespace Eppo
                 #else
                 true,
                 #endif
-            .EnableFileDialogs = false,
             // Moved out: the renderer owns the shader text from here, and the layer has no use for it.
             .PackedShaders = std::move(gameData.PackedShaders),
             .PackedShaderIncludes = std::move(gameData.PackedShaderIncludes),
