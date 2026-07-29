@@ -1,5 +1,5 @@
 {
-  "builtin-baseline": "89dd0f4d241136b843fb55813b2f0fa6448c204d",
+  "builtin-baseline": "8779f47d2db0785ee034b47fdfdcdb0e88b7010e",
   "dependencies": [
     {
       "name": "box3d",
@@ -61,7 +61,7 @@
     },
     {
       "name": "imguizmo",
-      "version>=": "2024-05-29"
+      "version>=": "1.10"
     }
   ]
 }
