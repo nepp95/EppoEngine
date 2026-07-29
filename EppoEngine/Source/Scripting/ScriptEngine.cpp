@@ -291,7 +291,8 @@ namespace Eppo
             const auto& fields = GetClasses()[classIndex].GetFields();
             for (int32_t i = 0; i < static_cast<int32_t>(fields.size()); i++)
             {
-                if (const auto valueIt = storageIt->second.find(fields[i].Name); valueIt != storageIt->second.end())
+                if (const auto valueIt = storageIt->second.find(fields[i].Name);
+                    valueIt != storageIt->second.end() && valueIt->second.Type == fields[i].Type)
                     instance.SetFieldValue(i, valueIt->second.Buffer.data());
             }
         }
@@ -358,6 +359,27 @@ namespace Eppo
         if (m_FieldStorage.contains(entityId))
             return &m_FieldStorage.at(entityId);
         return nullptr;
+    }
+
+    auto ScriptEngine::GetFieldValueOrDefault(
+        const UUID& entityId, const int32_t classIndex, const int32_t fieldIndex
+    ) const -> ScriptFieldValue
+    {
+        if (!m_CoreAssembly || classIndex < 0 || classIndex >= static_cast<int32_t>(GetClasses().size()))
+            return {};
+
+        const auto& fields = GetClasses()[classIndex].GetFields();
+        if (fieldIndex < 0 || fieldIndex >= static_cast<int32_t>(fields.size()))
+            return {};
+
+        const auto& field = fields[fieldIndex];
+        if (const auto fieldMap = TryGetFieldMap(entityId); fieldMap)
+        {
+            if (const auto stored = fieldMap->find(field.Name); stored != fieldMap->end() && stored->second.Type == field.Type)
+                return stored->second;
+        }
+
+        return m_CoreAssembly->GetFieldDefaultValue(classIndex, fieldIndex);
     }
 
     auto ScriptEngine::CopyFieldMap(const UUID& from, const UUID& to) -> void

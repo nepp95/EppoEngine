@@ -297,13 +297,13 @@ namespace Eppo
 
 			// The side table owns the editor-time field values (keyed by UUID).
 			const auto uuid = entity.GetUUID();
-			auto& fieldMap = scriptEngine.GetFieldMap(uuid);
 
 			// While a script is running, its engine-owned instance is the source
 			// of truth, so we show and edit that value directly. Editing it does
 			// not touch the serialized side table, so stopping play restores the
 			// editor-time values. A null handle means edit mode (or a script that
-			// failed to instantiate) — fall back to the side table.
+			// failed to instantiate) — fall back to a stored override or the
+			// declared initializer.
 			ScriptInstance* instance = scriptEngine.GetEntityInstance(uuid);
 
 			if (ImGui::BeginTable("##ScriptFields", 2))
@@ -314,13 +314,6 @@ namespace Eppo
 					if (field.Type == ScriptFieldType::None)
 						continue;
 
-					auto& stored = fieldMap[field.Name];
-					if (stored.Type != field.Type)
-					{
-						stored = ScriptFieldValue{};
-						stored.Type = field.Type;
-					}
-
 					ImGui::TableNextRow();
 					ImGui::PushID(field.Name.c_str());
 
@@ -328,14 +321,16 @@ namespace Eppo
 					{
 						// Seed the widget from the running instance's current value
 						// (the script may have changed it), then push edits back.
-						ScriptFieldValue liveValue = stored;
+						ScriptFieldValue liveValue{ .Type = field.Type };
 						instance->GetFieldValue(i, liveValue.Buffer.data());
 						if (Utils::DrawScriptField(field, liveValue))
 							instance->SetFieldValue(i, liveValue.Buffer.data());
 					}
 					else
 					{
-						Utils::DrawScriptField(field, stored);
+						ScriptFieldValue displayedValue = scriptEngine.GetFieldValueOrDefault(uuid, classIndex, i);
+						if (Utils::DrawScriptField(field, displayedValue))
+							scriptEngine.GetFieldMap(uuid)[field.Name] = displayedValue;
 					}
 
 					ImGui::PopID();

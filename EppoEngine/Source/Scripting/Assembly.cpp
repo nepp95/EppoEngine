@@ -125,6 +125,22 @@ namespace Eppo
             m_ManagedFns->GetFieldValue(entityId, fieldIndex, data);
     }
 
+    auto Assembly::GetFieldDefaultValue(const int32_t classIndex, const int32_t fieldIndex) const -> ScriptFieldValue
+    {
+        ScriptFieldValue value;
+        if (!m_ManagedFns || classIndex < 0 || classIndex >= static_cast<int32_t>(m_Classes.size()))
+            return value;
+
+        const auto& fields = m_Classes[classIndex].GetFields();
+        if (fieldIndex < 0 || fieldIndex >= static_cast<int32_t>(fields.size()))
+            return value;
+
+        value.Type = fields[fieldIndex].Type;
+        if (value.Type != ScriptFieldType::None)
+            m_ManagedFns->GetClassFieldDefaultValue(classIndex, fieldIndex, value.Buffer.data());
+        return value;
+    }
+
     auto Assembly::ResolveManagedFunctions() -> bool
     {
         m_ManagedFns = CreateScopedPtr<ManagedFunctions>();
@@ -147,6 +163,8 @@ namespace Eppo
         m_ManagedFns->GetClassFieldCount = reinterpret_cast<GetClassFieldCountFn>(ResolveFn(EP_NATIVE_STR("GetClassFieldCount")));
         m_ManagedFns->GetClassFieldName = reinterpret_cast<GetClassFieldNameFn>(ResolveFn(EP_NATIVE_STR("GetClassFieldName")));
         m_ManagedFns->GetClassFieldType = reinterpret_cast<GetClassFieldTypeFn>(ResolveFn(EP_NATIVE_STR("GetClassFieldType")));
+        m_ManagedFns->GetClassFieldDefaultValue =
+            reinterpret_cast<GetClassFieldDefaultValueFn>(ResolveFn(EP_NATIVE_STR("GetClassFieldDefaultValue")));
         m_ManagedFns->GetClassMethodCount = reinterpret_cast<GetClassMethodCountFn>(ResolveFn(EP_NATIVE_STR("GetClassMethodCount")));
         m_ManagedFns->GetClassMethodName = reinterpret_cast<GetClassMethodNameFn>(ResolveFn(EP_NATIVE_STR("GetClassMethodName")));
         m_ManagedFns->LoadUserAssembly = reinterpret_cast<LoadUserAssemblyFn>(ResolveFn(EP_NATIVE_STR("LoadUserAssembly")));
