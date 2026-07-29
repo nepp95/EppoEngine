@@ -24,7 +24,6 @@ namespace Eppo
             .Height = m_Params.Height,
             .Fullscreen = m_Params.Fullscreen,
             .Decorated = m_Params.Decorated,
-            .EnableFileDialogs = m_Params.EnableFileDialogs,
         });
 
         m_Window->SetEventCallback(

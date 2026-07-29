@@ -102,6 +102,7 @@ function(AddTestingSuite name label)
 endfunction()
 
 AddTestingSuite(Core core)
+AddTestingSuite(FileDialogFilter unit)
 AddTestingSuite(Physics core)
 AddTestingSuite(Project unit)
 AddTestingSuite(Scene core)

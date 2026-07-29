@@ -39,7 +39,6 @@ namespace Eppo
         bool Fullscreen = false;
         bool Decorated = true;
         bool EnableImGui = true;
-        bool EnableFileDialogs = true;
 
         // Supplied by a deployed runtime from its game package. Empty in the editor and tests, which
         // compile the engine shaders from Resources/Shaders instead.
