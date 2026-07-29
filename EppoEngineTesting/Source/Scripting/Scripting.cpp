@@ -45,7 +45,10 @@ SUITE(Scripting)
                         return false;
                     return ScriptEngine::Get().IsValidScriptClass(kUserClass);
                 }
-                catch (...) { return false; }
+                catch (...)
+                {
+                    return false;
+                }
             }();
             return ready;
         }
@@ -53,8 +56,13 @@ SUITE(Scripting)
         auto FindClass(const std::string& fullName) -> const ScriptClass*
         {
             const auto& classes = ScriptEngine::Get().GetClasses();
-            const auto it = std::ranges::find_if(classes,
-                [&](const ScriptClass& c) { return c.GetFullName() == fullName; });
+            const auto it = std::ranges::find_if(
+                classes,
+                [&](const ScriptClass& c)
+                {
+                    return c.GetFullName() == fullName;
+                }
+            );
             return it == classes.end() ? nullptr : &*it;
         }
 
@@ -103,7 +111,12 @@ SUITE(Scripting)
         auto HasEntityNamed(const Ref<Scene>& scene, const std::string& name) -> bool
         {
             bool found = false;
-            scene->ForEachEntity([&](Entity e) { found = found || e.GetName() == name; });
+            scene->ForEachEntity(
+                [&](Entity e)
+                {
+                    found = found || e.GetName() == name;
+                }
+            );
             return found;
         }
     }
@@ -141,7 +154,13 @@ SUITE(Scripting)
         REQUIRE CHECK(c != nullptr);
 
         const auto& fields = c->GetFields();
-        const auto speed = std::ranges::find_if(fields, [](const ScriptField& f) { return f.Name == "Speed"; });
+        const auto speed = std::ranges::find_if(
+            fields,
+            [](const ScriptField& f)
+            {
+                return f.Name == "Speed";
+            }
+        );
         REQUIRE CHECK(speed != fields.end());
         CHECK(speed->Type == ScriptFieldType::Float);
     }
@@ -197,7 +216,7 @@ SUITE(Scripting)
         CHECK(engine.GetEntityInstance(entity.GetUUID()) == nullptr);
 
         engine.OnUpdateEntity(entity, 0.016f); // no live instance: safe no-op
-        engine.OnDestroyEntity(entity);        // no live instance: safe no-op
+        engine.OnDestroyEntity(entity); // no live instance: safe no-op
         CHECK(true);
     }
 
@@ -606,7 +625,9 @@ SUITE(Scripting)
 
         // Mirrors the new-project template: default compile items, core resolved
         // through the CoreManagedDll property the engine passes.
-        REQUIRE CHECK(FS::WriteText(scriptsDirectory / "ScriptProbe.csproj", R"(<Project Sdk="Microsoft.NET.Sdk">
+        REQUIRE CHECK(
+            FS::WriteText(
+                scriptsDirectory / "ScriptProbe.csproj", R"(<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -618,9 +639,14 @@ SUITE(Scripting)
     </Reference>
   </ItemGroup>
 </Project>
-)", true));
+)",
+                true
+            )
+        );
 
-        REQUIRE CHECK(FS::WriteText(scriptsDirectory / "Source" / "ProbeScript.cs", R"(using EppoScriptCore.Scene;
+        REQUIRE CHECK(
+            FS::WriteText(
+                scriptsDirectory / "Source" / "ProbeScript.cs", R"(using EppoScriptCore.Scene;
 
 namespace EppoTesting
 {
@@ -628,12 +654,17 @@ namespace EppoTesting
     {
     }
 }
-)", true));
+)",
+                true
+            )
+        );
 
-        Project::New(ProjectSpecification{
-            .Name = "ScriptProbe",
-            .ProjectDirectory = projectDirectory.Path(),
-        });
+        Project::New(
+            ProjectSpecification{
+                .Name = "ScriptProbe",
+                .ProjectDirectory = projectDirectory.Path(),
+            }
+        );
 
         const bool reloaded = ScriptEngine::Get().ReloadProjectAssembly();
         const bool discovered = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript");
@@ -663,21 +694,25 @@ namespace EppoTesting
         scene->OnRuntimeStart();
 
         size_t spawnedFromCreate = 0;
-        scene->ForEachEntity([&](Entity e)
-        {
-            if (e.GetName().starts_with("SpawnedFromCreate"))
-                spawnedFromCreate++;
-        });
+        scene->ForEachEntity(
+            [&](Entity e)
+            {
+                if (e.GetName().starts_with("SpawnedFromCreate"))
+                    spawnedFromCreate++;
+            }
+        );
         CHECK_EQUAL(size_t(8), spawnedFromCreate);
 
         scene->OnRuntimeStop();
 
         size_t spawnedFromDestroy = 0;
-        scene->ForEachEntity([&](Entity e)
-        {
-            if (e.GetName().starts_with("SpawnedFromDestroy"))
-                spawnedFromDestroy++;
-        });
+        scene->ForEachEntity(
+            [&](Entity e)
+            {
+                if (e.GetName().starts_with("SpawnedFromDestroy"))
+                    spawnedFromDestroy++;
+            }
+        );
         CHECK_EQUAL(size_t(8), spawnedFromDestroy);
     }
 
@@ -820,8 +855,7 @@ namespace EppoTesting
         Entity spawned = scene->GetEntityByUUID(Eppo::UUID(spawnedId));
         REQUIRE CHECK(static_cast<bool>(spawned));
         REQUIRE CHECK(spawned.HasComponent<MeshComponent>());
-        CHECK(spawned.GetComponent<MeshComponent>().MeshHandle
-            == AssetHandle(static_cast<uint64_t>(MeshPrimitiveType::Sphere)));
+        CHECK(spawned.GetComponent<MeshComponent>().MeshHandle == AssetHandle(static_cast<uint64_t>(MeshPrimitiveType::Sphere)));
 
         engine.OnDestroyEntity(entity);
     }
@@ -1814,10 +1848,10 @@ namespace EppoTesting
         REQUIRE CHECK(c != nullptr);
 
         const std::pair<const char*, bool> getters[] = {
-            { "RigidBodyComponent_GetLockLinearX", false },
-            { "RigidBodyComponent_GetLockLinearY", false },
-            { "RigidBodyComponent_GetLockLinearZ", true },
-            { "RigidBodyComponent_GetLockAngularX", true },
+            { "RigidBodyComponent_GetLockLinearX",  false },
+            { "RigidBodyComponent_GetLockLinearY",  false },
+            { "RigidBodyComponent_GetLockLinearZ",  true  },
+            { "RigidBodyComponent_GetLockAngularX", true  },
             { "RigidBodyComponent_GetLockAngularY", false },
             { "RigidBodyComponent_GetLockAngularZ", false },
         };
@@ -1831,12 +1865,8 @@ namespace EppoTesting
         }
 
         const char* setters[] = {
-            "RigidBodyComponent_SetLockLinearX",
-            "RigidBodyComponent_SetLockLinearY",
-            "RigidBodyComponent_SetLockLinearZ",
-            "RigidBodyComponent_SetLockAngularX",
-            "RigidBodyComponent_SetLockAngularY",
-            "RigidBodyComponent_SetLockAngularZ",
+            "RigidBodyComponent_SetLockLinearX",  "RigidBodyComponent_SetLockLinearY",  "RigidBodyComponent_SetLockLinearZ",
+            "RigidBodyComponent_SetLockAngularX", "RigidBodyComponent_SetLockAngularY", "RigidBodyComponent_SetLockAngularZ",
         };
         for (const char* name : setters)
         {
@@ -2086,9 +2116,9 @@ namespace EppoTesting
 
         scene->OnUpdateRuntime(0.016f); // self-destruct queued mid-loop, drained after
 
-        CHECK(!static_cast<bool>(scene->GetEntityByUUID(selfId)));    // self-destructed
+        CHECK(!static_cast<bool>(scene->GetEntityByUUID(selfId))); // self-destructed
         CHECK(static_cast<bool>(scene->GetEntityByUUID(survivorId))); // survivor intact
-        CHECK(engine.GetEntityInstance(selfId) == nullptr);           // instance torn down
+        CHECK(engine.GetEntityInstance(selfId) == nullptr); // instance torn down
 
         engine.OnDestroyEntity(survivor);
     }

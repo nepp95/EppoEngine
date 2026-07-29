@@ -18,12 +18,14 @@ SUITE(App)
             auto OnEvent(Event& event) -> void override
             {
                 EventDispatcher dispatcher(event);
-                dispatcher.Dispatch<WindowResizeEvent>([this](const WindowResizeEvent& resizeEvent)
-                {
-                    ResizeWidth = resizeEvent.GetWidth();
-                    ResizeHeight = resizeEvent.GetHeight();
-                    return false;
-                });
+                dispatcher.Dispatch<WindowResizeEvent>(
+                    [this](const WindowResizeEvent& resizeEvent)
+                    {
+                        ResizeWidth = resizeEvent.GetWidth();
+                        ResizeHeight = resizeEvent.GetHeight();
+                        return false;
+                    }
+                );
             }
 
             bool UpdateCalled = false;

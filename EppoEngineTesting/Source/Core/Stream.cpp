@@ -37,8 +37,7 @@ SUITE(Core)
         };
 
         struct Unserializable
-        {
-        };
+        {};
 
         static_assert(Eppo::StreamSerializable<Marker>);
         static_assert(!Eppo::StreamSerializable<Unserializable>);
@@ -59,28 +58,22 @@ SUITE(Core)
                 .Magic = 0x12345678,
                 .Text = "payload",
                 .Counts = { { 1, 100 }, { 2, 200 } },
-                .Mark = Marker{ 7, "marker" },
+                .Mark = Marker{ 7,          "marker"   },
             };
         }
 
         auto WritePayload(StreamWriter& writer, const Payload& payload) -> bool
         {
-            return writer.WriteRaw(payload.Magic)
-                && writer.WriteString(payload.Text)
-                && writer.WriteZero(4)
-                && writer.WriteMap(payload.Counts)
-                && writer.WriteObject(payload.Mark);
+            return writer.WriteRaw(payload.Magic) && writer.WriteString(payload.Text) && writer.WriteZero(4) &&
+                writer.WriteMap(payload.Counts) && writer.WriteObject(payload.Mark);
         }
 
         auto ReadPayload(StreamReader& reader, Payload& payload) -> bool
         {
             std::array<char, 4> padding{};
 
-            return reader.ReadRaw(payload.Magic)
-                && reader.ReadString(payload.Text)
-                && reader.ReadData(padding.data(), padding.size())
-                && reader.ReadMap(payload.Counts)
-                && reader.ReadObject(payload.Mark);
+            return reader.ReadRaw(payload.Magic) && reader.ReadString(payload.Text) && reader.ReadData(padding.data(), padding.size()) &&
+                reader.ReadMap(payload.Counts) && reader.ReadObject(payload.Mark);
         }
 
         auto CheckPayloadEqual(const Payload& expected, const Payload& actual) -> void

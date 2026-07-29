@@ -17,31 +17,31 @@ using namespace Eppo;
 
 SUITE(Renderer)
 {
-	namespace
-	{
-		auto MakeGeometryPipeline() -> Ref<Pipeline>
-		{
-			const auto& renderer = DeviceManager::Get()->GetRenderer();
+    namespace
+    {
+        auto MakeGeometryPipeline() -> Ref<Pipeline>
+        {
+            const auto& renderer = DeviceManager::Get()->GetRenderer();
 
-			const FramebufferSpecification framebufferSpec{
-				.Width = 256,
-				.Height = 256,
-				.Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
-				.DebugName = "Framebuffer RenderPassTest",
-			};
+            const FramebufferSpecification framebufferSpec{
+                .Width = 256,
+                .Height = 256,
+                .Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
+                .DebugName = "Framebuffer RenderPassTest",
+            };
 
-			const PipelineSpecification pipelineSpec{
-				.Shader = renderer->GetShader("geometry"),
-				.Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-				.Width = 256,
-				.Height = 256,
-				.CullMode = nvrhi::RasterCullMode::Front,
-				.DepthTestEnable = true,
-				.DepthWriteEnable = true,
-			};
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("geometry"),
+                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
+                .Width = 256,
+                .Height = 256,
+                .CullMode = nvrhi::RasterCullMode::Front,
+                .DepthTestEnable = true,
+                .DepthWriteEnable = true,
+            };
 
-			return CreateRef<Pipeline>(pipelineSpec);
-		}
+            return CreateRef<Pipeline>(pipelineSpec);
+        }
 
         auto MakeCompositePipeline() -> Ref<Pipeline>
         {
@@ -117,10 +117,7 @@ float4 Main() : SV_Target
         }
 
         auto SetGeometryInputs(
-            RenderPass& pass,
-            const Ref<UniformBuffer>& camera,
-            const Ref<UniformBuffer>& lights,
-            const Ref<UniformBuffer>& environment,
+            RenderPass& pass, const Ref<UniformBuffer>& camera, const Ref<UniformBuffer>& lights, const Ref<UniformBuffer>& environment,
             const Ref<StorageBuffer>& instances
         ) -> void
         {
@@ -130,9 +127,8 @@ float4 Main() : SV_Target
             pass.SetInput(0, 0, instances);
         }
 
-        [[nodiscard]] auto FindBinding(
-            const nvrhi::BindingSetDesc& desc, const uint32_t slot, const nvrhi::ResourceType type
-        ) -> const nvrhi::BindingSetItem*
+        [[nodiscard]] auto FindBinding(const nvrhi::BindingSetDesc& desc, const uint32_t slot, const nvrhi::ResourceType type)
+            -> const nvrhi::BindingSetItem*
         {
             const auto it = std::ranges::find_if(
                 desc.bindings,
@@ -153,30 +149,32 @@ float4 Main() : SV_Target
                 .DebugName = "Image RenderPassTest",
             });
         }
-	}
+    }
 
-	TEST(RenderPass_ConstructionStoresSpecification)
-	{
-		const RenderPass pass(RenderPassSpecification{
-			.Name = "TestPass",
-		    .Pipeline = MakeGeometryPipeline(),
-			.ClearColorOnLoad = true,
-			.ClearDepthOnLoad = false,
-		});
+    TEST(RenderPass_ConstructionStoresSpecification)
+    {
+        const RenderPass pass(
+            RenderPassSpecification{
+                .Name = "TestPass",
+                .Pipeline = MakeGeometryPipeline(),
+                .ClearColorOnLoad = true,
+                .ClearDepthOnLoad = false,
+            }
+        );
 
-		CHECK_EQUAL(std::string("TestPass"), pass.GetName());
-	    CHECK(pass.GetSpecification().Pipeline);
-		CHECK(pass.GetSpecification().ClearColorOnLoad);
-		CHECK(!pass.GetSpecification().ClearDepthOnLoad);
-	}
+        CHECK_EQUAL(std::string("TestPass"), pass.GetName());
+        CHECK(pass.GetSpecification().Pipeline);
+        CHECK(pass.GetSpecification().ClearColorOnLoad);
+        CHECK(!pass.GetSpecification().ClearDepthOnLoad);
+    }
 
-	TEST(RenderPass_DefaultConstructionHasNoPipelineOrBindingSets)
-	{
-		const RenderPass pass;
+    TEST(RenderPass_DefaultConstructionHasNoPipelineOrBindingSets)
+    {
+        const RenderPass pass;
 
-		CHECK(!pass.GetPipeline());
-		CHECK(pass.GetBindingSets().empty());
-	}
+        CHECK(!pass.GetPipeline());
+        CHECK(pass.GetBindingSets().empty());
+    }
 
     TEST(RenderPass_StatisticsAreOwnedAndMutable)
     {
@@ -189,31 +187,31 @@ float4 Main() : SV_Target
         CHECK_EQUAL(7u, constPass.GetStatistics().Instances);
     }
 
-	TEST(RenderPass_BakeMergesBoundAndBindlessSetsWithoutGaps)
-	{
-		if (!Testing::AppHarness::IsAvailable())
-			return;
+    TEST(RenderPass_BakeMergesBoundAndBindlessSetsWithoutGaps)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
 
-		const auto pipeline = MakeGeometryPipeline();
-		const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-		const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
-		const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
-		const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
+        const auto pipeline = MakeGeometryPipeline();
+        const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
+        const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
+        const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
+        const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
-		RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
+        RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
         SetGeometryInputs(pass, camera, lights, environment, instances);
-		pass.Bake();
+        pass.Bake();
 
-		const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
-		const auto& bindingSets = pass.GetBindingSets();
+        const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+        const auto& bindingSets = pass.GetBindingSets();
 
-		CHECK_EQUAL(3u, static_cast<uint32_t>(bindingSets.size()));
-		CHECK(bindingSets[0] != nullptr);
-		CHECK(bindingSets[0]->getDesc() != nullptr);
-		CHECK_EQUAL(1ul, bindingSets[0]->GetRefCount());
-		CHECK(bindingSets[1] == descriptorManager->GetResourceDT().Get());
-		CHECK(bindingSets[2] == descriptorManager->GetSamplerDT().Get());
-	}
+        CHECK_EQUAL(3u, static_cast<uint32_t>(bindingSets.size()));
+        CHECK(bindingSets[0] != nullptr);
+        CHECK(bindingSets[0]->getDesc() != nullptr);
+        CHECK_EQUAL(1ul, bindingSets[0]->GetRefCount());
+        CHECK(bindingSets[1] == descriptorManager->GetResourceDT().Get());
+        CHECK(bindingSets[2] == descriptorManager->GetSamplerDT().Get());
+    }
 
     TEST(RenderPass_BakeDerivesPushConstantsFromShaderReflection)
     {
