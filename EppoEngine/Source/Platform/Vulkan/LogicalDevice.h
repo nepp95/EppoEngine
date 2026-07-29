@@ -7,7 +7,7 @@ namespace Eppo
     class LogicalDevice
     {
     public:
-        LogicalDevice(const ScopedPtr<PhysicalDevice>& physicalDevice);
+        explicit LogicalDevice(const ScopedPtr<PhysicalDevice>& physicalDevice);
         ~LogicalDevice();
 
         [[nodiscard]] constexpr auto GetNative() const -> VkDevice { return m_Device; }

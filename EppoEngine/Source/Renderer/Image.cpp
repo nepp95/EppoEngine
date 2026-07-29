@@ -2,6 +2,8 @@
 #include "Renderer/Image.h"
 
 #include "Renderer/DeviceManager.h"
+#include "Renderer/DescriptorManager.h"
+#include "Renderer/Renderer.h"
 
 #include <stb_image.h>
 
@@ -18,7 +20,10 @@ namespace Eppo
         const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
+            .arraySize = spec.IsCubemap ? 6u : 1u,
+            .mipLevels = spec.MipLevels,
             .format = spec.ImageFormat,
+            .dimension = spec.IsCubemap ? nvrhi::TextureDimension::TextureCube : nvrhi::TextureDimension::Texture2D,
             .debugName = spec.DebugName,
             .isRenderTarget = spec.IsRenderTarget,
             .initialState = spec.InitialState,
@@ -55,23 +60,35 @@ namespace Eppo
         m_Stride = GetStride(m_Texture->getDesc().format);
     }
 
-    Image::Image(const ImageSpecification& spec, ImageSource source, const nvrhi::CommandListHandle& cmdList)
+    Image::Image(const ImageSpecification& spec, const ImageSource& source, const nvrhi::CommandListHandle& cmdList)
         : m_Specification(spec), m_Width(spec.Width), m_Height(spec.Height)
     {
         EP_PROFILE_FN("Image::Image")
 
+        EP_ASSERT(!spec.IsCubemap);
+
         const auto device = DeviceManager::Get()->GetDevice();
         const auto cmd = cmdList ? cmdList : device->createCommandList();
-        auto* imageData = DecodeImageData(source);
+
+        uint32_t channels = 0;
+        bool isHdr = false;
+        auto* imageData = DecodeImageData(source, channels, isHdr);
+
+        // Decoding is the authority on size and (for an unspecified format) format: .hdr -> float,
+        // else sRGB. Fold both back into the spec so it stays the single source for the texture desc.
+        m_Specification.Width = m_Width;
+        m_Specification.Height = m_Height;
+        if (m_Specification.ImageFormat == nvrhi::Format::UNKNOWN)
+            m_Specification.ImageFormat = SelectFormat(channels, isHdr);
 
         const nvrhi::TextureDesc textureDesc{
-            .width = m_Width,
-            .height = m_Height,
-            .format = spec.ImageFormat,
-            .debugName = spec.DebugName,
-            .isRenderTarget = spec.IsRenderTarget,
-            .initialState = spec.InitialState,
-            .keepInitialState = spec.AutomaticStateTracking,
+            .width = m_Specification.Width,
+            .height = m_Specification.Height,
+            .format = m_Specification.ImageFormat,
+            .debugName = m_Specification.DebugName,
+            .isRenderTarget = m_Specification.IsRenderTarget,
+            .initialState = m_Specification.InitialState,
+            .keepInitialState = m_Specification.AutomaticStateTracking,
         };
 
         m_Texture = device->createTexture(textureDesc);
@@ -91,8 +108,8 @@ namespace Eppo
             device->executeCommandList(cmd);
         }
 
-        if (std::get_if<std::filesystem::path>(&source))
-            stbi_image_free(imageData);
+        // Both the path and in-memory decode paths allocate through stb, so free either.
+        stbi_image_free(imageData);
     }
 
     auto Image::SetData(const void* data, uint64_t size, const nvrhi::CommandListHandle& cmdList) -> void
@@ -136,13 +153,24 @@ namespace Eppo
         return buffer;
     }
 
+    auto Image::GetBindlessIndex() -> uint32_t
+    {
+        if (!m_BindlessHandle)
+        {
+            const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+            m_BindlessHandle = CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this()));
+        }
+
+        return m_BindlessHandle->Index;
+    }
+
     auto Image::IsDepthImage() const -> bool
     {
         return m_Specification.ImageFormat == nvrhi::Format::D16 || m_Specification.ImageFormat == nvrhi::Format::D24S8 ||
             m_Specification.ImageFormat == nvrhi::Format::D32 || m_Specification.ImageFormat == nvrhi::Format::D32S8;
     }
 
-    auto Image::DecodeImageData(const ImageSource& source) -> void*
+    auto Image::DecodeImageData(const ImageSource& source, uint32_t& outChannels, bool& outIsHdr) -> void*
     {
         const auto* path = std::get_if<std::filesystem::path>(&source);
         const auto* buffer = std::get_if<Buffer>(&source);
@@ -178,25 +206,18 @@ namespace Eppo
         }
         else
         {
-            if (channels == 3 || channels == 4)
-            {
-                if (buffer)
-                    decodedData =
-                        stbi_load_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, STBI_rgb_alpha);
-                else if (path)
-                    decodedData = stbi_load(path->string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
-                channels = 4;
-            }
-            else
-            {
-                if (buffer)
-                    decodedData = stbi_load_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, 0);
-                else if (path)
-                    decodedData = stbi_load(path->string().c_str(), &width, &height, &channels, 0);
-            }
+            if (buffer)
+                decodedData =
+                    stbi_load_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, STBI_rgb_alpha);
+            else if (path)
+                decodedData = stbi_load(path->string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+            channels = 4;
         }
 
         EP_ASSERT(decodedData);
+
+        outChannels = static_cast<uint32_t>(channels);
+        outIsHdr = isHdr;
         return decodedData;
     }
 

@@ -12,7 +12,9 @@ namespace Eppo
         const auto device = dm->GetDevice();
 
         nvrhi::SamplerDesc samplerDesc{};
-        samplerDesc.setAllAddressModes(specification.AddressMode);
+        samplerDesc.addressU = specification.AddressModeU;
+        samplerDesc.addressV = specification.AddressModeV;
+        samplerDesc.addressW = specification.AddressModeW;
         samplerDesc.setAllFilters(specification.AllFilters);
         m_Sampler = device->createSampler(samplerDesc);
     }

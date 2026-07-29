@@ -2,9 +2,17 @@
 
 #include "Core/Buffer/Buffer.h"
 
+#include <type_traits>
+
 SUITE(Core)
 {
     using Eppo::Buffer;
+    using Eppo::ScopedBuffer;
+
+    static_assert(!std::is_copy_constructible_v<ScopedBuffer>);
+    static_assert(!std::is_copy_assignable_v<ScopedBuffer>);
+    static_assert(std::is_nothrow_move_constructible_v<ScopedBuffer>);
+    static_assert(std::is_nothrow_move_assignable_v<ScopedBuffer>);
 
     TEST(Buffer_NullConstruct)
     {
@@ -110,5 +118,31 @@ SUITE(Core)
         CHECK_EQUAL(value, *casted);
 
         buffer.Release();
+    }
+
+    TEST(ScopedBuffer_MoveTransfersOwnership)
+    {
+        ScopedBuffer source(256);
+        auto* data = source.Data();
+
+        ScopedBuffer destination(std::move(source));
+
+        CHECK(!source.Data());
+        CHECK_EQUAL(0, source.Size());
+        CHECK(destination.Data() == data);
+        CHECK_EQUAL(256, destination.Size());
+    }
+
+    TEST(ScopedBuffer_AdoptBufferClearsSource)
+    {
+        Buffer source(256);
+        auto* data = source.Data;
+
+        ScopedBuffer destination(std::move(source));
+
+        CHECK(!source.Data);
+        CHECK_EQUAL(0, source.Size);
+        CHECK(destination.Data() == data);
+        CHECK_EQUAL(256, destination.Size());
     }
 }

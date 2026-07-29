@@ -45,15 +45,9 @@ namespace Eppo
         auto SetDebugRenderingEnabled(const bool enabled) -> void { m_DebugRenderingEnabled = enabled; }
         [[nodiscard]] auto IsDebugRenderingEnabled() const -> bool { return m_DebugRenderingEnabled; }
 
-        // Colliders are a debug sub-feature: only drawn when debug rendering is on,
-        // but the toggle is persisted on the renderer so re-enabling debug rendering
-        // remembers whether colliders should come back.
         auto SetShowColliders(const bool enabled) -> void { m_ShowColliders = enabled; }
         [[nodiscard]] auto IsShowColliders() const -> bool { return m_ShowColliders; }
 
-        // Mesh wireframes are a debug sub-feature: overlays every entity's mesh as
-        // a wireframe outline when debug rendering is on. Same persistence pattern
-        // as ShowColliders.
         auto SetShowWireframes(const bool enabled) -> void { m_ShowWireframes = enabled; }
         [[nodiscard]] auto IsShowWireframes() const -> bool { return m_ShowWireframes; }
 
@@ -71,11 +65,21 @@ namespace Eppo
         auto PrepareRender() -> void;
 
         auto GeometryPass() -> void;
-        auto SkyPass() -> void;
+        auto SkyPass() const -> void;
         auto TonemapPass() const -> void;
-        auto WireframePass() -> void;
+        auto WireframePass() const -> void;
+
+        auto EnsureIblResources() -> void;
+        auto BakeEnvironmentMap(const Ref<Image>& equirect) -> void;
+        auto RecordIblPass(
+            const Ref<Shader>& shader, const Ref<Image>& source, const Ref<Sampler>& sampler, const Ref<Image>& target,
+            const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, uint32_t mipLevel, uint32_t size,
+            float roughness = 0.0f, float envMapSize = 0.0f
+        ) -> void;
 
     private:
+        // Scene renderer settings
+        Ref<RenderCommandBuffer> m_RenderCommandBuffer = nullptr;
         Ref<Scene> m_Scene = nullptr;
 
         bool m_DebugRenderingEnabled = false;
@@ -86,65 +90,23 @@ namespace Eppo
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
 
+        // Render passes
         Ref<RenderPass> m_GeometryPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
         Ref<RenderPass> m_TonemapPass = nullptr;
         Ref<RenderPass> m_WireframePass = nullptr;
-        Ref<RenderCommandBuffer> m_RenderCommandBuffer = nullptr;
 
-        Ref<Sampler> m_Sampler = nullptr;
-        Ref<Sampler> m_ClampSampler = nullptr;
-
-        struct DrawKey
-        {
-            UUID ID;
-
-            bool operator<(const DrawKey& other) const { return ID < other.ID; }
-        };
-
-        struct DrawCommand
-        {
-            Ref<Mesh> Mesh = nullptr;
-            std::vector<glm::mat4> Transforms;
-            uint32_t InstanceOffset = 0;
-            glm::vec4 Color = glm::vec4(1.0f);
-        };
-
-        std::map<DrawKey, DrawCommand> m_DrawCommands;
-        Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
-        std::vector<DrawCommand> m_WireframeDrawCommands;
-        Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
-
+        // Resources
         Ref<Mesh> m_BoxColliderMesh = nullptr;
         Ref<Mesh> m_SphereColliderMesh = nullptr;
         Ref<Mesh> m_CapsuleColliderMesh = nullptr;
         Ref<Mesh> m_CylinderColliderMesh = nullptr;
 
-        struct GeometryPushConstants
-        {
-            glm::mat4 Transform;
-            glm::vec4 BaseColor;
-            uint32_t InstanceOffset;
-            int32_t DiffuseMapIndex;
-            int32_t NormalMapIndex;
-            int32_t RoughMetMapIndex;
-            float Metallic;
-            float Roughness;
-            uint32_t SamplerIndex;
-        };
+        Ref<Sampler> m_Sampler = nullptr;
+        Ref<Sampler> m_ClampSampler = nullptr;
+        Ref<Sampler> m_EquirectSampler = nullptr;
 
-        struct WireframePushConstants
-        {
-            glm::mat4 Transform;
-            glm::vec4 Color;
-            uint32_t InstanceOffset;
-        };
-
-        struct TonemapPushConstants
-        {
-            float Exposure;
-        };
-
+        // Uniforms
         struct CameraData
         {
             glm::mat4 View;
@@ -174,8 +136,36 @@ namespace Eppo
             glm::vec4 ZenithColor = glm::vec4(0.0f);
             glm::vec4 HorizonColor = glm::vec4(0.0f);
             glm::vec4 GroundColor = glm::vec4(0.0f);
-            glm::vec4 Params = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+            glm::vec4 Params = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f); // x = ambient intensity, y = has skybox
+            glm::uvec4 IBL0 = glm::uvec4(0); // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
+            glm::uvec4 IBL1 = glm::uvec4(0); // x = IBL sampler index (clamp — cube/LUT edge taps must not wrap)
         } m_EnvironmentData{};
         Ref<UniformBuffer> m_EnvironmentUB = nullptr;
+
+        Ref<Image> m_EnvironmentCube = nullptr;
+        Ref<Image> m_IrradianceCube = nullptr;
+        Ref<Image> m_PrefilterCube = nullptr;
+        Ref<Image> m_BrdfLut = nullptr;
+
+        // Draw commands
+        struct DrawKey
+        {
+            UUID ID;
+
+            auto operator<(const DrawKey& other) const -> bool { return ID < other.ID; }
+        };
+
+        struct DrawCommand
+        {
+            Ref<Mesh> Mesh = nullptr;
+            std::vector<glm::mat4> Transforms;
+            uint32_t InstanceOffset = 0;
+            glm::vec4 Color = glm::vec4(1.0f);
+        };
+
+        std::map<DrawKey, DrawCommand> m_DrawCommands;
+        Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
+        std::vector<DrawCommand> m_WireframeDrawCommands;
+        Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
     };
 }

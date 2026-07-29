@@ -16,6 +16,7 @@ namespace Eppo
         static auto ImportAsset(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Asset>;
         static auto ImportMesh(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Mesh>;
         static auto ImportScene(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Scene>;
+        static auto ImportTexture(AssetHandle handle, const AssetMetadata& metadata) -> Ref<Image>;
 
         static auto ImportPackedAsset(AssetHandle handle, const AssetMetadata& metadata, Buffer payload) -> Ref<Asset>;
         static auto ImportPackedMesh(AssetHandle handle, const AssetMetadata& metadata, Buffer payload) -> Ref<Mesh>;

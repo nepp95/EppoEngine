@@ -30,6 +30,8 @@ struct Environment
 	float4 HorizonColor;
 	float4 GroundColor;
 	float4 Params; // x = ambient intensity, y = has skybox
+	uint4 IBL0;    // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
+	uint4 IBL1;    // x = IBL sampler index
 };
 ConstantBuffer<Environment> uEnvironment : register(b3, space0);
 
@@ -109,10 +111,39 @@ float4 Main(Input input) : SV_Target
 	    Lo += BRDF(albedo, L, V, N, metallic, roughness, radiance);
 	}
 
-	// Hemisphere ambient
-	float3 ambient = lerp(uEnvironment.GroundColor.rgb, uEnvironment.ZenithColor.rgb, N.y * 0.5 + 0.5);
-	float3 outColor = albedo * ambient * uEnvironment.Params.x;
-	outColor += Lo;
+	// Ambient: image-based lighting when a skybox is baked, gradient otherwise.
+	const float dotNV = max(dot(N, V), 0.0);
+	float3 ambient;
+	if (uEnvironment.Params.y > 0.5)
+	{
+		TextureCube irradianceMap = ResourceDescriptorHeap[uEnvironment.IBL0.y];
+		TextureCube prefilterMap = ResourceDescriptorHeap[uEnvironment.IBL0.z];
+		Texture2D brdfLut = ResourceDescriptorHeap[uEnvironment.IBL0.w];
+		SamplerState iblSamp = SamplerDescriptorHeap[uEnvironment.IBL1.x];
 
+		// Fresnel-Schlick with roughness (constant F90 is wrong at glancing angles on rough surfaces).
+		const float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
+		const float3 Fmax = max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), F0);
+		const float3 F = F0 + (Fmax - F0) * pow(1.0 - dotNV, 5.0);
+		const float3 kD = (1.0 - F) * (1.0 - metallic);
+
+		const float3 irradiance = irradianceMap.SampleLevel(iblSamp, N, 0).rgb;
+		const float3 diffuse = irradiance * albedo;
+
+		const float3 R = reflect(-V, N);
+		const float maxLod = 4.0; // prefilter mip count - 1
+		const float3 prefiltered = prefilterMap.SampleLevel(iblSamp, R, roughness * maxLod).rgb;
+		const float2 brdf = brdfLut.SampleLevel(iblSamp, float2(dotNV, roughness), 0).rg;
+		const float3 specular = prefiltered * (F * brdf.x + brdf.y);
+
+		ambient = (kD * diffuse + specular) * uEnvironment.Params.x;
+	}
+	else
+	{
+		// Gradient fallback.
+		ambient = albedo * lerp(uEnvironment.GroundColor.rgb, uEnvironment.ZenithColor.rgb, N.y * 0.5 + 0.5) * uEnvironment.Params.x;
+	}
+
+	float3 outColor = ambient + Lo;
 	return float4(outColor, 1.0);
 }

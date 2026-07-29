@@ -78,7 +78,7 @@ namespace Eppo
         uint32_t glfwExtensionCount = 0;
         const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-        std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+        const std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 #if !defined(EP_DIST)
         m_Params.RequiredVulkanInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -137,9 +137,9 @@ namespace Eppo
     {
         const auto& indices = m_PhysicalDevice->GetQueueFamilyIndices();
 
-        std::vector<const char*> deviceExtensions(g_DeviceExtensions.begin(), g_DeviceExtensions.end());
+        std::vector deviceExtensions(g_DeviceExtensions.begin(), g_DeviceExtensions.end());
 
-        nvrhi::vulkan::DeviceDesc deviceDesc{
+        const nvrhi::vulkan::DeviceDesc deviceDesc{
             .errorCB = &m_MessageCallback,
             .instance = m_Instance,
             .physicalDevice = m_PhysicalDevice->GetNative(),

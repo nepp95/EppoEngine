@@ -321,6 +321,7 @@ namespace Eppo
                            L"-T",
                            isVertex ? L"vs_6_6" : L"ps_6_6",
                            L"-spirv",
+                           L"-fspv-target-env=vulkan1.3",
                            L"-fvk-t-shift",
                            L"0",
                            L"0",

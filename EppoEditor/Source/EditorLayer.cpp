@@ -4,6 +4,7 @@
 #include "Panels/LogPanel.h"
 #include "Panels/PropertyPanel.h"
 #include "Panels/SceneHierarchyPanel.h"
+#include "Panels/SceneSettingsPanel.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui_stdlib.h>
@@ -16,6 +17,7 @@ namespace Eppo
 		constexpr const char* LOG_PANEL = "Log";
 		constexpr const char* PROPERTY_PANEL = "Property";
 		constexpr const char* SCENE_HIERARCHY_PANEL = "Scene Hierarchy";
+		constexpr const char* SCENE_SETTINGS_PANEL = "Scene Settings";
 	}
 
 	auto EditorLayer::OnAttach() -> void
@@ -25,6 +27,7 @@ namespace Eppo
 		m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
 		m_PanelManager->AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true);
 		m_PanelManager->AddPanel<LogPanel>(LOG_PANEL, true);
+		m_PanelManager->AddPanel<SceneSettingsPanel>(SCENE_SETTINGS_PANEL, true);
 
 		// Route scene opening through EditorLayer so scripting is rebuilt and the
 		// editor/active scene bookkeeping stays authoritative.
@@ -279,6 +282,9 @@ namespace Eppo
 				if (ImGui::MenuItem("Scene Hierarchy", nullptr, m_PanelManager->IsPanelOpen(SCENE_HIERARCHY_PANEL)))
 					m_PanelManager->TogglePanel(SCENE_HIERARCHY_PANEL);
 
+				if (ImGui::MenuItem("Scene Settings", nullptr, m_PanelManager->IsPanelOpen(SCENE_SETTINGS_PANEL)))
+					m_PanelManager->TogglePanel(SCENE_SETTINGS_PANEL);
+
 				ImGui::Separator();
 
 				if (ImGui::MenuItem("Restore window layout"))
@@ -498,6 +504,7 @@ namespace Eppo
 		m_PanelManager->SetPanelOpen(LOG_PANEL, true);
 		m_PanelManager->SetPanelOpen(PROPERTY_PANEL, true);
 		m_PanelManager->SetPanelOpen(SCENE_HIERARCHY_PANEL, true);
+		m_PanelManager->SetPanelOpen(SCENE_SETTINGS_PANEL, true);
 	}
 
 	auto EditorLayer::CloseProject() -> void
