@@ -441,27 +441,30 @@ namespace Eppo
 
 	auto ContentBrowserPanel::ImportFile() -> void
 	{
-		const auto source = FileDialog::OpenFile({
-			{ "Importable Assets", "gltf,glb,epscene,png,jpg,jpeg,tga,bmp,hdr" }
-		}, m_CurrentDirectory);
+		const auto filters = FileDialog::BuildFilter(
+			"Importable Assets", { "gltf", "glb", "epscene", "png", "jpg", "jpeg", "tga", "bmp", "hdr" }
+		);
 
-		if (source.empty())
-			return;
+		FileDialog::OpenFile(
+			"Import", "Import File", filters, m_CurrentDirectory,
+			[this](const std::filesystem::path& source)
+			{
+				const AssetType type = AssetManager::GetAssetTypeFromPath(source);
+				const auto destinationDirectory = GetImportDirectory(m_BaseDirectory, type);
+				if (!FS::CreateDir(destinationDirectory))
+					return;
 
-		const AssetType type = AssetManager::GetAssetTypeFromPath(source);
-		const auto destinationDirectory = GetImportDirectory(m_BaseDirectory, type);
-		if (!FS::CreateDir(destinationDirectory))
-			return;
+				auto destination = destinationDirectory / source.filename();
+				if (FS::Exists(destination))
+					destination = MakeUniquePath(destination);
 
-		auto destination = destinationDirectory / source.filename();
-		if (FS::Exists(destination))
-			destination = MakeUniquePath(destination);
+				if (!FS::CopyFile(source, destination, false))
+					return;
 
-		if (!FS::CopyFile(source, destination, false))
-			return;
-
-		if (IsImportable(type))
-			Project::GetActive()->GetAssetManager()->CreateAsset(destination);
+				if (IsImportable(type))
+					Project::GetActive()->GetAssetManager()->CreateAsset(destination);
+			}
+		);
 	}
 
 	auto ContentBrowserPanel::DeletePath(const std::filesystem::path& path) -> void

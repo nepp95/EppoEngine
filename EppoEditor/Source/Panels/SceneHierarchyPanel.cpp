@@ -22,20 +22,30 @@ namespace Eppo
 				DrawEntityNode(entity);
 		});
 
-		const ImVec2 dropTargetSize = ImGui::GetContentRegionAvail();
-		if (dropTargetSize.x > 0.0f && dropTargetSize.y > 0.0f)
-		{
-			ImGui::InvisibleButton("##HierarchyRootDropTarget", dropTargetSize);
-			if (ImGui::BeginDragDropTarget())
-			{
-				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_UUID"))
-				{
-					const UUID droppedId = *static_cast<const uint64_t*>(payload->Data);
-					scene->SetParent(scene->GetEntityByUUID(droppedId), {});
-				}
-				ImGui::EndDragDropTarget();
-			}
-		}
+        const ImVec2 dropTargetSize = ImGui::GetContentRegionAvail();
+        // Root un-parent drop zone, shown only during an entity drag so it doesn't blanket the panel and swallow right-clicks.
+        const ImGuiPayload* dragPayload = ImGui::GetDragDropPayload();
+        if (dragPayload && dragPayload->IsDataType("ENTITY_UUID") && dropTargetSize.x > 0.0f && dropTargetSize.y > 0.0f)
+        {
+            ImGui::InvisibleButton("##HierarchyRootDropTarget", dropTargetSize);
+
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const ImVec2 rectMin = ImGui::GetItemRectMin();
+            const ImVec2 rectMax = ImGui::GetItemRectMax();
+            const bool hovered = ImGui::BeginDragDropTarget();
+
+            drawList->AddRect(rectMin, rectMax, IM_COL32(255, 255, 255, hovered ? 140 : 60));
+            if (hovered)
+            {
+                drawList->AddRectFilled(rectMin, rectMax, IM_COL32(255, 255, 255, 24));
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_UUID"))
+                {
+                    const UUID droppedId = *static_cast<const uint64_t*>(payload->Data);
+                    scene->SetParent(scene->GetEntityByUUID(droppedId), {});
+                }
+                ImGui::EndDragDropTarget();
+            }
+        }
 
 		ImGui::PopStyleVar();
 

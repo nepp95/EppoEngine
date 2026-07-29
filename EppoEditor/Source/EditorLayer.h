@@ -28,17 +28,17 @@ namespace Eppo
 
 		auto CloseProject() -> void;
 		auto NewProject(const std::string& name) -> void;
-		auto OpenProject() -> bool;
+		auto OpenProject() -> void;
 		auto OpenProject(const std::filesystem::path& path) -> bool;
 		auto SaveProject() -> bool;
 		auto ExportGame() -> void;
 
 		auto NewScene() -> void;
-		auto OpenScene() -> bool;
+		auto OpenScene() -> void;
 		auto OpenScene(const std::filesystem::path& path) -> bool;
 		auto OpenScene(AssetHandle handle) -> void;
-		auto SaveScene() -> bool;
-		auto SaveSceneAs() -> bool;
+		auto SaveScene() -> void;
+		auto SaveSceneAs() -> void;
 
 	    auto UpdateImGuizmo() -> void;
 		auto UI_Toolbar() -> void;

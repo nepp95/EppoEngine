@@ -20,7 +20,6 @@ namespace Eppo
         uint32_t Height = 900;
         bool Fullscreen = false;
         bool Decorated = true;
-        bool EnableFileDialogs = true;
     };
 
     class Window
@@ -55,6 +54,5 @@ namespace Eppo
 
         uint32_t m_Width;
         uint32_t m_Height;
-        bool m_FileDialogsInitialized = false;
     };
 }

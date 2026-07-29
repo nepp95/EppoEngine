@@ -76,7 +76,6 @@ SUITE(App)
             .Width = 1024,
             .Height = 640,
             .VSync = true,
-            .EnableFileDialogs = false,
         };
         Application* app = Testing::AppHarness::Get(std::move(params));
         REQUIRE CHECK(app != nullptr);
@@ -93,7 +92,6 @@ SUITE(App)
         ApplicationParams params{
             .Args = CommandLineArgs(0, nullptr),
             .EnableImGui = false,
-            .EnableFileDialogs = false,
         };
         Application* app = Testing::AppHarness::Get(std::move(params));
         REQUIRE CHECK(app != nullptr);
@@ -113,7 +111,6 @@ SUITE(App)
             .Args = CommandLineArgs(0, nullptr),
             .Fullscreen = true,
             .EnableImGui = false,
-            .EnableFileDialogs = false,
         };
         Application* app = Testing::AppHarness::Get(std::move(params));
         REQUIRE CHECK(app != nullptr);

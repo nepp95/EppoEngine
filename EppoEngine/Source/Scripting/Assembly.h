@@ -33,6 +33,7 @@ namespace Eppo
 
         auto SetFieldValue(uint64_t entityId, int32_t fieldIndex, const void* data) const -> void;
         auto GetFieldValue(uint64_t entityId, int32_t fieldIndex, void* data) const -> void;
+        [[nodiscard]] auto GetFieldDefaultValue(int32_t classIndex, int32_t fieldIndex) const -> ScriptFieldValue;
 
     private:
         auto ResolveManagedFunctions() -> bool;
