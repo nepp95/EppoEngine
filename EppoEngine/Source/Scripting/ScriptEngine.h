@@ -69,6 +69,7 @@ namespace Eppo
         // instance when the entity's script is created.
         [[nodiscard]] auto GetFieldMap(const UUID& entityId) -> ScriptFieldMap&;
         [[nodiscard]] auto TryGetFieldMap(const UUID& entityId) const -> const ScriptFieldMap*;
+        [[nodiscard]] auto GetFieldValueOrDefault(const UUID& entityId, int32_t classIndex, int32_t fieldIndex) const -> ScriptFieldValue;
         auto CopyFieldMap(const UUID& from, const UUID& to) -> void;
         auto RemoveFieldMap(const UUID& entityId) -> void;
 
