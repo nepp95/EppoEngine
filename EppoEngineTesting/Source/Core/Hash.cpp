@@ -26,7 +26,10 @@ SUITE(Core)
 
     TEST(Hash_GenerateFnv_BigValue)
     {
-        auto n = Hash::GenerateFnv("dfhadoisahdjsadjdifhiahfdhaidshfiouhhiuafheuihfiueawfheiuwhfiheaiuwfhiuawhfiuheiwuofhaiuwefhiuoawfiouheiuwfhwaeiuhfiouawhfioudsahhfiouhdsjnmnwiuhdiasjnk");
+        auto n = Hash::GenerateFnv(
+            "dfhadoisahdjsadjdifhiahfdhaidshfiouhhiuafheuihfiueawfheiuwhfiheaiuwfhiuawhfiuheiwuofhaiuwefhiuoawfiouheiuwfhwaeiuhfiouawhfioud"
+            "sahhfiouhdsjnmnwiuhdiasjnk"
+        );
         CHECK_EQUAL(9048482559141267579u, n);
     }
 }

@@ -33,11 +33,18 @@ SUITE(Renderer)
 
         scene->GetEnvironment().AmbientIntensity = 0.75f;
 
-        const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
+        const Ref<SceneRenderer> sceneRenderer =
+            CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
         const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
 
         // Render across several real frames to cycle the frames-in-flight indices.
-        ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+        ctx.AdvanceFrames(
+            3,
+            [&](float)
+            {
+                scene->OnRenderEditor(sceneRenderer, camera);
+            }
+        );
 
         CHECK(sceneRenderer->GetFinalImage() != nullptr);
         CHECK(Testing::AppHarness::Get()->IsRunning());
@@ -51,29 +58,36 @@ SUITE(Renderer)
 
         Application* app = Testing::AppHarness::Get();
         const Ref<Scene> scene = ctx.GetScene();
-        const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
+        const Ref<SceneRenderer> sceneRenderer =
+            CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
         const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
         const uint32_t imageCount = app->GetDeviceManager()->GetBackBufferCount();
         uint32_t renderedFrames = 0;
 
         app->GetImGuiLayer()->SetClearMainSwapchainTarget(false);
-        ctx.AdvanceFrames(imageCount + 2, [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-            app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
-            renderedFrames++;
-        });
+        ctx.AdvanceFrames(
+            imageCount + 2,
+            [&](float)
+            {
+                scene->OnRenderEditor(sceneRenderer, camera);
+                app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
+                renderedFrames++;
+            }
+        );
 
         glfwSetWindowSize(app->GetWindow()->GetNative(), 960, 540);
-        ctx.AdvanceFrames(imageCount + 2, [&](float)
-        {
-            const auto [width, height] = app->GetWindow()->GetFramebufferSize();
-            if (width > 0 && height > 0)
-                sceneRenderer->Resize(width, height);
-            scene->OnRenderEditor(sceneRenderer, camera);
-            app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
-            renderedFrames++;
-        });
+        ctx.AdvanceFrames(
+            imageCount + 2,
+            [&](float)
+            {
+                const auto [width, height] = app->GetWindow()->GetFramebufferSize();
+                if (width > 0 && height > 0)
+                    sceneRenderer->Resize(width, height);
+                scene->OnRenderEditor(sceneRenderer, camera);
+                app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
+                renderedFrames++;
+            }
+        );
 
         CHECK_EQUAL((imageCount + 2) * 2, renderedFrames);
         CHECK(app->IsRunning());

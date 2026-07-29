@@ -117,8 +117,7 @@ namespace Eppo
         m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightData), "UniformBuffer Lights");
         m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), "UniformBuffer Environment");
 
-        m_InstanceTransformsSB =
-            CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
+        m_InstanceTransformsSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
         m_WireframeInstanceSB =
             CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Wireframe Instance Transforms");
 
@@ -286,14 +285,16 @@ namespace Eppo
         if (m_ShowColliders)
         {
             m_Scene->ForEachEntity(
-                [&](const Entity entity)
-                -> void {
+                [&](const Entity entity) -> void
+                {
                     const glm::mat4 world = m_Scene->GetWorldTransform(entity);
 
                     if (entity.HasComponent<BoxColliderComponent>())
                     {
                         const auto& c = entity.GetComponent<BoxColliderComponent>();
-                        m_Wireframes.push_back({ m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor });
+                        m_Wireframes.push_back(
+                            { m_BoxColliderMesh, glm::scale(glm::translate(world, c.Offset), c.HalfSize), colliderColor }
+                        );
                     }
 
                     if (entity.HasComponent<SphereColliderComponent>())

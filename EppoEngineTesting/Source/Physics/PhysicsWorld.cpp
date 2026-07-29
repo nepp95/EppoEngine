@@ -1199,22 +1199,32 @@ SUITE(Physics)
             auto& box = entity.AddComponent<BoxColliderComponent>();
             box.HalfSize = { 1.0f, 2.0f, 3.0f };
             box.Offset = { 0.1f, 0.2f, 0.3f };
-            box.Density = 1.5f; box.Friction = 0.25f; box.Restitution = 0.6f;
+            box.Density = 1.5f;
+            box.Friction = 0.25f;
+            box.Restitution = 0.6f;
 
             auto& sphere = entity.AddComponent<SphereColliderComponent>();
             sphere.Radius = 0.75f;
             sphere.Offset = { 0.4f, 0.5f, 0.6f };
-            sphere.Density = 2.5f; sphere.Friction = 0.35f; sphere.Restitution = 0.7f;
+            sphere.Density = 2.5f;
+            sphere.Friction = 0.35f;
+            sphere.Restitution = 0.7f;
 
             auto& capsule = entity.AddComponent<CapsuleColliderComponent>();
-            capsule.Radius = 0.9f; capsule.Height = 1.8f;
+            capsule.Radius = 0.9f;
+            capsule.Height = 1.8f;
             capsule.Offset = { 0.7f, 0.8f, 0.9f };
-            capsule.Density = 3.5f; capsule.Friction = 0.45f; capsule.Restitution = 0.8f;
+            capsule.Density = 3.5f;
+            capsule.Friction = 0.45f;
+            capsule.Restitution = 0.8f;
 
             auto& cylinder = entity.AddComponent<CylinderColliderComponent>();
-            cylinder.Radius = 1.1f; cylinder.Height = 2.2f;
+            cylinder.Radius = 1.1f;
+            cylinder.Height = 2.2f;
             cylinder.Offset = { 1.0f, 1.1f, 1.2f };
-            cylinder.Density = 4.5f; cylinder.Friction = 0.55f; cylinder.Restitution = 0.9f;
+            cylinder.Density = 4.5f;
+            cylinder.Friction = 0.55f;
+            cylinder.Restitution = 0.9f;
         }
 
         const Testing::TempDir dir;

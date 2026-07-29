@@ -7,14 +7,14 @@ using namespace Eppo;
 
 SUITE(Renderer)
 {
-	TEST(DeviceManager_UnderHarness_ExposesLiveDevice)
-	{
-		if (!Testing::AppHarness::IsAvailable())
-			return;
+    TEST(DeviceManager_UnderHarness_ExposesLiveDevice)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
 
-		const auto& dm = DeviceManager::Get();
-		REQUIRE CHECK(dm);
-		CHECK(dm->GetDevice());
-		CHECK(dm->GetRenderer());
-	}
+        const auto& dm = DeviceManager::Get();
+        REQUIRE CHECK(dm);
+        CHECK(dm->GetDevice());
+        CHECK(dm->GetRenderer());
+    }
 }

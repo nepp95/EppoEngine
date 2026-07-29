@@ -12,12 +12,12 @@ using namespace Eppo;
 
 SUITE(Renderer)
 {
-	namespace
-	{
-		auto WriteNestedTransformMesh(const Testing::TempDir& tempDir) -> std::filesystem::path
-		{
-			const std::filesystem::path path = tempDir.File("NestedTransform.gltf");
-			const std::string source = R"({
+    namespace
+    {
+        auto WriteNestedTransformMesh(const Testing::TempDir& tempDir) -> std::filesystem::path
+        {
+            const std::filesystem::path path = tempDir.File("NestedTransform.gltf");
+            const std::string source = R"({
 				"asset": { "version": "2.0" },
 				"scene": 0,
 				"scenes": [
@@ -86,52 +86,52 @@ SUITE(Renderer)
 				]
 			})";
 
-			FS::WriteText(path, source, true);
-			return path;
-		}
-	}
+            FS::WriteText(path, source, true);
+            return path;
+        }
+    }
 
-	TEST(Material_DefaultTextureHandlesProduceInvalidIndices)
-	{
-		const Material material;
+    TEST(Material_DefaultTextureHandlesProduceInvalidIndices)
+    {
+        const Material material;
 
-		CHECK_EQUAL(-1, material.GetDiffuseMapIndex());
-		CHECK_EQUAL(-1, material.GetNormalMapIndex());
-		CHECK_EQUAL(-1, material.GetRoughMetMapIndex());
-	}
+        CHECK_EQUAL(-1, material.GetDiffuseMapIndex());
+        CHECK_EQUAL(-1, material.GetNormalMapIndex());
+        CHECK_EQUAL(-1, material.GetRoughMetMapIndex());
+    }
 
-	TEST(Material_SharedTextureHandleProducesSameGlobalIndex)
-	{
-		const auto handle = CreateRef<BindlessHandle>();
-		handle->Index = 42;
+    TEST(Material_SharedTextureHandleProducesSameGlobalIndex)
+    {
+        const auto handle = CreateRef<BindlessHandle>();
+        handle->Index = 42;
 
-		Material first;
-		first.DiffuseMap = handle;
-		Material second;
-		second.DiffuseMap = handle;
+        Material first;
+        first.DiffuseMap = handle;
+        Material second;
+        second.DiffuseMap = handle;
 
-		CHECK_EQUAL(42, first.GetDiffuseMapIndex());
-		CHECK_EQUAL(42, second.GetDiffuseMapIndex());
-	}
+        CHECK_EQUAL(42, first.GetDiffuseMapIndex());
+        CHECK_EQUAL(42, second.GetDiffuseMapIndex());
+    }
 
-	TEST(Mesh_LoadingSceneHierarchyAccumulatesMatrixAndTrsTransforms)
-	{
-		if (!Testing::AppHarness::IsAvailable())
-			return;
+    TEST(Mesh_LoadingSceneHierarchyAccumulatesMatrixAndTrsTransforms)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
 
-		const Testing::TempDir tempDir;
-		const Mesh mesh(WriteNestedTransformMesh(tempDir).string());
+        const Testing::TempDir tempDir;
+        const Mesh mesh(WriteNestedTransformMesh(tempDir).string());
 
-		REQUIRE CHECK_EQUAL(1u, static_cast<uint32_t>(mesh.GetSubmeshes().size()));
+        REQUIRE CHECK_EQUAL(1u, static_cast<uint32_t>(mesh.GetSubmeshes().size()));
 
-		const glm::mat4 rootTransform = glm::rotate(glm::mat4(1.0f), -glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
-		const glm::mat4 nodeTransform = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 3.0f, 4.0f))
-			* glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 1.0f, 1.0f));
-		const glm::mat4 expectedTransform = rootTransform * nodeTransform;
-		const glm::mat4& actualTransform = mesh.GetSubmeshes().front().LocalTransform;
-		for (int column = 0; column < 4; column++)
-			CHECK_VEC4_CLOSE(expectedTransform[column], actualTransform[column], 0.0001f);
-		CHECK_VEC3_CLOSE(glm::vec3(2.0f, 4.0f, -4.0f), mesh.GetBounds().Min, 0.0001f);
-		CHECK_VEC3_CLOSE(glm::vec3(4.0f, 4.0f, -3.0f), mesh.GetBounds().Max, 0.0001f);
-	}
+        const glm::mat4 rootTransform = glm::rotate(glm::mat4(1.0f), -glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+        const glm::mat4 nodeTransform =
+            glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 3.0f, 4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 1.0f, 1.0f));
+        const glm::mat4 expectedTransform = rootTransform * nodeTransform;
+        const glm::mat4& actualTransform = mesh.GetSubmeshes().front().LocalTransform;
+        for (int column = 0; column < 4; column++)
+            CHECK_VEC4_CLOSE(expectedTransform[column], actualTransform[column], 0.0001f);
+        CHECK_VEC3_CLOSE(glm::vec3(2.0f, 4.0f, -4.0f), mesh.GetBounds().Min, 0.0001f);
+        CHECK_VEC3_CLOSE(glm::vec3(4.0f, 4.0f, -3.0f), mesh.GetBounds().Max, 0.0001f);
+    }
 }

@@ -5,25 +5,25 @@
 
 namespace Eppo
 {
-	class Editor final : public Application
-	{
-	public:
+    class Editor final : public Application
+    {
+    public:
         explicit Editor(ApplicationParams&& params)
-			: Application(std::move(params))
-		{
-			PushLayer<EditorLayer>();
-		}
-	};
+            : Application(std::move(params))
+        {
+            PushLayer<EditorLayer>();
+        }
+    };
 
-	auto CreateApplication(const int argc, char** argv) -> Application*
-	{
+    auto CreateApplication(const int argc, char** argv) -> Application*
+    {
         const CommandLineArgs args(argc, argv);
-		ApplicationParams params{
-			.Args = args,
-		};
+        ApplicationParams params{
+            .Args = args,
+        };
 
-		const auto app = new Editor(std::move(params));
+        const auto app = new Editor(std::move(params));
 
-		return app;
-	}
+        return app;
+    }
 }

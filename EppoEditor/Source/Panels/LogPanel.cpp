@@ -21,11 +21,15 @@ namespace Eppo
         {
             switch (level)
             {
-                case spdlog::level::trace: return { 0.55f, 0.55f, 0.55f, 1.0f };
-                case spdlog::level::warn: return { 1.0f, 0.80f, 0.25f, 1.0f };
+                case spdlog::level::trace:
+                    return { 0.55f, 0.55f, 0.55f, 1.0f };
+                case spdlog::level::warn:
+                    return { 1.0f, 0.80f, 0.25f, 1.0f };
                 case spdlog::level::err:
-                case spdlog::level::critical: return { 1.0f, 0.35f, 0.35f, 1.0f };
-                default: return ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                case spdlog::level::critical:
+                    return { 1.0f, 0.35f, 0.35f, 1.0f };
+                default:
+                    return ImGui::GetStyleColorVec4(ImGuiCol_Text);
             }
         }
 
