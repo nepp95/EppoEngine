@@ -1,70 +1,121 @@
 #include "pch.h"
 #include "FileDialog.h"
 
+#include <imgui.h>
+#include <ImGuiFileDialog.h>
+
 namespace Eppo
 {
-    namespace Utils
+    namespace
     {
-        // NFD silently ignores a default path that doesn't exist and reopens the OS
-        // "recently used" folder instead, which is what made dialogs appear to open in
-        // random places. Resolve to the nearest existing directory so it has something
-        // valid to honour.
-        static auto ExistingDirectory(std::filesystem::path path) -> std::filesystem::path
+        struct PendingDialog
+        {
+            FileDialog::ResultCallback OnSelect;
+            bool Folder = false;
+        };
+
+        std::unordered_map<std::string, PendingDialog> s_Dialogs;
+
+        // Trim every dialog to what the editor needs: no create-directory button, and drop the
+        // type column (redundant with the extension) and the date column (noise here).
+        constexpr ImGuiFileDialogFlags s_BaseFlags =
+            ImGuiFileDialogFlags_DisableCreateDirectoryButton | ImGuiFileDialogFlags_HideColumnType | ImGuiFileDialogFlags_HideColumnDate;
+
+        // ImGuiFileDialog silently ignores an initial path that doesn't exist. Resolve to the
+        // nearest existing ancestor so the dialog opens where the caller intended.
+        auto ExistingDirectory(std::filesystem::path path) -> std::filesystem::path
         {
             while (!path.empty() && !FS::IsDirectory(path))
                 path = path.parent_path();
             return path;
         }
+
+        auto QueueDialog(const std::string& key, const std::string& title, const char* filters,
+                         const std::filesystem::path& initialDir, FileDialog::ResultCallback onSelect,
+                         const ImGuiFileDialogFlags flags, const bool folder) -> void
+        {
+            const auto directory = ExistingDirectory(initialDir);
+
+            IGFD::FileDialogConfig config;
+            config.path = directory.string();
+            config.countSelectionMax = 1;
+            config.flags = flags;
+
+            s_Dialogs[key] = { .OnSelect = std::move(onSelect), .Folder = folder };
+            ImGuiFileDialog::Instance()->OpenDialog(key, title, filters, config);
+        }
     }
 
-    auto FileDialog::OpenFile(const std::vector<nfdfilteritem_t>& filters, const std::filesystem::path& initialDir) -> std::filesystem::path
+    auto FileDialog::OpenFile(const std::string& key, const std::string& title, const std::string& filters,
+                              const std::filesystem::path& initialDir, ResultCallback onSelect) -> void
     {
-        const auto directory = Utils::ExistingDirectory(initialDir);
+        QueueDialog(key, title, filters.c_str(), initialDir, std::move(onSelect), ImGuiFileDialogFlags_Modal | s_BaseFlags, false);
+    }
 
-        NFD::UniquePath nfdPath = nullptr;
-        auto result = NFD::OpenDialog(
-            nfdPath, filters.data(), static_cast<uint32_t>(filters.size()), directory.empty() ? nullptr : directory.string().c_str()
+    auto FileDialog::SaveFile(const std::string& key, const std::string& title, const std::string& filters,
+                              const std::filesystem::path& initialDir, ResultCallback onSelect) -> void
+    {
+        QueueDialog(
+            key, title, filters.c_str(), initialDir, std::move(onSelect),
+            ImGuiFileDialogFlags_Modal | ImGuiFileDialogFlags_ConfirmOverwrite | s_BaseFlags, false
         );
-
-        std::filesystem::path outPath = {};
-        if (result == NFD_OKAY)
-            outPath = nfdPath.get();
-        else if (result == NFD_ERROR)
-            Log::Error("NFD Failed: {}", NFD::GetError());
-
-        return outPath;
     }
 
-    auto FileDialog::SaveFile(const std::vector<nfdfilteritem_t>& filters, const std::filesystem::path& initialDir) -> std::filesystem::path
+    auto FileDialog::OpenFolder(const std::string& key, const std::string& title,
+                                const std::filesystem::path& initialDir, ResultCallback onSelect) -> void
     {
-        const auto directory = Utils::ExistingDirectory(initialDir);
-
-        NFD::UniquePath nfdPath = nullptr;
-        auto result = NFD::SaveDialog(
-            nfdPath, filters.data(), static_cast<uint32_t>(filters.size()), directory.empty() ? nullptr : directory.string().c_str()
-        );
-
-        std::filesystem::path outPath = {};
-        if (result == NFD_OKAY)
-            outPath = nfdPath.get();
-        else if (result == NFD_ERROR)
-            Log::Error("NFD Failed: {}", NFD::GetError());
-
-        return outPath;
+        QueueDialog(key, title, nullptr, initialDir, std::move(onSelect), ImGuiFileDialogFlags_Modal | s_BaseFlags, true);
     }
 
-    auto FileDialog::OpenFolder(const std::filesystem::path& initialDir) -> std::filesystem::path
+    auto FileDialog::Render() -> void
     {
-        const auto directory = Utils::ExistingDirectory(initialDir);
+        auto* instance = ImGuiFileDialog::Instance();
 
-        NFD::UniquePath nfdPath = nullptr;
-        const auto result = NFD::PickFolder(nfdPath, directory.empty() ? nullptr : directory.string().c_str());
+        // Gather ready callbacks before invoking any, so a callback that itself queues a
+        // dialog cannot rehash s_Dialogs and invalidate the iterator mid-loop.
+        std::vector<std::pair<ResultCallback, std::filesystem::path>> ready;
 
-        std::filesystem::path outPath;
-        if (result == NFD_OKAY)
-            outPath = nfdPath.get();
-        else if (result == NFD_ERROR)
-            Log::Error("NFD Failed: {}", NFD::GetError());
-        return outPath;
+        for (auto it = s_Dialogs.begin(); it != s_Dialogs.end();)
+        {
+            constexpr ImVec2 minSize(700.0f, 400.0f);
+            if (!instance->Display(it->first, ImGuiWindowFlags_NoCollapse, minSize))
+            {
+                ++it;
+                continue;
+            }
+
+            if (instance->IsOk() && it->second.OnSelect)
+            {
+                std::filesystem::path result = it->second.Folder ? instance->GetCurrentPath() : instance->GetFilePathName();
+                ready.emplace_back(std::move(it->second.OnSelect), std::move(result));
+            }
+
+            instance->Close();
+            it = s_Dialogs.erase(it);
+        }
+
+        for (auto& [callback, path] : ready)
+            callback(path);
+    }
+
+    auto FileDialog::BuildFilter(const std::string_view label, const std::vector<std::string>& extensions) -> std::string
+    {
+        if (extensions.empty())
+            return {};
+
+        if (extensions.size() == 1)
+            return "." + extensions.front();
+
+        std::string filter(label);
+        filter += '{';
+        for (size_t i = 0; i < extensions.size(); ++i)
+        {
+            if (i > 0)
+                filter += ',';
+            filter += '.';
+            filter += extensions[i];
+        }
+        filter += '}';
+        return filter;
     }
 }
