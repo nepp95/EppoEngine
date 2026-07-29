@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Core/UUID.h"
-
 namespace Eppo
 {
     enum class ScriptFieldType : uint8_t
