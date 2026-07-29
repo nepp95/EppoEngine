@@ -2,7 +2,7 @@
 
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
-#include "Scripting/ScriptFieldStorage.h"
+#include "Scripting/ScriptField.h"
 
 #include <nlohmann/json_fwd.hpp>
 

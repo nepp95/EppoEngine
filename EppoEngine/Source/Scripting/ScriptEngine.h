@@ -4,7 +4,6 @@
 #include "Scripting/Assembly.h"
 #include "Scripting/ScriptClass.h"
 #include "Scripting/ScriptField.h"
-#include "Scripting/ScriptFieldStorage.h"
 #include "Scripting/ScriptInstance.h"
 #include "Utility/FileWatcher.h"
 

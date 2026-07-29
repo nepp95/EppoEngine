@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/UUID.h"
+
 namespace Eppo
 {
     enum class ScriptFieldType : uint8_t
@@ -56,4 +58,7 @@ namespace Eppo
         std::string Name;
         int32_t Index = -1;
     };
+
+    using ScriptFieldMap = std::unordered_map<std::string, ScriptFieldValue>;
+    using ScriptFieldStorage = std::unordered_map<UUID, ScriptFieldMap>;
 }
