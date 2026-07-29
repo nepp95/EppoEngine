@@ -9,7 +9,7 @@ EppoEngine — a C++20 cross-platform (Windows/Linux) game engine + editor with 
 ## Prerequisites (enforced by `CMake/Dependencies.cmake`)
 
 - **Vulkan SDK** with `dxc` (`VULKAN_SDK` set).
-- **vcpkg** with `VCPKG_ROOT` set. Manifest mode; overlay ports in `CMake/Ports` (box3d, nvrhi, epposcriptcore).
+- **vcpkg** with `VCPKG_ROOT` set. Manifest mode; overlay ports in `CMake/Ports` (nativefiledialog-extended, nvrhi).
 - **.NET SDK 10** with `DOTNET_ROOT` set (managed core targets `net10.0`).
 - **clang**: Windows presets pin `clang-cl`, Linux presets pin `clang`/`clang++`. MSVC alone is not used. The MSVC STL requires Clang 20+ — an STL1000 error means the CMake cache is pinned to an old clang; reconfigure.
 - Linux also needs X11/GL dev libs: `libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config`.
