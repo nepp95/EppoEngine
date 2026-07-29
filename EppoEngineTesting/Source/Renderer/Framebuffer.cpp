@@ -28,6 +28,29 @@ SUITE(Renderer)
         CHECK(framebuffer->GetDepthImage()->GetFormat() == nvrhi::Format::D32);
 	}
 
+    TEST(Framebuffer_DepthOnlyTargetHasOneD32Attachment)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+            .Width = 2048u,
+            .Height = 2048u,
+            .Attachments = { nvrhi::Format::D32 },
+            .DebugName = "Framebuffer shadow depth test",
+        });
+
+        REQUIRE CHECK(framebuffer->GetFramebuffer() != nullptr);
+        REQUIRE CHECK(framebuffer->GetDepthImage() != nullptr);
+        CHECK_EQUAL(2048u, framebuffer->GetWidth());
+        CHECK_EQUAL(2048u, framebuffer->GetHeight());
+        CHECK(framebuffer->GetDepthImage()->GetFormat() == nvrhi::Format::D32);
+
+        const nvrhi::FramebufferDesc& desc = framebuffer->GetFramebuffer()->getDesc();
+        CHECK(desc.colorAttachments.empty());
+        CHECK(desc.depthAttachment.texture == framebuffer->GetDepthImage()->GetTexture());
+    }
+
     TEST(Framebuffer_ExistingCubemapIsUsedAsColorAttachment)
     {
         if (!Testing::AppHarness::IsAvailable())

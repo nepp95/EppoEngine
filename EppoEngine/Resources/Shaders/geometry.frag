@@ -1,6 +1,14 @@
 #include "Includes/lighting.hlsli"
 #include "Includes/platform.hlsli"
 
+struct ShadowDepthData
+{
+    float4x4 LightViewProjection;
+    uint4 Indices; // shadow map, sampler, enabled, unused
+    float4 Params; // bias, inverse map size, unused, unused
+};
+ConstantBuffer<ShadowDepthData> uShadowDepth : register(b1, space0);
+
 struct Camera
 {
 	float4x4 View;
@@ -9,7 +17,7 @@ struct Camera
 	float4 Position;
 	float4x4 InverseViewProjection;
 };
-ConstantBuffer<Camera> uCamera : register(b1, space0);
+ConstantBuffer<Camera> uCamera : register(b2, space0);
 
 struct DirectionalLight
 {
@@ -30,7 +38,7 @@ struct LightData
 	uint NumLights;
 	uint HasDirLight;
 };
-ConstantBuffer<LightData> uLights : register(b2, space0);
+ConstantBuffer<LightData> uLights : register(b3, space0);
 
 struct Environment
 {
@@ -41,7 +49,7 @@ struct Environment
 	uint4 IBL0;    // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
 	uint4 IBL1;    // x = IBL sampler index
 };
-ConstantBuffer<Environment> uEnvironment : register(b3, space0);
+ConstantBuffer<Environment> uEnvironment : register(b4, space0);
 
 struct Input
 {
@@ -65,6 +73,40 @@ struct PushConstants
 };
 PUSH_CONSTANTS
 ConstantBuffer<PushConstants> uPC : register(b0, space0);
+
+float CalcShadowFactor(const float3 worldPosition)
+{
+    if (uShadowDepth.Indices.z == 0)
+        return 1.0;
+
+    const float4 lightClip = mul(uShadowDepth.LightViewProjection, float4(worldPosition, 1.0));
+    if (lightClip.w <= 0.0)
+        return 1.0;
+
+    const float3 lightNdc = lightClip.xyz / lightClip.w;
+    if (any(lightNdc.xy < -1.0) || any(lightNdc.xy > 1.0) || lightNdc.z < 0.0 || lightNdc.z > 1.0)
+        return 1.0;
+
+    const float2 uv = lightNdc.xy * float2(0.5, -0.5) + 0.5;
+
+    Texture2D<float> shadowMap = ResourceDescriptorHeap[uShadowDepth.Indices.x];
+    SamplerState shadowSampler = SamplerDescriptorHeap[uShadowDepth.Indices.y];
+    float visibleSamples = 0.0;
+
+    [unroll]
+    for (int y = -1; y <= 1; y++)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; x++)
+        {
+            const float2 sampleUv = uv + float2(x, y) * uShadowDepth.Params.y;
+            const float storedDepth = shadowMap.SampleLevel(shadowSampler, sampleUv, 0);
+            visibleSamples += lightNdc.z - uShadowDepth.Params.x <= storedDepth ? 1.0 : 0.0;
+        }
+    }
+
+    return visibleSamples / 9.0;
+}
 
 float4 Main(Input input) : SV_Target
 {
@@ -113,7 +155,7 @@ float4 Main(Input input) : SV_Target
 	{
 	    const float3 L = normalize(-uLights.DirLight.Direction.xyz);
 	    const float3 radiance = uLights.DirLight.Color.rgb * uLights.DirLight.Color.a;
-	    Lo += BRDF(albedo, L, V, N, metallic, roughness, radiance);
+	    Lo += CalcShadowFactor(input.WorldPos) * BRDF(albedo, L, V, N, metallic, roughness, radiance);
 	}
 
 	// Point lights

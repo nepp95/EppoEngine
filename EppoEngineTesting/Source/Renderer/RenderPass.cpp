@@ -124,9 +124,11 @@ float4 Main() : SV_Target
             const Ref<StorageBuffer>& instances
         ) -> void
         {
-            pass.SetInput(0, 1, camera);
-            pass.SetInput(0, 2, lights);
-            pass.SetInput(0, 3, environment);
+            const auto shadow = CreateRef<UniformBuffer>(4096, "TestCB Shadow");
+            pass.SetInput(0, 1, shadow);
+            pass.SetInput(0, 2, camera);
+            pass.SetInput(0, 3, lights);
+            pass.SetInput(0, 4, environment);
             pass.SetInput(0, 0, instances);
         }
 

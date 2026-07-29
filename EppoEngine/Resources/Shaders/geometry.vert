@@ -26,7 +26,7 @@ struct Camera
 	float4x4 ViewProjection;
 	float3 Position;
 };
-ConstantBuffer<Camera> uCamera : register(b1, space0);
+ConstantBuffer<Camera> uCamera : register(b2, space0);
 
 StructuredBuffer<float4x4> uInstanceTransforms : register(t0, space0);
 
@@ -43,8 +43,8 @@ Output Main(Input input)
 {
 	Output output;
 	
-	float4x4 instanceTransform = uInstanceTransforms[uPC.InstanceOffset + input.InstanceID];
-	float4x4 worldTransform = mul(instanceTransform, uPC.Transform);
+	const float4x4 instanceTransform = uInstanceTransforms[uPC.InstanceOffset + input.InstanceID];
+	const float4x4 worldTransform = mul(instanceTransform, uPC.Transform);
 	
 	output.WorldPos = mul(worldTransform, float4(input.Position, 1.0)).xyz;
 	output.Normal = mul((float3x3)worldTransform, input.Normal);

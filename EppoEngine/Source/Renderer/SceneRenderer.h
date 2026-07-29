@@ -64,7 +64,9 @@ namespace Eppo
         auto EnsureColliderMeshes() -> void;
         auto GatherWireframes() -> void;
         auto PrepareRender() -> void;
+        auto FillShadowData() -> void;
 
+        auto ShadowDepthPass() -> void;
         auto GeometryPass() -> void;
         auto SkyPass() const -> void;
         auto TonemapPass() const -> void;
@@ -92,6 +94,7 @@ namespace Eppo
         uint32_t m_Height = 0;
 
         // Render passes
+        Ref<RenderPass> m_ShadowDepthPass = nullptr;
         Ref<RenderPass> m_GeometryPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
         Ref<RenderPass> m_TonemapPass = nullptr;
@@ -103,11 +106,20 @@ namespace Eppo
         Ref<Mesh> m_CapsuleColliderMesh = nullptr;
         Ref<Mesh> m_CylinderColliderMesh = nullptr;
 
-        Ref<Sampler> m_Sampler = nullptr;
-        Ref<Sampler> m_ClampSampler = nullptr;
+        Ref<Sampler> m_ClampAllFiltersFalseSampler = nullptr;
+        Ref<Sampler> m_ClampAllFiltersTrueSampler = nullptr;
+        Ref<Sampler> m_WrapAllFiltersTrueSampler = nullptr;
         Ref<Sampler> m_EquirectSampler = nullptr;
 
         // Uniforms
+        struct ShadowDepthData
+        {
+            glm::mat4 LightViewProjection;
+            glm::uvec4 Indices; // shadow map, sampler, enabled, unused
+            glm::vec4 Params; // bias, inverse map size, unused, unused
+        } m_ShadowDepthData;
+        Ref<UniformBuffer> m_ShadowDepthUB = nullptr;
+
         struct CameraData
         {
             glm::mat4 View;

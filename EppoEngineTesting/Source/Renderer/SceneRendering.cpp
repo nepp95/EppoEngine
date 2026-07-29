@@ -18,6 +18,32 @@ using namespace Eppo;
 
 namespace
 {
+    struct Rgba8Readback
+    {
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        std::vector<uint8_t> Pixels;
+    };
+
+    class PrimitiveProjectFixture
+    {
+    public:
+        PrimitiveProjectFixture()
+            : m_Previous(Project::GetActive()), m_ProjectDirectory(m_Directory.File("Project")), m_AssetManager(CreateRef<AssetManager>())
+        {
+            std::filesystem::create_directories(m_ProjectDirectory / "Assets");
+            Project::New(ProjectSpecification{ .Name = "PrimitiveRendering", .ProjectDirectory = m_ProjectDirectory }, m_AssetManager);
+        }
+
+        ~PrimitiveProjectFixture() { Project::SetActive(m_Previous); }
+
+    private:
+        Ref<Project> m_Previous;
+        Testing::TempDir m_Directory;
+        std::filesystem::path m_ProjectDirectory;
+        Ref<AssetManager> m_AssetManager;
+    };
+
     // Uniform equirectangular RADIANCE HDR: every RGBE pixel decodes to (2.0, 1.0, 0.5) linear.
     // 4x2 stays under stb's RLE threshold, so it is read as a flat scanline.
     [[nodiscard]] auto MakeUniformHdr(const uint32_t width, const uint32_t height) -> std::vector<char>
@@ -27,6 +53,86 @@ namespace
         for (uint32_t i = 0; i < width * height; i++)
             bytes.insert(bytes.end(), { static_cast<char>(128), static_cast<char>(64), static_cast<char>(32), static_cast<char>(130) });
         return bytes;
+    }
+
+    [[nodiscard]] auto ReadRgba8(const Ref<Image>& image) -> Rgba8Readback
+    {
+        REQUIRE CHECK(image != nullptr);
+        REQUIRE CHECK(image->GetFormat() == nvrhi::Format::RGBA8_UNORM);
+
+        const auto device = Testing::AppHarness::Get()->GetDeviceManager()->GetDevice();
+        const auto stagingTexture = device->createStagingTexture(image->GetTexture()->getDesc(), nvrhi::CpuAccessMode::Read);
+        const auto commandList = device->createCommandList();
+
+        commandList->open();
+        commandList->copyTexture(stagingTexture, nvrhi::TextureSlice{}, image->GetTexture(), nvrhi::TextureSlice{});
+        commandList->close();
+        device->executeCommandList(commandList);
+        REQUIRE CHECK(device->waitForIdle());
+
+        size_t rowPitch = 0;
+        const auto* mapped = static_cast<const uint8_t*>(
+            device->mapStagingTexture(stagingTexture, nvrhi::TextureSlice{}, nvrhi::CpuAccessMode::Read, &rowPitch)
+        );
+        REQUIRE CHECK(mapped != nullptr);
+
+        Rgba8Readback readback{
+            .Width = image->GetWidth(),
+            .Height = image->GetHeight(),
+            .Pixels = std::vector<uint8_t>(static_cast<size_t>(image->GetWidth()) * image->GetHeight() * 4u),
+        };
+        const size_t packedRowSize = static_cast<size_t>(readback.Width) * 4u;
+        REQUIRE CHECK(rowPitch >= packedRowSize);
+        for (uint32_t y = 0; y < readback.Height; y++)
+            std::memcpy(
+                readback.Pixels.data() + static_cast<size_t>(y) * packedRowSize, mapped + static_cast<size_t>(y) * rowPitch,
+                packedRowSize
+            );
+
+        device->unmapStagingTexture(stagingTexture);
+        return readback;
+    }
+
+    [[nodiscard]] auto ProjectToPixel(
+        const EditorCamera& camera, const glm::vec3& worldPosition, const uint32_t width, const uint32_t height
+    ) -> glm::ivec2
+    {
+        const glm::vec4 clip = camera.GetViewProjection() * glm::vec4(worldPosition, 1.0f);
+        REQUIRE CHECK(clip.w > 0.0f);
+
+        const glm::vec3 ndc = glm::vec3(clip) / clip.w;
+        REQUIRE CHECK(glm::abs(ndc.x) <= 1.0f);
+        REQUIRE CHECK(glm::abs(ndc.y) <= 1.0f);
+
+        const int32_t x = static_cast<int32_t>((ndc.x * 0.5f + 0.5f) * static_cast<float>(width - 1u));
+        const int32_t y = static_cast<int32_t>((-ndc.y * 0.5f + 0.5f) * static_cast<float>(height - 1u));
+        return { x, y };
+    }
+
+    [[nodiscard]] auto AverageLuminance(const Rgba8Readback& readback, const glm::ivec2 center, const int32_t radius = 2) -> float
+    {
+        float luminance = 0.0f;
+        uint32_t sampleCount = 0;
+
+        for (int32_t y = center.y - radius; y <= center.y + radius; y++)
+        {
+            for (int32_t x = center.x - radius; x <= center.x + radius; x++)
+            {
+                if (x < 0 || y < 0 || x >= static_cast<int32_t>(readback.Width) || y >= static_cast<int32_t>(readback.Height))
+                    continue;
+
+                const size_t index = (static_cast<size_t>(y) * readback.Width + static_cast<size_t>(x)) * 4u;
+                const glm::vec3 color(
+                    static_cast<float>(readback.Pixels[index]) / 255.0f, static_cast<float>(readback.Pixels[index + 1u]) / 255.0f,
+                    static_cast<float>(readback.Pixels[index + 2u]) / 255.0f
+                );
+                luminance += glm::dot(color, glm::vec3(0.2126f, 0.7152f, 0.0722f));
+                sampleCount++;
+            }
+        }
+
+        REQUIRE CHECK(sampleCount > 0);
+        return luminance / static_cast<float>(sampleCount);
     }
 }
 
@@ -85,6 +191,62 @@ SUITE(Renderer)
         CHECK(finalImage->GetFormat() == nvrhi::Format::RGBA8_UNORM);
         CHECK_EQUAL(96u, finalImage->GetWidth());
         CHECK_EQUAL(48u, finalImage->GetHeight());
+        CHECK(Testing::AppHarness::Get()->IsRunning());
+    }
+
+    TEST(SceneRenderer_DirectionalShadowDarkensReceiverAndSurvivesResize)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        PrimitiveProjectFixture project;
+        const Ref<Scene> scene = ctx.GetScene();
+        scene->GetEnvironment().ZenithColor = glm::vec3(0.0f);
+        scene->GetEnvironment().HorizonColor = glm::vec3(0.0f);
+        scene->GetEnvironment().GroundColor = glm::vec3(0.0f);
+        scene->GetEnvironment().AmbientIntensity = 0.0f;
+
+        Entity receiver = scene->CreateEntity("Shadow receiver");
+        receiver.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+        receiver.GetComponent<TransformComponent>().Translation = { 0.0f, -0.05f, 0.0f };
+        receiver.GetComponent<TransformComponent>().Scale = { 3.0f, 0.05f, 3.0f };
+
+        Entity caster = scene->CreateEntity("Shadow caster");
+        caster.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+        caster.GetComponent<TransformComponent>().Translation = { 0.0f, 0.5f, 0.0f };
+        caster.GetComponent<TransformComponent>().Scale = glm::vec3(0.5f);
+
+        Entity sun = scene->CreateEntity("Sun");
+        auto& directionalLight = sun.AddComponent<DirectionalLightComponent>();
+        directionalLight.Direction = glm::normalize(glm::vec3(0.6f, -1.0f, 0.3f));
+        directionalLight.Intensity = 8.0f;
+
+        constexpr uint32_t initialWidth = 256u;
+        constexpr uint32_t initialHeight = 256u;
+        const Ref<SceneRenderer> sceneRenderer =
+            CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
+        EditorCamera camera(glm::vec3(0.0f, 5.0f, 8.0f), -32.0f, -90.0f);
+        camera.SetViewportSize(initialWidth, initialHeight);
+
+        ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+
+        const Rgba8Readback readback = ReadRgba8(sceneRenderer->GetFinalImage());
+        const float shadowed = AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), initialWidth, initialHeight));
+        const float lit =
+            AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight));
+        CHECK(lit > shadowed + 0.05f);
+
+        constexpr uint32_t resizedWidth = 320u;
+        constexpr uint32_t resizedHeight = 180u;
+        sceneRenderer->Resize(resizedWidth, resizedHeight);
+        camera.SetViewportSize(resizedWidth, resizedHeight);
+        ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+
+        const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
+        REQUIRE CHECK(finalImage != nullptr);
+        CHECK_EQUAL(resizedWidth, finalImage->GetWidth());
+        CHECK_EQUAL(resizedHeight, finalImage->GetHeight());
         CHECK(Testing::AppHarness::Get()->IsRunning());
     }
 
