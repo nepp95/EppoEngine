@@ -4,16 +4,41 @@
 #include "Core/Application.h"
 #include "Project/Project.h"
 #include "Renderer/Framebuffer.h"
+#include "Renderer/Image.h"
 #include "Renderer/Renderer.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <nvrhi/utils.h>
-
-#include <ranges>
 
 namespace Eppo
 {
+    namespace
+    {
+        constexpr uint32_t s_IblEnvironmentSize = 512;
+        constexpr uint32_t s_IblIrradianceSize = 32;
+        constexpr uint32_t s_IblPrefilterSize = 128;
+        constexpr uint32_t s_IblPrefilterMipLevels = 5;
+        constexpr uint32_t s_IblBrdfLutSize = 256;
+
+        // Per-face inverse view-projection for the layered cube bake.
+        auto GenerateFaceInverseViewProjection(const uint32_t face) -> glm::mat4
+        {
+            constexpr std::array directions{
+                glm::vec3(1.0f, 0.0f, 0.0f),  glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
+                glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),  glm::vec3(0.0f, 0.0f, -1.0f),
+            };
+
+            constexpr std::array ups{
+                glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
+            };
+
+            const glm::mat4 proj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 10.0f);
+            const glm::mat4 view = glm::lookAt(glm::vec3(0.0f), directions.at(face), ups.at(face));
+
+            return glm::inverse(proj * view);
+        }
+    }
     SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
         : m_Scene(scene), m_DebugRenderingEnabled(specification.EnableDebugRendering)
     {
@@ -25,9 +50,25 @@ namespace Eppo
         m_Width = specification.Width == 0 ? Application::Get().GetWindow()->GetWidth() : specification.Width;
         m_Height = specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height;
 
-        m_Sampler = Sampler::Create();
-        m_ClampSampler = Sampler::Create(SamplerSpecification{ .AddressMode = nvrhi::SamplerAddressMode::Clamp });
         m_RenderCommandBuffer = CreateRef<RenderCommandBuffer>();
+        m_Sampler = Sampler::Create();
+
+        m_ClampSampler = Sampler::Create(
+            SamplerSpecification{
+                .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+            }
+        );
+
+        m_EquirectSampler = Sampler::Create(
+            SamplerSpecification{
+                .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
+                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+            }
+        );
+
 
         // Create render passes
         // Geometry
@@ -183,7 +224,7 @@ namespace Eppo
         // One collapsible row per scene pass: its GPU time plus draw-call breakdown.
         const auto renderPass = [](const char* name, const PassStatistics& stats, float timeMs) -> void
         {
-            if (!ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen, "%s: %.2fms", name, timeMs))
+            if (!ImGui::TreeNodeEx(name, 0, "%s: %.2fms", name, timeMs))
                 return;
 
             ImGui::Text("Draw calls: %u", stats.DrawCalls);
@@ -263,6 +304,130 @@ namespace Eppo
         m_CameraData.Position = glm::vec4(glm::vec3(transform[3]), 0.0f);
 
         BeginSceneInternal();
+    }
+
+    auto SceneRenderer::EndScene() -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::EndScene")
+
+        EnsureColliderMeshes();
+
+        m_RenderCommandBuffer->Begin();
+        PrepareRender();
+
+        GeometryPass();
+        SkyPass();
+        TonemapPass();
+        WireframePass();
+
+        m_RenderCommandBuffer->End();
+        m_RenderCommandBuffer->Submit();
+    }
+
+    auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
+    {
+        return m_TonemapPass->GetPipeline()->GetSpecification().Framebuffer->GetFinalImage();
+    }
+
+    auto SceneRenderer::SubmitMesh(const AssetHandle meshHandle, const glm::mat4& transform) -> void
+    {
+        const DrawKey key{
+            .ID = meshHandle,
+        };
+
+        if (m_DrawCommands.contains(key))
+        {
+            auto& drawCmd = m_DrawCommands.at(key);
+            drawCmd.Transforms.emplace_back(transform);
+        }
+        else
+        {
+            const auto& mesh = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Mesh>(meshHandle);
+
+            const DrawCommand cmd{
+                .Mesh = mesh,
+                .Transforms = { transform },
+            };
+
+            m_DrawCommands[key] = cmd;
+        }
+    }
+
+    auto SceneRenderer::SubmitPointLight(const glm::vec3& position, const glm::vec3& color, const float intensity) -> void
+    {
+        if (m_LightData.NumLights >= MaxPointLights)
+        {
+            Log::Warn("Scene has more than {} point lights; extra lights are ignored.", MaxPointLights);
+            return;
+        }
+
+        auto& light = m_LightData.Lights.at(m_LightData.NumLights);
+        light.Position = glm::vec4(position, 1.0f);
+        light.Color = glm::vec4(color, intensity);
+
+        m_LightData.NumLights++;
+    }
+
+    auto SceneRenderer::SubmitEnvironment(const EnvironmentSettings& environment) -> void
+    {
+        m_EnvironmentData.ZenithColor = glm::vec4(environment.ZenithColor, 1.0f);
+        m_EnvironmentData.HorizonColor = glm::vec4(environment.HorizonColor, 1.0f);
+        m_EnvironmentData.GroundColor = glm::vec4(environment.GroundColor, 1.0f);
+        m_EnvironmentData.Params.x = environment.AmbientIntensity;
+
+        // The environment cube remembers (in its Handle) the skybox it was baked from, so nothing else
+        // tracks the baked state. Rebake only on change; Params.y and the IBL indices persist otherwise.
+        if (const AssetHandle baked = m_EnvironmentCube ? m_EnvironmentCube->Handle : AssetHandle(0); environment.SkyboxHandle == baked)
+            return;
+
+        m_EnvironmentData.Params.y = 0.0f;
+        m_EnvironmentData.IBL0 = glm::uvec4(0);
+        m_EnvironmentData.IBL1 = glm::uvec4(0);
+
+        // Gradient-only scenes never allocate the IBL targets; only clear a previously baked cube.
+        if (!environment.SkyboxHandle)
+        {
+            if (m_EnvironmentCube)
+                m_EnvironmentCube->Handle = 0;
+            return;
+        }
+
+        // Allocate and record the attempt before loading, so a failed load doesn't retry every frame.
+        EnsureIblResources();
+        m_EnvironmentCube->Handle = environment.SkyboxHandle;
+
+        // Image is an asset; resolves through the registry like meshes do.
+        const auto& image = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Image>(environment.SkyboxHandle);
+        if (!image)
+        {
+            Log::Error("Failed to load skybox image for handle {}", static_cast<uint64_t>(environment.SkyboxHandle));
+            return;
+        }
+
+        BakeEnvironmentMap(image);
+
+        m_EnvironmentData.Params.y = 1.0f;
+        m_EnvironmentData.IBL0 = glm::uvec4(
+            m_EnvironmentCube->GetBindlessIndex(), m_IrradianceCube->GetBindlessIndex(), m_PrefilterCube->GetBindlessIndex(),
+            m_BrdfLut->GetBindlessIndex()
+        );
+        m_EnvironmentData.IBL1 = glm::uvec4(m_ClampSampler->GetBindlessIndex(), 0, 0, 0);
+    }
+
+    auto SceneRenderer::Resize(const uint32_t width, const uint32_t height) -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::Resize")
+
+        if (m_Width == width && m_Height == height)
+            return;
+
+        m_Width = width;
+        m_Height = height;
+
+        m_GeometryPass->Resize(m_Width, m_Height);
+        m_SkyPass->Resize(m_Width, m_Height);
+        m_TonemapPass->Resize(m_Width, m_Height);
+        m_WireframePass->Resize(m_Width, m_Height);
     }
 
     auto SceneRenderer::BeginSceneInternal() -> void
@@ -469,104 +634,27 @@ namespace Eppo
         m_WireframePass->Bake();
     }
 
-    auto SceneRenderer::SubmitPointLight(const glm::vec3& position, const glm::vec3& color, const float intensity) -> void
-    {
-        if (m_LightData.NumLights >= MaxPointLights)
-        {
-            Log::Warn("Scene has more than {} point lights; extra lights are ignored.", MaxPointLights);
-            return;
-        }
-
-        auto& light = m_LightData.Lights.at(m_LightData.NumLights);
-        light.Position = glm::vec4(position, 1.0f);
-        light.Color = glm::vec4(color, intensity);
-
-        m_LightData.NumLights++;
-    }
-
-    auto SceneRenderer::SubmitEnvironment(const EnvironmentSettings& environment) -> void
-    {
-        m_EnvironmentData.ZenithColor = glm::vec4(environment.ZenithColor, 1.0f);
-        m_EnvironmentData.HorizonColor = glm::vec4(environment.HorizonColor, 1.0f);
-        m_EnvironmentData.GroundColor = glm::vec4(environment.GroundColor, 1.0f);
-        // Params.y is the skybox flag; kept 0 until an HDR sky loader lands.
-        m_EnvironmentData.Params = glm::vec4(environment.AmbientIntensity, 0.0f, 0.0f, 0.0f);
-    }
-
-    auto SceneRenderer::EndScene() -> void
-    {
-        EP_PROFILE_FN("SceneRenderer::EndScene")
-
-        EnsureColliderMeshes();
-
-        m_RenderCommandBuffer->Begin();
-        PrepareRender();
-
-        GeometryPass();
-        SkyPass();
-        TonemapPass();
-        WireframePass();
-
-        m_RenderCommandBuffer->End();
-        m_RenderCommandBuffer->Submit();
-    }
-
-    auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
-    {
-        return m_TonemapPass->GetPipeline()->GetSpecification().Framebuffer->GetFinalImage();
-    }
-
-    auto SceneRenderer::SubmitMesh(const AssetHandle meshHandle, const glm::mat4& transform) -> void
-    {
-        const DrawKey key{
-            .ID = meshHandle,
-        };
-
-        if (m_DrawCommands.contains(key))
-        {
-            auto& drawCmd = m_DrawCommands.at(key);
-            drawCmd.Transforms.emplace_back(transform);
-        }
-        else
-        {
-            const auto& mesh = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Mesh>(meshHandle);
-
-            const DrawCommand cmd{
-                .Mesh = mesh,
-                .Transforms = { transform },
-            };
-
-            m_DrawCommands[key] = cmd;
-        }
-    }
-
-    auto SceneRenderer::Resize(const uint32_t width, const uint32_t height) -> void
-    {
-        EP_PROFILE_FN("SceneRenderer::Resize")
-
-        if (m_Width == width && m_Height == height)
-            return;
-
-        m_Width = width;
-        m_Height = height;
-
-        m_GeometryPass->Resize(m_Width, m_Height);
-        m_SkyPass->Resize(m_Width, m_Height);
-        m_TonemapPass->Resize(m_Width, m_Height);
-        m_WireframePass->Resize(m_Width, m_Height);
-    }
-
     auto SceneRenderer::GeometryPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::GeometryPass")
 
-        GeometryPushConstants pushConstants{};
+        struct PC
+        {
+            glm::mat4 Transform;
+            glm::vec4 BaseColor;
+            uint32_t InstanceOffset;
+            int32_t DiffuseMapIndex;
+            int32_t NormalMapIndex;
+            int32_t RoughMetMapIndex;
+            float Metallic;
+            float Roughness;
+            uint32_t SamplerIndex;
+        } pushConstants{};
 
-        const auto& renderer = DeviceManager::Get()->GetRenderer();
         auto& statistics = m_GeometryPass->GetStatistics();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_GeometryPass->GetName());
-        renderer->BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
+        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
 
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
         pushConstants.SamplerIndex = m_Sampler->GetBindlessIndex();
@@ -603,7 +691,7 @@ namespace Eppo
                     pushConstants.RoughMetMapIndex = material->GetRoughMetMapIndex();
                     pushConstants.Metallic = material->Metallic;
                     pushConstants.Roughness = material->Roughness;
-                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(GeometryPushConstants));
+                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
@@ -624,19 +712,18 @@ namespace Eppo
             statistics.Meshes++;
         }
 
-        renderer->EndRenderPass(m_RenderCommandBuffer);
+        Renderer::EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndTimerQuery(m_GeometryPass->GetName());
     }
 
-    auto SceneRenderer::SkyPass() -> void
+    auto SceneRenderer::SkyPass() const -> void
     {
         EP_PROFILE_FN("SceneRenderer::SkyPass")
 
-        const auto& renderer = DeviceManager::Get()->GetRenderer();
         auto& statistics = m_SkyPass->GetStatistics();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_SkyPass->GetName());
-        renderer->BeginRenderPass(m_RenderCommandBuffer, m_SkyPass);
+        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SkyPass);
 
         constexpr nvrhi::DrawArguments drawArgs{
             .vertexCount = 3,
@@ -647,11 +734,11 @@ namespace Eppo
         statistics.DrawCalls++;
         statistics.Vertices += drawArgs.vertexCount;
 
-        renderer->EndRenderPass(m_RenderCommandBuffer);
+        Renderer::EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndTimerQuery(m_SkyPass->GetName());
     }
 
-    auto SceneRenderer::WireframePass() -> void
+    auto SceneRenderer::WireframePass() const -> void
     {
         EP_PROFILE_FN("SceneRenderer::WireframePass")
 
@@ -669,12 +756,18 @@ namespace Eppo
             return;
         }
 
-        WireframePushConstants pushConstants{};
+        struct PC
+        {
+            glm::mat4 Transform;
+            glm::vec4 Color;
+            uint32_t InstanceOffset;
+        } pushConstants{};
 
-        const auto& renderer = DeviceManager::Get()->GetRenderer();
         auto& statistics = m_WireframePass->GetStatistics();
+
         m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
-        renderer->BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
+        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
+
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
 
         for (const auto& drawCmd : m_WireframeDrawCommands)
@@ -704,7 +797,7 @@ namespace Eppo
 
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
-                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(WireframePushConstants));
+                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
@@ -725,7 +818,7 @@ namespace Eppo
             statistics.Instances += instanceCount;
         }
 
-        renderer->EndRenderPass(m_RenderCommandBuffer);
+        Renderer::EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
     }
 
@@ -733,17 +826,17 @@ namespace Eppo
     {
         EP_PROFILE_FN("SceneRenderer::TonemapPass")
 
-        constexpr TonemapPushConstants pushConstants{
-            .Exposure = 1.0f,
-        };
+        constexpr struct PC
+        {
+            float Exposure = 1.0f;
+        } pushConstants{};
 
-        const auto& renderer = DeviceManager::Get()->GetRenderer();
         auto& statistics = m_TonemapPass->GetStatistics();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_TonemapPass->GetName());
-        renderer->BeginRenderPass(m_RenderCommandBuffer, m_TonemapPass);
+        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_TonemapPass);
 
-        m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(TonemapPushConstants));
+        m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
 
         constexpr nvrhi::DrawArguments drawArgs{
             .vertexCount = 3,
@@ -754,7 +847,180 @@ namespace Eppo
         statistics.DrawCalls++;
         statistics.Vertices += drawArgs.vertexCount;
 
-        renderer->EndRenderPass(m_RenderCommandBuffer);
+        Renderer::EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndTimerQuery(m_TonemapPass->GetName());
+    }
+
+    auto SceneRenderer::EnsureIblResources() -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::EnsureIblResources")
+
+        if (m_EnvironmentCube)
+            return;
+
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+
+        m_EnvironmentCube = CreateRef<Image>(ImageSpecification{
+            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+            .Width = s_IblEnvironmentSize,
+            .Height = s_IblEnvironmentSize,
+            .IsCubemap = true,
+            .IsRenderTarget = true,
+            .DebugName = "IBL Environment Cube",
+        });
+
+        m_IrradianceCube = CreateRef<Image>(ImageSpecification{
+            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+            .Width = s_IblIrradianceSize,
+            .Height = s_IblIrradianceSize,
+            .IsCubemap = true,
+            .IsRenderTarget = true,
+            .DebugName = "IBL Irradiance Cube",
+        });
+
+        m_PrefilterCube = CreateRef<Image>(ImageSpecification{
+            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+            .Width = s_IblPrefilterSize,
+            .Height = s_IblPrefilterSize,
+            .MipLevels = s_IblPrefilterMipLevels,
+            .IsCubemap = true,
+            .IsRenderTarget = true,
+            .DebugName = "IBL Prefilter Cube",
+        });
+
+        m_BrdfLut = CreateRef<Image>(ImageSpecification{
+            .ImageFormat = nvrhi::Format::RG16_FLOAT,
+            .Width = s_IblBrdfLutSize,
+            .Height = s_IblBrdfLutSize,
+            .IsRenderTarget = true,
+            .DebugName = "IBL BRDF LUT",
+        });
+
+        // Bake the view-independent BRDF LUT once: a 2D fullscreen pass, no source/faces, so not RecordIblPass.
+        const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+            .Width = s_IblBrdfLutSize,
+            .Height = s_IblBrdfLutSize,
+            .ExistingImage = { .Image = m_BrdfLut },
+            .DebugName = "IBL BRDF LUT Framebuffer",
+        });
+
+        const auto pipeline = CreateRef<Pipeline>(PipelineSpecification{
+            .Shader = renderer->GetShader("iblBrdfLut"),
+            .Framebuffer = framebuffer,
+            .Width = s_IblBrdfLutSize,
+            .Height = s_IblBrdfLutSize,
+            .CullMode = nvrhi::RasterCullMode::None,
+        });
+
+        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{ .Name = "IBL BRDF LUT", .Pipeline = pipeline });
+        pass->Bake();
+
+        const auto cmdBuffer = CreateRef<RenderCommandBuffer>();
+        cmdBuffer->Begin();
+        Renderer::BeginRenderPass(cmdBuffer, pass);
+
+        constexpr nvrhi::DrawArguments drawArgs{ .vertexCount = 3, .instanceCount = 1 };
+        cmdBuffer->GetCommandList()->draw(drawArgs);
+
+        Renderer::EndRenderPass(cmdBuffer);
+        cmdBuffer->End();
+        cmdBuffer->Submit();
+        DeviceManager::Get()->GetDevice()->waitForIdle();
+    }
+
+    auto SceneRenderer::BakeEnvironmentMap(const Ref<Image>& equirect) -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::BakeEnvironmentMap")
+
+        EnsureIblResources();
+
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+
+        // Local face-matrix UB (only touched while baking); the cube VS indexes it by SV_InstanceID.
+        glm::mat4 inverseViewProjection[6];
+
+        for (uint32_t face = 0; face < 6; face++)
+            inverseViewProjection[face] = GenerateFaceInverseViewProjection(face);
+
+        const auto facesUB = CreateRef<UniformBuffer>(sizeof(glm::mat4) * 6, "UniformBuffer IBL Faces");
+
+        const auto cmdBuffer = CreateRef<RenderCommandBuffer>();
+        cmdBuffer->Begin();
+
+        facesUB->SetData(cmdBuffer->GetCommandList(), &inverseViewProjection, sizeof(glm::mat4) * 6);
+
+        // Equirect -> environment cube. Wrap sampler so the atan2 longitude seam wraps cleanly.
+        RecordIblPass(
+            renderer->GetShader("iblEquirectToCube"), equirect, m_EquirectSampler, m_EnvironmentCube, facesUB, cmdBuffer, 0,
+            s_IblEnvironmentSize
+        );
+
+        // Environment cube -> irradiance. Clamp for the cube convolution.
+        RecordIblPass(
+            renderer->GetShader("iblIrradiance"), m_EnvironmentCube, m_ClampSampler, m_IrradianceCube, facesUB, cmdBuffer, 0,
+            s_IblIrradianceSize
+        );
+
+        // Environment cube -> prefiltered specular, one mip per roughness. Clamp.
+        for (uint32_t mip = 0; mip < s_IblPrefilterMipLevels; mip++)
+        {
+            const uint32_t mipSize = s_IblPrefilterSize >> mip;
+            const float roughness = static_cast<float>(mip) / static_cast<float>(s_IblPrefilterMipLevels - 1);
+            RecordIblPass(
+                renderer->GetShader("iblPrefilter"), m_EnvironmentCube, m_ClampSampler, m_PrefilterCube, facesUB, cmdBuffer, mip, mipSize,
+                roughness, static_cast<float>(s_IblEnvironmentSize)
+            );
+        }
+
+        cmdBuffer->End();
+        cmdBuffer->Submit();
+        DeviceManager::Get()->GetDevice()->waitForIdle();
+    }
+
+    auto SceneRenderer::RecordIblPass(
+        const Ref<Shader>& shader, const Ref<Image>& source, const Ref<Sampler>& sampler, const Ref<Image>& target,
+        const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, const uint32_t mipLevel, const uint32_t size,
+        const float roughness, const float envMapSize
+    ) -> void
+    {
+        const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+            .Width = size,
+            .Height = size,
+            .ExistingImage = { .Image = target, .MipLevel = mipLevel },
+            .DebugName = "IBL Bake Framebuffer",
+        });
+
+        const auto pipeline = CreateRef<Pipeline>(PipelineSpecification{
+            .Shader = shader,
+            .Framebuffer = framebuffer,
+            .Width = size,
+            .Height = size,
+            .CullMode = nvrhi::RasterCullMode::None,
+        });
+
+        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{ .Name = "IBL Bake", .Pipeline = pipeline });
+
+        if (source)
+            pass->SetInput(0, 0, source);
+        pass->SetInput(0, 0, sampler);
+        pass->SetInput(0, 1, facesUB);
+        pass->Bake();
+
+        const struct PC
+        {
+            float Roughness = roughness;
+            float EnvMapSize = envMapSize;
+        } pushConstants{};
+
+        Renderer::BeginRenderPass(cmdBuffer, pass);
+
+        // Only the prefilter shader uses the push block; dxc strips it from the others, leaving no range.
+        if (shader->GetPushConstants().Size > 0)
+            cmdBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
+
+        constexpr nvrhi::DrawArguments drawArgs{ .vertexCount = 3, .instanceCount = 6 };
+        cmdBuffer->GetCommandList()->draw(drawArgs);
+
+        Renderer::EndRenderPass(cmdBuffer);
     }
 }

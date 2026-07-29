@@ -29,6 +29,7 @@ namespace Eppo
 
         if (m_Specification.SwapchainTarget)
         {
+            EP_ASSERT(m_Specification.SwapchainImage != nullptr, "SwapchainTarget is true on framebuffer but no swapchain image provided!");
             m_Images.emplace_back(m_Specification.SwapchainImage);
             framebufferDesc.addColorAttachment(m_Specification.SwapchainImage->GetTexture());
         }
@@ -91,12 +92,27 @@ namespace Eppo
             attachmentIndex++;
         }
 
+        // Dynamically created attachments target the whole texture (mip 0).
         for (const auto& image : m_Images)
         {
             if (image->IsDepthImage())
                 desc.setDepthAttachment(image->GetTexture());
             else
                 desc.addColorAttachment(image->GetTexture());
+        }
+
+        // The existing image is appended last, targeting a single mip with every array
+        // slice attached — so a cubemap binds all 6 faces as one layered render target.
+        if (const auto& existing = m_Specification.ExistingImage; existing.Image)
+        {
+            m_Images.emplace_back(existing.Image);
+
+            const uint32_t arraySize = existing.Image->GetTexture()->getDesc().arraySize;
+            const nvrhi::TextureSubresourceSet subresources(existing.MipLevel, 1, 0, arraySize);
+            if (existing.Image->IsDepthImage())
+                desc.setDepthAttachment(existing.Image->GetTexture(), subresources);
+            else
+                desc.addColorAttachment(existing.Image->GetTexture(), subresources);
         }
     }
 }

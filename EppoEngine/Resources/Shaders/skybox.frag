@@ -18,6 +18,8 @@ struct Environment
 	float4 HorizonColor;
 	float4 GroundColor;
 	float4 Params; // x = ambient intensity, y = has skybox
+	uint4 IBL0;    // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
+	uint4 IBL1;    // x = IBL sampler index
 };
 ConstantBuffer<Environment> uEnvironment : register(b3, space0);
 
@@ -34,6 +36,13 @@ float4 Main(Input input) : SV_Target
 	float4 worldNear = mul(uCamera.InverseViewProjection, float4(input.NDC, 0.0, 1.0));
 	float4 worldFar = mul(uCamera.InverseViewProjection, float4(input.NDC, 1.0, 1.0));
 	float3 dir = normalize(worldFar.xyz / worldFar.w - worldNear.xyz / worldNear.w);
+
+	if (uEnvironment.Params.y > 0.5)
+	{
+		TextureCube envMap = ResourceDescriptorHeap[uEnvironment.IBL0.x];
+		SamplerState samp = SamplerDescriptorHeap[uEnvironment.IBL1.x];
+		return float4(envMap.SampleLevel(samp, dir, 0).rgb, 1.0);
+	}
 
 	float t = dir.y;
 	float3 color;

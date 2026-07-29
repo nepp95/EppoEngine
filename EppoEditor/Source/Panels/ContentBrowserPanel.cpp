@@ -52,7 +52,7 @@ namespace Eppo
 		{
 			// Only types with an importer registered engine-side are worth
 			// adding to the registry from the browser.
-			return type == AssetType::Mesh || type == AssetType::Scene;
+			return type == AssetType::Mesh || type == AssetType::Scene || type == AssetType::Texture;
 		}
 
 		auto GetImportDirectory(const std::filesystem::path& assetsDirectory, AssetType type) -> std::filesystem::path
@@ -293,11 +293,14 @@ namespace Eppo
 				ImGui::Button("##icon", ImVec2(THUMBNAIL_SIZE, THUMBNAIL_SIZE));
 			ImGui::PopStyleColor();
 
-			// Registered assets can be dragged onto other panels (e.g. a mesh onto
-			// a MeshComponent slot in the Property panel).
-			if (handle && ImGui::BeginDragDropSource())
+			// Drag any importable file onto a slot (a mesh onto a MeshComponent, an image onto the
+			// skybox). Import it first if it isn't already, so it has a handle to carry.
+			if (IsImportable(type) && ImGui::BeginDragDropSource())
 			{
-				const uint64_t payload = static_cast<uint64_t>(handle);
+				if (!handle)
+					assetManager->CreateAsset(path);
+
+				const uint64_t payload = static_cast<uint64_t>(assetManager->GetHandleForPath(path));
 				ImGui::SetDragDropPayload("ASSET_HANDLE", &payload, sizeof(payload));
 				ImGui::TextUnformatted(fileName.c_str());
 				ImGui::EndDragDropSource();

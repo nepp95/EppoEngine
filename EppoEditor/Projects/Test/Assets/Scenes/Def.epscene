@@ -27,6 +27,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -76,6 +82,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -125,6 +137,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -174,6 +192,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -255,6 +279,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -304,6 +334,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -353,6 +389,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -596,6 +638,9 @@
                     "LockAngularX": true,
                     "LockAngularY": true,
                     "LockAngularZ": true,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 2
                 },
                 "ScriptComponent": {
@@ -671,7 +716,7 @@
                 0.6600000262260437,
                 0.6700000166893005
             ],
-            "SkyboxHandle": 0,
+            "SkyboxHandle": 9446329736917411582,
             "ZenithColor": [
                 0.3499999940395355,
                 0.44999998807907104,

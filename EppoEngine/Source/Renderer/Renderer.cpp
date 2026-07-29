@@ -15,7 +15,10 @@ namespace Eppo
 {
     namespace
     {
-        constexpr std::array s_EngineShaderNames{ "composite", "geometry", "imgui", "skybox", "tonemap", "wireframe" };
+        constexpr std::array s_EngineShaderNames{
+            "composite", "geometry",          "imgui",         "skybox",       "tonemap",
+            "wireframe", "iblEquirectToCube", "iblIrradiance", "iblPrefilter", "iblBrdfLut",
+        };
     }
 
     Renderer::Renderer()
@@ -50,7 +53,11 @@ namespace Eppo
 
     auto Renderer::Init() -> void
     {
-        m_CompositeSampler = Sampler::Create({ .AddressMode = nvrhi::SamplerAddressMode::Clamp });
+        m_CompositeSampler = Sampler::Create({
+            .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+            .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+            .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+        });
 
         m_CompositeCommandBuffer = CreateRef<RenderCommandBuffer>();
     }

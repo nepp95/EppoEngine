@@ -36,6 +36,15 @@ namespace Eppo
         bool SwapchainTarget = false;
         Ref<Image> SwapchainImage = nullptr;
 
+        struct ExistingAttachment
+        {
+            Ref<Image> Image = nullptr;
+            uint32_t MipLevel = 0; // which mip to render into; all array slices are attached (layered)
+        };
+
+        // Additional image, appended after all dynamically created attachments.
+        ExistingAttachment ExistingImage;
+
         std::string DebugName;
     };
 

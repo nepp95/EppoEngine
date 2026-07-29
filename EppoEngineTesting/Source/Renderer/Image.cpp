@@ -2,7 +2,9 @@
 #include "Support/AppHarness.h"
 #include "Support/TempDir.h"
 
+#include "Renderer/DescriptorManager.h"
 #include "Renderer/Image.h"
+#include "Renderer/Renderer.h"
 
 using namespace Eppo;
 
@@ -93,5 +95,53 @@ SUITE(Renderer)
         const Buffer buffer(reinterpret_cast<uint8_t*>(bytes.data()), bytes.size());
 
         CheckUploadedImage(buffer);
+    }
+
+    TEST(Image_CubemapRenderTargetCreatesSixSlicesAndRequestedMips)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        const Ref<Image> image = CreateRef<Image>(ImageSpecification{
+            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+            .Width = 128u,
+            .Height = 128u,
+            .MipLevels = 5u,
+            .IsCubemap = true,
+            .IsRenderTarget = true,
+            .DebugName = "Image cubemap test",
+        });
+
+        REQUIRE CHECK(image->GetTexture() != nullptr);
+        const nvrhi::TextureDesc& desc = image->GetTexture()->getDesc();
+        CHECK(desc.dimension == nvrhi::TextureDimension::TextureCube);
+        CHECK_EQUAL(6u, desc.arraySize);
+        CHECK_EQUAL(5u, desc.mipLevels);
+        CHECK_EQUAL(128u, desc.width);
+        CHECK_EQUAL(128u, desc.height);
+    }
+
+    TEST(DescriptorManager_CubemapRegistersAsResource)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        const Ref<Image> image = CreateRef<Image>(ImageSpecification{
+            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+            .Width = 16u,
+            .Height = 16u,
+            .IsCubemap = true,
+            .IsRenderTarget = true,
+            .DebugName = "Bindless cubemap test",
+        });
+        const Ref<DescriptorManager> descriptorManager =
+            Testing::AppHarness::Get()->GetDeviceManager()->GetRenderer()->GetDescriptorManager();
+
+        const BindlessHandle handle = descriptorManager->Register(image);
+
+        CHECK(handle.HeapType == BindlessHeapType::Resource);
+        CHECK(handle.Index != std::numeric_limits<uint32_t>::max());
+        CHECK(handle.Index < descriptorManager->GetResourceHeap()->Capacity);
+        CHECK(image->GetTexture()->getDesc().dimension == nvrhi::TextureDimension::TextureCube);
     }
 }
