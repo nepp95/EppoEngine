@@ -61,6 +61,23 @@ SUITE(Renderer)
 
             CHECK(foundTangent);
         }
+
+        [[nodiscard]] auto HasResource(
+            const Ref<Shader>& shader, const uint32_t set, const uint32_t binding, const nvrhi::ResourceType type
+        ) -> bool
+        {
+            const auto& resources = shader->GetShaderResources();
+            if (!resources.contains(set))
+                return false;
+
+            return std::ranges::any_of(
+                resources.at(set),
+                [binding, type](const ShaderResourceBinding& resource) -> bool
+                {
+                    return resource.Binding == binding && resource.Type == type;
+                }
+            );
+        }
 	}
 
 	TEST(Shader_PackedSourcesResolveIncludesFromThePack)
@@ -127,6 +144,23 @@ SUITE(Renderer)
         const auto& renderer = DeviceManager::Get()->GetRenderer();
         CheckMeshVertexLayout(renderer->GetShader("geometry"));
         CheckMeshVertexLayout(renderer->GetShader("wireframe"));
+    }
+
+    TEST(Shader_ShadowDepthReflectsMeshLayoutAndBindings)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+        const Ref<Shader>& shadowDepth = renderer->GetShader("shadowDepth");
+        CheckMeshVertexLayout(shadowDepth);
+
+        CHECK(HasResource(shadowDepth, 0, 0, nvrhi::ResourceType::StructuredBuffer_SRV));
+        CHECK(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::ConstantBuffer));
+        REQUIRE CHECK(shadowDepth->HasPushConstants());
+        CHECK_EQUAL(68u, shadowDepth->GetPushConstants().Size);
+
+        CHECK(HasResource(renderer->GetShader("geometry"), 0, 1, nvrhi::ResourceType::ConstantBuffer));
     }
 
     TEST(Shader_TonemapReflectsTextureSamplerAndExposure)

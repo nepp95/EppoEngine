@@ -14,6 +14,9 @@ namespace Eppo
 {
     namespace
     {
+        constexpr uint32_t s_ShadowDepthMapSize = 2048;
+        constexpr float s_ShadowBias = 0.0015f;
+        constexpr float s_ShadowMinRadius = 1.0f;
         constexpr uint32_t s_IblEnvironmentSize = 512;
         constexpr uint32_t s_IblIrradianceSize = 32;
         constexpr uint32_t s_IblPrefilterSize = 128;
@@ -38,7 +41,24 @@ namespace Eppo
 
             return glm::inverse(proj * view);
         }
+
+        auto ExpandTransformedBounds(const AABB& source, AABB& destination, const glm::mat4& transform) -> void
+        {
+            if (!source.IsValid())
+                return;
+
+            const std::array corners{
+                glm::vec3(source.Min.x, source.Min.y, source.Min.z), glm::vec3(source.Max.x, source.Min.y, source.Min.z),
+                glm::vec3(source.Min.x, source.Max.y, source.Min.z), glm::vec3(source.Max.x, source.Max.y, source.Min.z),
+                glm::vec3(source.Min.x, source.Min.y, source.Max.z), glm::vec3(source.Max.x, source.Min.y, source.Max.z),
+                glm::vec3(source.Min.x, source.Max.y, source.Max.z), glm::vec3(source.Max.x, source.Max.y, source.Max.z),
+            };
+
+            for (const auto& corner : corners)
+                destination.Expand(glm::vec3(transform * glm::vec4(corner, 1.0f)));
+        }
     }
+
     SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
         : m_Scene(scene), m_DebugRenderingEnabled(specification.EnableDebugRendering)
     {
@@ -51,13 +71,31 @@ namespace Eppo
         m_Height = specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height;
 
         m_RenderCommandBuffer = CreateRef<RenderCommandBuffer>();
-        m_Sampler = Sampler::Create();
 
-        m_ClampSampler = Sampler::Create(
+        // Create samplers
+        m_ClampAllFiltersFalseSampler = Sampler::Create(
             SamplerSpecification{
                 .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
                 .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
                 .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                .AllFilters = false,
+            }
+        );
+
+        m_ClampAllFiltersTrueSampler = Sampler::Create(
+            SamplerSpecification{
+                .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+            }
+        );
+
+        m_WrapAllFiltersTrueSampler = Sampler::Create(
+            SamplerSpecification{
+                .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
+                .AddressModeV = nvrhi::SamplerAddressMode::Wrap,
+                .AddressModeW = nvrhi::SamplerAddressMode::Wrap,
+                .AllFilters = true,
             }
         );
 
@@ -69,8 +107,36 @@ namespace Eppo
             }
         );
 
-
         // Create render passes
+        // Shadow Depth
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = s_ShadowDepthMapSize,
+                .Height = s_ShadowDepthMapSize,
+                .Attachments = { nvrhi::Format::D32 },
+                .DebugName = "Framebuffer Shadow Depth",
+            };
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("shadowDepth"),
+                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
+                .Width = s_ShadowDepthMapSize,
+                .Height = s_ShadowDepthMapSize,
+                .CullMode = nvrhi::RasterCullMode::Front,
+                .DepthTestEnable = true,
+                .DepthWriteEnable = true,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "Shadow Depth",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
+                .ClearDepthOnLoad = true,
+                .DepthClearValue = 1.0f,
+            };
+
+            m_ShadowDepthPass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
         // Geometry
         {
             const FramebufferSpecification framebufferSpec{
@@ -90,11 +156,9 @@ namespace Eppo
                 .DepthWriteEnable = true,
             };
 
-            auto pipeline = CreateRef<Pipeline>(pipelineSpec);
-
             const RenderPassSpecification renderPassSpec{
                 .Name = "Geometry",
-                .Pipeline = pipeline,
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
                 .ClearColorOnLoad = true,
                 .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
                 .ClearDepthOnLoad = true,
@@ -117,11 +181,9 @@ namespace Eppo
                 .DepthFunc = nvrhi::ComparisonFunc::LessOrEqual,
             };
 
-            auto pipeline = CreateRef<Pipeline>(pipelineSpec);
-
             const RenderPassSpecification renderPassSpec{
                 .Name = "Skybox",
-                .Pipeline = pipeline,
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
             };
 
             m_SkyPass = CreateRef<RenderPass>(renderPassSpec);
@@ -144,11 +206,9 @@ namespace Eppo
                 .CullMode = nvrhi::RasterCullMode::None,
             };
 
-            auto pipeline = CreateRef<Pipeline>(pipelineSpec);
-
             const RenderPassSpecification renderPassSpec{
                 .Name = "Tonemap",
-                .Pipeline = pipeline,
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
                 .ClearColorOnLoad = true,
                 .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
             };
@@ -172,17 +232,16 @@ namespace Eppo
                 .SlopeScaledDepthBias = -1.0f,
             };
 
-            auto pipeline = CreateRef<Pipeline>(pipelineSpec);
-
             const RenderPassSpecification renderPassSpec{
                 .Name = "Wireframe",
-                .Pipeline = pipeline,
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
             };
 
             m_WireframePass = CreateRef<RenderPass>(renderPassSpec);
         }
 
         // Uniform buffers
+        m_ShadowDepthUB = CreateRef<UniformBuffer>(sizeof(ShadowDepthData), "UniformBuffer Shadow Depth");
         m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Camera");
         m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightData), "UniformBuffer Lights");
         m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), "UniformBuffer Environment");
@@ -192,10 +251,14 @@ namespace Eppo
             CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Wireframe Instance Transforms");
 
         // Inputs retain their resources and resolve current GPU handles whenever a pass bakes.
+        m_ShadowDepthPass->SetInput(0, 0, m_InstanceTransformsSB);
+        m_ShadowDepthPass->SetInput(0, 1, m_ShadowDepthUB);
+
         m_GeometryPass->SetInput(0, 0, m_InstanceTransformsSB);
-        m_GeometryPass->SetInput(0, 1, m_CameraUB);
-        m_GeometryPass->SetInput(0, 2, m_LightsUB);
-        m_GeometryPass->SetInput(0, 3, m_EnvironmentUB);
+        m_GeometryPass->SetInput(0, 1, m_ShadowDepthUB);
+        m_GeometryPass->SetInput(0, 2, m_CameraUB);
+        m_GeometryPass->SetInput(0, 3, m_LightsUB);
+        m_GeometryPass->SetInput(0, 4, m_EnvironmentUB);
 
         m_SkyPass->SetInput(0, 1, m_CameraUB);
         m_SkyPass->SetInput(0, 3, m_EnvironmentUB);
@@ -205,7 +268,7 @@ namespace Eppo
         m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
 
         m_TonemapPass->SetInput(0, 0, m_GeometryPass->GetFramebuffer()->GetFinalImage());
-        m_TonemapPass->SetInput(0, 0, m_ClampSampler);
+        m_TonemapPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
     }
 
     auto SceneRenderer::RenderGui() const -> void
@@ -240,10 +303,16 @@ namespace Eppo
 
         // Scene passes and their subtotal.
         ImGui::SeparatorText("Scene");
+        const auto& shadowDepthStats = m_ShadowDepthPass->GetStatistics();
         const auto& geometryStats = m_GeometryPass->GetStatistics();
         const auto& skyStats = m_SkyPass->GetStatistics();
         const auto& wireframeStats = m_WireframePass->GetStatistics();
         const auto& tonemapStats = m_TonemapPass->GetStatistics();
+
+        renderPass(
+            m_ShadowDepthPass->GetName().c_str(), shadowDepthStats,
+            m_RenderCommandBuffer->GetTimeMs(m_ShadowDepthPass->GetName(), frameIndex)
+        );
         renderPass(
             m_GeometryPass->GetName().c_str(), geometryStats, m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex)
         );
@@ -254,6 +323,7 @@ namespace Eppo
         );
 
         PassStatistics sceneStats;
+        sceneStats += shadowDepthStats;
         sceneStats += geometryStats;
         sceneStats += skyStats;
         sceneStats += wireframeStats;
@@ -315,6 +385,7 @@ namespace Eppo
         m_RenderCommandBuffer->Begin();
         PrepareRender();
 
+        ShadowDepthPass();
         GeometryPass();
         SkyPass();
         TonemapPass();
@@ -424,7 +495,7 @@ namespace Eppo
             m_EnvironmentCube->GetBindlessIndex(), m_IrradianceCube->GetBindlessIndex(), m_PrefilterCube->GetBindlessIndex(),
             m_BrdfLut->GetBindlessIndex()
         );
-        m_EnvironmentData.IBL1 = glm::uvec4(m_ClampSampler->GetBindlessIndex(), 0, 0, 0);
+        m_EnvironmentData.IBL1 = glm::uvec4(m_ClampAllFiltersTrueSampler->GetBindlessIndex(), 0, 0, 0);
     }
 
     auto SceneRenderer::Resize(const uint32_t width, const uint32_t height) -> void
@@ -447,6 +518,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("SceneRenderer::BeginSceneInternal")
 
+        std::memset(&m_ShadowDepthPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_GeometryPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_SkyPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_WireframePass->GetStatistics(), 0, sizeof(PassStatistics));
@@ -608,6 +680,11 @@ namespace Eppo
 
         const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
+        // Shadow depth
+        FillShadowData();
+        m_ShadowDepthUB->SetData(cmdList, &m_ShadowDepthData, sizeof(m_ShadowDepthData));
+
+        // Camera, light and environment uniforms
         m_CameraUB->SetData(cmdList, &m_CameraData, sizeof(CameraData));
         m_LightsUB->SetData(cmdList, &m_LightData, sizeof(LightData));
         m_EnvironmentUB->SetData(cmdList, &m_EnvironmentData, sizeof(EnvironmentData));
@@ -642,10 +719,135 @@ namespace Eppo
         m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
 
         // Rebuild binding sets for any pass whose resource handles changed.
+        m_ShadowDepthPass->Bake();
         m_GeometryPass->Bake();
         m_SkyPass->Bake();
         m_TonemapPass->Bake();
         m_WireframePass->Bake();
+    }
+
+    auto SceneRenderer::FillShadowData() -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::FillShadowData")
+
+        m_ShadowDepthData = {
+            .LightViewProjection = glm::mat4(1.0f),
+            .Params = glm::vec4(s_ShadowBias, 1.0f / static_cast<float>(s_ShadowDepthMapSize), 0.0f, 0.0f),
+        };
+
+        if (m_LightData.HasDirectionalLight == 0 || m_DrawCommands.empty())
+            return;
+
+        AABB sceneBounds;
+        for (const auto& drawCmd : m_DrawCommands | std::views::values)
+        {
+            if (!drawCmd.Mesh)
+                continue;
+
+            for (const auto& transform : drawCmd.Transforms)
+                ExpandTransformedBounds(drawCmd.Mesh->GetBounds(), sceneBounds, transform);
+        }
+
+        if (!sceneBounds.IsValid())
+        {
+            Log::Warn("Scene bounds were invalid while trying to fill shadow data!");
+            return;
+        }
+
+        auto lightDirection = glm::vec3(m_LightData.DirectionalLight.Direction);
+        const float directionLengthSq = glm::dot(lightDirection, lightDirection);
+        if (directionLengthSq <= glm::epsilon<float>())
+            return;
+        lightDirection /= glm::sqrt(directionLengthSq);
+
+        const glm::vec3 center = sceneBounds.GetCenter();
+        const float radius = glm::max(glm::length(sceneBounds.GetHalfExtent()) * 1.05f, s_ShadowMinRadius);
+        const float depthPadding = glm::max(radius * 0.1f, 0.1f);
+
+        constexpr glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
+        const glm::vec3 lightUp = glm::abs(glm::dot(lightDirection, worldUp)) > 0.99f ? glm::vec3(1.0f, 0.0f, 0.0f) : worldUp;
+        const glm::vec3 lightPosition = center - lightDirection * (radius + depthPadding);
+        const glm::mat4 lightView = glm::lookAt(lightPosition, center, lightUp);
+        const glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, depthPadding, radius * 2.0f + depthPadding);
+
+        const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
+        m_ShadowDepthData.LightViewProjection = lightProjection * lightView;
+        m_ShadowDepthData.Indices = glm::uvec4(shadowMap->GetBindlessIndex(), m_ClampAllFiltersFalseSampler->GetBindlessIndex(), 1u, 0u);
+    }
+
+    auto SceneRenderer::ShadowDepthPass() -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::ShadowDepthPass")
+
+        if (m_ShadowDepthData.Indices.z == 0)
+        {
+            m_RenderCommandBuffer->BeginTimerQuery(m_ShadowDepthPass->GetName());
+            m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
+            return;
+        }
+
+        struct PC
+        {
+            glm::mat4 Transform;
+            uint32_t InstanceOffset;
+        } pushConstants{};
+
+        auto& statistics = m_ShadowDepthPass->GetStatistics();
+
+        m_RenderCommandBuffer->BeginTimerQuery(m_ShadowDepthPass->GetName());
+        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_ShadowDepthPass);
+
+        auto& state = m_RenderCommandBuffer->GetGraphicsState();
+
+        for (const auto& drawCmd : m_DrawCommands | std::views::values)
+        {
+            const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+            if (instanceCount == 0)
+                continue;
+
+            for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+            {
+                const nvrhi::VertexBufferBinding vtxBufBinding{
+                    .buffer = submesh.VertexBuffer->GetBuffer(),
+                    .slot = 0,
+                    .offset = 0,
+                };
+
+                state.vertexBuffers.resize(1);
+                state.vertexBuffers[0] = vtxBufBinding;
+                state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+                state.indexBuffer.format = nvrhi::Format::R32_UINT;
+                state.indexBuffer.offset = 0;
+                m_RenderCommandBuffer->CommitGraphicsState();
+
+                pushConstants.Transform = submesh.LocalTransform;
+                pushConstants.InstanceOffset = drawCmd.InstanceOffset;
+
+                for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                {
+                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
+
+                    nvrhi::DrawArguments drawArgs{
+                        .vertexCount = static_cast<uint32_t>(indexCount),
+                        .instanceCount = instanceCount,
+                        .startIndexLocation = firstIndex,
+                        .startVertexLocation = firstVertex,
+                    };
+
+                    m_RenderCommandBuffer->GetCommandList()->drawIndexed(drawArgs);
+
+                    statistics.DrawCalls++;
+                    statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
+                    statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                }
+                statistics.Submeshes++;
+            }
+            statistics.Instances += instanceCount;
+            statistics.Meshes++;
+        }
+
+        Renderer::EndRenderPass(m_RenderCommandBuffer);
+        m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
     }
 
     auto SceneRenderer::GeometryPass() -> void
@@ -671,7 +873,7 @@ namespace Eppo
         Renderer::BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
 
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
-        pushConstants.SamplerIndex = m_Sampler->GetBindlessIndex();
+        pushConstants.SamplerIndex = m_WrapAllFiltersTrueSampler->GetBindlessIndex();
 
         for (const auto& drawCmd : m_DrawCommands | std::views::values)
         {
@@ -756,14 +958,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("SceneRenderer::WireframePass")
 
-        if (!m_DebugRenderingEnabled)
-        {
-            m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
-            m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
-            return;
-        }
-
-        if (m_WireframeDrawCommands.empty())
+        if (!m_DebugRenderingEnabled || m_WireframeDrawCommands.empty())
         {
             m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
             m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
@@ -971,7 +1166,7 @@ namespace Eppo
 
         // Environment cube -> irradiance. Clamp for the cube convolution.
         RecordIblPass(
-            renderer->GetShader("iblIrradiance"), m_EnvironmentCube, m_ClampSampler, m_IrradianceCube, facesUB, cmdBuffer, 0,
+            renderer->GetShader("iblIrradiance"), m_EnvironmentCube, m_ClampAllFiltersTrueSampler, m_IrradianceCube, facesUB, cmdBuffer, 0,
             s_IblIrradianceSize
         );
 
@@ -981,8 +1176,8 @@ namespace Eppo
             const uint32_t mipSize = s_IblPrefilterSize >> mip;
             const float roughness = static_cast<float>(mip) / static_cast<float>(s_IblPrefilterMipLevels - 1);
             RecordIblPass(
-                renderer->GetShader("iblPrefilter"), m_EnvironmentCube, m_ClampSampler, m_PrefilterCube, facesUB, cmdBuffer, mip, mipSize,
-                roughness, static_cast<float>(s_IblEnvironmentSize)
+                renderer->GetShader("iblPrefilter"), m_EnvironmentCube, m_ClampAllFiltersTrueSampler, m_PrefilterCube, facesUB, cmdBuffer,
+                mip, mipSize, roughness, static_cast<float>(s_IblEnvironmentSize)
             );
         }
 
