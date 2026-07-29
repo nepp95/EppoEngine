@@ -16,6 +16,11 @@ namespace Eppo
 
         std::unordered_map<std::string, PendingDialog> s_Dialogs;
 
+        // Trim every dialog to what the editor needs: no create-directory button, and drop the
+        // type column (redundant with the extension) and the date column (noise here).
+        constexpr ImGuiFileDialogFlags s_BaseFlags =
+            ImGuiFileDialogFlags_DisableCreateDirectoryButton | ImGuiFileDialogFlags_HideColumnType | ImGuiFileDialogFlags_HideColumnDate;
+
         // ImGuiFileDialog silently ignores an initial path that doesn't exist. Resolve to the
         // nearest existing ancestor so the dialog opens where the caller intended.
         auto ExistingDirectory(std::filesystem::path path) -> std::filesystem::path
@@ -36,7 +41,7 @@ namespace Eppo
             config.countSelectionMax = 1;
             config.flags = flags;
 
-            s_Dialogs[key] = { std::move(onSelect), folder };
+            s_Dialogs[key] = { .OnSelect = std::move(onSelect), .Folder = folder };
             ImGuiFileDialog::Instance()->OpenDialog(key, title, filters, config);
         }
     }
@@ -44,7 +49,7 @@ namespace Eppo
     auto FileDialog::OpenFile(const std::string& key, const std::string& title, const std::string& filters,
                               const std::filesystem::path& initialDir, ResultCallback onSelect) -> void
     {
-        QueueDialog(key, title, filters.c_str(), initialDir, std::move(onSelect), ImGuiFileDialogFlags_Modal, false);
+        QueueDialog(key, title, filters.c_str(), initialDir, std::move(onSelect), ImGuiFileDialogFlags_Modal | s_BaseFlags, false);
     }
 
     auto FileDialog::SaveFile(const std::string& key, const std::string& title, const std::string& filters,
@@ -52,14 +57,14 @@ namespace Eppo
     {
         QueueDialog(
             key, title, filters.c_str(), initialDir, std::move(onSelect),
-            ImGuiFileDialogFlags_Modal | ImGuiFileDialogFlags_ConfirmOverwrite, false
+            ImGuiFileDialogFlags_Modal | ImGuiFileDialogFlags_ConfirmOverwrite | s_BaseFlags, false
         );
     }
 
     auto FileDialog::OpenFolder(const std::string& key, const std::string& title,
                                 const std::filesystem::path& initialDir, ResultCallback onSelect) -> void
     {
-        QueueDialog(key, title, nullptr, initialDir, std::move(onSelect), ImGuiFileDialogFlags_Modal, true);
+        QueueDialog(key, title, nullptr, initialDir, std::move(onSelect), ImGuiFileDialogFlags_Modal | s_BaseFlags, true);
     }
 
     auto FileDialog::Render() -> void

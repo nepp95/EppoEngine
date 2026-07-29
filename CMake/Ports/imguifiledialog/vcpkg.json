@@ -1,6 +1,7 @@
 {
   "name": "imguifiledialog",
   "version": "0.6.8",
+  "port-version": 1,
   "description": "A file selection dialog built for and using Dear ImGui",
   "homepage": "https://github.com/aiekick/ImGuiFileDialog",
   "license": "MIT",
