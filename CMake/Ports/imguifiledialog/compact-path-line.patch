@@ -1,0 +1,110 @@
+diff --git a/ImGuiFileDialog.cpp b/ImGuiFileDialog.cpp
+index 0586da8..5b751d2 100644
+--- a/ImGuiFileDialog.cpp
++++ b/ImGuiFileDialog.cpp
+@@ -2601,101 +2601,11 @@ void IGFD::FileManager::DrawDirectoryCreation(const FileDialogInternal& vFileDia
+ }
+ 
+ void IGFD::FileManager::DrawPathComposer(const FileDialogInternal& vFileDialogInternal) {
+-    if (IMGUI_BUTTON(resetButtonString)) {
+-        SetCurrentPath(".");
+-        OpenCurrentPath(vFileDialogInternal);
+-    }
+-    if (ImGui::IsItemHovered()) {
+-        ImGui::SetTooltip(buttonResetPathString);
+-    }
+-    if (vFileDialogInternal.getDialogConfig().flags & ImGuiFileDialogFlags_ShowDevicesButton) {
+-        ImGui::SameLine();
+-        if (IMGUI_BUTTON(devicesButtonString)) {
+-            devicesClicked = true;
+-        }
+-        if (ImGui::IsItemHovered()) {
+-            ImGui::SetTooltip(buttonDriveString);
+-        }
+-    }
+-
+-    ImGui::SameLine();
+-
+-    if (IMGUI_BUTTON(editPathButtonString)) {
+-        inputPathActivated = !inputPathActivated;
+-        if (inputPathActivated) {
+-            if (!m_CurrentPathDecomposition.empty()) {
+-                auto endIt    = m_CurrentPathDecomposition.end();
+-                m_CurrentPath = ComposeNewPath(--endIt);
+-                IGFD::Utils::SetBuffer(inputPathBuffer, MAX_PATH_BUFFER_SIZE, m_CurrentPath);
+-            }
+-        }
+-    }
+-    if (ImGui::IsItemHovered()) {
+-        ImGui::SetTooltip(buttonEditPathString);
+-    }
+-
+-    ImGui::SameLine();
+-
+-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+-
+-    // show current path
++    (void)vFileDialogInternal;
++    // EppoEngine: compact read-only current-path line instead of the button breadcrumb.
+     if (!m_CurrentPathDecomposition.empty()) {
+-        ImGui::SameLine();
+-
+-        if (inputPathActivated) {
+-            ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+-            ImGui::InputText("##pathedition", inputPathBuffer, MAX_PATH_BUFFER_SIZE);
+-            ImGui::PopItemWidth();
+-        } else {
+-            int _id = 0;
+-            for (auto itPathDecomp = m_CurrentPathDecomposition.begin(); itPathDecomp != m_CurrentPathDecomposition.end(); ++itPathDecomp) {
+-                if (itPathDecomp != m_CurrentPathDecomposition.begin()) {
+-#if defined(CUSTOM_PATH_SPACING)
+-                    ImGui::SameLine(0, CUSTOM_PATH_SPACING);
+-#else
+-                    ImGui::SameLine();
+-#endif  // USE_CUSTOM_PATH_SPACING
+-                    if (!(vFileDialogInternal.getDialogConfig().flags & ImGuiFileDialogFlags_DisableQuickPathSelection)) {
+-#if defined(_IGFD_WIN_)
+-                        const char* sep = "\\";
+-#elif defined(_IGFD_UNIX_)
+-                        const char* sep = "/";
+-                        if (itPathDecomp != m_CurrentPathDecomposition.begin() + 1)
+-#endif
+-                        {
+-                            ImGui::PushID(_id++);
+-                            bool click = IMGUI_PATH_BUTTON(sep);
+-                            ImGui::PopID();
+-
+-#if defined(CUSTOM_PATH_SPACING)
+-                            ImGui::SameLine(0, CUSTOM_PATH_SPACING);
+-#else
+-                            ImGui::SameLine();
+-#endif  // USE_CUSTOM_PATH_SPACING
+-
+-                            if (click) {
+-                                m_OpenPathPopup(vFileDialogInternal, itPathDecomp - 1);
+-                            } else if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+-                                m_SetCurrentPath(itPathDecomp - 1);
+-                                break;
+-                            }
+-                        }
+-                    }
+-                }
+-
+-                ImGui::PushID(_id++);
+-                bool click = IMGUI_PATH_BUTTON((*itPathDecomp).c_str());
+-                ImGui::PopID();
+-                if (click) {
+-                    m_CurrentPath = ComposeNewPath(itPathDecomp);
+-                    pathClicked   = true;
+-                    break;
+-                } else if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {  // activate input for path
+-                    m_SetCurrentPath(itPathDecomp);
+-                    break;
+-                }
+-            }
+-        }
++        auto endIt = m_CurrentPathDecomposition.end();
++        ImGui::TextUnformatted(ComposeNewPath(--endIt).c_str());
+     }
+ }
+ 

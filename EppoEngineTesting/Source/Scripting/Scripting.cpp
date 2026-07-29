@@ -146,6 +146,26 @@ SUITE(Scripting)
         CHECK(speed->Type == ScriptFieldType::Float);
     }
 
+    TEST(ScriptEngine_PublicFieldInitializers_AreReadWithoutCreatingOverrides)
+    {
+        REQUIRE CHECK(EnsureRuntime());
+        auto& engine = ScriptEngine::Get();
+        const int32_t classIndex = engine.FindClassIndex(kUserClass);
+        REQUIRE CHECK(classIndex >= 0);
+
+        const ScriptClass* c = FindClass(kUserClass);
+        REQUIRE CHECK(c != nullptr);
+        const Eppo::UUID entityId;
+        CHECK(engine.TryGetFieldMap(entityId) == nullptr);
+
+        CHECK_CLOSE(2.5f, engine.GetFieldValueOrDefault(entityId, classIndex, FieldIndex(*c, "Speed")).Get<float>(), 1e-5f);
+        CHECK_EQUAL(7, engine.GetFieldValueOrDefault(entityId, classIndex, FieldIndex(*c, "Count")).Get<int32_t>());
+        CHECK_EQUAL(true, engine.GetFieldValueOrDefault(entityId, classIndex, FieldIndex(*c, "Enabled")).Get<bool>());
+        CHECK_CLOSE(1.5, engine.GetFieldValueOrDefault(entityId, classIndex, FieldIndex(*c, "Ratio")).Get<double>(), 1e-9);
+
+        CHECK(engine.TryGetFieldMap(entityId) == nullptr);
+    }
+
     TEST(ScriptClass_PublicMethods_AreReflected)
     {
         REQUIRE CHECK(EnsureRuntime());
