@@ -33,9 +33,9 @@ if (NOT imguizmo_FOUND)
     message(FATAL_ERROR "imguizmo not found!")
 endif ()
 
-find_package(nfd REQUIRED)
-if (NOT nfd_FOUND)
-    message(FATAL_ERROR "nfd not found!")
+find_package(ImGuiFileDialog CONFIG REQUIRED)
+if (NOT ImGuiFileDialog_FOUND)
+    message(FATAL_ERROR "ImGuiFileDialog not found!")
 endif ()
 
 find_package(nvrhi REQUIRED)

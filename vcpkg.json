@@ -26,8 +26,8 @@
       ]
     },
     {
-      "name": "nativefiledialog-extended",
-      "version>=": "1.3.0"
+      "name": "imguifiledialog",
+      "version>=": "0.6.8"
     },
     {
       "name": "nlohmann-json",
