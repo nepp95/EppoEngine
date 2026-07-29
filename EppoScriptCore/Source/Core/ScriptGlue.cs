@@ -9,6 +9,7 @@ namespace EppoScriptCore.Core
         public string Name;
         public ScriptFieldType Type;
         public FieldInfo Info;
+        public byte[]? DefaultValue;
     }
 
     internal sealed class MethodDescriptor
@@ -23,6 +24,8 @@ namespace EppoScriptCore.Core
         public string FullName;
         public List<FieldDescriptor> Fields;
         public List<MethodDescriptor> Methods;
+        public bool DefaultValuesInitializationAttempted;
+        public bool DefaultValuesInitialized;
     }
 
     internal sealed class InstanceRecord
@@ -206,6 +209,65 @@ namespace EppoScriptCore.Core
                 return 0;
 
             return (byte)descriptor.Fields[fieldIndex].Type;
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "GetClassFieldDefaultValue")]
+        public static int GetClassFieldDefaultValue(int classIndex, int fieldIndex, IntPtr data)
+        {
+            var read = 0;
+            Guard("GetClassFieldDefaultValue", () =>
+            {
+                if (data == IntPtr.Zero)
+                    return;
+
+                var descriptor = GetDescriptor(classIndex);
+                if (descriptor is null || fieldIndex < 0 || fieldIndex >= descriptor.Fields.Count)
+                    return;
+
+                if (!descriptor.DefaultValuesInitializationAttempted)
+                {
+                    descriptor.DefaultValuesInitializationAttempted = true;
+                    if (Activator.CreateInstance(descriptor.Type) is not Scene.Entity defaultInstance)
+                        return;
+
+                    foreach (var descriptorField in descriptor.Fields)
+                    {
+                        var size = (int)FieldTypeSize(descriptorField.Type);
+                        if (size == 0)
+                            continue;
+
+                        var bytes = new byte[size];
+                        var initializerValue = descriptorField.Info.GetValue(defaultInstance);
+                        if (initializerValue is not null)
+                        {
+                            var buffer = Marshal.AllocHGlobal(size);
+                            try
+                            {
+                                WriteFieldValue(buffer, descriptorField.Type, initializerValue);
+                                Marshal.Copy(buffer, bytes, 0, size);
+                            }
+                            finally
+                            {
+                                Marshal.FreeHGlobal(buffer);
+                            }
+                        }
+                        descriptorField.DefaultValue = bytes;
+                    }
+                    descriptor.DefaultValuesInitialized = true;
+                }
+
+                if (!descriptor.DefaultValuesInitialized)
+                    return;
+
+                var field = descriptor.Fields[fieldIndex];
+                var value = field.DefaultValue;
+                if (value is null)
+                    return;
+
+                Marshal.Copy(value, 0, data, value.Length);
+                read = 1;
+            });
+            return read;
         }
 
         [UnmanagedCallersOnly(EntryPoint = "GetClassMethodCount")]

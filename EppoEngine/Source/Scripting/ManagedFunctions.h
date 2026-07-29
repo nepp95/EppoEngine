@@ -10,6 +10,7 @@ namespace Eppo
     using GetClassFieldCountFn = int32_t (*)(int32_t);
     using GetClassFieldNameFn = char* (*)(int32_t, int32_t);
     using GetClassFieldTypeFn = uint8_t (*)(int32_t, int32_t);
+    using GetClassFieldDefaultValueFn = int32_t (*)(int32_t, int32_t, void*);
     using GetClassMethodCountFn = int32_t (*)(int32_t);
     using GetClassMethodNameFn = char* (*)(int32_t, int32_t);
 
@@ -39,6 +40,7 @@ namespace Eppo
         GetClassFieldCountFn GetClassFieldCount = nullptr;
         GetClassFieldNameFn GetClassFieldName = nullptr;
         GetClassFieldTypeFn GetClassFieldType = nullptr;
+        GetClassFieldDefaultValueFn GetClassFieldDefaultValue = nullptr;
         GetClassMethodCountFn GetClassMethodCount = nullptr;
         GetClassMethodNameFn GetClassMethodName = nullptr;
 
