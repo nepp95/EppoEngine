@@ -53,14 +53,10 @@ namespace Eppo
         // Keyed by path relative to Resources/Shaders, matching what the shader sources #include.
         std::map<std::string, std::string> PackedShaderIncludes;
 
-        /// @brief Serializes a project' data for use in a deployed application
-        /// @param path Destination pak file path
-        /// @return False if at any point the serialization failed
-        auto Serialize(const std::filesystem::path& path) const -> bool;
+        // Serializes a project' data for use in a deployed application
+        [[nodiscard]] auto Serialize(const std::filesystem::path& path) const -> bool;
 
-        /// @brief Deserializes a project' data for use in a deployed application
-        /// @param path Source pak file path
-        /// @return False if at any point the deserialization failed
+        // Deserializes a project' data for use in a deployed application
         auto Deserialize(const std::filesystem::path& path) -> bool;
     };
 }

@@ -160,11 +160,10 @@ namespace Eppo
         }
     }
 
-    auto Scene::SetViewportSize(uint32_t width, uint32_t height) -> void
+    auto Scene::SetViewportSize(const uint32_t width, const uint32_t height) -> void
     {
         // Keep every scene camera's projection aspect ratio in sync with the viewport.
-        const auto view = m_Registry.view<CameraComponent>();
-        for (const auto e : view)
+        for (const auto view = m_Registry.view<CameraComponent>(); const auto e : view)
             view.get<CameraComponent>(e).Camera.SetViewportSize(width, height);
     }
 
@@ -180,8 +179,7 @@ namespace Eppo
         m_PhysicsWorld = CreateRef<PhysicsWorld>(s_DefaultGravity);
         m_ColliderlessRigidBodies.clear();
         {
-            const auto view = m_Registry.view<RigidBodyComponent, TransformComponent>();
-            for (const auto e : view)
+            for (const auto view = m_Registry.view<RigidBodyComponent, TransformComponent>(); const auto e : view)
             {
                 Entity entity(e, this);
 
@@ -218,14 +216,12 @@ namespace Eppo
         // Snapshot: OnCreate can spawn or destroy scripted entities, mutating the
         // storage this walks. Hence the per-entity validity re-check too.
         const auto scripts = m_Registry.view<ScriptComponent>();
-        const std::vector<EntityHandle> scripted(scripts.begin(), scripts.end());
-
-        for (const auto e : scripted)
+        for (const std::vector scripted(scripts.begin(), scripts.end()); const auto e : scripted)
         {
             if (!m_Registry.valid(e))
                 continue;
 
-            Entity entity(e, this);
+            const Entity entity(e, this);
             scriptEngine.OnCreateEntity(entity);
         }
     }
@@ -298,13 +294,13 @@ namespace Eppo
             }
             std::sort(
                 bodies.begin(), bodies.end(),
-                [](const auto& lhs, const auto& rhs)
+                [](const auto& lhs, const auto& rhs) -> auto
                 {
                     return lhs.first < rhs.first;
                 }
             );
 
-            for (auto& [depth, entity] : bodies)
+            for (auto& entity : bodies | std::views::values)
             {
                 const UUID id = entity.GetUUID();
                 const glm::vec3 position = m_PhysicsWorld->GetPosition(id);
@@ -414,8 +410,7 @@ namespace Eppo
 
     auto Scene::FindEntityByName(const std::string& name) -> Entity
     {
-        const auto view = m_Registry.view<TagComponent>();
-        for (const auto e : view)
+        for (const auto view = m_Registry.view<TagComponent>(); const auto e : view)
         {
             if (view.get<TagComponent>(e).Tag == name)
                 return { e, this };
@@ -424,13 +419,13 @@ namespace Eppo
         return {};
     }
 
-    auto Scene::DuplicateEntity(Entity entity) -> Entity
+    auto Scene::DuplicateEntity(const Entity entity) -> Entity
     {
         EP_PROFILE_FN("Scene::DuplicateEntity");
 
         const Entity parent =
             entity.HasComponent<RelationshipComponent>() ? GetEntityByUUID(entity.GetComponent<RelationshipComponent>().Parent) : Entity{};
-        std::function<Entity(Entity, Entity)> duplicateHierarchy = [&](Entity source, Entity newParent) -> Entity
+        std::function<Entity(Entity, Entity)> duplicateHierarchy = [&](const Entity source, Entity newParent) -> Entity
         {
             Entity duplicate = CreateEntity(source.GetName());
             const bool hasRelationship = source.HasComponent<RelationshipComponent>();
@@ -440,6 +435,7 @@ namespace Eppo
             TryCopyComponent<TransformComponent>(source, duplicate);
             TryCopyComponent<MeshComponent>(source, duplicate);
             TryCopyComponent<CameraComponent>(source, duplicate);
+            TryCopyComponent<DirectionalLightComponent>(source, duplicate);
             TryCopyComponent<PointLightComponent>(source, duplicate);
             TryCopyComponent<ScriptComponent>(source, duplicate);
             TryCopyComponent<RigidBodyComponent>(source, duplicate);
@@ -471,7 +467,7 @@ namespace Eppo
         return duplicateHierarchy(entity, parent);
     }
 
-    auto Scene::DestroyEntity(Entity entity) -> void
+    auto Scene::DestroyEntity(const Entity entity) -> void
     {
         // Detach from the parent so its child list stays valid, then destroy the subtree.
         if (const UUID parentId =
@@ -492,7 +488,7 @@ namespace Eppo
         DestroyEntityHierarchy(entity);
     }
 
-    auto Scene::DestroyEntityDeferred(Entity entity) -> void
+    auto Scene::DestroyEntityDeferred(const Entity entity) -> void
     {
         if (!entity)
             return;
@@ -500,7 +496,7 @@ namespace Eppo
         m_EntitiesToDestroy.push_back(entity.GetUUID());
     }
 
-    auto Scene::FitColliderToMesh(Entity entity, BoxColliderComponent& collider) -> void
+    auto Scene::FitColliderToMesh(const Entity entity, BoxColliderComponent& collider) -> void
     {
         AABB bounds;
         if (!TryGetMeshBounds(entity, bounds))
@@ -510,7 +506,7 @@ namespace Eppo
         collider.HalfSize = bounds.GetHalfExtent();
     }
 
-    auto Scene::FitColliderToMesh(Entity entity, SphereColliderComponent& collider) -> void
+    auto Scene::FitColliderToMesh(const Entity entity, SphereColliderComponent& collider) -> void
     {
         AABB bounds;
         if (!TryGetMeshBounds(entity, bounds))
@@ -521,7 +517,7 @@ namespace Eppo
         collider.Radius = std::max({ halfExtent.x, halfExtent.y, halfExtent.z });
     }
 
-    auto Scene::FitColliderToMesh(Entity entity, CapsuleColliderComponent& collider) -> void
+    auto Scene::FitColliderToMesh(const Entity entity, CapsuleColliderComponent& collider) -> void
     {
         AABB bounds;
         if (!TryGetMeshBounds(entity, bounds))
@@ -533,7 +529,7 @@ namespace Eppo
         collider.Height = std::max(0.0f, halfExtent.y * 2.0f - collider.Radius * 2.0f);
     }
 
-    auto Scene::FitColliderToMesh(Entity entity, CylinderColliderComponent& collider) -> void
+    auto Scene::FitColliderToMesh(const Entity entity, CylinderColliderComponent& collider) -> void
     {
         AABB bounds;
         if (!TryGetMeshBounds(entity, bounds))
@@ -545,7 +541,7 @@ namespace Eppo
         collider.Height = halfExtent.y * 2.0f;
     }
 
-    auto Scene::DestroyEntityHierarchy(Entity entity) -> void
+    auto Scene::DestroyEntityHierarchy(const Entity entity) -> void
     {
         // Snapshot the child list: recursing destroys entities and frees the component.
         const std::vector<UUID> children =
@@ -647,7 +643,7 @@ namespace Eppo
         transform.Rotation = glm::eulerAngles(orientation);
     }
 
-    auto Scene::GetWorldTransform(Entity entity) -> glm::mat4
+    auto Scene::GetWorldTransform(const Entity entity) -> glm::mat4
     {
         glm::mat4 world(1.0f);
 
@@ -678,8 +674,7 @@ namespace Eppo
     auto Scene::ForEachEntity(const std::function<void(Entity)>& func) -> void
     {
         const auto view = m_Registry.view<IDComponent>();
-        const std::vector<EntityHandle> entities(view.begin(), view.end());
-        for (const EntityHandle e : entities)
+        for (const std::vector entities(view.begin(), view.end()); const EntityHandle e : entities)
         {
             if (!m_Registry.valid(e))
                 continue;
@@ -699,7 +694,7 @@ namespace Eppo
     }
 
     template<typename T>
-    auto Scene::TryCopyComponent(Entity srcEntity, Entity dstEntity) -> void
+    auto Scene::TryCopyComponent(const Entity srcEntity, Entity dstEntity) -> void
     {
         EP_PROFILE_FN("Scene::TryCopyComponent");
 
@@ -714,8 +709,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("Scene::CopyComponent");
 
-        auto view = srcRegistry.view<T>();
-        for (auto srcEntity : view)
+        for (auto view = srcRegistry.view<T>(); auto srcEntity : view)
         {
             EntityHandle dstEntity = entityMap.at(srcRegistry.get<IDComponent>(srcEntity).ID);
             auto& srcComponent = srcRegistry.get<T>(srcEntity);
@@ -740,19 +734,20 @@ namespace Eppo
         // to the source, so the hierarchy panel (which also walks newest-first)
         // would show a reversed list during play. Walk the source in reverse so the
         // copy preserves the original creation order.
-        const std::vector<EntityHandle> srcEntities(idView.begin(), idView.end());
+        const std::vector srcEntities(idView.begin(), idView.end());
         for (auto it = srcEntities.rbegin(); it != srcEntities.rend(); ++it)
         {
             const auto entity = *it;
             auto uuid = srcRegistry.get<IDComponent>(entity).ID;
             const auto& name = srcRegistry.get<TagComponent>(entity).Tag;
-            Entity newEntity = newScene->CreateEntityWithUUID(uuid, name);
+            const Entity newEntity = newScene->CreateEntityWithUUID(uuid, name);
             entityMap[uuid] = newEntity;
         }
 
         CopyComponent<TransformComponent>(srcRegistry, dstRegistry, entityMap);
         CopyComponent<MeshComponent>(srcRegistry, dstRegistry, entityMap);
         CopyComponent<CameraComponent>(srcRegistry, dstRegistry, entityMap);
+        CopyComponent<DirectionalLightComponent>(srcRegistry, dstRegistry, entityMap);
         CopyComponent<PointLightComponent>(srcRegistry, dstRegistry, entityMap);
         CopyComponent<ScriptComponent>(srcRegistry, dstRegistry, entityMap);
         CopyComponent<RigidBodyComponent>(srcRegistry, dstRegistry, entityMap);
@@ -774,17 +769,20 @@ namespace Eppo
 
         sceneRenderer->SubmitEnvironment(m_Environment);
 
-        const auto lightView = m_Registry.view<PointLightComponent, TransformComponent>();
-        for (const auto& entity : lightView)
+        for (const auto view = m_Registry.view<DirectionalLightComponent>(); const auto& entity : view)
         {
-            const auto& lightComponent = lightView.get<PointLightComponent>(entity);
-            // World-space translation, so a parented light follows its parent.
-            const glm::vec3 worldPosition = glm::vec3(GetWorldTransform(Entity(entity, this))[3]);
+            const auto& lightComponent = view.get<DirectionalLightComponent>(entity);
+            sceneRenderer->SubmitDirectionalLight(lightComponent.Direction, lightComponent.Color, lightComponent.Intensity);
+        }
+
+        for (const auto view = m_Registry.view<PointLightComponent, TransformComponent>(); const auto& entity : view)
+        {
+            const auto& lightComponent = view.get<PointLightComponent>(entity);
+            const auto worldPosition = glm::vec3(GetWorldTransform(Entity(entity, this))[3]);
             sceneRenderer->SubmitPointLight(worldPosition, lightComponent.Color, lightComponent.Intensity);
         }
 
-        const auto view = m_Registry.view<MeshComponent, TransformComponent>();
-        for (const auto& entity : view)
+        for (const auto view = m_Registry.view<MeshComponent, TransformComponent>(); const auto& entity : view)
         {
             if (const auto& meshComponent = view.get<MeshComponent>(entity); meshComponent.MeshHandle)
             {

@@ -11,16 +11,24 @@ struct Camera
 };
 ConstantBuffer<Camera> uCamera : register(b1, space0);
 
+struct DirectionalLight
+{
+    float4 Direction;   // xyz = world-space direction the light travels
+    float4 Color;       // rgb = color, a = intensity
+};
+
 struct Light
 {
-	float4 Position; // xyz = world position
-	float4 Color;    // rgb = color, a = intensity
+	float4 Position;    // xyz = world position
+	float4 Color;       // rgb = color, a = intensity
 };
 
 struct LightData
 {
+    DirectionalLight DirLight;
 	Light Lights[32];
 	uint NumLights;
+	uint HasDirLight;
 };
 ConstantBuffer<LightData> uLights : register(b2, space0);
 
@@ -98,8 +106,17 @@ float4 Main(Input input) : SV_Target
 
 	const float3 V = normalize(uCamera.Position.xyz - input.WorldPos);
 
-	// Direct lighting
+	// Directional lighting
 	float3 Lo = float3(0.0, 0.0, 0.0);
+
+	if (uLights.HasDirLight)
+	{
+	    const float3 L = normalize(-uLights.DirLight.Direction.xyz);
+	    const float3 radiance = uLights.DirLight.Color.rgb * uLights.DirLight.Color.a;
+	    Lo += BRDF(albedo, L, V, N, metallic, roughness, radiance);
+	}
+
+	// Point lights
 	for (uint i = 0; i < uLights.NumLights; i++)
 	{
 	    Light l = uLights.Lights[i];
