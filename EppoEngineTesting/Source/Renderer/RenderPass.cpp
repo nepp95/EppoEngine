@@ -125,11 +125,18 @@ float4 Main() : SV_Target
         ) -> void
         {
             const auto shadow = CreateRef<UniformBuffer>(4096, "TestCB Shadow");
+            const auto drawData = CreateRef<StorageBuffer>(80, 80, "TestSB Draw Data");
+            const auto materialData = CreateRef<StorageBuffer>(80, 80, "TestSB Material Data");
+            const auto materialSampler = Sampler::Create();
+
+            pass.SetInput(0, 0, materialSampler);
+            pass.SetInput(0, 0, instances);
             pass.SetInput(0, 1, shadow);
+            pass.SetInput(0, 1, drawData);
             pass.SetInput(0, 2, camera);
+            pass.SetInput(0, 2, materialData);
             pass.SetInput(0, 3, lights);
             pass.SetInput(0, 4, environment);
-            pass.SetInput(0, 0, instances);
         }
 
         [[nodiscard]] auto FindBinding(

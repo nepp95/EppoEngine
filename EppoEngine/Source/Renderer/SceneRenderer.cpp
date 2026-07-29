@@ -64,6 +64,16 @@ namespace Eppo
     {
         EP_PROFILE_FN("SceneRenderer::SceneRenderer")
 
+        static_assert(sizeof(DrawData) == 80);
+        static_assert(offsetof(DrawData, InstanceOffset) == 64);
+        static_assert(offsetof(DrawData, MaterialIndex) == 68);
+        static_assert(sizeof(MaterialData) == 80);
+        static_assert(offsetof(MaterialData, EmissiveMapIndex) == 16);
+        static_assert(offsetof(MaterialData, BaseColor) == 32);
+        static_assert(offsetof(MaterialData, EmissiveFactor) == 48);
+        static_assert(offsetof(MaterialData, Metallic) == 60);
+        static_assert(offsetof(MaterialData, Roughness) == 64);
+
         const auto& dm = DeviceManager::Get();
         const auto& renderer = dm->GetRenderer();
 
@@ -249,12 +259,17 @@ namespace Eppo
         m_InstanceTransformsSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
         m_WireframeInstanceSB =
             CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Wireframe Instance Transforms");
+        m_DrawDataSB = CreateRef<StorageBuffer>(sizeof(DrawData), sizeof(DrawData), "StorageBuffer Draw Data");
+        m_MaterialDataSB = CreateRef<StorageBuffer>(sizeof(MaterialData), sizeof(MaterialData), "StorageBuffer Material Data");
 
         // Inputs retain their resources and resolve current GPU handles whenever a pass bakes.
         m_ShadowDepthPass->SetInput(0, 0, m_InstanceTransformsSB);
         m_ShadowDepthPass->SetInput(0, 1, m_ShadowDepthUB);
 
+        m_GeometryPass->SetInput(0, 0, m_WrapAllFiltersTrueSampler);
         m_GeometryPass->SetInput(0, 0, m_InstanceTransformsSB);
+        m_GeometryPass->SetInput(0, 1, m_DrawDataSB);
+        m_GeometryPass->SetInput(0, 2, m_MaterialDataSB);
         m_GeometryPass->SetInput(0, 1, m_ShadowDepthUB);
         m_GeometryPass->SetInput(0, 2, m_CameraUB);
         m_GeometryPass->SetInput(0, 3, m_LightsUB);
@@ -700,10 +715,9 @@ namespace Eppo
         const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
         m_InstanceTransformsSB->SetData(cmdList, instanceTransforms.data(), requiredSize);
 
-        // Gather collider, mesh-overlay and selection wireframes.
+        // Wireframes
         GatherWireframes();
 
-        // Upload one instance transform per gathered wireframe draw.
         std::vector<glm::mat4> wireframeTransforms;
         for (auto& draw : m_WireframeDrawCommands)
         {
@@ -713,6 +727,50 @@ namespace Eppo
 
         const uint64_t wireframeSize = wireframeTransforms.size() * sizeof(glm::mat4);
         m_WireframeInstanceSB->SetData(cmdList, wireframeTransforms.data(), wireframeSize);
+
+        // Prepare draw/material storage buffers
+        m_DrawData.clear();
+        m_MaterialData.clear();
+
+        for (const auto& drawCmd : m_DrawCommands | std::views::values)
+        {
+            if (drawCmd.Transforms.empty())
+                continue;
+
+            for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+            {
+                for (const auto& p : submesh.Primitives)
+                {
+                    const Ref<Material>& material = p.Material;
+                    const uint32_t materialIndex = static_cast<uint32_t>(m_MaterialData.size());
+
+                    m_DrawData.emplace_back(
+                        DrawData{
+                            .Transform = submesh.LocalTransform,
+                            .InstanceOffset = drawCmd.InstanceOffset,
+                            .MaterialIndex = materialIndex,
+                        }
+                    );
+
+                    m_MaterialData.emplace_back(
+                        MaterialData{
+                            .DiffuseMapIndex = material->GetDiffuseMapIndex(),
+                            .NormalMapIndex = material->GetNormalMapIndex(),
+                            .RoughMetMapIndex = material->GetRoughMetMapIndex(),
+                            .AOMapIndex = material->GetAOMapIndex(),
+                            .EmissiveMapIndex = material->GetEmissiveMapIndex(),
+                            .BaseColor = material->BaseColor,
+                            .EmissiveFactor = material->EmissiveFactor,
+                            .Metallic = material->Metallic,
+                            .Roughness = material->Roughness,
+                        }
+                    );
+                }
+            }
+        }
+
+        m_DrawDataSB->SetData(cmdList, m_DrawData.data(), m_DrawData.size() * sizeof(DrawData));
+        m_MaterialDataSB->SetData(cmdList, m_MaterialData.data(), m_MaterialData.size() * sizeof(MaterialData));
 
         // Framebuffer attachments are recreated on resize.
         m_TonemapPass->SetInput(0, 0, m_GeometryPass->GetFramebuffer()->GetFinalImage());
@@ -856,15 +914,7 @@ namespace Eppo
 
         struct PC
         {
-            glm::mat4 Transform;
-            glm::vec4 BaseColor;
-            uint32_t InstanceOffset;
-            int32_t DiffuseMapIndex;
-            int32_t NormalMapIndex;
-            int32_t RoughMetMapIndex;
-            float Metallic;
-            float Roughness;
-            uint32_t SamplerIndex;
+            uint32_t DrawIndex;
         } pushConstants{};
 
         auto& statistics = m_GeometryPass->GetStatistics();
@@ -873,8 +923,8 @@ namespace Eppo
         Renderer::BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
 
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
-        pushConstants.SamplerIndex = m_WrapAllFiltersTrueSampler->GetBindlessIndex();
 
+        uint32_t drawIndex = 0;
         for (const auto& drawCmd : m_DrawCommands | std::views::values)
         {
             const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
@@ -896,17 +946,9 @@ namespace Eppo
                 state.indexBuffer.offset = 0;
                 m_RenderCommandBuffer->CommitGraphicsState();
 
-                pushConstants.Transform = submesh.LocalTransform;
-                pushConstants.InstanceOffset = drawCmd.InstanceOffset;
-
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
-                    pushConstants.BaseColor = material->BaseColor;
-                    pushConstants.DiffuseMapIndex = material->GetDiffuseMapIndex();
-                    pushConstants.NormalMapIndex = material->GetNormalMapIndex();
-                    pushConstants.RoughMetMapIndex = material->GetRoughMetMapIndex();
-                    pushConstants.Metallic = material->Metallic;
-                    pushConstants.Roughness = material->Roughness;
+                    pushConstants.DrawIndex = drawIndex++;
                     m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
 
                     nvrhi::DrawArguments drawArgs{
@@ -927,6 +969,8 @@ namespace Eppo
             statistics.Instances += instanceCount;
             statistics.Meshes++;
         }
+
+        EP_ASSERT(drawIndex == m_DrawData.size());
 
         Renderer::EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndTimerQuery(m_GeometryPass->GetName());

@@ -8,8 +8,6 @@
 
 #include <glm/glm.hpp>
 
-#include <limits>
-
 struct tg3_mesh;
 struct tg3_model;
 struct tg3_node;
@@ -50,7 +48,9 @@ namespace Eppo
         Ref<BindlessHandle> DiffuseMap = nullptr;
         Ref<BindlessHandle> NormalMap = nullptr;
         Ref<BindlessHandle> RoughMetMap = nullptr;
-
+        Ref<BindlessHandle> AOMap = nullptr;
+        Ref<BindlessHandle> EmissiveMap = nullptr;
+        glm::vec3 EmissiveFactor = glm::vec3(0.0f);
         glm::vec4 BaseColor = glm::vec4(1.0f);
         float Roughness = 1.0f;
         float Metallic = 1.0f;
@@ -61,6 +61,8 @@ namespace Eppo
         [[nodiscard]] auto GetDiffuseMapIndex() const -> int32_t { return DiffuseMap ? static_cast<int32_t>(DiffuseMap->Index) : -1; }
         [[nodiscard]] auto GetNormalMapIndex() const -> int32_t { return NormalMap ? static_cast<int32_t>(NormalMap->Index) : -1; }
         [[nodiscard]] auto GetRoughMetMapIndex() const -> int32_t { return RoughMetMap ? static_cast<int32_t>(RoughMetMap->Index) : -1; }
+        [[nodiscard]] auto GetAOMapIndex() const -> int32_t { return AOMap ? static_cast<int32_t>(AOMap->Index) : -1; }
+        [[nodiscard]] auto GetEmissiveMapIndex() const -> int32_t { return EmissiveMap ? static_cast<int32_t>(EmissiveMap->Index) : -1; }
     };
 
     struct Primitive

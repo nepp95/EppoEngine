@@ -188,5 +188,32 @@ namespace Eppo
         Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
         std::vector<DrawCommand> m_WireframeDrawCommands;
         Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
+
+        struct DrawData
+        {
+            glm::mat4 Transform; // 0-63
+            uint32_t InstanceOffset; // 64-67
+            uint32_t MaterialIndex; // 68-71
+            uint32_t padding[2]; // 72 - 79
+        };
+        std::vector<DrawData> m_DrawData;
+        Ref<StorageBuffer> m_DrawDataSB = nullptr;
+
+        struct MaterialData
+        {
+            int32_t DiffuseMapIndex; // 0-3
+            int32_t NormalMapIndex; // 4-7
+            int32_t RoughMetMapIndex; // 8-11
+            int32_t AOMapIndex; // 12-15
+            int32_t EmissiveMapIndex; // 16-19
+            uint32_t Padding0[3]; // 20-31
+            glm::vec4 BaseColor; // 32-47
+            glm::vec3 EmissiveFactor; // 48-59
+            float Metallic; // 60-63
+            float Roughness; // 64-67
+            uint32_t Padding1[3]; // 68-79
+        };
+        std::vector<MaterialData> m_MaterialData;
+        Ref<StorageBuffer> m_MaterialDataSB = nullptr;
     };
 }
