@@ -353,6 +353,19 @@ namespace Eppo
         }
     }
 
+    auto SceneRenderer::SubmitDirectionalLight(const glm::vec3& direction, const glm::vec3& color, const float intensity) -> void
+    {
+        if (m_LightData.HasDirectionalLight)
+            Log::Warn("Directional light was already set, overwriting");
+
+        m_LightData.DirectionalLight = {
+            .Direction = glm::vec4(direction, 0.0f),
+            .Color = glm::vec4(color, intensity),
+        };
+
+        m_LightData.HasDirectionalLight = 1;
+    }
+
     auto SceneRenderer::SubmitPointLight(const glm::vec3& position, const glm::vec3& color, const float intensity) -> void
     {
         if (m_LightData.NumLights >= MaxPointLights)
@@ -441,6 +454,7 @@ namespace Eppo
 
         m_DrawCommands.clear();
         m_LightData.NumLights = 0;
+        m_LightData.HasDirectionalLight = 0;
 
         m_CameraData.InverseViewProjection = glm::inverse(m_CameraData.ViewProjection);
     }

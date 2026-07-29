@@ -702,6 +702,44 @@
                         10.0
                     ]
                 }
+            },
+            {
+                "DirectionalLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.672358512878418,
+                        0.29361701011657715
+                    ],
+                    "Direction": [
+                        0.0,
+                        -1.0,
+                        0.0
+                    ],
+                    "Intensity": 1.0
+                },
+                "IDComponent": {
+                    "ID": 14584937119869564110
+                },
+                "TagComponent": {
+                    "Tag": "Directional Light"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        15.0,
+                        0.0
+                    ]
+                }
             }
         ],
         "Environment": {

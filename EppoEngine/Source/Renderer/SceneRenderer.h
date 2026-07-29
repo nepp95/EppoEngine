@@ -37,6 +37,7 @@ namespace Eppo
         [[nodiscard]] auto GetFinalImage() const -> const Ref<Image>&;
 
         auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
+        auto SubmitDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity) -> void;
         auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity) -> void;
         auto SubmitEnvironment(const EnvironmentSettings& environment) -> void;
 
@@ -120,14 +121,22 @@ namespace Eppo
         static constexpr uint32_t MaxPointLights = 32;
         struct LightData
         {
+            struct DirectionalLight
+            {
+                glm::vec4 Direction;
+                glm::vec4 Color;
+            };
+
             struct PointLight
             {
                 glm::vec4 Position = glm::vec4(1.0f);
                 glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
             };
 
+            DirectionalLight DirectionalLight{};
             std::array<PointLight, MaxPointLights> Lights{};
             uint32_t NumLights = 0;
+            uint32_t HasDirectionalLight = 0;
         } m_LightData{};
         Ref<UniformBuffer> m_LightsUB = nullptr;
 
