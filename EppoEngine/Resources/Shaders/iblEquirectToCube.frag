@@ -21,8 +21,8 @@ struct Input
 float4 Main(Input input) : SV_Target
 {
 	float3 dir = normalize(input.LocalDir);
-	// Longitude around Y, latitude from -Y..+Y -> [0,1] UV.
-	float2 uv = float2(atan2(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0)));
-	uv = uv / float2(2.0 * PI, PI) + 0.5;
+	float2 uv;
+	uv.x = atan2(dir.z, dir.x) / (2.0 * PI) + 0.5;
+	uv.y = 0.5 - asin(clamp(dir.y, -1.0, 1.0)) / PI;
 	return float4(uEquirect.Sample(uSampler, uv).rgb, 1.0);
 }

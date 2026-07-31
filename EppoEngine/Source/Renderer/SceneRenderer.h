@@ -39,7 +39,8 @@ namespace Eppo
         auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
         auto SubmitDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity) -> void;
         auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity) -> void;
-        auto SubmitEnvironment(const EnvironmentSettings& environment) -> void;
+        auto SubmitEnvironmentSettings(const EnvironmentSettings& environment) -> void;
+        auto SubmitBloomSettings(const BloomSettings& bloom) -> void;
 
         auto Resize(uint32_t width, uint32_t height) -> void;
 
@@ -69,15 +70,19 @@ namespace Eppo
         auto ShadowDepthPass() -> void;
         auto GeometryPass() -> void;
         auto SkyPass() const -> void;
+        auto BloomPass() -> void;
         auto TonemapPass() const -> void;
         auto WireframePass() const -> void;
 
         auto EnsureIblResources() -> void;
         auto BakeEnvironmentMap(const Ref<Image>& equirect) -> void;
+        auto RecordEnvironmentMipPass(
+            const Ref<Image>& target, const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, uint32_t mipLevel
+        ) const -> void;
         auto RecordIblPass(
             const Ref<Shader>& shader, const Ref<Image>& source, const Ref<Sampler>& sampler, const Ref<Image>& target,
-            const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, uint32_t mipLevel, uint32_t size,
-            float roughness = 0.0f, float envMapSize = 0.0f
+            const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, uint32_t mipLevel, float roughness = 0.0f,
+            float envMapSize = 0.0f
         ) -> void;
 
     private:
@@ -94,9 +99,16 @@ namespace Eppo
         uint32_t m_Height = 0;
 
         // Render passes
+        static constexpr uint32_t s_MaxBloomMipLevels = 6;
+        uint32_t m_BloomMipLevels = 0;
+        Ref<Framebuffer> m_BloomPyramidFramebuffer = nullptr;
+
         Ref<RenderPass> m_ShadowDepthPass = nullptr;
         Ref<RenderPass> m_GeometryPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
+        Ref<RenderPass> m_BloomDownSamplePass = nullptr;
+        Ref<RenderPass> m_BloomUpSamplePass = nullptr;
+        Ref<RenderPass> m_BloomCompositePass = nullptr;
         Ref<RenderPass> m_TonemapPass = nullptr;
         Ref<RenderPass> m_WireframePass = nullptr;
 
@@ -112,6 +124,8 @@ namespace Eppo
         Ref<Sampler> m_EquirectSampler = nullptr;
 
         // Uniforms
+        BloomSettings m_BloomSettings;
+
         struct ShadowDepthData
         {
             glm::mat4 LightViewProjection;

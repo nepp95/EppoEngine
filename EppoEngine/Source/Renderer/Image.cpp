@@ -31,6 +31,7 @@ namespace Eppo
         };
 
         m_Texture = device->createTexture(textureDesc);
+        m_MipLevels = m_Texture->getDesc().mipLevels;
         m_Stride = GetStride(m_Texture->getDesc().format);
     }
 
@@ -57,6 +58,7 @@ namespace Eppo
         else
             EP_ASSERT(false);
 
+        m_MipLevels = m_Texture->getDesc().mipLevels;
         m_Stride = GetStride(m_Texture->getDesc().format);
     }
 
@@ -92,6 +94,7 @@ namespace Eppo
         };
 
         m_Texture = device->createTexture(textureDesc);
+        m_MipLevels = m_Texture->getDesc().mipLevels;
         m_Stride = GetStride(m_Texture->getDesc().format);
 
         if (!cmdList)
@@ -153,21 +156,45 @@ namespace Eppo
         return buffer;
     }
 
-    auto Image::GetBindlessIndex() -> uint32_t
+    auto Image::GetMipWidth(const uint32_t mipLevel) const -> uint32_t
     {
-        if (!m_BindlessHandle)
-        {
-            const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
-            m_BindlessHandle = CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this()));
-        }
+        EP_ASSERT(mipLevel < m_MipLevels);
+        return glm::max(1u, m_Width >> mipLevel);
+    }
 
-        return m_BindlessHandle->Index;
+    auto Image::GetMipHeight(const uint32_t mipLevel) const -> uint32_t
+    {
+        EP_ASSERT(mipLevel < m_MipLevels);
+        return glm::max(1u, m_Height >> mipLevel);
     }
 
     auto Image::IsDepthImage() const -> bool
     {
         return m_Specification.ImageFormat == nvrhi::Format::D16 || m_Specification.ImageFormat == nvrhi::Format::D24S8 ||
             m_Specification.ImageFormat == nvrhi::Format::D32 || m_Specification.ImageFormat == nvrhi::Format::D32S8;
+    }
+
+    auto Image::GetBindlessIndex(const nvrhi::TextureSubresourceSet& subresources) -> uint32_t
+    {
+        const auto resolved = subresources.resolve(m_Texture->getDesc(), false);
+
+        auto it = m_BindlessHandles.find(resolved);
+        if (it == m_BindlessHandles.end())
+        {
+            const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+            it = m_BindlessHandles.emplace(resolved, CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this(), resolved))).first;
+        }
+
+        return it->second->Index;
+    }
+
+    auto Image::CalculateMipLevels(const uint32_t width, const uint32_t height) -> uint32_t
+    {
+        EP_ASSERT(width > 0 && height > 0);
+        const uint32_t mipLevels =
+            1 + static_cast<uint32_t>(glm::floor(glm::log2(glm::max(static_cast<float>(width), static_cast<float>(height)))));
+        EP_ASSERT(mipLevels > 0);
+        return mipLevels;
     }
 
     auto Image::DecodeImageData(const ImageSource& source, uint32_t& outChannels, bool& outIsHdr) -> void*

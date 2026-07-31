@@ -34,9 +34,11 @@ Output BuildCubeFaceVertex(uint vertexID, uint instanceID)
 	float2 ndc = uv * 2.0 - 1.0;
 	output.Position = float4(ndc, 0.0, 1.0);
 
-	float4x4 invVP = uFaces.InvViewProjection[instanceID];
-	float4 nearPos = mul(invVP, float4(ndc, 0.0, 1.0));
-	float4 farPos = mul(invVP, float4(ndc, 1.0, 1.0));
+    // Cubemap texel rows have a top-left origin, opposite the framebuffer-space NDC Y used by this pass.
+    float2 cubeNdc = float2(ndc.x, -ndc.y);
+    float4x4 invVP = uFaces.InvViewProjection[instanceID];
+    float4 nearPos = mul(invVP, float4(cubeNdc, 0.0, 1.0));
+    float4 farPos = mul(invVP, float4(cubeNdc, 1.0, 1.0));
 	output.LocalDir = farPos.xyz / farPos.w - nearPos.xyz / nearPos.w;
 	return output;
 }

@@ -104,12 +104,8 @@ namespace Eppo
 			m_SceneRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
 		}
 
-		// Gate polled gameplay input (editor camera + running scripts) on the viewport
-		// being focused. Anything that reads Input::IsKeyPressed/IsMouseButtonPressed
-		// then stays quiet while another panel is active, so e.g. typing an entity's
-		// name never drives the scene. m_ViewportFocused is from last frame's UI pass,
-		// which is close enough and avoids a one-frame input spill.
-		Input::SetViewportInputEnabled(m_ViewportFocused);
+        // Edit mode follows viewport focus; play mode owns input until it is stopped.
+        Input::SetViewportInputEnabled(m_SceneState == SceneState::Play || m_ViewportFocused);
 
 		// Outline the selection in edit mode only; clear it while playing.
 		m_SceneRenderer->SetScene(m_ActiveScene);
@@ -329,7 +325,7 @@ namespace Eppo
 		m_ViewportFocused = ImGui::IsWindowFocused();
 		m_ViewportHovered = ImGui::IsWindowHovered();
 		const auto& app = Application::Get();
-		app.GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
+        app.GetImGuiLayer()->BlockEvents(m_SceneState == SceneState::Edit && !m_ViewportHovered);
 
 		const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportWidth = static_cast<uint32_t>(viewportSize.x);
@@ -459,7 +455,10 @@ namespace Eppo
             Log::Warn("Scripting backend not initialized, not running scripts.");
 
 		m_ActiveScene->OnRuntimeStart();
-	    Application::Get().GetWindow()->SetCursorMode(CursorMode::Disabled);
+        const auto& app = Application::Get();
+        app.GetImGuiLayer()->BlockEvents(false);
+        app.GetImGuiLayer()->SetMouseInputEnabled(false);
+        app.GetWindow()->SetCursorMode(CursorMode::Disabled);
 	}
 
 	auto EditorLayer::OnSceneStop() -> void
@@ -469,7 +468,9 @@ namespace Eppo
 		if (!m_ActiveScene)
 			return;
 
-	    Application::Get().GetWindow()->SetCursorMode(CursorMode::Normal);
+        const auto& app = Application::Get();
+        app.GetWindow()->SetCursorMode(CursorMode::Normal);
+        app.GetImGuiLayer()->SetMouseInputEnabled(true);
 
 		// Clears the scripting scene context once OnDestroy has run.
 		m_ActiveScene->OnRuntimeStop();
@@ -486,6 +487,7 @@ namespace Eppo
 
 		m_SelectedEntity = selectedUUID ? m_ActiveScene->GetEntityByUUID(selectedUUID) : Entity{};
 		m_PanelManager->SetSelectedEntity(m_SelectedEntity);
+        app.GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
 	}
 
 	auto EditorLayer::RestoreDefaultLayout() -> void

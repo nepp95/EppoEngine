@@ -758,7 +758,8 @@ namespace Eppo
         // UUID-based links copy verbatim, no handle remapping needed.
         CopyComponent<RelationshipComponent>(srcRegistry, dstRegistry, entityMap);
 
-        newScene->m_Environment = scene->m_Environment;
+        newScene->m_EnvironmentSettings = scene->m_EnvironmentSettings;
+        newScene->m_BloomSettings = scene->m_BloomSettings;
 
         return newScene;
     }
@@ -767,7 +768,8 @@ namespace Eppo
     {
         EP_PROFILE_FN("Scene::RenderScene");
 
-        sceneRenderer->SubmitEnvironment(m_Environment);
+        sceneRenderer->SubmitEnvironmentSettings(m_EnvironmentSettings);
+        sceneRenderer->SubmitBloomSettings(m_BloomSettings);
 
         for (const auto view = m_Registry.view<DirectionalLightComponent>(); const auto& entity : view)
         {

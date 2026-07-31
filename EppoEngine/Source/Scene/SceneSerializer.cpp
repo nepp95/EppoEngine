@@ -131,12 +131,18 @@ namespace Eppo
         data["Scene"]["Name"] = sceneName;
         data["Scene"]["Handle"] = m_SceneContext->Handle;
 
-        const auto& env = m_SceneContext->GetEnvironment();
+        const auto& env = m_SceneContext->GetEnvironmentSettings();
         data["Scene"]["Environment"]["SkyboxHandle"] = env.SkyboxHandle;
         data["Scene"]["Environment"]["ZenithColor"] = env.ZenithColor;
         data["Scene"]["Environment"]["HorizonColor"] = env.HorizonColor;
         data["Scene"]["Environment"]["GroundColor"] = env.GroundColor;
         data["Scene"]["Environment"]["AmbientIntensity"] = env.AmbientIntensity;
+
+        const auto& bloom = m_SceneContext->GetBloomSettings();
+        data["Scene"]["Bloom"]["Threshold"] = bloom.Threshold;
+        data["Scene"]["Bloom"]["Knee"] = bloom.Knee;
+        data["Scene"]["Bloom"]["Intensity"] = bloom.Intensity;
+        data["Scene"]["Bloom"]["Radius"] = bloom.Radius;
 
         auto entities = json::array();
 
@@ -212,7 +218,7 @@ namespace Eppo
         if (data["Scene"].contains("Environment"))
         {
             const auto& envJson = data["Scene"]["Environment"];
-            auto& env = m_SceneContext->GetEnvironment();
+            auto& env = m_SceneContext->GetEnvironmentSettings();
 
             if (envJson.contains("SkyboxHandle"))
                 env.SkyboxHandle = envJson["SkyboxHandle"].get<AssetHandle>();
@@ -224,6 +230,21 @@ namespace Eppo
                 env.GroundColor = envJson["GroundColor"].get<glm::vec3>();
             if (envJson.contains("AmbientIntensity"))
                 env.AmbientIntensity = envJson["AmbientIntensity"].get<float>();
+        }
+
+        if (data["Scene"].contains("Bloom"))
+        {
+            const auto& bloomJson = data["Scene"]["Bloom"];
+            auto& bloom = m_SceneContext->GetBloomSettings();
+
+            if (bloomJson.contains("Threshold"))
+                bloom.Threshold = bloomJson["Threshold"].get<float>();
+            if (bloomJson.contains("Knee"))
+                bloom.Knee = bloomJson["Knee"].get<float>();
+            if (bloomJson.contains("Intensity"))
+                bloom.Intensity = bloomJson["Intensity"].get<float>();
+            if (bloomJson.contains("Radius"))
+                bloom.Radius = bloomJson["Radius"].get<float>();
         }
 
         auto& entities = data["Scene"]["Entities"];

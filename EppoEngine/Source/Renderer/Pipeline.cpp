@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-    Pipeline::Pipeline(PipelineSpecification spec)
+    Pipeline::Pipeline(PipelineSpecification spec, const nvrhi::FramebufferInfo& framebufferInfo)
         : m_Specification(std::move(spec))
     {
         const auto& dm = DeviceManager::Get();
@@ -45,14 +45,21 @@ namespace Eppo
                 pipelineDesc.addBindingLayout(layout);
         }
 
-        m_PipelineHandle =
-            device->createGraphicsPipeline(pipelineDesc, m_Specification.Framebuffer->GetFramebuffer()->getFramebufferInfo());
+        m_PipelineHandle = device->createGraphicsPipeline(pipelineDesc, framebufferInfo);
         EP_ASSERT(m_PipelineHandle);
     }
 
-    auto Pipeline::Resize(const uint32_t width, const uint32_t height) const -> void
+    auto Pipeline::IsCompatible(const Ref<Framebuffer>& framebuffer) const -> bool
     {
-        if (m_Specification.OwnsFramebuffer)
-            m_Specification.Framebuffer->Resize(width, height);
+        if (!m_PipelineHandle || !framebuffer)
+        {
+            Log::Warn("Pipeline::IsCompatible called but either pipeline or framebuffer is null!");
+            return false;
+        }
+
+        const auto& pipelineFbInfo = m_PipelineHandle->getFramebufferInfo();
+        const auto& fbInfo = framebuffer->GetFramebuffer()->getFramebufferInfo();
+
+        return pipelineFbInfo == fbInfo;
     }
 }

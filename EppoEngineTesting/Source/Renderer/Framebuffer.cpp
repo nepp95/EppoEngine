@@ -69,14 +69,17 @@ SUITE(Renderer)
         const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
             .Width = 64u,
             .Height = 64u,
-            .ExistingImage = { .Image = cubemap },
+            .Attachments = { FramebufferTextureSpecification(cubemap) },
             .DebugName = "Framebuffer existing cubemap target",
         });
 
-        REQUIRE CHECK(framebuffer->GetFramebuffer() != nullptr);
         CHECK(framebuffer->GetFinalImage() == cubemap);
 
-        const nvrhi::FramebufferDesc& desc = framebuffer->GetFramebuffer()->getDesc();
+        // The supplied image is attached; the caller selects mip zero across all six faces.
+        const nvrhi::FramebufferHandle handle = framebuffer->GetFramebuffer(nvrhi::TextureSubresourceSet(0, 1, 0, 6));
+        REQUIRE CHECK(handle != nullptr);
+
+        const nvrhi::FramebufferDesc& desc = handle->getDesc();
         REQUIRE CHECK_EQUAL(1u, desc.colorAttachments.size());
         CHECK(desc.colorAttachments.front().texture == cubemap->GetTexture());
     }
@@ -96,17 +99,18 @@ SUITE(Renderer)
             .DebugName = "Framebuffer mip cubemap",
         });
 
-        // The prefilter bake renders mip 2 (32^2) into the layered cube.
         const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
-            .Width = 32u,
-            .Height = 32u,
-            .ExistingImage = { .Image = cubemap, .MipLevel = 2u },
+            .Width = 128u,
+            .Height = 128u,
+            .Attachments = { FramebufferTextureSpecification(cubemap) },
             .DebugName = "Framebuffer mip cubemap target",
         });
 
-        REQUIRE CHECK(framebuffer->GetFramebuffer() != nullptr);
+        // The prefilter bake renders mip 2 (32^2) into the layered cube.
+        const nvrhi::FramebufferHandle handle = framebuffer->GetFramebuffer(nvrhi::TextureSubresourceSet(2, 1, 0, 6));
+        REQUIRE CHECK(handle != nullptr);
 
-        const nvrhi::FramebufferDesc& desc = framebuffer->GetFramebuffer()->getDesc();
+        const nvrhi::FramebufferDesc& desc = handle->getDesc();
         REQUIRE CHECK_EQUAL(1u, desc.colorAttachments.size());
         const nvrhi::FramebufferAttachment& attachment = desc.colorAttachments.front();
         CHECK(attachment.texture == cubemap->GetTexture());
@@ -114,38 +118,40 @@ SUITE(Renderer)
         CHECK_EQUAL(1u, attachment.subresources.numMipLevels);
         CHECK_EQUAL(0u, attachment.subresources.baseArraySlice);
         CHECK_EQUAL(6u, attachment.subresources.numArraySlices);
+
+        // Mip 2 of a 128^2 cube is 32^2; the handle carries the selected mip extent.
+        CHECK_EQUAL(32u, handle->getFramebufferInfo().width);
+        CHECK_EQUAL(32u, handle->getFramebufferInfo().height);
     }
 
-    TEST(Framebuffer_ExistingImageIsAppendedAfterDynamicAttachments)
+    TEST(Framebuffer_MixedOwnedAndSuppliedAttachmentsKeepListOrder)
     {
         if (!Testing::AppHarness::IsAvailable())
             return;
 
-        const Ref<Image> existing = CreateRef<Image>(ImageSpecification{
+        const Ref<Image> supplied = CreateRef<Image>(ImageSpecification{
             .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
             .Width = 32u,
             .Height = 32u,
             .IsRenderTarget = true,
-            .DebugName = "Framebuffer existing image",
+            .DebugName = "Framebuffer supplied image",
         });
 
+        // An owned attachment declared first, a supplied image second: attachments keep list order.
         const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
             .Width = 32u,
             .Height = 32u,
-            .Attachments = { nvrhi::Format::RGBA8_UNORM },
-            .ExistingImage = { .Image = existing },
-            .DebugName = "Framebuffer existing image ordering",
+            .Attachments = { nvrhi::Format::RGBA8_UNORM, FramebufferTextureSpecification(supplied) },
+            .DebugName = "Framebuffer mixed attachment ordering",
         });
 
-        REQUIRE CHECK(framebuffer->GetFramebuffer() != nullptr);
-
-        // The dynamically created attachment stays first; ExistingImage is appended last.
-        CHECK(framebuffer->GetFinalImage() != existing);
+        // The owned attachment is index zero; the supplied one follows.
+        CHECK(framebuffer->GetFinalImage() != supplied);
         CHECK(framebuffer->GetFinalImage()->GetFormat() == nvrhi::Format::RGBA8_UNORM);
 
         const nvrhi::FramebufferDesc& desc = framebuffer->GetFramebuffer()->getDesc();
         REQUIRE CHECK_EQUAL(2u, desc.colorAttachments.size());
-        CHECK(desc.colorAttachments.front().texture != existing->GetTexture());
-        CHECK(desc.colorAttachments.back().texture == existing->GetTexture());
+        CHECK(desc.colorAttachments.front().texture != supplied->GetTexture());
+        CHECK(desc.colorAttachments.back().texture == supplied->GetTexture());
     }
 }

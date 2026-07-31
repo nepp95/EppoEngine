@@ -29,6 +29,32 @@ namespace Eppo
             return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }
 
+        auto GetEmissiveStrength(const tg3_material& material) -> double
+        {
+            for (uint32_t i = 0; i < material.ext.extensions_count; i++)
+            {
+                const auto& extension = material.ext.extensions[i];
+                if (std::string_view(extension.name.data, extension.name.len) != "KHR_materials_emissive_strength")
+                    continue;
+                if (extension.value.type != TG3_VALUE_OBJECT)
+                    break;
+
+                for (uint32_t j = 0; j < extension.value.object_count; j++)
+                {
+                    const auto& member = extension.value.object_data[j];
+                    if (std::string_view(member.key.data, member.key.len) != "emissiveStrength")
+                        continue;
+                    if (member.value.type == TG3_VALUE_REAL)
+                        return member.value.real_val;
+                    if (member.value.type == TG3_VALUE_INT)
+                        return static_cast<double>(member.value.int_val);
+                }
+                break;
+            }
+
+            return 1.0;
+        }
+
         auto GenerateTangents(
             std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const uint32_t firstVertex, const uint64_t vertexCount,
             const uint32_t firstIndex, const uint64_t indexCount
@@ -402,7 +428,7 @@ namespace Eppo
             newMat->BaseColor = glm::make_vec4(material.pbr_metallic_roughness.base_color_factor);
             newMat->Roughness = static_cast<float>(material.pbr_metallic_roughness.roughness_factor);
             newMat->Metallic = static_cast<float>(material.pbr_metallic_roughness.metallic_factor);
-            newMat->EmissiveFactor = glm::make_vec3(material.emissive_factor);
+            newMat->EmissiveFactor = glm::make_vec3(material.emissive_factor) * GetEmissiveStrength(material);
 
             m_Materials[i] = newMat;
         }

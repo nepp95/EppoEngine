@@ -18,27 +18,47 @@ struct Input
 	float3 LocalDir : TEXCOORD0;
 };
 
+float3 CubeFaceDirection(uint face, float2 uv)
+{
+    if (face == 0u)
+        return normalize(float3(1.0, -uv.y, -uv.x));
+    if (face == 1u)
+        return normalize(float3(-1.0, -uv.y, uv.x));
+    if (face == 2u)
+        return normalize(float3(uv.x, 1.0, uv.y));
+    if (face == 3u)
+        return normalize(float3(uv.x, -1.0, -uv.y));
+    if (face == 4u)
+        return normalize(float3(uv.x, -uv.y, 1.0));
+    return normalize(float3(-uv.x, -uv.y, -1.0));
+}
+
 float4 Main(Input input) : SV_Target
 {
-	const float3 N = normalize(input.LocalDir);
+    const float3 N = normalize(input.LocalDir);
+    const uint sourceSize = 32u;
+    const float sourceMipLevel = log2(uPC.EnvMapSize / float(sourceSize));
+    float3 irradiance = float3(0.0, 0.0, 0.0);
+    float totalWeight = 0.0;
 
-	float3 up = abs(N.y) < 0.999 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0);
-	const float3 right = normalize(cross(up, N));
-	up = cross(N, right);
+    [loop]
+    for (uint face = 0u; face < 6u; face++)
+    {
+        [loop]
+        for (uint y = 0u; y < sourceSize; y++)
+        {
+            [loop]
+            for (uint x = 0u; x < sourceSize; x++)
+            {
+                const float2 uv = (float2(x, y) + 0.5) * (2.0 / float(sourceSize)) - 1.0;
+                const float3 sampleDir = CubeFaceDirection(face, uv);
+                const float solidAngleWeight = rcp(pow(1.0 + dot(uv, uv), 1.5));
+                const float weight = max(dot(N, sampleDir), 0.0) * solidAngleWeight;
+                irradiance += uEnvMap.SampleLevel(uSampler, sampleDir, sourceMipLevel).rgb * weight;
+                totalWeight += weight;
+            }
+        }
+    }
 
-	float3 irradiance = float3(0.0, 0.0, 0.0);
-	uint sampleCount = 0;
-	const float delta = 0.025;
-	for (float phi = 0.0; phi < 2.0 * PI; phi += delta)
-	{
-		for (float theta = 0.0; theta < 0.5 * PI; theta += delta)
-		{
-			const float3 tangentSample = float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-			const float3 sampleDir = tangentSample.x * right + tangentSample.y * up + tangentSample.z * N;
-			irradiance += uEnvMap.SampleLevel(uSampler, sampleDir, 0).rgb * cos(theta) * sin(theta);
-			sampleCount++;
-		}
-	}
-
-	return float4(PI * irradiance / float(sampleCount), 1.0);
+    return float4(irradiance / max(totalWeight, 0.000001), 1.0);
 }

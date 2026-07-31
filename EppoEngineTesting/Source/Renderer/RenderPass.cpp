@@ -30,17 +30,16 @@ SUITE(Renderer)
 				.DebugName = "Framebuffer RenderPassTest",
 			};
 
+			const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
 			const PipelineSpecification pipelineSpec{
 				.Shader = renderer->GetShader("geometry"),
-				.Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-				.Width = 256,
-				.Height = 256,
 				.CullMode = nvrhi::RasterCullMode::Front,
 				.DepthTestEnable = true,
 				.DepthWriteEnable = true,
 			};
 
-			return CreateRef<Pipeline>(pipelineSpec);
+			return CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
 		}
 
         auto MakeCompositePipeline() -> Ref<Pipeline>
@@ -54,15 +53,14 @@ SUITE(Renderer)
                 .DebugName = "Framebuffer CompositeRenderPassTest",
             };
 
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("composite"),
-                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-                .Width = 256,
-                .Height = 256,
                 .CullMode = nvrhi::RasterCullMode::None,
             };
 
-            return CreateRef<Pipeline>(pipelineSpec);
+            return CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
         }
 
         auto MakeSharedBindingPipeline() -> Ref<Pipeline>
@@ -107,13 +105,15 @@ float4 Main() : SV_Target
                 .DebugName = "Framebuffer SharedLogicalBindingRenderPassTest",
             };
 
-            return CreateRef<Pipeline>(PipelineSpecification{
-                .Shader = shader,
-                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-                .Width = 256,
-                .Height = 256,
-                .CullMode = nvrhi::RasterCullMode::None,
-            });
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
+            return CreateRef<Pipeline>(
+                PipelineSpecification{
+                    .Shader = shader,
+                    .CullMode = nvrhi::RasterCullMode::None,
+                },
+                framebuffer->GetFramebuffer()->getFramebufferInfo()
+            );
         }
 
         auto SetGeometryInputs(

@@ -51,9 +51,9 @@ namespace Eppo
         Ref<BindlessHandle> AOMap = nullptr;
         Ref<BindlessHandle> EmissiveMap = nullptr;
         glm::vec3 EmissiveFactor = glm::vec3(0.0f);
-        glm::vec4 BaseColor = glm::vec4(1.0f);
+        glm::vec4 BaseColor = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
         float Roughness = 1.0f;
-        float Metallic = 1.0f;
+        float Metallic = 0.0f;
 
         // NOTE: This converts a uint32 to a int32 which loses half the range.
         //       Currently this is no issue since our handles won't ever reach that far,

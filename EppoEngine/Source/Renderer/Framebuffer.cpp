@@ -9,8 +9,6 @@ namespace Eppo
         : m_Specification(std::move(spec))
     {
         const auto& app = Application::Get();
-        const auto& dm = DeviceManager::Get();
-        auto device = dm->GetDevice();
 
         if (m_Specification.Width == 0 || m_Specification.Height == 0)
         {
@@ -24,21 +22,7 @@ namespace Eppo
             m_Height = m_Specification.Height;
         }
 
-        // Create images if necessary
-        nvrhi::FramebufferDesc framebufferDesc{};
-
-        if (m_Specification.SwapchainTarget)
-        {
-            EP_ASSERT(m_Specification.SwapchainImage != nullptr, "SwapchainTarget is true on framebuffer but no swapchain image provided!");
-            m_Images.emplace_back(m_Specification.SwapchainImage);
-            framebufferDesc.addColorAttachment(m_Specification.SwapchainImage->GetTexture());
-        }
-        else
-        {
-            CreateImages(framebufferDesc);
-        }
-
-        m_Framebuffer = device->createFramebuffer(framebufferDesc);
+        CreateImages();
     }
 
     auto Framebuffer::GetDepthImage() const -> const Ref<Image>&
@@ -53,6 +37,22 @@ namespace Eppo
         return m_Images.front();
     }
 
+    auto Framebuffer::GetFramebuffer(const nvrhi::TextureSubresourceSet& subresources) const -> nvrhi::FramebufferHandle
+    {
+        EP_ASSERT(!m_Images.empty(), "Framebuffer has no attachments.");
+
+        // Canonicalize the range against the attachment layout so equivalent requests hit the same cache entry.
+        const auto resolved = subresources.resolve(m_Images.front()->GetTexture()->getDesc(), false);
+        EP_ASSERT(resolved.numMipLevels == 1, "A framebuffer attachment must select exactly one mip.");
+
+        if (const auto it = m_FramebufferCache.find(resolved); it != m_FramebufferCache.end())
+            return it->second;
+
+        const auto handle = BuildFramebuffer(resolved);
+        m_FramebufferCache.emplace(resolved, handle);
+        return handle;
+    }
+
     auto Framebuffer::Resize(const uint32_t width, const uint32_t height) -> void
     {
         EP_PROFILE_FN("Framebuffer::Resize")
@@ -63,56 +63,65 @@ namespace Eppo
             return;
         }
 
-        const auto device = DeviceManager::Get()->GetDevice();
-
         m_Width = width;
         m_Height = height;
 
-        nvrhi::FramebufferDesc framebufferDesc{};
-        CreateImages(framebufferDesc);
-        m_Framebuffer = device->createFramebuffer(framebufferDesc);
+        // Cached handles reference the old owned images; drop them and rebuild the owned attachments at the new extent.
+        m_FramebufferCache.clear();
+        CreateImages();
     }
 
-    auto Framebuffer::CreateImages(nvrhi::FramebufferDesc& desc) -> void
+    auto Framebuffer::CreateImages() -> void
     {
-        uint32_t attachmentIndex = 0;
-        m_Images.resize(m_Specification.Attachments.Attachments.size());
+        m_Images.clear();
 
-        for (const auto& attachment : m_Specification.Attachments.Attachments)
+        if (m_Specification.SwapchainTarget)
         {
-            ImageSpecification spec{
-                .ImageFormat = attachment.ImageFormat,
-                .Width = m_Width,
-                .Height = m_Height,
-                .IsRenderTarget = true,
-                .DebugName = std::format("{} Image {}", m_Specification.DebugName, attachmentIndex),
-            };
-
-            m_Images[attachmentIndex] = CreateRef<Image>(spec);
-            attachmentIndex++;
+            EP_ASSERT(m_Specification.SwapchainImage != nullptr, "SwapchainTarget is true on framebuffer but no swapchain image provided!");
+            m_Images.emplace_back(m_Specification.SwapchainImage);
+            return;
         }
 
-        // Dynamically created attachments target the whole texture (mip 0).
+        uint32_t attachmentIndex = 0;
+        for (const auto& attachment : m_Specification.Attachments.Attachments)
+        {
+            // A supplied image is retained as-is (IBL/cubemap targets); a null one is owned and sized to this framebuffer.
+            if (attachment.Image)
+            {
+                m_Images.emplace_back(attachment.Image);
+            }
+            else
+            {
+                const uint32_t mipLevels = glm::min(attachment.MaxMipLevels, Image::CalculateMipLevels(m_Width, m_Height));
+                const ImageSpecification spec{
+                    .ImageFormat = attachment.ImageFormat,
+                    .Width = m_Width,
+                    .Height = m_Height,
+                    .MipLevels = mipLevels,
+                    .IsRenderTarget = true,
+                    .DebugName = std::format("{} Image {}", m_Specification.DebugName, attachmentIndex),
+                };
+
+                m_Images.emplace_back(CreateRef<Image>(spec));
+            }
+
+            attachmentIndex++;
+        }
+    }
+
+    auto Framebuffer::BuildFramebuffer(const nvrhi::TextureSubresourceSet& subresources) const -> nvrhi::FramebufferHandle
+    {
+        const auto device = DeviceManager::Get()->GetDevice();
+
+        nvrhi::FramebufferDesc desc{};
         for (const auto& image : m_Images)
         {
             if (image->IsDepthImage())
-                desc.setDepthAttachment(image->GetTexture());
+                desc.setDepthAttachment(image->GetTexture(), subresources);
             else
-                desc.addColorAttachment(image->GetTexture());
+                desc.addColorAttachment(image->GetTexture(), subresources);
         }
 
-        // The existing image is appended last, targeting a single mip with every array
-        // slice attached — so a cubemap binds all 6 faces as one layered render target.
-        if (const auto& existing = m_Specification.ExistingImage; existing.Image)
-        {
-            m_Images.emplace_back(existing.Image);
-
-            const uint32_t arraySize = existing.Image->GetTexture()->getDesc().arraySize;
-            const nvrhi::TextureSubresourceSet subresources(existing.MipLevel, 1, 0, arraySize);
-            if (existing.Image->IsDepthImage())
-                desc.setDepthAttachment(existing.Image->GetTexture(), subresources);
-            else
-                desc.addColorAttachment(existing.Image->GetTexture(), subresources);
-        }
+        return device->createFramebuffer(desc);
     }
 }

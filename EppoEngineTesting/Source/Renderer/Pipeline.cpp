@@ -24,17 +24,16 @@ SUITE(Renderer)
 			.DebugName = "Framebuffer PipelineTest",
 		};
 
+		const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
 		const PipelineSpecification pipelineSpec{
 			.Shader = renderer->GetShader("geometry"),
-			.Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-			.Width = 256,
-			.Height = 256,
 			.CullMode = nvrhi::RasterCullMode::Front,
 			.DepthTestEnable = true,
 			.DepthWriteEnable = true,
 		};
 
-		const auto pipeline = CreateRef<Pipeline>(pipelineSpec);
+		const auto pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
 		const auto& shaderLayouts = pipeline->GetSpecification().Shader->GetBindingLayouts();
 		const auto& pipelineLayouts = pipeline->GetPipeline()->getDesc().bindingLayouts;
 
@@ -58,6 +57,8 @@ SUITE(Renderer)
 			.DebugName = "Framebuffer BlendTest",
 		};
 
+		const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
 		nvrhi::BlendState blendState;
 		blendState.targets[0].blendEnable = true;
 		blendState.targets[0].srcBlend = nvrhi::BlendFactor::SrcAlpha;
@@ -65,14 +66,11 @@ SUITE(Renderer)
 
 		const PipelineSpecification pipelineSpec{
 			.Shader = renderer->GetShader("imgui"),
-			.Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-			.Width = 256,
-			.Height = 256,
 			.CullMode = nvrhi::RasterCullMode::None,
 			.BlendState = blendState,
 		};
 
-		const auto pipeline = CreateRef<Pipeline>(pipelineSpec);
+		const auto pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
 		CHECK(pipeline->GetPipeline());
 	}
 }
