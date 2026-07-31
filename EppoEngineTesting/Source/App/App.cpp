@@ -1,6 +1,11 @@
 #include "Support/EppoTest.h"
 #include "Support/AppHarness.h"
 
+#include "Event/KeyEvent.h"
+#include "ImGui/ImGuiLayer.h"
+
+#include <imgui.h>
+
 using namespace Eppo;
 
 // Foundation for the scenario tests: boots the real Application and steps frames.
@@ -84,6 +89,35 @@ SUITE(App)
         CHECK_EQUAL(1024, app->GetWindow()->GetWidth());
         CHECK_EQUAL(640, app->GetWindow()->GetHeight());
         CHECK(app->GetDeviceManager()->GetParams().VSync);
+    }
+
+    TEST(ImGuiLayer_PlayModeCanSuspendMouseAndReceiveEscape)
+    {
+        Testing::AppHarness::Shutdown();
+        Application* app = Testing::AppHarness::Get();
+        REQUIRE CHECK(app != nullptr);
+        REQUIRE CHECK(app->GetImGuiLayer() != nullptr);
+
+        app->GetImGuiLayer()->SetMouseInputEnabled(false);
+        CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) != 0);
+
+        ImGuiIO& io = ImGui::GetIO();
+        const bool previousWantCaptureKeyboard = io.WantCaptureKeyboard;
+        io.WantCaptureKeyboard = true;
+
+        app->GetImGuiLayer()->BlockEvents(true);
+        KeyPressedEvent blockedEscape{ Key::Escape };
+        app->GetImGuiLayer()->OnEvent(blockedEscape);
+        CHECK(blockedEscape.Handled);
+
+        app->GetImGuiLayer()->BlockEvents(false);
+        KeyPressedEvent playModeEscape{ Key::Escape };
+        app->GetImGuiLayer()->OnEvent(playModeEscape);
+        CHECK(!playModeEscape.Handled);
+
+        io.WantCaptureKeyboard = previousWantCaptureKeyboard;
+        app->GetImGuiLayer()->SetMouseInputEnabled(true);
+        CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) == 0);
     }
 
     TEST(Application_WithoutImGui_UpdatesLayersWithoutUIRender)

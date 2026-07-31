@@ -15,6 +15,7 @@ namespace Eppo
         auto PrepareRender() -> void;
         auto Render() -> void;
         auto BlockEvents(bool blockEvents) -> void;
+        auto SetMouseInputEnabled(bool enabled) -> void;
         auto SetClearMainSwapchainTarget(bool clear) -> void { m_ClearMainSwapchainTarget = clear; }
         [[nodiscard]] constexpr auto GetMainImGuiRenderer() const -> const ScopedPtr<ImGuiRenderer>& { return m_ImGuiRenderer; }
 

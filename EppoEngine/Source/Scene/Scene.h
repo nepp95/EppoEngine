@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Asset/Asset.h"
-#include "Core/UUID.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Scene/Components.h"
 
@@ -18,11 +17,6 @@ namespace Eppo
     class PhysicsWorld;
     class SceneSerializer;
 
-    // Scene-level lighting environment. Without a skybox image the renderer
-    // shades the background and the ambient term from these three colors (a
-    // vertical zenith->horizon->ground gradient). SkyboxHandle is the seam for a
-    // future equirectangular HDR: when it resolves to a loaded image the renderer
-    // samples that instead of the gradient. Colors are authored in linear space.
     struct EnvironmentSettings
     {
         AssetHandle SkyboxHandle = 0;
@@ -30,6 +24,14 @@ namespace Eppo
         glm::vec3 HorizonColor = { 0.65f, 0.66f, 0.67f };
         glm::vec3 GroundColor = { 0.20f, 0.17f, 0.13f };
         float AmbientIntensity = 1.0f;
+    };
+
+    struct BloomSettings
+    {
+        float Threshold = 0.5f;
+        float Knee = 0.25f;
+        float Intensity = 0.04f;
+        float Radius = 1.0f;
     };
 
     class Scene : public Asset, public std::enable_shared_from_this<Scene>
@@ -98,8 +100,10 @@ namespace Eppo
 
         static auto Copy(const Ref<Scene>& scene) -> Ref<Scene>;
 
-        [[nodiscard]] auto GetEnvironment() -> EnvironmentSettings& { return m_Environment; }
-        [[nodiscard]] auto GetEnvironment() const -> const EnvironmentSettings& { return m_Environment; }
+        [[nodiscard]] auto GetEnvironmentSettings() -> EnvironmentSettings& { return m_EnvironmentSettings; }
+        [[nodiscard]] auto GetEnvironmentSettings() const -> const EnvironmentSettings& { return m_EnvironmentSettings; }
+        [[nodiscard]] auto GetBloomSettings() -> BloomSettings& { return m_BloomSettings; }
+        [[nodiscard]] auto GetBloomSettings() const -> const BloomSettings& { return m_BloomSettings; }
 
         // Null outside runtime (between OnRuntimeStop and the next OnRuntimeStart).
         [[nodiscard]] auto GetPhysicsWorld() const -> Ref<PhysicsWorld> { return m_PhysicsWorld; }
@@ -117,8 +121,11 @@ namespace Eppo
     private:
         entt::registry m_Registry;
         std::unordered_map<UUID, EntityHandle> m_EntityMap;
-        EnvironmentSettings m_Environment;
         Ref<PhysicsWorld> m_PhysicsWorld;
+
+        EnvironmentSettings m_EnvironmentSettings;
+        BloomSettings m_BloomSettings;
+
         std::vector<std::string> m_ColliderlessRigidBodies;
         std::vector<UUID> m_EntitiesToDestroy;
 

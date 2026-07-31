@@ -52,7 +52,8 @@ namespace Eppo
         };
 
         template<ResourceType T>
-        [[nodiscard]] auto Register(const Ref<T>& resource) -> BindlessHandle
+        [[nodiscard]] auto Register(const Ref<T>& resource, const nvrhi::TextureSubresourceSet& subresources = nvrhi::AllSubresources)
+            -> BindlessHandle
         {
             const auto& dm = DeviceManager::Get();
             const auto device = dm->GetDevice();
@@ -67,7 +68,7 @@ namespace Eppo
             // Write to table
             nvrhi::BindingSetItem item;
             if constexpr (std::same_as<T, Image>)
-                item = nvrhi::BindingSetItem::Texture_SRV(slot, resource->GetTexture(), resource->GetFormat());
+                item = nvrhi::BindingSetItem::Texture_SRV(slot, resource->GetTexture(), resource->GetFormat(), subresources);
             if constexpr (std::same_as<T, UniformBuffer>)
                 item = nvrhi::BindingSetItem::ConstantBuffer(slot, resource->GetBuffer());
             if constexpr (std::same_as<T, StorageBuffer>)

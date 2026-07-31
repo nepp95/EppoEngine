@@ -32,7 +32,7 @@ namespace Eppo
         explicit Image(const ImageSpecification& spec, const nvrhi::CommandListHandle& cmdList = nullptr);
         explicit Image(const ImageSpecification& spec, void* ExistingImage);
         explicit Image(const ImageSpecification& spec, const ImageSource& source, const nvrhi::CommandListHandle& cmdList = nullptr);
-        ~Image() = default;
+        ~Image() override = default;
 
         static auto GetStaticType() -> AssetType { return AssetType::Texture; }
 
@@ -45,11 +45,18 @@ namespace Eppo
         [[nodiscard]] auto GetTexture() const -> nvrhi::TextureHandle { return m_Texture; }
         [[nodiscard]] constexpr auto GetWidth() const -> uint32_t { return m_Width; }
         [[nodiscard]] constexpr auto GetHeight() const -> uint32_t { return m_Height; }
+
+        static auto CalculateMipLevels(uint32_t width, uint32_t height) -> uint32_t;
+        [[nodiscard]] constexpr auto GetMipLevels() const -> uint32_t { return m_MipLevels; }
+        [[nodiscard]] auto GetMipWidth(uint32_t mipLevel) const -> uint32_t;
+        [[nodiscard]] auto GetMipHeight(uint32_t mipLevel) const -> uint32_t;
+
         [[nodiscard]] auto GetFormat() const -> nvrhi::Format { return m_Specification.ImageFormat; }
         [[nodiscard]] auto IsDepthImage() const -> bool;
 
-        // Registers this image in the bindless resource heap on first call and returns its slot.
-        [[nodiscard]] auto GetBindlessIndex() -> uint32_t;
+        // Registers a bindless SRV for the requested subresource range on first request and returns its slot.
+        // The whole-image default and an equivalent explicit range resolve to one shared slot; distinct mip/array views get distinct slots.
+        [[nodiscard]] auto GetBindlessIndex(const nvrhi::TextureSubresourceSet& subresources = nvrhi::AllSubresources) -> uint32_t;
 
     private:
         [[nodiscard]] auto DecodeImageData(const ImageSource& source, uint32_t& outChannels, bool& outIsHdr) -> void*;
@@ -61,8 +68,9 @@ namespace Eppo
         nvrhi::TextureHandle m_Texture = nullptr;
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
+        uint32_t m_MipLevels = 1;
         uint32_t m_Stride = 0;
 
-        Ref<BindlessHandle> m_BindlessHandle = nullptr;
+        std::unordered_map<nvrhi::TextureSubresourceSet, Ref<BindlessHandle>> m_BindlessHandles;
     };
 }

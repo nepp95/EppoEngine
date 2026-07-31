@@ -34,8 +34,8 @@ namespace Eppo
 
         const auto& shader = renderer->GetShader("imgui");
 
-        // Alpha blending for UI compositing. The template has no framebuffer —
-        // GetOrCreatePipeline clones it per swapchain and fills that in.
+        // Alpha blending for UI compositing. The template has no FramebufferInfo —
+        // GetOrCreateRenderPass fills that in per swapchain.
         nvrhi::BlendState blendState;
         blendState.targets[0].blendEnable = true;
         blendState.targets[0].srcBlend = nvrhi::BlendFactor::SrcAlpha;
@@ -71,7 +71,7 @@ namespace Eppo
 
     auto ImGuiRenderer::Resize() -> void
     {
-        m_PipelineCache.clear();
+        m_RenderPassCache.clear();
     }
 
     auto ImGuiRenderer::UpdateFontTexture() -> void
@@ -117,10 +117,10 @@ namespace Eppo
     {
         EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain")
 
-        Render(viewport, GetOrCreatePipeline(swapchain), clearSwapchainTarget);
+        Render(viewport, GetOrCreateRenderPass(swapchain), clearSwapchainTarget);
     }
 
-    auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline, const bool clearTarget) -> void
+    auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<RenderPass>& renderPass, const bool clearTarget) -> void
     {
         EP_PROFILE_FN("ImGuiRenderer::Render")
 
@@ -131,7 +131,7 @@ namespace Eppo
 
         nvrhi::GraphicsState state{};
 
-        const auto& framebuffer = pipeline->GetSpecification().Framebuffer->GetFramebuffer();
+        const nvrhi::FramebufferHandle framebuffer = renderPass->GetFramebuffer()->GetFramebuffer();
         if (clearTarget)
             nvrhi::utils::ClearColorAttachment(m_RenderCommandBuffer.GetCommandList(), framebuffer, 0, nvrhi::Color(1, 0, 0, 1));
 
@@ -157,7 +157,7 @@ namespace Eppo
         float fbWidth = drawData->DisplaySize.x * drawData->FramebufferScale.x;
         float fbHeight = drawData->DisplaySize.y * drawData->FramebufferScale.y;
 
-        state.pipeline = pipeline->GetPipeline();
+        state.pipeline = renderPass->GetPipeline()->GetPipeline();
         state.framebuffer = framebuffer;
 
         state.viewport.addViewport(nvrhi::Viewport(fbWidth, fbHeight));
@@ -345,31 +345,29 @@ namespace Eppo
         return device->createBuffer(bufferDesc);
     }
 
-    auto ImGuiRenderer::GetOrCreatePipeline(const ScopedPtr<Swapchain>& swapchain) -> const Ref<Pipeline>&
+    auto ImGuiRenderer::GetOrCreateRenderPass(const ScopedPtr<Swapchain>& swapchain) -> const Ref<RenderPass>&
     {
-        EP_PROFILE_FN("ImGuiRenderer::GetOrCreatePipeline")
+        EP_PROFILE_FN("ImGuiRenderer::GetOrCreateRenderPass")
 
-        const uint32_t framebufferIndex = swapchain->GetCurrentBackBufferIndex();
-        auto& pipelineCache = m_PipelineCache[swapchain.get()];
+        const auto& swapchainFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer;
+        Ref<RenderPass>& renderPass = m_RenderPassCache[swapchain.get()];
 
-        const nvrhi::FramebufferHandle targetFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer->GetFramebuffer();
-        Ref<Pipeline>& pipeline = pipelineCache.Pipelines.at(framebufferIndex);
-
-        bool invalidate = !pipeline || pipelineCache.Framebuffers.at(framebufferIndex) != targetFramebuffer;
-        if (invalidate)
+        // One pipeline is compatible with every backbuffer of this swapchain, so only the target framebuffer is swapped per frame.
+        if (!renderPass)
         {
-            const auto& swapchainFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer;
-
-            PipelineSpecification spec = m_PipelineSpecTemplate;
-            spec.Framebuffer = swapchainFramebuffer;
-            spec.Width = swapchainFramebuffer->GetWidth();
-            spec.Height = swapchainFramebuffer->GetHeight();
-
-            pipeline = CreateRef<Pipeline>(spec);
-            pipelineCache.Framebuffers.at(framebufferIndex) = targetFramebuffer;
+            renderPass = CreateRef<RenderPass>(RenderPassSpecification{
+                .Name = "ImGui",
+                .Pipeline = CreateRef<Pipeline>(m_PipelineSpecTemplate, swapchainFramebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = swapchainFramebuffer,
+                .OwnsFramebuffer = false,
+            });
+        }
+        else
+        {
+            renderPass->SetFramebuffer(swapchainFramebuffer);
         }
 
-        return pipeline;
+        return renderPass;
     }
 
     auto ImGuiRenderer::GetOrCreateBindingSet(const nvrhi::TextureHandle& texture) -> nvrhi::BindingSetHandle

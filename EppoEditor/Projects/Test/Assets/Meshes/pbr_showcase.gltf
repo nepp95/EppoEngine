@@ -3,6 +3,9 @@
         "generator": "EppoEngine",
         "version": "2.0"
     },
+    "extensionsUsed": [
+        "KHR_materials_emissive_strength"
+    ],
     "scene": 0,
     "scenes": [
         {
@@ -44,7 +47,7 @@
     ],
     "materials": [
         {
-            "name": "AO Shell",
+            "name": "AO + Emissive Shell",
             "pbrMetallicRoughness": {
                 "baseColorFactor": [
                     0.18,
@@ -58,6 +61,19 @@
             "occlusionTexture": {
                 "index": 0,
                 "strength": 1.0
+            },
+            "emissiveFactor": [
+                0.0,
+                0.8,
+                1.0
+            ],
+            "emissiveTexture": {
+                "index": 1
+            },
+            "extensions": {
+                "KHR_materials_emissive_strength": {
+                    "emissiveStrength": 5.0
+                }
             }
         },
         {
@@ -79,6 +95,11 @@
             ],
             "emissiveTexture": {
                 "index": 1
+            },
+            "extensions": {
+                "KHR_materials_emissive_strength": {
+                    "emissiveStrength": 5.0
+                }
             }
         }
     ],

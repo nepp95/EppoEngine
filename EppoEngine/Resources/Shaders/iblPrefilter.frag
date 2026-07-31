@@ -37,8 +37,15 @@ float4 Main(Input input) : SV_Target
 		const float dotNL = max(dot(N, L), 0.0);
 		if (dotNL > 0.0)
 		{
-			// Single-mip environment cube, so sample mip 0; footprint-LOD anti-aliasing waits on a mip chain.
-			prefiltered += uEnvMap.SampleLevel(uSampler, L, 0).rgb * dotNL;
+			float mipLevel = 0.0;
+			if (uPC.Roughness > 0.0)
+			{
+				const float dotNH = max(dot(N, H), 0.0);
+				const float dotVH = max(dot(V, H), 0.0);
+				const float pdf = DGGX(dotNH, uPC.Roughness) * dotNH / max(4.0 * dotVH, 0.000001);
+				mipLevel = SourceMipLevel(sampleCount, pdf, uPC.EnvMapSize);
+			}
+			prefiltered += uEnvMap.SampleLevel(uSampler, L, mipLevel).rgb * dotNL;
 			totalWeight += dotNL;
 		}
 	}

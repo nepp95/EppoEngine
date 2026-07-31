@@ -41,6 +41,56 @@ SUITE(Scene)
         CHECK(!entity.HasComponent<RelationshipComponent>());
     }
 
+    TEST(Scene_BloomSettings_UseHdrDefaults)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        const auto& bloom = scene->GetBloomSettings();
+
+        CHECK_CLOSE(0.5f, bloom.Threshold, 1e-5f);
+        CHECK_CLOSE(0.25f, bloom.Knee, 1e-5f);
+        CHECK_CLOSE(0.04f, bloom.Intensity, 1e-5f);
+        CHECK_CLOSE(1.0f, bloom.Radius, 1e-5f);
+    }
+
+    TEST(SceneSerializer_BloomSettings_RoundTripsFields)
+    {
+        const Ref<Scene> authoring = CreateRef<Scene>();
+        auto& bloom = authoring->GetBloomSettings();
+        bloom.Threshold = 0.35f;
+        bloom.Knee = 0.15f;
+        bloom.Intensity = 0.55f;
+        bloom.Radius = 2.5f;
+
+        const Testing::TempDir dir;
+        const auto path = dir.File("bloom-settings.epscene");
+        REQUIRE CHECK(SceneSerializer(authoring).Serialize(path));
+
+        const Ref<Scene> loaded = CreateRef<Scene>();
+        REQUIRE CHECK(SceneSerializer(loaded).Deserialize(path));
+        const auto& loadedBloom = loaded->GetBloomSettings();
+        CHECK_CLOSE(0.35f, loadedBloom.Threshold, 1e-5f);
+        CHECK_CLOSE(0.15f, loadedBloom.Knee, 1e-5f);
+        CHECK_CLOSE(0.55f, loadedBloom.Intensity, 1e-5f);
+        CHECK_CLOSE(2.5f, loadedBloom.Radius, 1e-5f);
+    }
+
+    TEST(Scene_Copy_CarriesBloomSettings)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        auto& bloom = scene->GetBloomSettings();
+        bloom.Threshold = 0.35f;
+        bloom.Knee = 0.15f;
+        bloom.Intensity = 0.55f;
+        bloom.Radius = 2.5f;
+
+        const Ref<Scene> copy = Scene::Copy(scene);
+        const auto& copied = copy->GetBloomSettings();
+        CHECK_CLOSE(0.35f, copied.Threshold, 1e-5f);
+        CHECK_CLOSE(0.15f, copied.Knee, 1e-5f);
+        CHECK_CLOSE(0.55f, copied.Intensity, 1e-5f);
+        CHECK_CLOSE(2.5f, copied.Radius, 1e-5f);
+    }
+
     TEST(Scene_SetParent_AddsAndRemovesSparseRelationshipComponents)
     {
         const Ref<Scene> scene = CreateRef<Scene>();

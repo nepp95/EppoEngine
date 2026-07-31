@@ -15,11 +15,12 @@ namespace Eppo
         if (!scene)
             return;
 
-        EnvironmentSettings& environment = scene->GetEnvironment();
         const auto project = Project::GetActive();
         const auto assetManager = project ? project->GetAssetManager() : nullptr;
 
-        ImGui::SeparatorText("Skybox");
+        EnvironmentSettings& environment = scene->GetEnvironmentSettings();
+        ImGui::SeparatorText("Environment");
+        ImGui::PushID("Environment");
         if (environment.SkyboxHandle)
         {
             if (assetManager && assetManager->HasAssetData(environment.SkyboxHandle))
@@ -54,12 +55,20 @@ namespace Eppo
             }
         }
 
-        ImGui::SeparatorText("Ambient");
         ImGui::DragFloat("Intensity", &environment.AmbientIntensity, 0.01f, 0.0f, 100.0f);
 
-        ImGui::SeparatorText("Gradient sky (fallback)");
         ImGui::ColorEdit3("Zenith", glm::value_ptr(environment.ZenithColor));
         ImGui::ColorEdit3("Horizon", glm::value_ptr(environment.HorizonColor));
         ImGui::ColorEdit3("Ground", glm::value_ptr(environment.GroundColor));
+        ImGui::PopID();
+
+        auto& bloom = scene->GetBloomSettings();
+        ImGui::SeparatorText("Bloom");
+        ImGui::PushID("Bloom");
+        ImGui::DragFloat("Threshold", &bloom.Threshold, 0.01f, 0.0f);
+        ImGui::DragFloat("Knee", &bloom.Knee, 0.01f, 0.0f, 5.0f);
+        ImGui::DragFloat("Intensity", &bloom.Intensity, 0.01f, 0.0f, 5.0f);
+        ImGui::DragFloat("Radius", &bloom.Radius, 0.01f, 0.0f, 4.0f);
+        ImGui::PopID();
     }
 }

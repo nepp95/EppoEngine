@@ -127,11 +127,10 @@ namespace Eppo
                 .DebugName = "Framebuffer Shadow Depth",
             };
 
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("shadowDepth"),
-                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-                .Width = s_ShadowDepthMapSize,
-                .Height = s_ShadowDepthMapSize,
                 .CullMode = nvrhi::RasterCullMode::Front,
                 .DepthTestEnable = true,
                 .DepthWriteEnable = true,
@@ -139,7 +138,8 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Shadow Depth",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
                 .ClearDepthOnLoad = true,
                 .DepthClearValue = 1.0f,
             };
@@ -156,11 +156,10 @@ namespace Eppo
                 .DebugName = "Framebuffer Geometry",
             };
 
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("geometry"),
-                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-                .Width = m_Width,
-                .Height = m_Height,
                 .CullMode = nvrhi::RasterCullMode::Front,
                 .DepthTestEnable = true,
                 .DepthWriteEnable = true,
@@ -168,7 +167,8 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Geometry",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
                 .ClearColorOnLoad = true,
                 .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
                 .ClearDepthOnLoad = true,
@@ -181,10 +181,6 @@ namespace Eppo
         {
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("skybox"),
-                .Framebuffer = m_GeometryPass->GetPipeline()->GetSpecification().Framebuffer,
-                .OwnsFramebuffer = false,
-                .Width = m_Width,
-                .Height = m_Height,
                 .CullMode = nvrhi::RasterCullMode::None,
                 .DepthTestEnable = true,
                 .DepthWriteEnable = false,
@@ -193,10 +189,94 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Skybox",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, m_GeometryPass->GetFramebuffer()->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = m_GeometryPass->GetFramebuffer(),
+                .OwnsFramebuffer = false,
             };
 
             m_SkyPass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
+        // Bloom Downsample
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = glm::max(1u, m_Width / 2u),
+                .Height = glm::max(1u, m_Height / 2u),
+                .Attachments = { { nvrhi::Format::RGBA16_FLOAT, s_MaxBloomMipLevels } },
+                .DebugName = "Framebuffer Bloom Downsample",
+            };
+
+            m_BloomPyramidFramebuffer = CreateRef<Framebuffer>(framebufferSpec);
+            m_BloomMipLevels = glm::min(s_MaxBloomMipLevels, m_BloomPyramidFramebuffer->GetFinalImage()->GetMipLevels());
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("bloomDownSample"),
+                .CullMode = nvrhi::RasterCullMode::None,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "Bloom Downsample",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, m_BloomPyramidFramebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = m_BloomPyramidFramebuffer,
+                .ClearColorOnLoad = true,
+                .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+            };
+
+            m_BloomDownSamplePass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
+        // Bloom Upsample
+        {
+            nvrhi::BlendState blendState{};
+            auto& target = blendState.targets[0];
+            target.blendEnable = true;
+            target.srcBlend = nvrhi::BlendFactor::One;
+            target.destBlend = nvrhi::BlendFactor::One;
+            target.blendOp = nvrhi::BlendOp::Add;
+            target.srcBlendAlpha = nvrhi::BlendFactor::One;
+            target.destBlendAlpha = nvrhi::BlendFactor::One;
+            target.blendOpAlpha = nvrhi::BlendOp::Add;
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("bloomUpSample"),
+                .CullMode = nvrhi::RasterCullMode::None,
+                .BlendState = blendState,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "Bloom Upsample",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, m_BloomPyramidFramebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = m_BloomPyramidFramebuffer,
+            };
+
+            m_BloomUpSamplePass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
+        // Bloom Composite
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = m_Width,
+                .Height = m_Height,
+                .Attachments = { nvrhi::Format::RGBA16_FLOAT },
+                .DebugName = "Framebuffer Bloom Composite",
+            };
+
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("bloomComposite"),
+                .CullMode = nvrhi::RasterCullMode::None,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "Bloom Composite",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
+                .ClearColorOnLoad = true,
+                .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+            };
+
+            m_BloomCompositePass = CreateRef<RenderPass>(renderPassSpec);
         }
 
         // Tonemap
@@ -208,17 +288,17 @@ namespace Eppo
                 .DebugName = "Framebuffer Tonemap",
             };
 
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("tonemap"),
-                .Framebuffer = CreateRef<Framebuffer>(framebufferSpec),
-                .Width = m_Width,
-                .Height = m_Height,
                 .CullMode = nvrhi::RasterCullMode::None,
             };
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Tonemap",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
                 .ClearColorOnLoad = true,
                 .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
             };
@@ -230,10 +310,6 @@ namespace Eppo
         {
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("wireframe"),
-                .Framebuffer = m_TonemapPass->GetFramebuffer(),
-                .OwnsFramebuffer = false,
-                .Width = m_Width,
-                .Height = m_Height,
                 .CullMode = nvrhi::RasterCullMode::None,
                 .FillMode = nvrhi::RasterFillMode::Wireframe,
                 .DepthTestEnable = false,
@@ -244,7 +320,9 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Wireframe",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, m_TonemapPass->GetFramebuffer()->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = m_TonemapPass->GetFramebuffer(),
+                .OwnsFramebuffer = false,
             };
 
             m_WireframePass = CreateRef<RenderPass>(renderPassSpec);
@@ -299,55 +377,93 @@ namespace Eppo
 
         const auto& imguiRenderer = app.GetImGuiLayer()->GetMainImGuiRenderer();
 
-        // One collapsible row per scene pass: its GPU time plus draw-call breakdown.
-        const auto renderPass = [](const char* name, const PassStatistics& stats, float timeMs) -> void
+        struct PassResult
         {
-            if (!ImGui::TreeNodeEx(name, 0, "%s: %.2fms", name, timeMs))
-                return;
+            PassStatistics Stats{};
+            float TimeMs = 0.0f;
 
-            ImGui::Text("Draw calls: %u", stats.DrawCalls);
-            ImGui::Text("Meshes: %u", stats.Meshes);
-            ImGui::Text("Submeshes: %u", stats.Submeshes);
-            ImGui::Text("Instances: %u", stats.Instances);
-            ImGui::Text("Vertices: %u", stats.Vertices);
-            ImGui::Text("Indices: %u", stats.Indices);
-            ImGui::TreePop();
+            auto operator+=(const PassResult& rhs) -> PassResult&
+            {
+                Stats += rhs.Stats;
+                TimeMs += rhs.TimeMs;
+                return *this;
+            }
+        };
+
+        struct Node
+        {
+            Ref<RenderPass> Pass = nullptr;
+            std::string Label;
+            std::vector<Node> Children;
+        };
+
+        auto Group = [](std::string label, std::vector<Node> children) -> Node
+        {
+            return {
+                .Label = std::move(label),
+                .Children = std::move(children),
+            };
+        };
+
+        auto SampleNode = [frameIndex, cb = m_RenderCommandBuffer](const auto& self, const Node& node) -> PassResult
+        {
+            if (node.Pass)
+                return { .Stats = node.Pass->GetStatistics(), .TimeMs = cb->GetTimeMs(node.Pass->GetName(), frameIndex) };
+
+            PassResult total{};
+            for (const auto& child : node.Children)
+                total += self(self, child);
+            return total;
+        };
+
+        // Draws a node (recursively) and returns its accumulated stats/time, expanded or not.
+        auto DrawPassNode = [&SampleNode](const auto& self, const Node& node) -> PassResult
+        {
+            const PassResult result = SampleNode(SampleNode, node);
+            const std::string& label = node.Pass ? node.Pass->GetName() : node.Label;
+
+            if (ImGui::TreeNodeEx(label.c_str(), 0, "%s: %.2fms", label.c_str(), result.TimeMs))
+            {
+                if (node.Pass)
+                {
+                    const auto& stats = result.Stats;
+                    ImGui::Text("Draw calls: %u", stats.DrawCalls);
+                    ImGui::Text("Meshes: %u", stats.Meshes);
+                    ImGui::Text("Submeshes: %u", stats.Submeshes);
+                    ImGui::Text("Instances: %u", stats.Instances);
+                    ImGui::Text("Vertices: %u", stats.Vertices);
+                    ImGui::Text("Indices: %u", stats.Indices);
+                }
+                else
+                {
+                    for (const auto& child : node.Children)
+                        self(self, child);
+                }
+                ImGui::TreePop();
+            }
+
+            return result;
+        };
+
+        const std::vector<Node> passTree{
+            { .Pass = m_ShadowDepthPass },
+            { .Pass = m_GeometryPass },
+            { .Pass = m_SkyPass },
+            Group("Bloom", { { .Pass = m_BloomDownSamplePass }, { .Pass = m_BloomUpSamplePass }, { .Pass = m_BloomCompositePass } }),
+            { .Pass = m_TonemapPass },
+            { .Pass = m_WireframePass },
         };
 
         ImGui::Begin("Scene Renderer");
 
         // Scene passes and their subtotal.
         ImGui::SeparatorText("Scene");
-        const auto& shadowDepthStats = m_ShadowDepthPass->GetStatistics();
-        const auto& geometryStats = m_GeometryPass->GetStatistics();
-        const auto& skyStats = m_SkyPass->GetStatistics();
-        const auto& wireframeStats = m_WireframePass->GetStatistics();
-        const auto& tonemapStats = m_TonemapPass->GetStatistics();
 
-        renderPass(
-            m_ShadowDepthPass->GetName().c_str(), shadowDepthStats,
-            m_RenderCommandBuffer->GetTimeMs(m_ShadowDepthPass->GetName(), frameIndex)
-        );
-        renderPass(
-            m_GeometryPass->GetName().c_str(), geometryStats, m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex)
-        );
-        renderPass(m_SkyPass->GetName().c_str(), skyStats, m_RenderCommandBuffer->GetTimeMs(m_SkyPass->GetName(), frameIndex));
-        renderPass(m_TonemapPass->GetName().c_str(), tonemapStats, m_RenderCommandBuffer->GetTimeMs(m_TonemapPass->GetName(), frameIndex));
-        renderPass(
-            m_WireframePass->GetName().c_str(), wireframeStats, m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex)
-        );
+        PassResult result{};
+        for (const auto& node : passTree)
+            result += DrawPassNode(DrawPassNode, node);
 
-        PassStatistics sceneStats;
-        sceneStats += shadowDepthStats;
-        sceneStats += geometryStats;
-        sceneStats += skyStats;
-        sceneStats += wireframeStats;
-        sceneStats += tonemapStats;
-        const float sceneTime = m_RenderCommandBuffer->GetTimeMs(m_GeometryPass->GetName(), frameIndex) +
-            m_RenderCommandBuffer->GetTimeMs(m_SkyPass->GetName(), frameIndex) +
-            m_RenderCommandBuffer->GetTimeMs(m_WireframePass->GetName(), frameIndex) +
-            m_RenderCommandBuffer->GetTimeMs(m_TonemapPass->GetName(), frameIndex);
-        ImGui::Text("Scene total: %u draw calls, %.2fms", sceneStats.DrawCalls, sceneTime);
+        ImGui::Text("Scene total: %u draw calls, %.2fms", result.Stats.DrawCalls, result.TimeMs);
 
         // UI is tracked and reported separately from the scene.
         ImGui::SeparatorText("UI");
@@ -358,11 +474,11 @@ namespace Eppo
         ImGui::Text("Indices: %u", uiStats.Indices);
 
         // Everything on screen: scene passes plus UI.
-        const std::string totalLabel = std::format("Total: {:.2f}ms", sceneTime + imguiRenderer->GetGPUTime(frameIndex));
+        const std::string totalLabel = std::format("Total: {:.2f}ms", result.TimeMs + imguiRenderer->GetGPUTime(frameIndex));
         ImGui::SeparatorText(totalLabel.c_str());
-        ImGui::Text("Draw calls: %u", sceneStats.DrawCalls + uiStats.DrawCalls);
-        ImGui::Text("Vertices: %u", sceneStats.Vertices + uiStats.Vertices);
-        ImGui::Text("Indices: %u", sceneStats.Indices + uiStats.Indices);
+        ImGui::Text("Draw calls: %u", result.Stats.DrawCalls + uiStats.DrawCalls);
+        ImGui::Text("Vertices: %u", result.Stats.Vertices + uiStats.Vertices);
+        ImGui::Text("Indices: %u", result.Stats.Indices + uiStats.Indices);
 
         ImGui::End();
     }
@@ -403,6 +519,7 @@ namespace Eppo
         ShadowDepthPass();
         GeometryPass();
         SkyPass();
+        BloomPass();
         TonemapPass();
         WireframePass();
 
@@ -412,7 +529,7 @@ namespace Eppo
 
     auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
     {
-        return m_TonemapPass->GetPipeline()->GetSpecification().Framebuffer->GetFinalImage();
+        return m_TonemapPass->GetFramebuffer()->GetFinalImage();
     }
 
     auto SceneRenderer::SubmitMesh(const AssetHandle meshHandle, const glm::mat4& transform) -> void
@@ -467,7 +584,7 @@ namespace Eppo
         m_LightData.NumLights++;
     }
 
-    auto SceneRenderer::SubmitEnvironment(const EnvironmentSettings& environment) -> void
+    auto SceneRenderer::SubmitEnvironmentSettings(const EnvironmentSettings& environment) -> void
     {
         m_EnvironmentData.ZenithColor = glm::vec4(environment.ZenithColor, 1.0f);
         m_EnvironmentData.HorizonColor = glm::vec4(environment.HorizonColor, 1.0f);
@@ -513,6 +630,11 @@ namespace Eppo
         m_EnvironmentData.IBL1 = glm::uvec4(m_ClampAllFiltersTrueSampler->GetBindlessIndex(), 0, 0, 0);
     }
 
+    auto SceneRenderer::SubmitBloomSettings(const BloomSettings& bloom) -> void
+    {
+        m_BloomSettings = bloom;
+    }
+
     auto SceneRenderer::Resize(const uint32_t width, const uint32_t height) -> void
     {
         EP_PROFILE_FN("SceneRenderer::Resize")
@@ -525,8 +647,12 @@ namespace Eppo
 
         m_GeometryPass->Resize(m_Width, m_Height);
         m_SkyPass->Resize(m_Width, m_Height);
+        m_BloomCompositePass->Resize(m_Width, m_Height);
         m_TonemapPass->Resize(m_Width, m_Height);
         m_WireframePass->Resize(m_Width, m_Height);
+
+        m_BloomPyramidFramebuffer->Resize(glm::max(1u, m_Width / 2u), glm::max(1u, m_Height / 2u));
+        m_BloomMipLevels = glm::min(s_MaxBloomMipLevels, m_BloomPyramidFramebuffer->GetFinalImage()->GetMipLevels());
     }
 
     auto SceneRenderer::BeginSceneInternal() -> void
@@ -536,6 +662,9 @@ namespace Eppo
         std::memset(&m_ShadowDepthPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_GeometryPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_SkyPass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_BloomDownSamplePass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_BloomUpSamplePass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_BloomCompositePass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_WireframePass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_TonemapPass->GetStatistics(), 0, sizeof(PassStatistics));
 
@@ -773,15 +902,25 @@ namespace Eppo
         m_MaterialDataSB->SetData(cmdList, m_MaterialData.data(), m_MaterialData.size() * sizeof(MaterialData));
 
         // Framebuffer attachments are recreated on resize.
-        m_TonemapPass->SetInput(0, 0, m_GeometryPass->GetFramebuffer()->GetFinalImage());
+        m_TonemapPass->SetInput(0, 0, m_BloomCompositePass->GetFramebuffer()->GetFinalImage());
         m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
 
         // Rebuild binding sets for any pass whose resource handles changed.
         m_ShadowDepthPass->Bake();
         m_GeometryPass->Bake();
         m_SkyPass->Bake();
+        m_BloomDownSamplePass->Bake();
+        m_BloomUpSamplePass->Bake();
+        m_BloomCompositePass->Bake();
         m_TonemapPass->Bake();
         m_WireframePass->Bake();
+
+        // Pre-register the subresources bloom samples bindlessly: GetBindlessIndex lazily writes the bindless
+        // table on first use, which is illegal once an earlier pass has bound it, so warm the cache here first.
+        static_cast<void>(m_GeometryPass->GetFramebuffer()->GetFinalImage()->GetBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, 1)));
+        const auto& bloomPyramid = m_BloomPyramidFramebuffer->GetFinalImage();
+        for (uint32_t mip = 0; mip < m_BloomMipLevels; mip++)
+            static_cast<void>(bloomPyramid->GetBindlessIndex(nvrhi::TextureSubresourceSet(mip, 1, 0, 1)));
     }
 
     auto SceneRenderer::FillShadowData() -> void
@@ -851,8 +990,10 @@ namespace Eppo
         } pushConstants{};
 
         auto& statistics = m_ShadowDepthPass->GetStatistics();
+        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_ShadowDepthPass->GetName());
+        m_RenderCommandBuffer->BeginMarker(m_ShadowDepthPass->GetName());
         Renderer::BeginRenderPass(m_RenderCommandBuffer, m_ShadowDepthPass);
 
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
@@ -883,7 +1024,7 @@ namespace Eppo
 
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
-                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
+                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
@@ -892,7 +1033,7 @@ namespace Eppo
                         .startVertexLocation = firstVertex,
                     };
 
-                    m_RenderCommandBuffer->GetCommandList()->drawIndexed(drawArgs);
+                    cmdList->drawIndexed(drawArgs);
 
                     statistics.DrawCalls++;
                     statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
@@ -905,6 +1046,7 @@ namespace Eppo
         }
 
         Renderer::EndRenderPass(m_RenderCommandBuffer);
+        m_RenderCommandBuffer->EndMarker();
         m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
     }
 
@@ -918,8 +1060,14 @@ namespace Eppo
         } pushConstants{};
 
         auto& statistics = m_GeometryPass->GetStatistics();
+        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_GeometryPass->GetName());
+
+        const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
+        cmdList->setTextureState(shadowMap->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+
+        m_RenderCommandBuffer->BeginMarker(m_GeometryPass->GetName());
         Renderer::BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
 
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
@@ -949,7 +1097,7 @@ namespace Eppo
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
                     pushConstants.DrawIndex = drawIndex++;
-                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
+                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
@@ -958,7 +1106,7 @@ namespace Eppo
                         .startVertexLocation = firstVertex,
                     };
 
-                    m_RenderCommandBuffer->GetCommandList()->drawIndexed(drawArgs);
+                    cmdList->drawIndexed(drawArgs);
 
                     statistics.DrawCalls++;
                     statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
@@ -973,6 +1121,7 @@ namespace Eppo
         EP_ASSERT(drawIndex == m_DrawData.size());
 
         Renderer::EndRenderPass(m_RenderCommandBuffer);
+        m_RenderCommandBuffer->EndMarker();
         m_RenderCommandBuffer->EndTimerQuery(m_GeometryPass->GetName());
     }
 
@@ -981,21 +1130,183 @@ namespace Eppo
         EP_PROFILE_FN("SceneRenderer::SkyPass")
 
         auto& statistics = m_SkyPass->GetStatistics();
+        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_SkyPass->GetName());
+        m_RenderCommandBuffer->BeginMarker(m_SkyPass->GetName());
         Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SkyPass);
 
         constexpr nvrhi::DrawArguments drawArgs{
             .vertexCount = 3,
             .instanceCount = 1,
         };
-        m_RenderCommandBuffer->GetCommandList()->draw(drawArgs);
+        cmdList->draw(drawArgs);
 
         statistics.DrawCalls++;
         statistics.Vertices += drawArgs.vertexCount;
 
         Renderer::EndRenderPass(m_RenderCommandBuffer);
+        m_RenderCommandBuffer->EndMarker();
         m_RenderCommandBuffer->EndTimerQuery(m_SkyPass->GetName());
+    }
+
+    auto SceneRenderer::BloomPass() -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::BloomPass")
+
+        struct PC
+        {
+            glm::vec4 Params;
+            glm::uvec4 Indices;
+        } pushConstants{};
+
+        constexpr nvrhi::DrawArguments drawArgs{
+            .vertexCount = 3,
+            .instanceCount = 1,
+        };
+
+        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+        const auto& sceneImage = m_GeometryPass->GetFramebuffer()->GetFinalImage();
+        const auto& pyramid = m_BloomPyramidFramebuffer->GetFinalImage();
+        const uint32_t samplerIndex = m_ClampAllFiltersTrueSampler->GetBindlessIndex();
+
+        m_RenderCommandBuffer->BeginMarker("Bloom");
+
+        // Downsample
+        {
+            // Push constants:
+            // Params: inverse source size xy, threshold, knee
+            // Indices: source image, sampler, apply threshold, unused
+            m_RenderCommandBuffer->BeginTimerQuery(m_BloomDownSamplePass->GetName());
+            for (uint32_t dest = 0; dest < m_BloomMipLevels; dest++)
+            {
+                const bool base = dest == 0;
+                const Ref<Image>& source = base ? sceneImage : pyramid;
+                const uint32_t sourceMip = base ? 0u : dest - 1u;
+                const nvrhi::TextureSubresourceSet sourceSub(sourceMip, 1, 0, 1);
+
+                cmdList->setTextureState(source->GetTexture(), sourceSub, nvrhi::ResourceStates::ShaderResource);
+                m_BloomDownSamplePass->SetSubresources(nvrhi::TextureSubresourceSet(dest, 1, 0, 1));
+
+                m_RenderCommandBuffer->BeginMarker(m_BloomDownSamplePass->GetName());
+                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomDownSamplePass);
+
+                pushConstants.Params = glm::vec4(
+                    1.0f / source->GetMipWidth(sourceMip), 1.0f / source->GetMipHeight(sourceMip), m_BloomSettings.Threshold,
+                    m_BloomSettings.Knee
+                );
+                pushConstants.Indices = glm::uvec4(source->GetBindlessIndex(sourceSub), samplerIndex, base ? 1u : 0u, 0u);
+
+                cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                cmdList->draw(drawArgs);
+
+                auto& statistics = m_BloomDownSamplePass->GetStatistics();
+                statistics.DrawCalls++;
+                statistics.Vertices += drawArgs.vertexCount;
+
+                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->EndMarker();
+            }
+            m_RenderCommandBuffer->EndTimerQuery(m_BloomDownSamplePass->GetName());
+        }
+
+        // Upsample
+        {
+            // Push constants
+            // Params: inverse source size xy, radius, unused
+            // Indices: source image, sampler, unused, unused
+            m_RenderCommandBuffer->BeginTimerQuery(m_BloomUpSamplePass->GetName());
+            for (uint32_t sourceMip = m_BloomMipLevels - 1; sourceMip > 0; sourceMip--)
+            {
+                const uint32_t dest = sourceMip - 1;
+                const nvrhi::TextureSubresourceSet sourceSub(sourceMip, 1, 0, 1);
+
+                cmdList->setTextureState(pyramid->GetTexture(), sourceSub, nvrhi::ResourceStates::ShaderResource);
+                m_BloomUpSamplePass->SetSubresources(nvrhi::TextureSubresourceSet(dest, 1, 0, 1));
+
+                m_RenderCommandBuffer->BeginMarker(m_BloomUpSamplePass->GetName());
+                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomUpSamplePass);
+
+                pushConstants.Params = glm::vec4(
+                    1.0f / pyramid->GetMipWidth(sourceMip), 1.0f / pyramid->GetMipHeight(sourceMip), m_BloomSettings.Radius, 0.0f
+                );
+                pushConstants.Indices = glm::uvec4(pyramid->GetBindlessIndex(sourceSub), samplerIndex, 0u, 0u);
+
+                cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                cmdList->draw(drawArgs);
+
+                auto& statistics = m_BloomUpSamplePass->GetStatistics();
+                statistics.DrawCalls++;
+                statistics.Vertices += drawArgs.vertexCount;
+
+                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->EndMarker();
+            }
+            m_RenderCommandBuffer->EndTimerQuery(m_BloomUpSamplePass->GetName());
+        }
+
+        // Composite
+        {
+            // Push constants
+            // Params: intensity, unused, unused, unused
+            // Indices: scene image, bloom image, sampler, unused
+            const nvrhi::TextureSubresourceSet mipZero(0, 1, 0, 1);
+
+            m_RenderCommandBuffer->BeginTimerQuery(m_BloomCompositePass->GetName());
+
+            cmdList->setTextureState(sceneImage->GetTexture(), mipZero, nvrhi::ResourceStates::ShaderResource);
+            cmdList->setTextureState(pyramid->GetTexture(), mipZero, nvrhi::ResourceStates::ShaderResource);
+
+            m_RenderCommandBuffer->BeginMarker(m_BloomCompositePass->GetName());
+            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomCompositePass);
+
+            pushConstants.Params = glm::vec4(m_BloomSettings.Intensity, 0.0f, 0.0f, 0.0f);
+            pushConstants.Indices = glm::uvec4(sceneImage->GetBindlessIndex(mipZero), pyramid->GetBindlessIndex(mipZero), samplerIndex, 0u);
+
+            cmdList->setPushConstants(&pushConstants, sizeof(PC));
+            cmdList->draw(drawArgs);
+
+            auto& statistics = m_BloomCompositePass->GetStatistics();
+            statistics.DrawCalls++;
+            statistics.Vertices += drawArgs.vertexCount;
+
+            Renderer::EndRenderPass(m_RenderCommandBuffer);
+            m_RenderCommandBuffer->EndMarker();
+            m_RenderCommandBuffer->EndTimerQuery(m_BloomCompositePass->GetName());
+        }
+
+        m_RenderCommandBuffer->EndMarker();
+    }
+
+    auto SceneRenderer::TonemapPass() const -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::TonemapPass")
+
+        constexpr struct PC
+        {
+            float Exposure = 1.0f;
+        } pushConstants{};
+
+        auto& statistics = m_TonemapPass->GetStatistics();
+        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+
+        m_RenderCommandBuffer->BeginTimerQuery(m_TonemapPass->GetName());
+        m_RenderCommandBuffer->BeginMarker(m_TonemapPass->GetName());
+        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_TonemapPass);
+        cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+        constexpr nvrhi::DrawArguments drawArgs{
+            .vertexCount = 3,
+            .instanceCount = 1,
+        };
+        cmdList->draw(drawArgs);
+
+        statistics.DrawCalls++;
+        statistics.Vertices += drawArgs.vertexCount;
+
+        Renderer::EndRenderPass(m_RenderCommandBuffer);
+        m_RenderCommandBuffer->EndMarker();
+        m_RenderCommandBuffer->EndTimerQuery(m_TonemapPass->GetName());
     }
 
     auto SceneRenderer::WireframePass() const -> void
@@ -1017,8 +1328,10 @@ namespace Eppo
         } pushConstants{};
 
         auto& statistics = m_WireframePass->GetStatistics();
+        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
         m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
+        m_RenderCommandBuffer->BeginMarker(m_WireframePass->GetName());
         Renderer::BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
 
         auto& state = m_RenderCommandBuffer->GetGraphicsState();
@@ -1050,7 +1363,7 @@ namespace Eppo
 
                 for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
                 {
-                    m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
+                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
@@ -1059,7 +1372,7 @@ namespace Eppo
                         .startVertexLocation = firstVertex,
                     };
 
-                    m_RenderCommandBuffer->GetCommandList()->drawIndexed(drawArgs);
+                    cmdList->drawIndexed(drawArgs);
 
                     statistics.DrawCalls++;
                     statistics.Vertices += static_cast<uint32_t>(vertexCount);
@@ -1072,36 +1385,8 @@ namespace Eppo
         }
 
         Renderer::EndRenderPass(m_RenderCommandBuffer);
+        m_RenderCommandBuffer->EndMarker();
         m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
-    }
-
-    auto SceneRenderer::TonemapPass() const -> void
-    {
-        EP_PROFILE_FN("SceneRenderer::TonemapPass")
-
-        constexpr struct PC
-        {
-            float Exposure = 1.0f;
-        } pushConstants{};
-
-        auto& statistics = m_TonemapPass->GetStatistics();
-
-        m_RenderCommandBuffer->BeginTimerQuery(m_TonemapPass->GetName());
-        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_TonemapPass);
-
-        m_RenderCommandBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
-
-        constexpr nvrhi::DrawArguments drawArgs{
-            .vertexCount = 3,
-            .instanceCount = 1,
-        };
-        m_RenderCommandBuffer->GetCommandList()->draw(drawArgs);
-
-        statistics.DrawCalls++;
-        statistics.Vertices += drawArgs.vertexCount;
-
-        Renderer::EndRenderPass(m_RenderCommandBuffer);
-        m_RenderCommandBuffer->EndTimerQuery(m_TonemapPass->GetName());
     }
 
     auto SceneRenderer::EnsureIblResources() -> void
@@ -1117,6 +1402,7 @@ namespace Eppo
             .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
             .Width = s_IblEnvironmentSize,
             .Height = s_IblEnvironmentSize,
+            .MipLevels = Image::CalculateMipLevels(s_IblEnvironmentSize, s_IblEnvironmentSize),
             .IsCubemap = true,
             .IsRenderTarget = true,
             .DebugName = "IBL Environment Cube",
@@ -1153,29 +1439,36 @@ namespace Eppo
         const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
             .Width = s_IblBrdfLutSize,
             .Height = s_IblBrdfLutSize,
-            .ExistingImage = { .Image = m_BrdfLut },
+            .Attachments = { FramebufferTextureSpecification(m_BrdfLut) },
             .DebugName = "IBL BRDF LUT Framebuffer",
         });
 
-        const auto pipeline = CreateRef<Pipeline>(PipelineSpecification{
-            .Shader = renderer->GetShader("iblBrdfLut"),
-            .Framebuffer = framebuffer,
-            .Width = s_IblBrdfLutSize,
-            .Height = s_IblBrdfLutSize,
-            .CullMode = nvrhi::RasterCullMode::None,
-        });
+        const auto pipeline = CreateRef<Pipeline>(
+            PipelineSpecification{
+                .Shader = renderer->GetShader("iblBrdfLut"),
+                .CullMode = nvrhi::RasterCullMode::None,
+            },
+            framebuffer->GetFramebuffer()->getFramebufferInfo()
+        );
 
-        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{ .Name = "IBL BRDF LUT", .Pipeline = pipeline });
+        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{
+            .Name = "IBL BRDF LUT",
+            .Pipeline = pipeline,
+            .Framebuffer = framebuffer,
+            .OwnsFramebuffer = false,
+        });
         pass->Bake();
 
         const auto cmdBuffer = CreateRef<RenderCommandBuffer>();
         cmdBuffer->Begin();
+        cmdBuffer->BeginMarker(pass->GetName());
         Renderer::BeginRenderPass(cmdBuffer, pass);
 
         constexpr nvrhi::DrawArguments drawArgs{ .vertexCount = 3, .instanceCount = 1 };
         cmdBuffer->GetCommandList()->draw(drawArgs);
 
         Renderer::EndRenderPass(cmdBuffer);
+        cmdBuffer->EndMarker();
         cmdBuffer->End();
         cmdBuffer->Submit();
         DeviceManager::Get()->GetDevice()->waitForIdle();
@@ -1197,31 +1490,34 @@ namespace Eppo
 
         const auto facesUB = CreateRef<UniformBuffer>(sizeof(glm::mat4) * 6, "UniformBuffer IBL Faces");
 
+        DeviceManager::Get()->GetDevice()->waitForIdle();
+        for (uint32_t mip = 0; mip + 1 < m_EnvironmentCube->GetMipLevels(); mip++)
+            static_cast<void>(m_EnvironmentCube->GetBindlessIndex(nvrhi::TextureSubresourceSet(mip, 1, 0, 6)));
+
         const auto cmdBuffer = CreateRef<RenderCommandBuffer>();
         cmdBuffer->Begin();
 
         facesUB->SetData(cmdBuffer->GetCommandList(), &inverseViewProjection, sizeof(glm::mat4) * 6);
 
         // Equirect -> environment cube. Wrap sampler so the atan2 longitude seam wraps cleanly.
-        RecordIblPass(
-            renderer->GetShader("iblEquirectToCube"), equirect, m_EquirectSampler, m_EnvironmentCube, facesUB, cmdBuffer, 0,
-            s_IblEnvironmentSize
-        );
+        RecordIblPass(renderer->GetShader("iblEquirectToCube"), equirect, m_EquirectSampler, m_EnvironmentCube, facesUB, cmdBuffer, 0);
+
+        for (uint32_t mip = 1; mip < m_EnvironmentCube->GetMipLevels(); mip++)
+            RecordEnvironmentMipPass(m_EnvironmentCube, facesUB, cmdBuffer, mip);
 
         // Environment cube -> irradiance. Clamp for the cube convolution.
         RecordIblPass(
             renderer->GetShader("iblIrradiance"), m_EnvironmentCube, m_ClampAllFiltersTrueSampler, m_IrradianceCube, facesUB, cmdBuffer, 0,
-            s_IblIrradianceSize
+            0.0f, static_cast<float>(s_IblEnvironmentSize)
         );
 
         // Environment cube -> prefiltered specular, one mip per roughness. Clamp.
         for (uint32_t mip = 0; mip < s_IblPrefilterMipLevels; mip++)
         {
-            const uint32_t mipSize = s_IblPrefilterSize >> mip;
             const float roughness = static_cast<float>(mip) / static_cast<float>(s_IblPrefilterMipLevels - 1);
             RecordIblPass(
                 renderer->GetShader("iblPrefilter"), m_EnvironmentCube, m_ClampAllFiltersTrueSampler, m_PrefilterCube, facesUB, cmdBuffer,
-                mip, mipSize, roughness, static_cast<float>(s_IblEnvironmentSize)
+                mip, roughness, static_cast<float>(s_IblEnvironmentSize)
             );
         }
 
@@ -1230,28 +1526,92 @@ namespace Eppo
         DeviceManager::Get()->GetDevice()->waitForIdle();
     }
 
+    auto SceneRenderer::RecordEnvironmentMipPass(
+        const Ref<Image>& target, const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, const uint32_t mipLevel
+    ) const -> void
+    {
+        EP_ASSERT(mipLevel > 0 && mipLevel < target->GetMipLevels());
+
+        const auto shader = DeviceManager::Get()->GetRenderer()->GetShader("iblEnvironmentMip");
+
+        const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+            .Width = target->GetWidth(),
+            .Height = target->GetHeight(),
+            .Attachments = { FramebufferTextureSpecification(target) },
+            .DebugName = "IBL Environment Mip Framebuffer",
+        });
+
+        const auto pipeline = CreateRef<Pipeline>(
+            PipelineSpecification{
+                .Shader = shader,
+                .CullMode = nvrhi::RasterCullMode::None,
+            },
+            framebuffer->GetFramebuffer()->getFramebufferInfo()
+        );
+
+        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{
+            .Name = "IBL Environment Mip",
+            .Pipeline = pipeline,
+            .Framebuffer = framebuffer,
+            .OwnsFramebuffer = false,
+            .Subresources = nvrhi::TextureSubresourceSet(mipLevel, 1, 0, 6),
+        });
+
+        pass->SetInput(0, 1, facesUB);
+        pass->Bake();
+
+        const nvrhi::TextureSubresourceSet sourceSubresources(mipLevel - 1, 1, 0, 6);
+        const struct PC
+        {
+            uint32_t SourceIndex;
+            uint32_t SamplerIndex;
+        } pushConstants{
+            .SourceIndex = target->GetBindlessIndex(sourceSubresources),
+            .SamplerIndex = m_ClampAllFiltersTrueSampler->GetBindlessIndex(),
+        };
+
+        const auto& cmdList = cmdBuffer->GetCommandList();
+        cmdList->setTextureState(target->GetTexture(), sourceSubresources, nvrhi::ResourceStates::ShaderResource);
+        cmdBuffer->BeginMarker(pass->GetName());
+        Renderer::BeginRenderPass(cmdBuffer, pass);
+        cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+        constexpr nvrhi::DrawArguments drawArgs{ .vertexCount = 3, .instanceCount = 6 };
+        cmdList->draw(drawArgs);
+
+        Renderer::EndRenderPass(cmdBuffer);
+        cmdBuffer->EndMarker();
+    }
+
     auto SceneRenderer::RecordIblPass(
         const Ref<Shader>& shader, const Ref<Image>& source, const Ref<Sampler>& sampler, const Ref<Image>& target,
-        const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, const uint32_t mipLevel, const uint32_t size,
-        const float roughness, const float envMapSize
+        const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, const uint32_t mipLevel, const float roughness,
+        const float envMapSize
     ) -> void
     {
         const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
-            .Width = size,
-            .Height = size,
-            .ExistingImage = { .Image = target, .MipLevel = mipLevel },
+            .Width = target->GetWidth(),
+            .Height = target->GetHeight(),
+            .Attachments = { FramebufferTextureSpecification(target) },
             .DebugName = "IBL Bake Framebuffer",
         });
 
-        const auto pipeline = CreateRef<Pipeline>(PipelineSpecification{
-            .Shader = shader,
-            .Framebuffer = framebuffer,
-            .Width = size,
-            .Height = size,
-            .CullMode = nvrhi::RasterCullMode::None,
-        });
+        // FramebufferInfo carries only formats/samples, so mip zero's handle describes every mip; the pass selects the mip below.
+        const auto pipeline = CreateRef<Pipeline>(
+            PipelineSpecification{
+                .Shader = shader,
+                .CullMode = nvrhi::RasterCullMode::None,
+            },
+            framebuffer->GetFramebuffer()->getFramebufferInfo()
+        );
 
-        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{ .Name = "IBL Bake", .Pipeline = pipeline });
+        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{
+            .Name = "IBL Bake",
+            .Pipeline = pipeline,
+            .Framebuffer = framebuffer,
+            .OwnsFramebuffer = false,
+            .Subresources = nvrhi::TextureSubresourceSet(mipLevel, 1, 0, 6),
+        });
 
         if (source)
             pass->SetInput(0, 0, source);
@@ -1265,15 +1625,18 @@ namespace Eppo
             float EnvMapSize = envMapSize;
         } pushConstants{};
 
+        const auto& cmdList = cmdBuffer->GetCommandList();
+        cmdBuffer->BeginMarker(pass->GetName());
         Renderer::BeginRenderPass(cmdBuffer, pass);
 
         // Only the prefilter shader uses the push block; dxc strips it from the others, leaving no range.
         if (shader->GetPushConstants().Size > 0)
-            cmdBuffer->GetCommandList()->setPushConstants(&pushConstants, sizeof(PC));
+            cmdList->setPushConstants(&pushConstants, sizeof(PC));
 
         constexpr nvrhi::DrawArguments drawArgs{ .vertexCount = 3, .instanceCount = 6 };
-        cmdBuffer->GetCommandList()->draw(drawArgs);
+        cmdList->draw(drawArgs);
 
         Renderer::EndRenderPass(cmdBuffer);
+        cmdBuffer->EndMarker();
     }
 }

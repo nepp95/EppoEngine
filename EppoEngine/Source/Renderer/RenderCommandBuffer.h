@@ -20,6 +20,9 @@ namespace Eppo
         auto End() -> void;
         auto Submit() -> void;
 
+        auto BeginMarker(std::string_view name) const -> void;
+        auto EndMarker() const -> void;
+
         auto BeginTimerQuery(const std::string& name) -> void;
         auto EndTimerQuery(const std::string& name) const -> void;
 
