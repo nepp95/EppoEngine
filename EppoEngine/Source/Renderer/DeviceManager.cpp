@@ -3,6 +3,7 @@
 
 #include "Core/Application.h"
 #include "Platform/Vulkan/DeviceManagerVK.h"
+#include "Renderer/GpuProfiler.h"
 
 namespace Eppo
 {
@@ -56,6 +57,8 @@ namespace Eppo
         // Shader binding layouts need the published Renderer's descriptor manager during Init().
         m_Renderer = CreateScopedPtr<Renderer>();
         m_Renderer->Init();
+
+        GpuProfiler::Init();
     }
 
     DeviceManager::DeviceManager(const Ref<Window>& window, DeviceParams params)
