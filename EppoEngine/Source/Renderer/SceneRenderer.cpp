@@ -4,6 +4,7 @@
 #include "Core/Application.h"
 #include "Project/Project.h"
 #include "Renderer/Framebuffer.h"
+#include "Renderer/GpuProfiler.h"
 #include "Renderer/Renderer.h"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -435,6 +436,9 @@ namespace Eppo
         SkyPass();
         WireframePass();
 
+        // Collect resolves query results, which is illegal inside a render pass; every pass above closes its own.
+        EP_GPU_COLLECT(m_RenderCommandBuffer);
+
         m_RenderCommandBuffer->End();
         m_RenderCommandBuffer->Submit();
     }
@@ -486,6 +490,7 @@ namespace Eppo
     auto SceneRenderer::GeometryPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::GeometryPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "GeometryPass")
 
         GeometryPushConstants pushConstants{};
 
@@ -557,6 +562,7 @@ namespace Eppo
     auto SceneRenderer::SkyPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::SkyPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "SkyPass")
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
         auto& statistics = m_SkyPass->GetStatistics();
@@ -579,6 +585,7 @@ namespace Eppo
     auto SceneRenderer::WireframePass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::WireframePass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "WireframePass")
 
         if (!m_DebugRenderingEnabled)
         {

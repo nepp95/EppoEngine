@@ -2,6 +2,8 @@
 #include "Support/AppHarness.h"
 #include "Support/TestContext.h"
 
+#include "Core/Log.h"
+#include "Platform/Vulkan/VulkanGpuProfiler.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Renderer.h"
@@ -10,8 +12,32 @@
 #include "Scene/Entity.h"
 
 #include <GLFW/glfw3.h>
+#include <spdlog/sinks/base_sink.h>
+
+#include <atomic>
+#include <mutex>
 
 using namespace Eppo;
+
+namespace
+{
+    class ErrorCountingSink final : public spdlog::sinks::base_sink<std::mutex>
+    {
+    public:
+        [[nodiscard]] auto ErrorCount() const -> uint32_t { return m_ErrorCount.load(); }
+
+    protected:
+        auto sink_it_(const spdlog::details::log_msg& msg) -> void override
+        {
+            if (msg.level >= spdlog::level::err)
+                m_ErrorCount.fetch_add(1);
+        }
+        auto flush_() -> void override {}
+
+    private:
+        std::atomic<uint32_t> m_ErrorCount{ 0 };
+    };
+}
 
 // End-to-end rendering over real frames: these drive a Scene through the SceneRenderer
 // on the booted graphical harness, so they need a display + GPU.
@@ -48,6 +74,27 @@ SUITE(Renderer)
 
         CHECK(sceneRenderer->GetFinalImage() != nullptr);
         CHECK(Testing::AppHarness::Get()->IsRunning());
+    }
+
+    // Regression: the Tracy GPU context must be set up on its own command buffer, not by wrapping an
+    // nvrhi command list, which double-began/re-submitted the buffer and tripped Vulkan validation.
+    TEST(VulkanGpuProfiler_Construction_EmitsNoVulkanValidationErrors)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        const auto sink = std::make_shared<ErrorCountingSink>();
+        Log::AddSink(sink);
+
+        {
+            const VulkanGpuProfiler profiler;
+#if defined(TRACY_ENABLE)
+            CHECK(profiler.GetNativeContext() != nullptr);
+#endif
+        }
+
+        CHECK_EQUAL(0u, sink->ErrorCount());
     }
 
     TEST(Renderer_CompositeToSwapchain_SurvivesImageCyclingAndResize)
