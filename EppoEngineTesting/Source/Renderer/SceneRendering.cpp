@@ -4,6 +4,8 @@
 #include "Support/TempDir.h"
 
 #include "Asset/AssetManager.h"
+#include "Core/Log.h"
+#include "Platform/Vulkan/VulkanGpuProfiler.h"
 #include "Project/Project.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/DeviceManager.h"
@@ -14,11 +16,32 @@
 #include "Scene/Entity.h"
 
 #include <GLFW/glfw3.h>
+#include <spdlog/sinks/base_sink.h>
+
+#include <atomic>
+#include <mutex>
 
 using namespace Eppo;
 
 namespace
 {
+    class ErrorCountingSink final : public spdlog::sinks::base_sink<std::mutex>
+    {
+    public:
+        [[nodiscard]] auto ErrorCount() const -> uint32_t { return m_ErrorCount.load(); }
+
+    protected:
+        auto sink_it_(const spdlog::details::log_msg& msg) -> void override
+        {
+            if (msg.level >= spdlog::level::err)
+                m_ErrorCount.fetch_add(1);
+        }
+        auto flush_() -> void override {}
+
+    private:
+        std::atomic<uint32_t> m_ErrorCount{ 0 };
+    };
+
     struct Rgba8Readback
     {
         uint32_t Width = 0;
@@ -585,6 +608,27 @@ SUITE(Renderer)
         const Rgba8Readback specularReadback = ReadRgba8(sceneRenderer->GetFinalImage());
         const float specularDelta = AverageNeighbourLuminanceDelta(specularReadback, glm::ivec2(size / 2u), 20);
         CHECK_CLOSE(0.0f, specularDelta, 0.05f);
+    }
+
+    // Regression: the Tracy GPU context must be set up on its own command buffer, not by wrapping an
+    // nvrhi command list, which double-began/re-submitted the buffer and tripped Vulkan validation.
+    TEST(VulkanGpuProfiler_Construction_EmitsNoVulkanValidationErrors)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        const auto sink = std::make_shared<ErrorCountingSink>();
+        Log::AddSink(sink);
+
+        {
+            const VulkanGpuProfiler profiler;
+#if defined(TRACY_ENABLE)
+            CHECK(profiler.GetNativeContext() != nullptr);
+#endif
+        }
+
+        CHECK_EQUAL(0u, sink->ErrorCount());
     }
 
     TEST(Renderer_CompositeToSwapchain_SurvivesImageCyclingAndResize)

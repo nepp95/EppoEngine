@@ -23,8 +23,14 @@ auto main(int argc, char** argv) -> int
         const char* suite = argv[1];
         UnitTest::TestReporterStdout reporter;
         UnitTest::TestRunner runner(reporter);
-        result = runner.RunTestsIf(UnitTest::Test::GetTestList(), suite,
-            [](UnitTest::Test*) { return true; }, 0);
+        result = runner.RunTestsIf(
+            UnitTest::Test::GetTestList(), suite,
+            [](UnitTest::Test*)
+            {
+                return true;
+            },
+            0
+        );
     }
 
     // Tear the graphical harness down here (if any suite booted it), while the

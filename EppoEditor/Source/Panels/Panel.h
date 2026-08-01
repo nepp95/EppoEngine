@@ -4,21 +4,21 @@
 
 namespace Eppo
 {
-	class PanelManager;
+    class PanelManager;
 
-	class Panel
-	{
-	public:
-		auto SetPanelManager(PanelManager* panelManager) -> void;
+    class Panel
+    {
+    public:
+        auto SetPanelManager(PanelManager* panelManager) -> void;
 
-		virtual auto RenderGui() -> void = 0;
+        virtual auto RenderGui() -> void = 0;
 
-	protected:
-		auto GetSceneContext() const -> Ref<Scene>;
-		auto SetSelectedEntity(Entity entity) -> void;
-		auto GetSelectedEntity() const -> Entity;
+    protected:
+        auto GetSceneContext() const -> Ref<Scene>;
+        auto SetSelectedEntity(Entity entity) -> void;
+        auto GetSelectedEntity() const -> Entity;
 
-	private:
-		PanelManager* m_PanelManager = nullptr;
-	};
+    private:
+        PanelManager* m_PanelManager = nullptr;
+    };
 }

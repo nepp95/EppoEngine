@@ -11,22 +11,22 @@ SUITE(ScriptMarshalling)
 {
     TEST(ScriptFieldTypeSize_AllTypes_MatchManagedLayout)
     {
-        CHECK_EQUAL(4u,  ScriptFieldTypeSize(ScriptFieldType::Float));
-        CHECK_EQUAL(8u,  ScriptFieldTypeSize(ScriptFieldType::Double));
-        CHECK_EQUAL(1u,  ScriptFieldTypeSize(ScriptFieldType::Bool));
-        CHECK_EQUAL(2u,  ScriptFieldTypeSize(ScriptFieldType::Char));
-        CHECK_EQUAL(2u,  ScriptFieldTypeSize(ScriptFieldType::Int16));
-        CHECK_EQUAL(4u,  ScriptFieldTypeSize(ScriptFieldType::Int32));
-        CHECK_EQUAL(8u,  ScriptFieldTypeSize(ScriptFieldType::Int64));
-        CHECK_EQUAL(1u,  ScriptFieldTypeSize(ScriptFieldType::Byte));
-        CHECK_EQUAL(2u,  ScriptFieldTypeSize(ScriptFieldType::UInt16));
-        CHECK_EQUAL(4u,  ScriptFieldTypeSize(ScriptFieldType::UInt32));
-        CHECK_EQUAL(8u,  ScriptFieldTypeSize(ScriptFieldType::UInt64));
-        CHECK_EQUAL(8u,  ScriptFieldTypeSize(ScriptFieldType::Vector2));
+        CHECK_EQUAL(4u, ScriptFieldTypeSize(ScriptFieldType::Float));
+        CHECK_EQUAL(8u, ScriptFieldTypeSize(ScriptFieldType::Double));
+        CHECK_EQUAL(1u, ScriptFieldTypeSize(ScriptFieldType::Bool));
+        CHECK_EQUAL(2u, ScriptFieldTypeSize(ScriptFieldType::Char));
+        CHECK_EQUAL(2u, ScriptFieldTypeSize(ScriptFieldType::Int16));
+        CHECK_EQUAL(4u, ScriptFieldTypeSize(ScriptFieldType::Int32));
+        CHECK_EQUAL(8u, ScriptFieldTypeSize(ScriptFieldType::Int64));
+        CHECK_EQUAL(1u, ScriptFieldTypeSize(ScriptFieldType::Byte));
+        CHECK_EQUAL(2u, ScriptFieldTypeSize(ScriptFieldType::UInt16));
+        CHECK_EQUAL(4u, ScriptFieldTypeSize(ScriptFieldType::UInt32));
+        CHECK_EQUAL(8u, ScriptFieldTypeSize(ScriptFieldType::UInt64));
+        CHECK_EQUAL(8u, ScriptFieldTypeSize(ScriptFieldType::Vector2));
         CHECK_EQUAL(12u, ScriptFieldTypeSize(ScriptFieldType::Vector3));
         CHECK_EQUAL(16u, ScriptFieldTypeSize(ScriptFieldType::Vector4));
-        CHECK_EQUAL(8u,  ScriptFieldTypeSize(ScriptFieldType::Entity));
-        CHECK_EQUAL(0u,  ScriptFieldTypeSize(ScriptFieldType::None));
+        CHECK_EQUAL(8u, ScriptFieldTypeSize(ScriptFieldType::Entity));
+        CHECK_EQUAL(0u, ScriptFieldTypeSize(ScriptFieldType::None));
     }
 
     // Every field type must fit in the editor-time side-table buffer, and the

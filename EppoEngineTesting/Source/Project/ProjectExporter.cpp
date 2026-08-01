@@ -21,19 +21,21 @@ SUITE(ProjectExport)
         {
         public:
             explicit ExportProjectFixture(std::string name = "ExportGame")
-                : PreviousProject(Project::GetActive()), ProjectDirectory(Directory.File("Project")), AssetManagerInstance(CreateRef<AssetManager>())
+                : PreviousProject(Project::GetActive()),
+                  ProjectDirectory(Directory.File("Project")),
+                  AssetManagerInstance(CreateRef<AssetManager>())
             {
                 std::filesystem::create_directories(ProjectDirectory / "Assets" / "Scenes");
-                ProjectInstance = Project::New(ProjectSpecification{
-                    .Name = std::move(name),
-                    .ProjectDirectory = ProjectDirectory,
-                }, AssetManagerInstance);
+                ProjectInstance = Project::New(
+                    ProjectSpecification{
+                        .Name = std::move(name),
+                        .ProjectDirectory = ProjectDirectory,
+                    },
+                    AssetManagerInstance
+                );
             }
 
-            ~ExportProjectFixture()
-            {
-                Project::SetActive(PreviousProject);
-            }
+            ~ExportProjectFixture() { Project::SetActive(PreviousProject); }
 
             auto AddScene(const uint64_t handle, const std::string& filename, const bool primaryCamera = true) -> Ref<Scene>
             {
@@ -107,7 +109,8 @@ SUITE(ProjectExport)
         CHECK_EQUAL(3u, static_cast<uint32_t>(gameData.AssetRegistry.size()));
         CHECK_EQUAL(2u, static_cast<uint32_t>(gameData.PackedAssets.size()));
 
-        const Ref<AssetManager> packedManager = CreateRef<AssetManager>(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
+        const Ref<AssetManager> packedManager =
+            CreateRef<AssetManager>(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
         const Ref<Scene> scene = packedManager->GetOrLoadAsset<Scene>(AssetHandle(500));
         REQUIRE CHECK(scene != nullptr);
         CHECK(scene->GetPrimaryCameraEntity());
@@ -268,18 +271,18 @@ SUITE(ProjectExport)
         {
             std::filesystem::create_directories(runtimeDirectory / "Resources" / "Shaders");
             std::filesystem::create_directories(runtimeDirectory / "Resources" / "Fonts");
-            #if defined(EP_PLATFORM_WINDOWS)
+#if defined(EP_PLATFORM_WINDOWS)
             CHECK(FS::WriteText(runtimeDirectory / "EppoRuntime.exe", "runtime", true));
             CHECK(FS::WriteText(runtimeDirectory / "dxcompiler.dll", "dxcompiler", true));
-            #else
+#else
             CHECK(FS::WriteText(runtimeDirectory / "EppoRuntime", "runtime", true));
-            #endif
+#endif
             CHECK(FS::WriteText(runtimeDirectory / "runtimeconfig.json", "runtime", true));
             CHECK(FS::WriteText(runtimeDirectory / "Resources" / "Shaders" / "composite.vert", "shader", true));
         }
-        #if defined(EP_PLATFORM_WINDOWS)
+#if defined(EP_PLATFORM_WINDOWS)
         CHECK(FS::WriteText(debugRuntimeDirectory / "EppoRuntime.pdb", "symbols", true));
-        #endif
+#endif
         for (const auto& managedDirectory : { debugManagedDirectory, releaseManagedDirectory })
         {
             std::filesystem::create_directories(managedDirectory);
@@ -303,12 +306,12 @@ SUITE(ProjectExport)
         for (const auto* configuration : { "Debug", "Release" })
         {
             const auto outputDirectory = result.OutputPath / configuration;
-            #if defined(EP_PLATFORM_WINDOWS)
+#if defined(EP_PLATFORM_WINDOWS)
             CHECK(FS::Exists(outputDirectory / "ExportGame.exe"));
             CHECK(FS::Exists(outputDirectory / "dxcompiler.dll"));
-            #else
+#else
             CHECK(FS::Exists(outputDirectory / "ExportGame"));
-            #endif
+#endif
             CHECK(FS::Exists(outputDirectory / "EppoScriptCore.dll"));
             CHECK(FS::Exists(outputDirectory / "EppoScriptCore.deps.json"));
             CHECK(FS::Exists(outputDirectory / "runtimeconfig.json"));
@@ -316,9 +319,9 @@ SUITE(ProjectExport)
             CHECK(!FS::Exists(outputDirectory / "Resources"));
             CHECK(FS::ReadText(outputDirectory / "EppoScriptCore.deps.json").find(fixture.ProjectDirectory.string()) == std::string::npos);
         }
-        #if defined(EP_PLATFORM_WINDOWS)
+#if defined(EP_PLATFORM_WINDOWS)
         CHECK(FS::Exists(result.OutputPath / "Debug" / "EppoRuntime.pdb"));
-        #endif
+#endif
         CHECK(!FS::Exists(result.OutputPath / "Release" / "EppoRuntime.pdb"));
     }
 
@@ -333,13 +336,13 @@ SUITE(ProjectExport)
 
         const auto runtimeDirectory = fixture.Directory.File("Runtime");
         std::filesystem::create_directories(runtimeDirectory / "Resources");
-        #if defined(EP_PLATFORM_WINDOWS)
+#if defined(EP_PLATFORM_WINDOWS)
         CHECK(FS::WriteText(runtimeDirectory / "EppoRuntime.exe", "runtime", true));
         CHECK(FS::WriteText(runtimeDirectory / "EppoRuntime.pdb", "symbols", true));
         CHECK(FS::WriteText(runtimeDirectory / "dxcompiler.dll", "dxcompiler", true));
-        #else
+#else
         CHECK(FS::WriteText(runtimeDirectory / "EppoRuntime", "runtime", true));
-        #endif
+#endif
         CHECK(FS::WriteText(runtimeDirectory / "EppoScriptCore.dll", "stale", true));
         CHECK(FS::WriteText(runtimeDirectory / "EppoScriptCore.deps.json", "stale", true));
         CHECK(FS::WriteText(runtimeDirectory / "runtimeconfig.json", "runtime", true));
@@ -351,7 +354,13 @@ SUITE(ProjectExport)
 
         const ProjectExportResult result = ProjectExporter(fixture.ProjectInstance).Export(options);
         REQUIRE CHECK(result.Success);
-        CHECK(FS::ReadBytes(result.OutputPath / "Debug" / "EppoScriptCore.dll") == FS::ReadBytes(FS::GetRootDirectory() / "EppoScriptCore.dll"));
-        CHECK(FS::ReadBytes(result.OutputPath / "Debug" / "EppoScriptCore.deps.json") == FS::ReadBytes(FS::GetRootDirectory() / "EppoScriptCore.deps.json"));
+        CHECK(
+            FS::ReadBytes(result.OutputPath / "Debug" / "EppoScriptCore.dll") ==
+            FS::ReadBytes(FS::GetRootDirectory() / "EppoScriptCore.dll")
+        );
+        CHECK(
+            FS::ReadBytes(result.OutputPath / "Debug" / "EppoScriptCore.deps.json") ==
+            FS::ReadBytes(FS::GetRootDirectory() / "EppoScriptCore.deps.json")
+        );
     }
 }
