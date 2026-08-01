@@ -67,9 +67,7 @@ SUITE(Renderer)
         {
             const auto shader = Shader::Create(ShaderSpecification{
                 .Name = "SharedLogicalBindingRenderPassTest",
-                .Sources = {
-                    { nvrhi::ShaderType::Vertex,
-                      R"(
+                .Source = R"(
 struct Input
 {
     float3 Position : POSITION0;
@@ -83,19 +81,16 @@ struct Constants
 ConstantBuffer<Constants> uConstants : register(b0, space0);
 StructuredBuffer<float4x4> uTransforms : register(t0, space0);
 
-float4 Main(Input input) : SV_Position
+float4 VSMain(Input input) : SV_Position
 {
     return mul(uConstants.Transform, mul(uTransforms[0], float4(input.Position, 1.0)));
 }
-)" },
-                    { nvrhi::ShaderType::Pixel,
-                      R"(
-float4 Main() : SV_Target
+
+float4 PSMain() : SV_Target
 {
     return float4(1.0, 1.0, 1.0, 1.0);
 }
-)" },
-                },
+)",
             });
 
             const FramebufferSpecification framebufferSpec{
@@ -128,15 +123,26 @@ float4 Main() : SV_Target
             const auto drawData = CreateRef<StorageBuffer>(80, 80, "TestSB Draw Data");
             const auto materialData = CreateRef<StorageBuffer>(80, 80, "TestSB Material Data");
             const auto materialSampler = Sampler::Create();
+            const auto ssao = CreateRef<UniformBuffer>(sizeof(glm::vec4) * 34, "TestCB Ssao");
+            const auto ssaoTex = CreateRef<Image>(ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA8_UNORM,
+                .Width = 4,
+                .Height = 4,
+                .DebugName = "Image RenderPassTest Ssao",
+            });
+            const auto ssaoSampler = Sampler::Create();
 
             pass.SetInput(0, 0, materialSampler);
+            pass.SetInput(0, 1, ssaoSampler);
             pass.SetInput(0, 0, instances);
             pass.SetInput(0, 1, shadow);
             pass.SetInput(0, 1, drawData);
             pass.SetInput(0, 2, camera);
             pass.SetInput(0, 2, materialData);
             pass.SetInput(0, 3, lights);
+            pass.SetInput(0, 3, ssaoTex);
             pass.SetInput(0, 4, environment);
+            pass.SetInput(0, 5, ssao);
         }
 
         [[nodiscard]] auto FindBinding(

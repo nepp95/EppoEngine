@@ -1,11 +1,6 @@
+#include "Includes/fullscreen.hlsli"
 #include "Includes/lighting.hlsli"
 #include "Includes/platform.hlsli"
-
-struct Input
-{
-    float4 Position : SV_Position;
-    float2 TexCoord : TEXCOORD0;
-};
 
 struct PushConstants
 {
@@ -17,7 +12,12 @@ ConstantBuffer<PushConstants> uPC : register(b0, space0);
 Texture2D uTexture : register(t0, space0);
 SamplerState uSampler : register(s0, space0);
 
-float4 Main(Input input) : SV_Target
+FullscreenVaryings VSMain(uint vertexID : SV_VertexID)
+{
+    return BuildFullscreenTriangleVertex(vertexID);
+}
+
+float4 PSMain(FullscreenVaryings input) : SV_Target
 {
     const float3 hdr = uTexture.Sample(uSampler, input.TexCoord).rgb * uPC.Exposure;
     float3 color = ACESFilm(hdr);

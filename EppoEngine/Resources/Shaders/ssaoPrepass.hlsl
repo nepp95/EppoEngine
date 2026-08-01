@@ -19,11 +19,11 @@ ConstantBuffer<PushConstants> uPC : register(b0, space0);
 
 struct Camera
 {
-	float4x4 View;
-	float4x4 Projection;
-	float4x4 ViewProjection;
-	float4x4 InverseViewProjection;
-	float4 Position;
+    float4x4 View;
+    float4x4 Projection;
+    float4x4 ViewProjection;
+    float4x4 InverseViewProjection;
+    float4 Position;
 };
 ConstantBuffer<Camera> uCamera : register(b1, space0);
 
@@ -37,7 +37,7 @@ struct DrawData
 };
 StructuredBuffer<DrawData> uDrawData : register(t1, space0);
 
-struct Output
+struct Varyings
 {
     float4 Position : SV_Position;
     float3 ViewNormal : NORMAL0;
@@ -45,9 +45,9 @@ struct Output
     float4 Tangent : TANGENT0;
 };
 
-Output Main(Input input)
+Varyings VSMain(Input input)
 {
-    Output output;
+    Varyings output;
     DrawData draw = uDrawData[uPC.DrawIndex];
 
     const float4x4 instanceTransform = uInstanceTransforms[draw.InstanceOffset + input.InstanceID];
@@ -61,4 +61,9 @@ Output Main(Input input)
     output.Tangent = input.Tangent;
 
     return output;
+}
+
+float4 PSMain(Varyings input) : SV_Target
+{
+    return float4(normalize(input.ViewNormal) * 0.5 + 0.5, 1.0);
 }

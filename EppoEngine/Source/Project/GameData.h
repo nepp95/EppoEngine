@@ -32,10 +32,7 @@ namespace Eppo
     ///     uint32   shaderCount
     ///     shaderCount x:
     ///         string   name
-    ///         uint32   stageCount
-    ///         per stage present:
-    ///             uint16   stageType
-    ///             string   source
+    ///         string   source
     ///     uint32   includeCount
     ///     includeCount x:
     ///         string   path
@@ -49,7 +46,7 @@ namespace Eppo
 
         std::map<AssetHandle, AssetMetadata> AssetRegistry;
         std::map<AssetHandle, PackedAssetData> PackedAssets;
-        std::map<std::string, PackedShaderData> PackedShaders;
+        std::map<std::string, std::string> PackedShaders;
         // Keyed by path relative to Resources/Shaders, matching what the shader sources #include.
         std::map<std::string, std::string> PackedShaderIncludes;
 

@@ -134,8 +134,7 @@ SUITE(ProjectExport)
         for (const auto* name : { "composite", "geometry", "imgui", "shadowDepth", "skybox", "tonemap", "wireframe" })
         {
             REQUIRE CHECK(gameData.PackedShaders.contains(name));
-            for (const auto& source : gameData.PackedShaders.at(name).ShaderSources | std::views::values)
-                CHECK(!source.empty());
+            CHECK(!gameData.PackedShaders.at(name).empty());
         }
 
         // Every #include the engine shaders name must travel with them.
@@ -148,8 +147,7 @@ SUITE(ProjectExport)
         for (const auto& entry : std::filesystem::recursive_directory_iterator(result.OutputPath))
         {
             const auto extension = entry.path().extension();
-            CHECK(extension != ".vert");
-            CHECK(extension != ".frag");
+            CHECK(extension != ".hlsl");
             CHECK(extension != ".hlsli");
         }
     }
@@ -278,7 +276,7 @@ SUITE(ProjectExport)
             CHECK(FS::WriteText(runtimeDirectory / "EppoRuntime", "runtime", true));
 #endif
             CHECK(FS::WriteText(runtimeDirectory / "runtimeconfig.json", "runtime", true));
-            CHECK(FS::WriteText(runtimeDirectory / "Resources" / "Shaders" / "composite.vert", "shader", true));
+            CHECK(FS::WriteText(runtimeDirectory / "Resources" / "Shaders" / "composite.hlsl", "shader", true));
         }
 #if defined(EP_PLATFORM_WINDOWS)
         CHECK(FS::WriteText(debugRuntimeDirectory / "EppoRuntime.pdb", "symbols", true));

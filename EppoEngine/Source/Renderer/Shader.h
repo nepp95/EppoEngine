@@ -38,18 +38,13 @@ namespace Eppo
         nvrhi::ShaderType Stage = nvrhi::ShaderType::None;
     };
 
-    struct PackedShaderData
-    {
-        std::unordered_map<nvrhi::ShaderType, std::string> ShaderSources;
-    };
-
     struct ShaderSpecification
     {
         std::string Name;
         bool IsCompute = false;
-        // With sources the shader is packed: these and Includes are all it may read, never the filesystem.
-        // Without them it is compiled from Resources/Shaders. Includes are keyed by path relative to that directory.
-        std::unordered_map<nvrhi::ShaderType, std::string> Sources;
+        // With a source the shader is packed: this and Includes are all it may read, never the filesystem.
+        // Without it the shader is compiled from Resources/Shaders. Includes are keyed by path relative to that directory.
+        std::string Source;
         std::map<std::string, std::string> Includes;
     };
 
@@ -62,7 +57,7 @@ namespace Eppo
         [[nodiscard]] auto GetShaderHandle(nvrhi::ShaderType type) -> nvrhi::ShaderHandle;
         // Ordered by ascending set: nvrhi legacy mode maps a set to its index in the pipeline's layout array.
         [[nodiscard]] auto GetBindingLayouts() const -> const std::map<uint32_t, nvrhi::BindingLayoutHandle>& { return m_BindingLayouts; }
-        [[nodiscard]] auto GetShaderSources() const -> const std::unordered_map<nvrhi::ShaderType, std::string>& { return m_ShaderSources; }
+        [[nodiscard]] auto GetShaderSource() const -> const std::string& { return m_ShaderSource; }
         [[nodiscard]] auto GetInputLayout() -> nvrhi::InputLayoutHandle { return m_InputLayout; }
 
         [[nodiscard]] auto GetShaderResources() const -> const std::unordered_map<uint32_t, std::vector<ShaderResourceBinding>>&
@@ -97,12 +92,13 @@ namespace Eppo
         uint32_t m_InputAttributeStride = 0;
         nvrhi::InputLayoutHandle m_InputLayout = nullptr;
 
-        std::unordered_map<nvrhi::ShaderType, std::string> m_ShaderSources;
+        std::string m_ShaderSource;
         std::unordered_map<nvrhi::ShaderType, std::vector<char>> m_ShaderBytes;
     };
 
     namespace Utils
     {
         auto NvrhiFormatSize(nvrhi::Format format) -> uint32_t;
+        auto ShaderEntryPoint(nvrhi::ShaderType type) -> const char*;
     }
 }
