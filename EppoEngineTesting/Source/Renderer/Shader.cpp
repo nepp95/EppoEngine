@@ -26,14 +26,14 @@ SUITE(Renderer)
 		// Compiles only if the named include is resolved, so a successful build proves where it came from.
 		auto SourceRequiring(const std::string& include) -> std::string
 		{
-			return std::format("#include \"{}\"\nfloat4 Main(float3 inPosition : POSITION) : SV_Position\n{{\n\treturn PackedValue(inPosition);\n}}\n", include);
+			return std::format("#include \"{}\"\nfloat4 VSMain(float3 inPosition : POSITION) : SV_Position\n{{\n\treturn PackedValue(inPosition);\n}}\n", include);
 		}
 
 		// A packed shader must compile fresh: a cache hit from an earlier run would bypass include resolution entirely.
 		auto DiscardShaderCache(const std::string& name) -> void
 		{
 			FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.vert.spv", name));
-			FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.vert.hash", name));
+			FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.hash", name));
 		}
 
         auto CheckMeshVertexLayout(const Ref<Shader>& shader) -> void
@@ -92,7 +92,7 @@ SUITE(Renderer)
 
 		const Ref<Shader> shader = Shader::Create(ShaderSpecification{
 			.Name = name,
-			.Sources = { { nvrhi::ShaderType::Vertex, SourceRequiring(include) } },
+			.Source = SourceRequiring(include),
 			.Includes = { { include, "float4 PackedValue(float3 position) { return float4(position, 1.0); }" } },
 		});
 
@@ -114,7 +114,7 @@ SUITE(Renderer)
 
 		const Ref<Shader> shader = Shader::Create(ShaderSpecification{
 			.Name = name,
-			.Sources = { { nvrhi::ShaderType::Vertex, SourceRequiring(include) } },
+			.Source = SourceRequiring(include),
 			.Includes = { { include, "float4 PackedValue(float3 position) { return float4(position, 1.0); }" } },
 		});
 

@@ -1,10 +1,5 @@
+#include "Includes/fullscreen.hlsli"
 #include "Includes/platform.hlsli"
-
-struct Input
-{
-	float4 Position : SV_Position;
-	float2 TexCoord : TEXCOORD0;
-};
 
 struct PushConstants
 {
@@ -16,11 +11,11 @@ ConstantBuffer<PushConstants> uPC : register(b0, space0);
 
 struct Camera
 {
-	float4x4 View;
-	float4x4 Projection;
-	float4x4 ViewProjection;
-	float4x4 InverseViewProjection;
-	float4 Position;
+    float4x4 View;
+    float4x4 Projection;
+    float4x4 ViewProjection;
+    float4x4 InverseViewProjection;
+    float4 Position;
 };
 ConstantBuffer<Camera> uCamera : register(b1, space0);
 
@@ -44,11 +39,16 @@ float ReconstructViewDepth(float2 uv, float depth)
     return -mul(uCamera.View, world).z;
 }
 
-float Main(Input input) : SV_Target
+FullscreenVaryings VSMain(uint vertexID : SV_VertexID)
 {
-	const float centerDepth = uDepth.SampleLevel(uSampler, input.TexCoord, 0);
-	if (centerDepth >= 1.0)
-	    return 1.0;
+    return BuildFullscreenTriangleVertex(vertexID);
+}
+
+float PSMain(FullscreenVaryings input) : SV_Target
+{
+    const float centerDepth = uDepth.SampleLevel(uSampler, input.TexCoord, 0);
+    if (centerDepth >= 1.0)
+        return 1.0;
 
     const float centerViewDepth = ReconstructViewDepth(input.TexCoord, centerDepth);
     float weightedAo = 0.0;

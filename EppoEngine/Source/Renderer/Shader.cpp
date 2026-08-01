@@ -39,6 +39,20 @@ namespace Eppo
                 }
             }
         }
+
+        auto ShaderEntryPoint(const nvrhi::ShaderType type) -> const char*
+        {
+            switch (type)
+            {
+                case nvrhi::ShaderType::Vertex:
+                    return "VSMain";
+                case nvrhi::ShaderType::Pixel:
+                    return "PSMain";
+            }
+
+            EP_ASSERT(false);
+            return "Main";
+        }
     }
 
     Shader::Shader(ShaderSpecification spec)
@@ -78,13 +92,12 @@ namespace Eppo
         const auto& dm = DeviceManager::Get();
         const auto device = dm->GetDevice();
 
-        nvrhi::ShaderDesc shaderDesc{
-            .entryName = "Main",
-        };
+        nvrhi::ShaderDesc shaderDesc{};
 
         for (const auto& [type, bytes] : m_ShaderBytes)
         {
             shaderDesc.shaderType = type;
+            shaderDesc.entryName = Utils::ShaderEntryPoint(type);
             m_ShaderHandles[type] = device->createShader(shaderDesc, m_ShaderBytes.at(type).data(), m_ShaderBytes.at(type).size());
         }
     }

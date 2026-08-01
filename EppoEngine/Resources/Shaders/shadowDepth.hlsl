@@ -27,17 +27,17 @@ ConstantBuffer<ShadowDepthData> uShadowDepth : register(b1, space0);
 
 StructuredBuffer<float4x4> uInstanceTransforms : register(t0, space0);
 
-struct Output
+struct Varyings
 {
-	float4 Position : SV_Position;
-	float3 Normal : NORMAL0;
-	float2 TexCoord : TEXCOORD0;
-	float4 Tangent : TANGENT0;
+    float4 Position : SV_Position;
+    float3 Normal : NORMAL0;
+    float2 TexCoord : TEXCOORD0;
+    float4 Tangent : TANGENT0;
 };
 
-Output Main(Input input)
+Varyings VSMain(Input input)
 {
-    Output output;
+    Varyings output;
 
     const float4x4 instanceTransform = uInstanceTransforms[uPC.InstanceOffset + input.InstanceID];
     const float4x4 worldTransform = mul(instanceTransform, uPC.Transform);
@@ -49,4 +49,9 @@ Output Main(Input input)
     output.Tangent = input.Tangent;
 
     return output;
+}
+
+void PSMain()
+{
+    // We have no color output with shadow depth
 }

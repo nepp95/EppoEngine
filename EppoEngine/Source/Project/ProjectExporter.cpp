@@ -82,7 +82,7 @@ namespace Eppo
         // The engine shaders are already compiled in memory, so pack their sources.
         ReportProgress(options, 0.15f, "Packing shaders");
         for (const auto& [name, shader] : DeviceManager::Get()->GetRenderer()->GetAllShaders())
-            gameData.PackedShaders.emplace(name, PackedShaderData{ .ShaderSources = shader->GetShaderSources() });
+            gameData.PackedShaders.emplace(name, shader->GetShaderSource());
 
         // Those sources #include by path relative to Resources/Shaders, so key the packed copies the same way.
         const auto shadersDirectory = FS::GetResourcesDirectory() / "Shaders";

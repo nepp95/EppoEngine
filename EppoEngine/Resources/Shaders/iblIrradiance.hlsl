@@ -1,21 +1,22 @@
 #include "Includes/lighting.hlsli"
 #include "Includes/platform.hlsli"
-
-TextureCube uEnvMap : register(t0, space0);
-SamplerState uSampler : register(s0, space0);
+#include "Includes/ibl_cube.hlsli"
 
 struct PushConstants
 {
-	float Roughness;
-	float EnvMapSize;
+    float Roughness;
+    float EnvMapSize;
 };
 PUSH_CONSTANTS
 ConstantBuffer<PushConstants> uPC : register(b0, space0);
 
-struct Input
+TextureCube uEnvMap : register(t0, space0);
+SamplerState uSampler : register(s0, space0);
+
+struct Varyings
 {
-	float4 Position : SV_Position;
-	float3 LocalDir : TEXCOORD0;
+    float4 Position : SV_Position;
+    float3 LocalDir : TEXCOORD0;
 };
 
 float3 CubeFaceDirection(uint face, float2 uv)
@@ -33,7 +34,12 @@ float3 CubeFaceDirection(uint face, float2 uv)
     return normalize(float3(-uv.x, -uv.y, -1.0));
 }
 
-float4 Main(Input input) : SV_Target
+CubeFaceVaryings VSMain(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
+{
+    return BuildCubeFaceVertex(vertexID, instanceID);
+}
+
+float4 PSMain(Varyings input) : SV_Target
 {
     const float3 N = normalize(input.LocalDir);
     const uint sourceSize = 32u;

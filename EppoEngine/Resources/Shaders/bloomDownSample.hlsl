@@ -1,10 +1,5 @@
+#include "Includes/fullscreen.hlsli"
 #include "Includes/platform.hlsli"
-
-struct Input
-{
-    float4 Position : SV_Position;
-    float2 TexCoord : TEXCOORD0;
-};
 
 struct PushConstants
 {
@@ -14,7 +9,12 @@ struct PushConstants
 PUSH_CONSTANTS
 ConstantBuffer<PushConstants> uPC : register(b0, space0);
 
-float4 Main(Input input) : SV_Target
+FullscreenVaryings VSMain(uint vertexID : SV_VertexID)
+{
+    return BuildFullscreenTriangleVertex(vertexID);
+}
+
+float4 PSMain(FullscreenVaryings input) : SV_Target
 {
     Texture2D source = ResourceDescriptorHeap[NonUniformResourceIndex(uPC.Indices.x)];
     SamplerState sourceSampler = SamplerDescriptorHeap[NonUniformResourceIndex(uPC.Indices.y)];

@@ -28,7 +28,7 @@ namespace Eppo
         m_DescriptorManager = CreateRef<DescriptorManager>();
     }
 
-    auto Renderer::LoadShaders(const std::map<std::string, PackedShaderData>& packed, const std::map<std::string, std::string>& includes)
+    auto Renderer::LoadShaders(const std::map<std::string, std::string>& packed, const std::map<std::string, std::string>& includes)
         -> void
     {
         for (const auto* name : s_EngineShaderNames)
@@ -37,15 +37,15 @@ namespace Eppo
             if (!packed.empty())
             {
                 const auto it = packed.find(name);
-                // An entry without sources would be compiled from disk, which a packaged game does not have.
-                if (it == packed.end() || it->second.ShaderSources.empty())
+                // An entry without a source would be compiled from disk, which a packaged game does not have.
+                if (it == packed.end() || it->second.empty())
                 {
                     Log::Error("Shader '{}' is missing from the game package.", name);
                     EP_ASSERT(false, "Incomplete game package!");
                     continue;
                 }
 
-                spec.Sources = it->second.ShaderSources;
+                spec.Source = it->second;
                 spec.Includes = includes;
             }
 
