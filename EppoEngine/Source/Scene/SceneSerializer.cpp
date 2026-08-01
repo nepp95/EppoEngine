@@ -144,6 +144,12 @@ namespace Eppo
         data["Scene"]["Bloom"]["Intensity"] = bloom.Intensity;
         data["Scene"]["Bloom"]["Radius"] = bloom.Radius;
 
+        const auto& ssao = m_SceneContext->GetSsaoSettings();
+        data["Scene"]["Ssao"]["Radius"] = ssao.Radius;
+        data["Scene"]["Ssao"]["Bias"] = ssao.Bias;
+        data["Scene"]["Ssao"]["Power"] = ssao.Power;
+        data["Scene"]["Ssao"]["Intensity"] = ssao.Intensity;
+
         auto entities = json::array();
 
         m_SceneContext->SortEntitiesByID();
@@ -245,6 +251,21 @@ namespace Eppo
                 bloom.Intensity = bloomJson["Intensity"].get<float>();
             if (bloomJson.contains("Radius"))
                 bloom.Radius = bloomJson["Radius"].get<float>();
+        }
+
+        if (data["Scene"].contains("Ssao"))
+        {
+            const auto& ssaoJson = data["Scene"]["Ssao"];
+            auto& ssao = m_SceneContext->GetSsaoSettings();
+
+            if (ssaoJson.contains("Radius"))
+                ssao.Radius = ssaoJson["Radius"].get<float>();
+            if (ssaoJson.contains("Bias"))
+                ssao.Bias = ssaoJson["Bias"].get<float>();
+            if (ssaoJson.contains("Power"))
+                ssao.Power = ssaoJson["Power"].get<float>();
+            if (ssaoJson.contains("Intensity"))
+                ssao.Intensity = ssaoJson["Intensity"].get<float>();
         }
 
         auto& entities = data["Scene"]["Entities"];

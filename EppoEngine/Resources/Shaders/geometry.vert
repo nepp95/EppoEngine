@@ -22,7 +22,8 @@ struct Camera
 	float4x4 View;
 	float4x4 Projection;
 	float4x4 ViewProjection;
-	float3 Position;
+	float4x4 InverseViewProjection;
+	float4 Position;
 };
 ConstantBuffer<Camera> uCamera : register(b2, space0);
 
@@ -62,7 +63,6 @@ struct Output
 Output Main(Input input)
 {
 	Output output;
-
 	DrawData draw = uDrawData[uPC.DrawIndex];
 
 	const float4x4 instanceTransform = uInstanceTransforms[draw.InstanceOffset + input.InstanceID];

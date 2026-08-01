@@ -148,6 +148,118 @@ namespace Eppo
             m_ShadowDepthPass = CreateRef<RenderPass>(renderPassSpec);
         }
 
+        // Ssao Prepass
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = m_Width,
+                .Height = m_Height,
+                .Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
+                .DebugName = "Framebuffer SSAO Prepass",
+            };
+
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("ssaoPrepass"),
+                .CullMode = nvrhi::RasterCullMode::Front,
+                .DepthTestEnable = true,
+                .DepthWriteEnable = true,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "SSAO Prepass",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
+                .ClearColorOnLoad = true,
+                .ClearColor = glm::vec4(0.5f, 0.5f, 1.0f, 1.0f),
+                .ClearDepthOnLoad = true,
+                .DepthClearValue = 1.0f,
+            };
+
+            m_SsaoPrePass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
+        // SSAO Evaluation
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = m_Width,
+                .Height = m_Height,
+                .Attachments = { nvrhi::Format::R8_UNORM },
+                .DebugName = "Framebuffer SSAO Evaluation",
+            };
+
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("ssao"),
+                .CullMode = nvrhi::RasterCullMode::None,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "SSAO Evaluation",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
+                .ClearColorOnLoad = true,
+                .ClearColor = glm::vec4(1.0f),
+            };
+
+            m_SsaoEvaluationPass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
+        // SSAO Horizontal Blur
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = m_Width,
+                .Height = m_Height,
+                .Attachments = { nvrhi::Format::R8_UNORM },
+                .DebugName = "Framebuffer SSAO Horizontal Blur",
+            };
+
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("ssaoBlur"),
+                .CullMode = nvrhi::RasterCullMode::None,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "SSAO Horizontal Blur",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
+                .ClearColorOnLoad = true,
+                .ClearColor = glm::vec4(1.0f),
+            };
+
+            m_SsaoBlurHorizontalPass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
+        // SSAO Vertical Blur
+        {
+            const FramebufferSpecification framebufferSpec{
+                .Width = m_Width,
+                .Height = m_Height,
+                .Attachments = { nvrhi::Format::R8_UNORM },
+                .DebugName = "Framebuffer SSAO Vertical Blur",
+            };
+
+            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
+            const PipelineSpecification pipelineSpec{
+                .Shader = renderer->GetShader("ssaoBlur"),
+                .CullMode = nvrhi::RasterCullMode::None,
+            };
+
+            const RenderPassSpecification renderPassSpec{
+                .Name = "SSAO Vertical Blur",
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
+                .ClearColorOnLoad = true,
+                .ClearColor = glm::vec4(1.0f),
+            };
+
+            m_SsaoBlurVerticalPass = CreateRef<RenderPass>(renderPassSpec);
+        }
+
         // Geometry
         {
             const FramebufferSpecification framebufferSpec{
@@ -331,6 +443,7 @@ namespace Eppo
 
         // Uniform buffers
         m_ShadowDepthUB = CreateRef<UniformBuffer>(sizeof(ShadowDepthData), "UniformBuffer Shadow Depth");
+        m_SsaoUB = CreateRef<UniformBuffer>(sizeof(SsaoData), "UniformBuffer Ssao");
         m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Camera");
         m_LightsUB = CreateRef<UniformBuffer>(sizeof(LightData), "UniformBuffer Lights");
         m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), "UniformBuffer Environment");
@@ -341,11 +454,35 @@ namespace Eppo
         m_DrawDataSB = CreateRef<StorageBuffer>(sizeof(DrawData), sizeof(DrawData), "StorageBuffer Draw Data");
         m_MaterialDataSB = CreateRef<StorageBuffer>(sizeof(MaterialData), sizeof(MaterialData), "StorageBuffer Material Data");
 
+        // Fill ssao data
+        for (uint32_t i = 0; i < s_SsaoKernelSize; i++)
+        {
+            glm::vec3 sample = { Utils::GenerateRandomFloat(0.0f, 1.0f) * 2.0f - 1.0f, Utils::GenerateRandomFloat(0.0f, 1.0f) * 2.0f - 1.0f,
+                                 Utils::GenerateRandomFloat(0.0f, 1.0f) };
+            sample = glm::normalize(sample) * Utils::GenerateRandomFloat(0.0f, 1.0f);
+
+            const float t = static_cast<float>(i) / static_cast<float>(s_SsaoKernelSize - 1);
+            sample *= glm::mix(0.1f, 1.0f, t * t);
+            m_SsaoData.Kernel[i] = glm::vec4(sample, 0.0f);
+        }
+
         // Inputs retain their resources and resolve current GPU handles whenever a pass bakes.
         m_ShadowDepthPass->SetInput(0, 0, m_InstanceTransformsSB);
         m_ShadowDepthPass->SetInput(0, 1, m_ShadowDepthUB);
 
+        m_SsaoPrePass->SetInput(0, 0, m_InstanceTransformsSB);
+        m_SsaoPrePass->SetInput(0, 1, m_DrawDataSB);
+        m_SsaoPrePass->SetInput(0, 1, m_CameraUB);
+        m_SsaoEvaluationPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
+        m_SsaoEvaluationPass->SetInput(0, 1, m_CameraUB);
+        m_SsaoEvaluationPass->SetInput(0, 2, m_SsaoUB);
+        m_SsaoBlurHorizontalPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
+        m_SsaoBlurHorizontalPass->SetInput(0, 1, m_CameraUB);
+        m_SsaoBlurVerticalPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
+        m_SsaoBlurVerticalPass->SetInput(0, 1, m_CameraUB);
+
         m_GeometryPass->SetInput(0, 0, m_WrapAllFiltersTrueSampler);
+        m_GeometryPass->SetInput(0, 1, m_ClampAllFiltersTrueSampler);
         m_GeometryPass->SetInput(0, 0, m_InstanceTransformsSB);
         m_GeometryPass->SetInput(0, 1, m_DrawDataSB);
         m_GeometryPass->SetInput(0, 2, m_MaterialDataSB);
@@ -353,6 +490,7 @@ namespace Eppo
         m_GeometryPass->SetInput(0, 2, m_CameraUB);
         m_GeometryPass->SetInput(0, 3, m_LightsUB);
         m_GeometryPass->SetInput(0, 4, m_EnvironmentUB);
+        m_GeometryPass->SetInput(0, 5, m_SsaoUB);
 
         m_SkyPass->SetInput(0, 1, m_CameraUB);
         m_SkyPass->SetInput(0, 3, m_EnvironmentUB);
@@ -448,9 +586,25 @@ namespace Eppo
 
         const std::vector<Node> passTree{
             { .Pass = m_ShadowDepthPass },
+            Group(
+                "SSAO",
+                {
+                    { .Pass = m_SsaoPrePass },
+                    { .Pass = m_SsaoEvaluationPass },
+                    { .Pass = m_SsaoBlurHorizontalPass },
+                    { .Pass = m_SsaoBlurVerticalPass },
+                }
+            ),
             { .Pass = m_GeometryPass },
             { .Pass = m_SkyPass },
-            Group("Bloom", { { .Pass = m_BloomDownSamplePass }, { .Pass = m_BloomUpSamplePass }, { .Pass = m_BloomCompositePass } }),
+            Group(
+                "Bloom",
+                {
+                    { .Pass = m_BloomDownSamplePass },
+                    { .Pass = m_BloomUpSamplePass },
+                    { .Pass = m_BloomCompositePass },
+                }
+            ),
             { .Pass = m_TonemapPass },
             { .Pass = m_WireframePass },
         };
@@ -518,6 +672,7 @@ namespace Eppo
         PrepareRender();
 
         ShadowDepthPass();
+        SsaoPass();
         GeometryPass();
         SkyPass();
         BloomPass();
@@ -639,6 +794,11 @@ namespace Eppo
         m_BloomSettings = bloom;
     }
 
+    auto SceneRenderer::SubmitSsaoSettings(const SsaoSettings& ssao) -> void
+    {
+        m_SsaoSettings = ssao;
+    }
+
     auto SceneRenderer::Resize(const uint32_t width, const uint32_t height) -> void
     {
         EP_PROFILE_FN("SceneRenderer::Resize")
@@ -649,6 +809,10 @@ namespace Eppo
         m_Width = width;
         m_Height = height;
 
+        m_SsaoPrePass->Resize(m_Width, m_Height);
+        m_SsaoEvaluationPass->Resize(m_Width, m_Height);
+        m_SsaoBlurHorizontalPass->Resize(m_Width, m_Height);
+        m_SsaoBlurVerticalPass->Resize(m_Width, m_Height);
         m_GeometryPass->Resize(m_Width, m_Height);
         m_SkyPass->Resize(m_Width, m_Height);
         m_BloomCompositePass->Resize(m_Width, m_Height);
@@ -664,6 +828,10 @@ namespace Eppo
         EP_PROFILE_FN("SceneRenderer::BeginSceneInternal")
 
         std::memset(&m_ShadowDepthPass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_SsaoPrePass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_SsaoEvaluationPass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_SsaoBlurHorizontalPass->GetStatistics(), 0, sizeof(PassStatistics));
+        std::memset(&m_SsaoBlurVerticalPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_GeometryPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_SkyPass->GetStatistics(), 0, sizeof(PassStatistics));
         std::memset(&m_BloomDownSamplePass->GetStatistics(), 0, sizeof(PassStatistics));
@@ -832,6 +1000,11 @@ namespace Eppo
         FillShadowData();
         m_ShadowDepthUB->SetData(cmdList, &m_ShadowDepthData, sizeof(m_ShadowDepthData));
 
+        // Ssao data
+        m_SsaoData.Params = glm::vec4(m_SsaoSettings.Radius, m_SsaoSettings.Bias, m_SsaoSettings.Power, m_SsaoSettings.Intensity);
+        m_SsaoData.InvSize = glm::vec4(1.0f / m_Width, 1.0f / m_Height, 0.0f, 0.0f);
+        m_SsaoUB->SetData(cmdList, &m_SsaoData, sizeof(m_SsaoData));
+
         // Camera, light and environment uniforms
         m_CameraUB->SetData(cmdList, &m_CameraData, sizeof(CameraData));
         m_LightsUB->SetData(cmdList, &m_LightData, sizeof(LightData));
@@ -906,11 +1079,25 @@ namespace Eppo
         m_MaterialDataSB->SetData(cmdList, m_MaterialData.data(), m_MaterialData.size() * sizeof(MaterialData));
 
         // Framebuffer attachments are recreated on resize.
+        const auto& prepassDepth = m_SsaoPrePass->GetFramebuffer()->GetDepthImage();
+        const auto& prepassNormal = m_SsaoPrePass->GetFramebuffer()->GetFinalImage();
+
+        m_SsaoEvaluationPass->SetInput(0, 0, prepassDepth);
+        m_SsaoEvaluationPass->SetInput(0, 1, prepassNormal);
+        m_SsaoBlurHorizontalPass->SetInput(0, 0, m_SsaoEvaluationPass->GetFramebuffer()->GetFinalImage());
+        m_SsaoBlurHorizontalPass->SetInput(0, 1, prepassDepth);
+        m_SsaoBlurVerticalPass->SetInput(0, 0, m_SsaoBlurHorizontalPass->GetFramebuffer()->GetFinalImage());
+        m_SsaoBlurVerticalPass->SetInput(0, 1, prepassDepth);
+        m_GeometryPass->SetInput(0, 3, m_SsaoBlurVerticalPass->GetFramebuffer()->GetFinalImage());
         m_TonemapPass->SetInput(0, 0, m_BloomCompositePass->GetFramebuffer()->GetFinalImage());
         m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
 
         // Rebuild binding sets for any pass whose resource handles changed.
         m_ShadowDepthPass->Bake();
+        m_SsaoPrePass->Bake();
+        m_SsaoEvaluationPass->Bake();
+        m_SsaoBlurHorizontalPass->Bake();
+        m_SsaoBlurVerticalPass->Bake();
         m_GeometryPass->Bake();
         m_SkyPass->Bake();
         m_BloomDownSamplePass->Bake();
@@ -1053,6 +1240,167 @@ namespace Eppo
         Renderer::EndRenderPass(m_RenderCommandBuffer);
         m_RenderCommandBuffer->EndMarker();
         m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
+    }
+
+    auto SceneRenderer::SsaoPass() -> void
+    {
+        EP_PROFILE_FN("SceneRenderer::SsaoPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "SsaoPass")
+
+        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+        m_RenderCommandBuffer->BeginMarker("SSAO");
+
+        // Prepass
+        {
+            struct PC
+            {
+                uint32_t DrawIndex;
+            } pushConstants{};
+
+            auto& statistics = m_SsaoPrePass->GetStatistics();
+
+            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoPrePass->GetName());
+            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoPrePass);
+
+            auto& state = m_RenderCommandBuffer->GetGraphicsState();
+
+            uint32_t drawIndex = 0;
+            for (const auto& drawCmd : m_DrawCommands | std::views::values)
+            {
+                const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+                if (instanceCount == 0)
+                    continue;
+
+                for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+                {
+                    const nvrhi::VertexBufferBinding vtxBufBinding{
+                        .buffer = submesh.VertexBuffer->GetBuffer(),
+                        .slot = 0,
+                        .offset = 0,
+                    };
+
+                    state.vertexBuffers.resize(1);
+                    state.vertexBuffers[0] = vtxBufBinding;
+                    state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+                    state.indexBuffer.format = nvrhi::Format::R32_UINT;
+                    state.indexBuffer.offset = 0;
+                    m_RenderCommandBuffer->CommitGraphicsState();
+
+                    for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                    {
+                        pushConstants.DrawIndex = drawIndex++;
+                        cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+                        nvrhi::DrawArguments drawArgs{
+                            .vertexCount = static_cast<uint32_t>(indexCount),
+                            .instanceCount = instanceCount,
+                            .startIndexLocation = firstIndex,
+                            .startVertexLocation = firstVertex,
+                        };
+
+                        cmdList->drawIndexed(drawArgs);
+
+                        statistics.DrawCalls++;
+                        statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
+                        statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                    }
+                    statistics.Submeshes++;
+                }
+                statistics.Instances += instanceCount;
+                statistics.Meshes++;
+            }
+
+            EP_ASSERT(drawIndex == m_DrawData.size());
+
+            Renderer::EndRenderPass(m_RenderCommandBuffer);
+            m_RenderCommandBuffer->EndTimerQuery(m_SsaoPrePass->GetName());
+        }
+
+        // Explicit transition
+        const auto& prepassDepth = m_SsaoPrePass->GetFramebuffer()->GetDepthImage();
+        const auto& prepassNormal = m_SsaoPrePass->GetFramebuffer()->GetFinalImage();
+        cmdList->setTextureState(prepassDepth->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+        cmdList->setTextureState(prepassNormal->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+
+        // Evaluation
+        {
+            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoEvaluationPass->GetName());
+            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoEvaluationPass);
+
+            constexpr nvrhi::DrawArguments drawArgs{
+                .vertexCount = 3,
+                .instanceCount = 1,
+            };
+            cmdList->draw(drawArgs);
+
+            auto& statistics = m_SsaoEvaluationPass->GetStatistics();
+            statistics.DrawCalls++;
+            statistics.Vertices += drawArgs.vertexCount;
+
+            Renderer::EndRenderPass(m_RenderCommandBuffer);
+            m_RenderCommandBuffer->EndTimerQuery(m_SsaoEvaluationPass->GetName());
+        }
+
+        const auto& evaluationImage = m_SsaoEvaluationPass->GetFramebuffer()->GetFinalImage();
+        cmdList->setTextureState(evaluationImage->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+
+        // Horizontal blur
+        {
+            struct PC
+            {
+                glm::vec2 Direction = glm::vec2(1.0f, 0.0f);
+                glm::vec2 InvSize;
+            } pushConstants{};
+            pushConstants.InvSize = glm::vec2(1.0f / m_Width, 1.0f / m_Height);
+
+            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoBlurHorizontalPass->GetName());
+            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoBlurHorizontalPass);
+
+            cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+            constexpr nvrhi::DrawArguments drawArgs{
+                .vertexCount = 3,
+                .instanceCount = 1,
+            };
+            cmdList->draw(drawArgs);
+
+            auto& statistics = m_SsaoBlurHorizontalPass->GetStatistics();
+            statistics.DrawCalls++;
+            statistics.Vertices += drawArgs.vertexCount;
+
+            Renderer::EndRenderPass(m_RenderCommandBuffer);
+            m_RenderCommandBuffer->EndTimerQuery(m_SsaoBlurHorizontalPass->GetName());
+        }
+
+        // Vertical blur
+        {
+            struct PC
+            {
+                glm::vec2 Direction = glm::vec2(0.0f, 1.0f);
+                glm::vec2 InvSize;
+            } pushConstants{};
+            pushConstants.InvSize = glm::vec2(1.0f / m_Width, 1.0f / m_Height);
+
+            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoBlurVerticalPass->GetName());
+            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoBlurVerticalPass);
+
+            cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+            constexpr nvrhi::DrawArguments drawArgs{
+                .vertexCount = 3,
+                .instanceCount = 1,
+            };
+            cmdList->draw(drawArgs);
+
+            auto& statistics = m_SsaoBlurVerticalPass->GetStatistics();
+            statistics.DrawCalls++;
+            statistics.Vertices += drawArgs.vertexCount;
+
+            Renderer::EndRenderPass(m_RenderCommandBuffer);
+            m_RenderCommandBuffer->EndTimerQuery(m_SsaoBlurVerticalPass->GetName());
+        }
+
+        m_RenderCommandBuffer->EndMarker();
     }
 
     auto SceneRenderer::GeometryPass() -> void

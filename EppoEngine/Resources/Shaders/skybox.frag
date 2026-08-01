@@ -7,8 +7,8 @@ struct Camera
 	float4x4 View;
 	float4x4 Projection;
 	float4x4 ViewProjection;
-	float4 Position;
 	float4x4 InverseViewProjection;
+	float4 Position;
 };
 ConstantBuffer<Camera> uCamera : register(b1, space0);
 
