@@ -3,6 +3,7 @@
 
 struct Input
 {
+    float4 Position : SV_Position;
 	float3 WorldPos : POSITION0;
 	float3 Normal : NORMAL0;
 	float2 TexCoord : TEXCOORD0;
@@ -31,8 +32,8 @@ struct Camera
 	float4x4 View;
 	float4x4 Projection;
 	float4x4 ViewProjection;
-	float4 Position;
 	float4x4 InverseViewProjection;
+	float4 Position;
 };
 ConstantBuffer<Camera> uCamera : register(b2, space0);
 
@@ -68,6 +69,15 @@ struct Environment
 };
 ConstantBuffer<Environment> uEnvironment : register(b4, space0);
 
+static const uint s_KernelSize = 32;
+struct Ssao
+{
+    float4 Kernel[s_KernelSize];
+    float4 Params;
+    float4 InvSize;
+};
+ConstantBuffer<Ssao> uSsao : register(b5, space0);
+
 struct DrawData
 {
     float4x4 Transform;
@@ -89,6 +99,9 @@ struct MaterialData
     float Roughness;
 };
 StructuredBuffer<MaterialData> uMaterialData : register(t2, space0);
+
+Texture2D uSsaoTex : register(t3, space0);
+SamplerState uSsaoSampler : register(s1, space0);
 
 float CalcShadowFactor(const float3 worldPosition)
 {
@@ -236,6 +249,11 @@ float4 Main(Input input) : SV_Target
 		ambient = albedo * lerp(uEnvironment.GroundColor.rgb, uEnvironment.ZenithColor.rgb, N.y * 0.5 + 0.5) * uEnvironment.Params.x;
 	}
 
-	float3 outColor = ambient * materialAO + Lo + emissive;
+	// SSAO
+	const float2 screenUv = input.Position.xy * uSsao.InvSize.xy;
+	const float ssao = uSsaoTex.SampleLevel(uSsaoSampler, screenUv, 0);
+	const float ssaoFactor = lerp(1.0, ssao, saturate(uSsao.Params.w));
+
+	float3 outColor = ambient * materialAO * ssaoFactor + Lo + emissive;
 	return float4(outColor, 1.0);
 }

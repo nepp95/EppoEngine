@@ -760,6 +760,7 @@ namespace Eppo
 
         newScene->m_EnvironmentSettings = scene->m_EnvironmentSettings;
         newScene->m_BloomSettings = scene->m_BloomSettings;
+        newScene->m_SsaoSettings = scene->m_SsaoSettings;
 
         return newScene;
     }
@@ -770,6 +771,7 @@ namespace Eppo
 
         sceneRenderer->SubmitEnvironmentSettings(m_EnvironmentSettings);
         sceneRenderer->SubmitBloomSettings(m_BloomSettings);
+        sceneRenderer->SubmitSsaoSettings(m_SsaoSettings);
 
         for (const auto view = m_Registry.view<DirectionalLightComponent>(); const auto& entity : view)
         {

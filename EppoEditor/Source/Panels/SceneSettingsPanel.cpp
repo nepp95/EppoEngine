@@ -70,5 +70,14 @@ namespace Eppo
         ImGui::DragFloat("Intensity", &bloom.Intensity, 0.01f, 0.0f, 5.0f);
         ImGui::DragFloat("Radius", &bloom.Radius, 0.01f, 0.0f, 4.0f);
         ImGui::PopID();
+
+        auto& ssao = scene->GetSsaoSettings();
+        ImGui::SeparatorText("SSAO");
+        ImGui::PushID("SSAO");
+        ImGui::DragFloat("Radius", &ssao.Radius, 0.01f, 0.0f);
+        ImGui::DragFloat("Bias", &ssao.Bias, 0.001f, 0.0f);
+        ImGui::DragFloat("Power", &ssao.Power, 0.01f, 0.01f);
+        ImGui::DragFloat("Intensity", &ssao.Intensity, 0.01f, 0.0f, 1.0f);
+        ImGui::PopID();
     }
 }

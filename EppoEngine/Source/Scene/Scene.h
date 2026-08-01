@@ -34,6 +34,14 @@ namespace Eppo
         float Radius = 1.0f;
     };
 
+    struct SsaoSettings
+    {
+        float Radius = 0.5f;
+        float Bias = 0.025f;
+        float Power = 1.5f;
+        float Intensity = 1.0f;
+    };
+
     class Scene : public Asset, public std::enable_shared_from_this<Scene>
     {
     public:
@@ -104,6 +112,8 @@ namespace Eppo
         [[nodiscard]] auto GetEnvironmentSettings() const -> const EnvironmentSettings& { return m_EnvironmentSettings; }
         [[nodiscard]] auto GetBloomSettings() -> BloomSettings& { return m_BloomSettings; }
         [[nodiscard]] auto GetBloomSettings() const -> const BloomSettings& { return m_BloomSettings; }
+        [[nodiscard]] auto GetSsaoSettings() -> SsaoSettings& { return m_SsaoSettings; }
+        [[nodiscard]] auto GetSsaoSettings() const -> const SsaoSettings& { return m_SsaoSettings; }
 
         // Null outside runtime (between OnRuntimeStop and the next OnRuntimeStart).
         [[nodiscard]] auto GetPhysicsWorld() const -> Ref<PhysicsWorld> { return m_PhysicsWorld; }
@@ -125,6 +135,7 @@ namespace Eppo
 
         EnvironmentSettings m_EnvironmentSettings;
         BloomSettings m_BloomSettings;
+        SsaoSettings m_SsaoSettings;
 
         std::vector<std::string> m_ColliderlessRigidBodies;
         std::vector<UUID> m_EntitiesToDestroy;

@@ -3,7 +3,6 @@
 #include "Renderer/Camera/EditorCamera.h"
 #include "Renderer/Camera/SceneCamera.h"
 #include "Renderer/Mesh.h"
-#include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderPass.h"
 #include "Renderer/Sampler.h"
@@ -11,8 +10,6 @@
 #include "Renderer/UniformBuffer.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
-
-#include <nvrhi/nvrhi.h>
 
 namespace Eppo
 {
@@ -39,8 +36,10 @@ namespace Eppo
         auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
         auto SubmitDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity) -> void;
         auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity) -> void;
+        // TODO: Remove these 3. We have the scene, the scene has all these.
         auto SubmitEnvironmentSettings(const EnvironmentSettings& environment) -> void;
         auto SubmitBloomSettings(const BloomSettings& bloom) -> void;
+        auto SubmitSsaoSettings(const SsaoSettings& ssao) -> void;
 
         auto Resize(uint32_t width, uint32_t height) -> void;
 
@@ -68,6 +67,7 @@ namespace Eppo
         auto FillShadowData() -> void;
 
         auto ShadowDepthPass() -> void;
+        auto SsaoPass() -> void;
         auto GeometryPass() -> void;
         auto SkyPass() const -> void;
         auto BloomPass() -> void;
@@ -104,6 +104,10 @@ namespace Eppo
         Ref<Framebuffer> m_BloomPyramidFramebuffer = nullptr;
 
         Ref<RenderPass> m_ShadowDepthPass = nullptr;
+        Ref<RenderPass> m_SsaoPrePass = nullptr;
+        Ref<RenderPass> m_SsaoEvaluationPass = nullptr;
+        Ref<RenderPass> m_SsaoBlurHorizontalPass = nullptr;
+        Ref<RenderPass> m_SsaoBlurVerticalPass = nullptr;
         Ref<RenderPass> m_GeometryPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
         Ref<RenderPass> m_BloomDownSamplePass = nullptr;
@@ -124,8 +128,6 @@ namespace Eppo
         Ref<Sampler> m_EquirectSampler = nullptr;
 
         // Uniforms
-        BloomSettings m_BloomSettings;
-
         struct ShadowDepthData
         {
             glm::mat4 LightViewProjection;
@@ -134,13 +136,23 @@ namespace Eppo
         } m_ShadowDepthData;
         Ref<UniformBuffer> m_ShadowDepthUB = nullptr;
 
+        static constexpr uint32_t s_SsaoKernelSize = 32;
+        struct SsaoData
+        {
+            std::array<glm::vec4, s_SsaoKernelSize> Kernel;
+            glm::vec4 Params;
+            glm::vec4 InvSize;
+        } m_SsaoData;
+        Ref<UniformBuffer> m_SsaoUB = nullptr;
+        SsaoSettings m_SsaoSettings;
+
         struct CameraData
         {
             glm::mat4 View;
             glm::mat4 Projection;
             glm::mat4 ViewProjection;
-            glm::vec4 Position;
             glm::mat4 InverseViewProjection;
+            glm::vec4 Position;
         } m_CameraData{};
         Ref<UniformBuffer> m_CameraUB = nullptr;
 
@@ -181,6 +193,8 @@ namespace Eppo
         Ref<Image> m_IrradianceCube = nullptr;
         Ref<Image> m_PrefilterCube = nullptr;
         Ref<Image> m_BrdfLut = nullptr;
+
+        BloomSettings m_BloomSettings;
 
         // Draw commands
         struct DrawKey
