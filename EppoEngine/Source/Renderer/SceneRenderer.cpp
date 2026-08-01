@@ -4,6 +4,7 @@
 #include "Core/Application.h"
 #include "Project/Project.h"
 #include "Renderer/Framebuffer.h"
+#include "Renderer/GpuProfiler.h"
 #include "Renderer/Image.h"
 #include "Renderer/Renderer.h"
 
@@ -523,6 +524,9 @@ namespace Eppo
         TonemapPass();
         WireframePass();
 
+        // Collect resolves query results, which is illegal inside a render pass; every pass above closes its own.
+        EP_GPU_COLLECT(m_RenderCommandBuffer);
+
         m_RenderCommandBuffer->End();
         m_RenderCommandBuffer->Submit();
     }
@@ -975,6 +979,7 @@ namespace Eppo
     auto SceneRenderer::ShadowDepthPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::ShadowDepthPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "ShadowDepthPass")
 
         if (m_ShadowDepthData.Indices.z == 0)
         {
@@ -1053,6 +1058,7 @@ namespace Eppo
     auto SceneRenderer::GeometryPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::GeometryPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "GeometryPass")
 
         struct PC
         {
@@ -1128,6 +1134,7 @@ namespace Eppo
     auto SceneRenderer::SkyPass() const -> void
     {
         EP_PROFILE_FN("SceneRenderer::SkyPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "SkyPass")
 
         auto& statistics = m_SkyPass->GetStatistics();
         const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
@@ -1153,6 +1160,7 @@ namespace Eppo
     auto SceneRenderer::BloomPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::BloomPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "BloomPass")
 
         struct PC
         {
@@ -1281,6 +1289,7 @@ namespace Eppo
     auto SceneRenderer::TonemapPass() const -> void
     {
         EP_PROFILE_FN("SceneRenderer::TonemapPass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "TonemapPass")
 
         constexpr struct PC
         {
@@ -1312,6 +1321,7 @@ namespace Eppo
     auto SceneRenderer::WireframePass() const -> void
     {
         EP_PROFILE_FN("SceneRenderer::WireframePass")
+        EP_GPU_ZONE(m_RenderCommandBuffer, "WireframePass")
 
         if (!m_DebugRenderingEnabled || m_WireframeDrawCommands.empty())
         {

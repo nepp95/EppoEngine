@@ -14,8 +14,7 @@ SUITE(FileDialogFilter)
     TEST(BuildFilter_MultipleExtensions_GroupUnderLabel)
     {
         CHECK_EQUAL(
-            std::string("Importable Assets{.gltf,.glb,.png}"),
-            FileDialog::BuildFilter("Importable Assets", { "gltf", "glb", "png" })
+            std::string("Importable Assets{.gltf,.glb,.png}"), FileDialog::BuildFilter("Importable Assets", { "gltf", "glb", "png" })
         );
     }
 

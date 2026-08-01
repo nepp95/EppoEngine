@@ -270,10 +270,12 @@ SUITE(Scene)
         const UUID leafId = leaf.GetUUID();
         scene->SetParent(child, root);
 
-        scene->ForEachEntity([&](Entity entity)
-        {
-            scene->DestroyEntity(entity);
-        });
+        scene->ForEachEntity(
+            [&](Entity entity)
+            {
+                scene->DestroyEntity(entity);
+            }
+        );
 
         CHECK(!scene->GetEntityByUUID(rootId));
         CHECK(!scene->GetEntityByUUID(childId));

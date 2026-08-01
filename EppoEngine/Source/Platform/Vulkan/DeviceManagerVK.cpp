@@ -2,6 +2,7 @@
 #include "Platform/Vulkan/DeviceManagerVK.h"
 
 #include "Platform/Vulkan/Vulkan.h"
+#include "Renderer/GpuProfiler.h"
 
 #include <GLFW/glfw3.h>
 
@@ -28,6 +29,8 @@ namespace Eppo
 
     auto DeviceManagerVK::Shutdown() -> void
     {
+        GpuProfiler::Shutdown();
+
         m_Renderer = nullptr;
         m_Swapchain = nullptr;
 

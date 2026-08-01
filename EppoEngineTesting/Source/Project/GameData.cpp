@@ -65,7 +65,9 @@ SUITE(Project)
         CHECK_EQUAL(std::string("Textures/image.png"), loaded.AssetRegistry.at(200).Filepath.generic_string());
         CHECK_EQUAL(1, loaded.PackedAssets.size());
         CHECK(loaded.PackedAssets.at(100).Type == AssetType::Scene);
-        CHECK_ARRAY_EQUAL(first.PackedAssets.at(100).Payload.Data, loaded.PackedAssets.at(100).Payload.Data, first.PackedAssets.at(100).Payload.Size);
+        CHECK_ARRAY_EQUAL(
+            first.PackedAssets.at(100).Payload.Data, loaded.PackedAssets.at(100).Payload.Data, first.PackedAssets.at(100).Payload.Size
+        );
     }
 
     TEST(GameData_ExcludesRuntimeGeneratedRegistryEntries)
@@ -96,13 +98,23 @@ SUITE(Project)
         data.StartScene = AssetHandle(100);
         data.AssetRegistry.emplace(100, AssetMetadata{ AssetHandle(100), AssetType::Scene, "Scenes/start.epscene" });
         data.PackedAssets.emplace(100, PackedAssetData{ AssetType::Scene, MakePayload(100) });
-        data.PackedShaders.emplace("geometry", PackedShaderData{ {
-            { nvrhi::ShaderType::Vertex, "vertex-source" },
-            { nvrhi::ShaderType::Pixel, "pixel-source" },
-        } });
-        data.PackedShaders.emplace("composite", PackedShaderData{ {
-            { nvrhi::ShaderType::Vertex, "composite-vertex" },
-        } });
+        data.PackedShaders.emplace(
+            "geometry",
+            PackedShaderData{
+                {
+                 { nvrhi::ShaderType::Vertex, "vertex-source" },
+                 { nvrhi::ShaderType::Pixel, "pixel-source" },
+                 }
+        }
+        );
+        data.PackedShaders.emplace(
+            "composite",
+            PackedShaderData{
+                {
+                 { nvrhi::ShaderType::Vertex, "composite-vertex" },
+                 }
+        }
+        );
         REQUIRE CHECK(data.Serialize(path));
 
         GameData loaded;
@@ -141,9 +153,14 @@ SUITE(Project)
         GameData data;
         data.ProjectName = "Game";
         data.StartScene = AssetHandle(100);
-        data.PackedShaders.emplace("geometry", PackedShaderData{ {
-            { nvrhi::ShaderType::Vertex, "#include \"Includes/platform.hlsli\"\nvertex-source" },
-        } });
+        data.PackedShaders.emplace(
+            "geometry",
+            PackedShaderData{
+                {
+                 { nvrhi::ShaderType::Vertex, "#include \"Includes/platform.hlsli\"\nvertex-source" },
+                 }
+        }
+        );
         // Keyed by the path relative to Resources/Shaders, which is exactly what an #include names.
         data.PackedShaderIncludes.emplace("Includes/platform.hlsli", "platform-source");
         data.PackedShaderIncludes.emplace("Includes/lighting.hlsli", "lighting-source");
@@ -166,15 +183,20 @@ SUITE(Project)
         GameData data;
         data.ProjectName = "Game";
         data.StartScene = AssetHandle(100);
-        data.PackedShaders.emplace("geometry", PackedShaderData{ {
-            { nvrhi::ShaderType::Vertex, "vertex-source" },
-        } });
+        data.PackedShaders.emplace(
+            "geometry",
+            PackedShaderData{
+                {
+                 { nvrhi::ShaderType::Vertex, "vertex-source" },
+                 }
+        }
+        );
         data.PackedShaderIncludes.emplace("Includes/platform.hlsli", "platform-source");
         REQUIRE CHECK(data.Serialize(path));
 
         std::vector<char> bytes = FS::ReadBytes(path);
-        const auto includeBlockSize = sizeof(uint32_t) + 2 * sizeof(uint64_t) + std::string("Includes/platform.hlsli").size()
-            + std::string("platform-source").size();
+        const auto includeBlockSize =
+            sizeof(uint32_t) + 2 * sizeof(uint64_t) + std::string("Includes/platform.hlsli").size() + std::string("platform-source").size();
         REQUIRE CHECK(bytes.size() > includeBlockSize);
         bytes.resize(bytes.size() - includeBlockSize);
         REQUIRE CHECK(FS::WriteBytes(path, bytes, true));
@@ -210,9 +232,14 @@ SUITE(Project)
         GameData data;
         data.ProjectName = "Game";
         data.StartScene = AssetHandle(100);
-        data.PackedShaders.emplace("geometry", PackedShaderData{ {
-            { nvrhi::ShaderType::Vertex, "vertex-source" },
-        } });
+        data.PackedShaders.emplace(
+            "geometry",
+            PackedShaderData{
+                {
+                 { nvrhi::ShaderType::Vertex, "vertex-source" },
+                 }
+        }
+        );
         REQUIRE CHECK(data.Serialize(path));
 
         // With no registry or packed assets the shader magic occurs exactly once, so corrupting

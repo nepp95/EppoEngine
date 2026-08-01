@@ -7,11 +7,11 @@ using namespace Eppo;
 
 SUITE(Scene)
 {
-    #define ValidateDefaultEntity(e) \
-        CHECK_EQUAL("Entity", e.GetName()); \
-        CHECK(e.HasComponent<IDComponent>()); \
-        CHECK(e.HasComponent<TagComponent>()); \
-        CHECK(e.HasComponent<TransformComponent>());
+#define ValidateDefaultEntity(e)                                                                                                           \
+    CHECK_EQUAL("Entity", e.GetName());                                                                                                    \
+    CHECK(e.HasComponent<IDComponent>());                                                                                                  \
+    CHECK(e.HasComponent<TagComponent>());                                                                                                 \
+    CHECK(e.HasComponent<TransformComponent>());
 
     TEST(Entity_DefaultConstructorCreatesInvalidEntity)
     {
