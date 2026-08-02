@@ -1,24 +1,50 @@
 #include "Support/EppoTest.h"
 #include "Support/TempDir.h"
 
+#include "Project/Project.h"
 #include "Utility/Filesystem.h"
 
 using namespace Eppo;
 
+namespace Eppo
+{
+    namespace
+    {
+        class ScopedWorkingDirectory final
+        {
+        public:
+            explicit ScopedWorkingDirectory(const std::filesystem::path& path)
+                : m_OriginalPath(std::filesystem::current_path())
+            {
+                std::filesystem::current_path(path);
+            }
+
+            ~ScopedWorkingDirectory()
+            {
+                std::error_code error;
+                std::filesystem::current_path(m_OriginalPath, error);
+            }
+
+        private:
+            std::filesystem::path m_OriginalPath;
+        };
+    }
+}
+
 SUITE(Core)
 {
-    TEST(Filesystem_ResourcesDirectoryFollowsWorkingDirectory)
+    TEST(Filesystem_ResourceAndProjectDirectoriesFollowWorkingDirectory)
     {
         const auto executableDirectory = FS::GetExecutableDirectory();
-        const auto originalWorkingDirectory = std::filesystem::current_path();
         const Testing::TempDir directory;
+        const ScopedWorkingDirectory workingDirectory(directory.Path());
 
-        std::filesystem::current_path(directory.Path());
         const auto resourcesDirectory = FS::GetResourcesDirectory();
+        const auto projectsDirectory = Project::GetProjectsDirectory();
         const auto executableDirectoryAfterChange = FS::GetExecutableDirectory();
-        std::filesystem::current_path(originalWorkingDirectory);
 
         CHECK_EQUAL((directory.Path() / "Resources").string(), resourcesDirectory.string());
+        CHECK_EQUAL((directory.Path() / "Projects").string(), projectsDirectory.string());
         CHECK_EQUAL(executableDirectory.string(), executableDirectoryAfterChange.string());
     }
 
