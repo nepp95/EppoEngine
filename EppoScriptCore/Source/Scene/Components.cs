@@ -74,12 +74,6 @@ namespace EppoScriptCore.Scene
 
     public class DirectionalLightComponent : Component
     {
-        public Vector3 Direction
-        {
-            get => InternalCalls.DirectionalLightComponent_GetDirection(Entity.ID);
-            set => InternalCalls.DirectionalLightComponent_SetDirection(Entity.ID, ref value);
-        }
-        
         public Vector3 Color
         {
             get => InternalCalls.DirectionalLightComponent_GetColor(Entity.ID);

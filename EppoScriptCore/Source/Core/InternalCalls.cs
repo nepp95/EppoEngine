@@ -283,19 +283,6 @@ namespace EppoScriptCore.Core
             ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CameraComponent_SetFarClip"))(id, farClip);
         }
         
-        internal static Vector3 DirectionalLightComponent_GetDirection(ulong id)
-        {
-            Vector3 result = default;
-            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("DirectionalLightComponent_GetDirection"))(id, &result);
-            return result;
-        }
-        
-        internal static void DirectionalLightComponent_SetDirection(ulong id, ref Vector3 direction)
-        {
-            fixed (Vector3* ptr = &direction)
-                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("DirectionalLightComponent_SetDirection"))(id, ptr);
-        }
-        
         internal static Vector3 DirectionalLightComponent_GetColor(ulong id)
         {
             Vector3 result = default;

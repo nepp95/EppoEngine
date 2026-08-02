@@ -339,7 +339,6 @@ namespace Eppo
             {
                 auto& c = entity["DirectionalLightComponent"];
                 auto& nc = newEntity.AddComponent<DirectionalLightComponent>();
-                nc.Direction = c["Direction"].get<glm::vec3>();
                 nc.Color = c["Color"].get<glm::vec3>();
                 nc.Intensity = c["Intensity"].get<float>();
             }
@@ -484,7 +483,6 @@ namespace Eppo
         if (entity.HasComponent<DirectionalLightComponent>())
         {
             const auto& c = entity.GetComponent<DirectionalLightComponent>();
-            e["DirectionalLightComponent"]["Direction"] = c.Direction;
             e["DirectionalLightComponent"]["Color"] = c.Color;
             e["DirectionalLightComponent"]["Intensity"] = c.Intensity;
         }

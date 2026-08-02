@@ -81,6 +81,7 @@ namespace Eppo
 
         // Composes an entity's world transform from its parent chain.
         [[nodiscard]] auto GetWorldTransform(Entity entity) -> glm::mat4;
+        [[nodiscard]] auto GetWorldRotation(Entity entity) -> glm::quat;
 
         // Enumerate every entity in creation order, handing each to `func`. Every
         // entity carries an IDComponent, so a view over it covers the whole scene.

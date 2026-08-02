@@ -518,24 +518,6 @@ namespace Eppo
             entity.GetComponent<CameraComponent>().Camera.SetPerspectiveFarClip(farClip);
         }
 
-        auto DirectionalLightComponent_GetDirection(const uint64_t id, glm::vec3* outDirection) -> void
-        {
-            const Entity entity = GetEntity(id);
-            if (!entity || !entity.HasComponent<DirectionalLightComponent>())
-                return;
-
-            *outDirection = entity.GetComponent<DirectionalLightComponent>().Direction;
-        }
-
-        auto DirectionalLightComponent_SetDirection(const uint64_t id, const glm::vec3* color) -> void
-        {
-            const Entity entity = GetEntity(id);
-            if (!entity || !entity.HasComponent<DirectionalLightComponent>())
-                return;
-
-            entity.GetComponent<DirectionalLightComponent>().Direction = *color;
-        }
-
         auto DirectionalLightComponent_GetColor(const uint64_t id, glm::vec3* outColor) -> void
         {
             const Entity entity = GetEntity(id);
@@ -1266,8 +1248,6 @@ namespace Eppo
             { "CameraComponent_SetNearClip",              reinterpret_cast<void*>(&CameraComponent_SetNearClip)              },
             { "CameraComponent_GetFarClip",               reinterpret_cast<void*>(&CameraComponent_GetFarClip)               },
             { "CameraComponent_SetFarClip",               reinterpret_cast<void*>(&CameraComponent_SetFarClip)               },
-            { "DirectionalLightComponent_GetDirection",   reinterpret_cast<void*>(&DirectionalLightComponent_GetDirection)   },
-            { "DirectionalLightComponent_SetDirection",   reinterpret_cast<void*>(&DirectionalLightComponent_SetDirection)   },
             { "DirectionalLightComponent_GetColor",       reinterpret_cast<void*>(&DirectionalLightComponent_GetColor)       },
             { "DirectionalLightComponent_SetColor",       reinterpret_cast<void*>(&DirectionalLightComponent_SetColor)       },
             { "DirectionalLightComponent_GetIntensity",   reinterpret_cast<void*>(&DirectionalLightComponent_GetIntensity)   },
