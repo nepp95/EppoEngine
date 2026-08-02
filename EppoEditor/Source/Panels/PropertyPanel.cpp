@@ -284,7 +284,6 @@ namespace Eppo
             entity,
             [](auto& component) -> auto
             {
-                ImGui::DragFloat3("Direction", glm::value_ptr(component.Direction));
                 ImGui::ColorEdit3("Color", glm::value_ptr(component.Color));
                 ImGui::DragFloat("Intensity", &component.Intensity, 0.1f, 0.0f, 0.0f);
                 if (component.Intensity < 0.0f)

@@ -671,6 +671,32 @@ namespace Eppo
         return world;
     }
 
+    auto Scene::GetWorldRotation(const Entity entity) -> glm::quat
+    {
+        glm::quat world(1.0f, 0.0f, 0.0f, 0.0f);
+
+        Entity current = entity;
+        for (size_t guard = 0; current; ++guard)
+        {
+            world = glm::quat(current.GetComponent<TransformComponent>().Rotation) * world;
+
+            const UUID parentId =
+                current.HasComponent<RelationshipComponent>() ? current.GetComponent<RelationshipComponent>().Parent : UUID(0);
+            if (!parentId)
+                break;
+
+            if (guard > m_EntityMap.size())
+            {
+                Log::Error("Cycle detected while composing world rotation for entity '{}'; aborting walk.", entity.GetName());
+                break;
+            }
+
+            current = GetEntityByUUID(parentId);
+        }
+
+        return world;
+    }
+
     auto Scene::ForEachEntity(const std::function<void(Entity)>& func) -> void
     {
         const auto view = m_Registry.view<IDComponent>();
@@ -773,10 +799,11 @@ namespace Eppo
         sceneRenderer->SubmitBloomSettings(m_BloomSettings);
         sceneRenderer->SubmitSsaoSettings(m_SsaoSettings);
 
-        for (const auto view = m_Registry.view<DirectionalLightComponent>(); const auto& entity : view)
+        for (const auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>(); const auto& entity : view)
         {
             const auto& lightComponent = view.get<DirectionalLightComponent>(entity);
-            sceneRenderer->SubmitDirectionalLight(lightComponent.Direction, lightComponent.Color, lightComponent.Intensity);
+            const glm::vec3 direction = GetWorldRotation(Entity(entity, this)) * glm::vec3(0.0f, -1.0f, 0.0f);
+            sceneRenderer->SubmitDirectionalLight(direction, lightComponent.Color, lightComponent.Intensity);
         }
 
         for (const auto view = m_Registry.view<PointLightComponent, TransformComponent>(); const auto& entity : view)

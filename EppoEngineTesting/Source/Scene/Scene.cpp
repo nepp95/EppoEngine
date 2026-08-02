@@ -108,6 +108,24 @@ SUITE(Scene)
         CHECK(!parent.HasComponent<RelationshipComponent>());
     }
 
+    TEST(Scene_GetWorldRotation_ComposesHierarchyWithoutScale)
+    {
+        const Ref<Scene> scene = CreateRef<Scene>();
+        const Entity parent = scene->CreateEntity("Parent");
+        const Entity child = scene->CreateEntity("Child");
+        scene->SetParent(child, parent);
+
+        auto& parentTransform = parent.GetComponent<TransformComponent>();
+        parentTransform.Rotation.z = glm::radians(30.0f);
+        parentTransform.Scale = glm::vec3(2.0f, 0.0f, -3.0f);
+        child.GetComponent<TransformComponent>().Rotation.z = glm::radians(15.0f);
+
+        const glm::vec3 direction = scene->GetWorldRotation(child) * glm::vec3(0.0f, -1.0f, 0.0f);
+        const glm::vec3 expected = glm::quat(parentTransform.Rotation) *
+            glm::quat(child.GetComponent<TransformComponent>().Rotation) * glm::vec3(0.0f, -1.0f, 0.0f);
+        CHECK_VEC3_CLOSE(expected, direction, 1e-5f);
+    }
+
     TEST(SceneSerializer_Deserialize_DetachesChildWhoseParentDoesNotListIt)
     {
         const UUID parentId;
@@ -338,21 +356,24 @@ SUITE(Scene)
         CHECK_EQUAL(1003ull, entities[2]["IDComponent"]["ID"].get<uint64_t>());
     }
 
-    // Direction is stored verbatim (unnormalized): only SubmitDirectionalLight normalizes,
-    // so the persisted/copied component must carry the authored vector as-is.
-    TEST(SceneSerializer_DirectionalLightComponent_RoundTripsFields)
+    TEST(SceneSerializer_DirectionalLightComponent_RoundTripsFieldsWithoutDirection)
     {
         const UUID sunId;
         const Ref<Scene> authoring = CreateRef<Scene>();
         Entity sun = authoring->CreateEntityWithUUID(sunId, "Sun");
         auto& light = sun.AddComponent<DirectionalLightComponent>();
-        light.Direction = { 0.3f, -0.6f, 0.2f };
         light.Color = { 0.9f, 0.4f, 0.1f };
         light.Intensity = 2.5f;
+        sun.GetComponent<TransformComponent>().Rotation = { 0.1f, 0.2f, 0.3f };
 
         const Testing::TempDir dir;
         const auto path = dir.File("directional-light.epscene");
         REQUIRE CHECK(SceneSerializer(authoring).Serialize(path));
+
+        std::ifstream stream(path);
+        const nlohmann::json data = nlohmann::json::parse(stream);
+        const auto& serializedLight = data["Scene"]["Entities"][0]["DirectionalLightComponent"];
+        CHECK(!serializedLight.contains("Direction"));
 
         const Ref<Scene> loaded = CreateRef<Scene>();
         REQUIRE CHECK(SceneSerializer(loaded).Deserialize(path));
@@ -361,9 +382,9 @@ SUITE(Scene)
         REQUIRE CHECK(static_cast<bool>(loadedSun));
         REQUIRE CHECK(loadedSun.HasComponent<DirectionalLightComponent>());
         const auto& loadedLight = loadedSun.GetComponent<DirectionalLightComponent>();
-        CHECK_VEC3_CLOSE(glm::vec3(0.3f, -0.6f, 0.2f), loadedLight.Direction, 1e-5f);
         CHECK_VEC3_CLOSE(glm::vec3(0.9f, 0.4f, 0.1f), loadedLight.Color, 1e-5f);
         CHECK_CLOSE(2.5f, loadedLight.Intensity, 1e-5f);
+        CHECK_VEC3_CLOSE(glm::vec3(0.1f, 0.2f, 0.3f), loadedSun.GetComponent<TransformComponent>().Rotation, 1e-5f);
     }
 
     TEST(Scene_DuplicateEntity_CarriesDirectionalLightComponent)
@@ -371,7 +392,6 @@ SUITE(Scene)
         const Ref<Scene> scene = CreateRef<Scene>();
         Entity sun = scene->CreateEntity("Sun");
         auto& light = sun.AddComponent<DirectionalLightComponent>();
-        light.Direction = { 0.3f, -0.6f, 0.2f };
         light.Color = { 0.9f, 0.4f, 0.1f };
         light.Intensity = 2.5f;
 
@@ -380,7 +400,6 @@ SUITE(Scene)
         CHECK(duplicate.GetUUID() != sun.GetUUID());
         REQUIRE CHECK(duplicate.HasComponent<DirectionalLightComponent>());
         const auto& copied = duplicate.GetComponent<DirectionalLightComponent>();
-        CHECK_VEC3_CLOSE(glm::vec3(0.3f, -0.6f, 0.2f), copied.Direction, 1e-5f);
         CHECK_VEC3_CLOSE(glm::vec3(0.9f, 0.4f, 0.1f), copied.Color, 1e-5f);
         CHECK_CLOSE(2.5f, copied.Intensity, 1e-5f);
     }
@@ -391,7 +410,6 @@ SUITE(Scene)
         const Ref<Scene> scene = CreateRef<Scene>();
         Entity sun = scene->CreateEntityWithUUID(sunId, "Sun");
         auto& light = sun.AddComponent<DirectionalLightComponent>();
-        light.Direction = { 0.3f, -0.6f, 0.2f };
         light.Color = { 0.9f, 0.4f, 0.1f };
         light.Intensity = 2.5f;
 
@@ -400,7 +418,6 @@ SUITE(Scene)
         REQUIRE CHECK(static_cast<bool>(copiedSun));
         REQUIRE CHECK(copiedSun.HasComponent<DirectionalLightComponent>());
         const auto& copied = copiedSun.GetComponent<DirectionalLightComponent>();
-        CHECK_VEC3_CLOSE(glm::vec3(0.3f, -0.6f, 0.2f), copied.Direction, 1e-5f);
         CHECK_VEC3_CLOSE(glm::vec3(0.9f, 0.4f, 0.1f), copied.Color, 1e-5f);
         CHECK_CLOSE(2.5f, copied.Intensity, 1e-5f);
     }

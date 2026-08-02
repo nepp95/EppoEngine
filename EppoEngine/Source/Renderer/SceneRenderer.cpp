@@ -675,6 +675,7 @@ namespace Eppo
         EP_PROFILE_FN("SceneRenderer::EndScene")
 
         EnsureColliderMeshes();
+        GatherWireframes();
 
         m_RenderCommandBuffer->Begin();
         PrepareRender();
@@ -892,8 +893,51 @@ namespace Eppo
 
         constexpr auto colliderColor = glm::vec4(0.2f, 0.8f, 0.3f, 1.0f);
         constexpr auto highlightColor = glm::vec4(0.91f, 0.39f, 0.11f, 1.0f);
+        constexpr auto directionalLightColor = glm::vec4(1.0f, 0.8f, 0.1f, 1.0f);
+        constexpr auto directionalLightMarkerColor = glm::vec4(0.95f, 0.95f, 0.85f, 1.0f);
         constexpr auto meshWireframeColor = glm::vec4(0.45f, 0.63f, 0.95f, 1.0f);
         const auto& assetManager = project->GetAssetManager();
+
+        if (m_LightData.HasDirectionalLight)
+        {
+            DrawCommand markerDraw{
+                .Mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere)),
+                .Color = directionalLightMarkerColor,
+            };
+            DrawCommand shaftDraw{
+                .Mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cylinder)),
+                .Color = directionalLightColor,
+            };
+            DrawCommand headDraw{
+                .Mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cone)),
+                .Color = directionalLightColor,
+            };
+
+            m_Scene->ForEachEntity(
+                [&](const Entity entity) -> void
+                {
+                    if (!entity.HasComponent<DirectionalLightComponent>())
+                        return;
+
+                    const glm::mat4 worldTransform = m_Scene->GetWorldTransform(entity);
+                    const glm::mat4 lightTransform = glm::translate(glm::mat4(1.0f), glm::vec3(worldTransform[3])) *
+                        glm::mat4_cast(m_Scene->GetWorldRotation(entity));
+                    markerDraw.Transforms.emplace_back(lightTransform * glm::scale(glm::mat4(1.0f), glm::vec3(0.3f)));
+                    shaftDraw.Transforms.emplace_back(
+                        lightTransform * glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.6f, 0.0f)) *
+                        glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.6f, 0.04f))
+                    );
+                    headDraw.Transforms.emplace_back(
+                        lightTransform * glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.4f, 0.0f)) *
+                        glm::scale(glm::mat4(1.0f), glm::vec3(0.16f, -0.2f, 0.16f))
+                    );
+                }
+            );
+
+            m_WireframeDrawCommands.emplace_back(std::move(markerDraw));
+            m_WireframeDrawCommands.emplace_back(std::move(shaftDraw));
+            m_WireframeDrawCommands.emplace_back(std::move(headDraw));
+        }
 
         if (m_ShowColliders)
         {
@@ -1028,9 +1072,6 @@ namespace Eppo
 
         const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
         m_InstanceTransformsSB->SetData(cmdList, instanceTransforms.data(), requiredSize);
-
-        // Wireframes
-        GatherWireframes();
 
         std::vector<glm::mat4> wireframeTransforms;
         for (auto& draw : m_WireframeDrawCommands)

@@ -209,6 +209,29 @@ namespace
         return luminance / static_cast<float>(sampleCount);
     }
 
+    [[nodiscard]] auto MaxLuminance(const Rgba8Readback& readback, const glm::ivec2 center, const int32_t radius = 4) -> float
+    {
+        float maxLuminance = 0.0f;
+
+        for (int32_t y = center.y - radius; y <= center.y + radius; y++)
+        {
+            for (int32_t x = center.x - radius; x <= center.x + radius; x++)
+            {
+                if (x < 0 || y < 0 || x >= static_cast<int32_t>(readback.Width) || y >= static_cast<int32_t>(readback.Height))
+                    continue;
+
+                const size_t index = (static_cast<size_t>(y) * readback.Width + static_cast<size_t>(x)) * 4u;
+                const glm::vec3 color(
+                    static_cast<float>(readback.Pixels[index]) / 255.0f, static_cast<float>(readback.Pixels[index + 1u]) / 255.0f,
+                    static_cast<float>(readback.Pixels[index + 2u]) / 255.0f
+                );
+                maxLuminance = std::max(maxLuminance, glm::dot(color, glm::vec3(0.2126f, 0.7152f, 0.0722f)));
+            }
+        }
+
+        return maxLuminance;
+    }
+
     [[nodiscard]] auto ReadPixel(const Rgba8Readback& readback, const glm::ivec2 position) -> glm::vec3
     {
         REQUIRE CHECK(position.x >= 0 && position.y >= 0);
@@ -418,8 +441,9 @@ SUITE(Renderer)
 
         Entity sun = scene->CreateEntity("Sun");
         auto& directionalLight = sun.AddComponent<DirectionalLightComponent>();
-        directionalLight.Direction = glm::normalize(glm::vec3(0.6f, -1.0f, 0.3f));
         directionalLight.Intensity = 8.0f;
+        sun.GetComponent<TransformComponent>().Rotation.z = glm::radians(30.0f);
+        sun.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f, 0.0f, -3.0f);
 
         constexpr uint32_t initialWidth = 256u;
         constexpr uint32_t initialHeight = 256u;
@@ -447,6 +471,48 @@ SUITE(Renderer)
         CHECK_EQUAL(resizedWidth, finalImage->GetWidth());
         CHECK_EQUAL(resizedHeight, finalImage->GetHeight());
         CHECK(Testing::AppHarness::Get()->IsRunning());
+    }
+
+    TEST(SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)
+    {
+        Testing::TestContext ctx;
+        if (!ctx.IsAvailable())
+            return;
+
+        PrimitiveProjectFixture project;
+        const Ref<Scene> scene = ctx.GetScene();
+        scene->GetEnvironmentSettings().ZenithColor = glm::vec3(0.0f);
+        scene->GetEnvironmentSettings().HorizonColor = glm::vec3(0.0f);
+        scene->GetEnvironmentSettings().GroundColor = glm::vec3(0.0f);
+        scene->GetEnvironmentSettings().AmbientIntensity = 0.0f;
+
+        Entity sun = scene->CreateEntity("Sun");
+        sun.AddComponent<DirectionalLightComponent>().Intensity = 0.0f;
+        sun.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f, 0.0f, -3.0f);
+
+        constexpr uint32_t size = 256u;
+        const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{
+            .Width = size,
+            .Height = size,
+            .EnableDebugRendering = true,
+        });
+        EditorCamera camera(glm::vec3(0.0f, 0.0f, 5.0f), 0.0f, -90.0f);
+        camera.SetViewportSize(size, size);
+
+        ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+        const Rgba8Readback down = ReadRgba8(sceneRenderer->GetFinalImage());
+        const glm::ivec2 sunSample = ProjectToPixel(camera, glm::vec3(0.28f, 0.0f, 0.0f), size, size);
+        const glm::ivec2 downSample = ProjectToPixel(camera, glm::vec3(0.0f, -0.75f, 0.0f), size, size);
+        const glm::ivec2 rightSample = ProjectToPixel(camera, glm::vec3(0.75f, 0.0f, 0.0f), size, size);
+        CHECK(MaxLuminance(down, sunSample, 1) > 0.3f);
+        CHECK(MaxLuminance(down, downSample) > 0.3f);
+        CHECK(MaxLuminance(down, rightSample) < 0.1f);
+
+        sun.GetComponent<TransformComponent>().Rotation.z = glm::half_pi<float>();
+        ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+        const Rgba8Readback right = ReadRgba8(sceneRenderer->GetFinalImage());
+        CHECK(MaxLuminance(right, rightSample) > 0.3f);
+        CHECK(MaxLuminance(right, downSample) < 0.1f);
     }
 
     TEST(SceneRenderer_SkyboxEnvironment_BakesIblAndRendersCleanly)
