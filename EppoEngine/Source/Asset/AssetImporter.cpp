@@ -2,14 +2,16 @@
 #include "Asset/AssetImporter.h"
 
 #include "Asset/AssetManager.h"
+#include "Renderer/Image.h"
 #include "Scene/SceneSerializer.h"
 #include "Project/Project.h"
 
 namespace Eppo
 {
     std::map<AssetType, importFn> AssetImporter::s_AssetImportFns = {
-        { AssetType::Mesh,  ImportMesh  },
-        { AssetType::Scene, ImportScene },
+        { AssetType::Mesh,    ImportMesh    },
+        { AssetType::Scene,   ImportScene   },
+        { AssetType::Texture, ImportTexture },
     };
 
     std::map<AssetType, importPackedFn> AssetImporter::s_AssetImportPackedFns = {
@@ -58,6 +60,25 @@ namespace Eppo
         mesh->Handle = handle;
 
         return mesh;
+    }
+
+    auto AssetImporter::ImportTexture(const AssetHandle handle, const AssetMetadata& metadata) -> Ref<Image>
+    {
+        EP_PROFILE_FN("AssetImporter::ImportTexture");
+
+        const auto path = Project::GetAssetFilepath(metadata.Filepath);
+        if (!FS::Exists(path))
+        {
+            Log::Error("Cannot import texture '{}': file does not exist", path);
+            return nullptr;
+        }
+
+        // Format left UNKNOWN so the source constructor resolves it from the pixels.
+        const ImageSpecification spec{ .DebugName = metadata.Filepath.string() };
+        Ref<Image> image = CreateRef<Image>(spec, ImageSource{ path });
+        image->Handle = handle;
+
+        return image;
     }
 
     auto AssetImporter::ImportScene(const AssetHandle handle, const AssetMetadata& metadata) -> Ref<Scene>

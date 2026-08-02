@@ -243,13 +243,6 @@ namespace EppoScriptCore.Core
             ((delegate* unmanaged[Cdecl]<ulong, ulong, void>)Get("MeshComponent_SetMeshHandle"))(id, meshHandle);
         }
 
-        internal static Vector3 PointLightComponent_GetColor(ulong id)
-        {
-            Vector3 result = default;
-            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("PointLightComponent_GetColor"))(id, &result);
-            return result;
-        }
-
         internal static bool CameraComponent_GetPrimary(ulong id)
         {
             return ((delegate* unmanaged[Cdecl]<ulong, bool>)Get("CameraComponent_GetPrimary"))(id);
@@ -288,6 +281,36 @@ namespace EppoScriptCore.Core
         internal static void CameraComponent_SetFarClip(ulong id, float farClip)
         {
             ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CameraComponent_SetFarClip"))(id, farClip);
+        }
+        
+        internal static Vector3 DirectionalLightComponent_GetColor(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("DirectionalLightComponent_GetColor"))(id, &result);
+            return result;
+        }
+        
+        internal static void DirectionalLightComponent_SetColor(ulong id, ref Vector3 color)
+        {
+            fixed (Vector3* ptr = &color)
+                ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("DirectionalLightComponent_SetColor"))(id, ptr);
+        }
+
+        internal static float DirectionalLightComponent_GetIntensity(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("DirectionalLightComponent_GetIntensity"))(id);
+        }
+
+        internal static void DirectionalLightComponent_SetIntensity(ulong id, float intensity)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("DirectionalLightComponent_SetIntensity"))(id, intensity);
+        }
+
+        internal static Vector3 PointLightComponent_GetColor(ulong id)
+        {
+            Vector3 result = default;
+            ((delegate* unmanaged[Cdecl]<ulong, Vector3*, void>)Get("PointLightComponent_GetColor"))(id, &result);
+            return result;
         }
 
         internal static void PointLightComponent_SetColor(ulong id, ref Vector3 translation)

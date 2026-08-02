@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Renderer/Camera/SceneCamera.h"
 
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace Eppo

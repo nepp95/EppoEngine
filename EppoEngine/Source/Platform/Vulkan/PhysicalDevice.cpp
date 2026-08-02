@@ -9,13 +9,20 @@ namespace Eppo
 {
     namespace
     {
+        constexpr uint32_t s_GpuVendorAMD = 0x1002;
+        constexpr uint32_t s_GpuVendorImgTec = 0x1010;
+        constexpr uint32_t s_GpuVendorNVIDIA = 0x10de;
+        constexpr uint32_t s_GpuVendorARM = 0x13b5;
+        constexpr uint32_t s_GpuVendorQualcomm = 0x5143;
+        constexpr uint32_t s_GpuVendorIntel = 0x8086;
+
         const std::unordered_map<uint32_t, std::string> s_GpuVendors = {
-            { 0x1002, "AMD"      },
-            { 0x1010, "ImgTec"   },
-            { 0x10de, "NVIDIA"   },
-            { 0x13b5, "ARM"      },
-            { 0x5143, "Qualcomm" },
-            { 0x8086, "Intel"    }
+            { s_GpuVendorAMD,      "AMD"      },
+            { s_GpuVendorImgTec,   "ImgTec"   },
+            { s_GpuVendorNVIDIA,   "NVIDIA"   },
+            { s_GpuVendorARM,      "ARM"      },
+            { s_GpuVendorQualcomm, "Qualcomm" },
+            { s_GpuVendorIntel,    "Intel"    }
         };
 
         constexpr auto DecodeDriverVersion(const uint32_t driverVersion, const uint32_t vendorId) -> std::string
@@ -25,7 +32,7 @@ namespace Eppo
             switch (vendorId)
             {
                 // Nvidia
-                case 0x10de:
+                case s_GpuVendorNVIDIA:
                 {
                     const uint32_t d1 = (driverVersion >> 22) & 0x3ff;
                     const uint32_t d2 = (driverVersion >> 14) & 0x0ff;
@@ -37,7 +44,7 @@ namespace Eppo
                 }
 
                 // Intel
-                case 0x8086:
+                case s_GpuVendorIntel:
                 {
                     const uint32_t d1 = driverVersion >> 14;
                     const uint32_t d2 = driverVersion & 0x3ff;
@@ -96,7 +103,15 @@ namespace Eppo
         // Get device information
         vkGetPhysicalDeviceMemoryProperties(m_Device, &m_MemoryProperties);
 
+        m_FeaturesMutable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
+        m_Features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        m_Features11.pNext = &m_FeaturesMutable;
+        m_Features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        m_Features12.pNext = &m_Features11;
+        m_Features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        m_Features13.pNext = &m_Features12;
         m_Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        m_Features.pNext = &m_Features13;
         vkGetPhysicalDeviceFeatures2(m_Device, &m_Features);
 
         // Output device information
@@ -180,8 +195,45 @@ namespace Eppo
             m_SupportedExtensions[i] = extensions.at(i).extensionName;
     }
 
-    auto PhysicalDevice::IsExtensionSupported(std::string_view extensionName) -> bool
+    auto PhysicalDevice::IsExtensionSupported(const std::string_view extensionName) -> bool
     {
         return std::ranges::find(m_SupportedExtensions, extensionName) != m_SupportedExtensions.end();
+    }
+
+    auto PhysicalDevice::SupportsRequiredFeatures() const -> bool
+    {
+        auto supported = true;
+        const auto RequireFeature = [&supported](const VkBool32 feature, const std::string_view name) -> void
+        {
+            if (feature)
+                return;
+
+            Log::Error("Required Vulkan feature '{}' is not supported by the device!", name);
+            supported = false;
+        };
+
+        RequireFeature(m_FeaturesMutable.mutableDescriptorType, "mutableDescriptorType");
+        RequireFeature(m_Features12.shaderSampledImageArrayNonUniformIndexing, "shaderSampledImageArrayNonUniformIndexing");
+        RequireFeature(m_Features12.descriptorBindingUniformBufferUpdateAfterBind, "descriptorBindingUniformBufferUpdateAfterBind");
+        RequireFeature(m_Features12.descriptorBindingSampledImageUpdateAfterBind, "descriptorBindingSampledImageUpdateAfterBind");
+        RequireFeature(m_Features12.descriptorBindingStorageImageUpdateAfterBind, "descriptorBindingStorageImageUpdateAfterBind");
+        RequireFeature(m_Features12.descriptorBindingStorageBufferUpdateAfterBind, "descriptorBindingStorageBufferUpdateAfterBind");
+        RequireFeature(
+            m_Features12.descriptorBindingUniformTexelBufferUpdateAfterBind, "descriptorBindingUniformTexelBufferUpdateAfterBind"
+        );
+        RequireFeature(
+            m_Features12.descriptorBindingStorageTexelBufferUpdateAfterBind, "descriptorBindingStorageTexelBufferUpdateAfterBind"
+        );
+        RequireFeature(m_Features12.descriptorBindingUpdateUnusedWhilePending, "descriptorBindingUpdateUnusedWhilePending");
+        RequireFeature(m_Features12.descriptorBindingPartiallyBound, "descriptorBindingPartiallyBound");
+        RequireFeature(m_Features12.runtimeDescriptorArray, "runtimeDescriptorArray");
+        RequireFeature(m_Features12.timelineSemaphore, "timelineSemaphore");
+        RequireFeature(m_Features12.bufferDeviceAddress, "bufferDeviceAddress");
+        RequireFeature(m_Features12.shaderOutputLayer, "shaderOutputLayer");
+        RequireFeature(m_Features13.shaderDemoteToHelperInvocation, "shaderDemoteToHelperInvocation");
+        RequireFeature(m_Features13.synchronization2, "synchronization2");
+        RequireFeature(m_Features13.dynamicRendering, "dynamicRendering");
+
+        return supported;
     }
 }

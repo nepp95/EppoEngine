@@ -27,16 +27,21 @@ namespace Eppo
         {
             return m_MemoryProperties;
         }
-        [[nodiscard]] constexpr auto GetDeviceFeatures() -> VkPhysicalDeviceFeatures2& { return m_Features; }
+        [[nodiscard]] constexpr auto GetDeviceFeatures() const -> const VkPhysicalDeviceFeatures2& { return m_Features; }
         [[nodiscard]] constexpr auto GetQueueFamilyIndices() const -> const QueueFamilyIndices& { return m_QueueFamilyIndices; }
 
         [[nodiscard]] auto IsExtensionSupported(std::string_view extensionName) -> bool;
+        [[nodiscard]] auto SupportsRequiredFeatures() const -> bool;
 
     private:
         VkPhysicalDevice m_Device = nullptr;
         VkPhysicalDeviceProperties m_Properties{};
         VkPhysicalDeviceMemoryProperties m_MemoryProperties{};
         VkPhysicalDeviceFeatures2 m_Features{};
+        VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT m_FeaturesMutable{};
+        VkPhysicalDeviceVulkan11Features m_Features11{};
+        VkPhysicalDeviceVulkan12Features m_Features12{};
+        VkPhysicalDeviceVulkan13Features m_Features13{};
 
         QueueFamilyIndices m_QueueFamilyIndices;
         std::vector<std::string> m_SupportedExtensions;

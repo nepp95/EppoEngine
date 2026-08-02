@@ -212,6 +212,14 @@ namespace Eppo
         m_BlockEvents = blockEvents;
     }
 
+    auto ImGuiLayer::SetMouseInputEnabled(const bool enabled) -> void
+    {
+        if (enabled)
+            ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+        else
+            ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    }
+
     auto ImGuiLayer::InitPlatformInterface() -> void
     {
         ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();

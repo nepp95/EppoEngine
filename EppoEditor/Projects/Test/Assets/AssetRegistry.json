@@ -1,8 +1,18 @@
 {
     "Assets": [
         {
+            "Filepath": "Textures\\kloofendal_48d_partly_cloudy_puresky_2k.hdr",
+            "Handle": 9446329736917411582,
+            "Type": "Texture"
+        },
+        {
             "Filepath": "Meshes\\player.glb",
             "Handle": 17559226157527298045,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\pbr_showcase.gltf",
+            "Handle": 16319850260215055169,
             "Type": "Mesh"
         },
         {

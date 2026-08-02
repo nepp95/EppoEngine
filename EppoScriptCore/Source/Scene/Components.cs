@@ -72,6 +72,21 @@ namespace EppoScriptCore.Scene
         }
     }
 
+    public class DirectionalLightComponent : Component
+    {
+        public Vector3 Color
+        {
+            get => InternalCalls.DirectionalLightComponent_GetColor(Entity.ID);
+            set => InternalCalls.DirectionalLightComponent_SetColor(Entity.ID, ref value);
+        }
+
+        public float Intensity
+        {
+            get => InternalCalls.DirectionalLightComponent_GetIntensity(Entity.ID);
+            set => InternalCalls.DirectionalLightComponent_SetIntensity(Entity.ID, value);
+        }
+    }
+
     public class PointLightComponent : Component
     {
         public Vector3 Color

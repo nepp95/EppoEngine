@@ -77,6 +77,6 @@ namespace Eppo
         m_UpDirection = glm::normalize(glm::cross(m_RightDirection, m_FrontDirection));
 
         m_View = glm::lookAt(m_Position, m_Position + m_FrontDirection, m_UpDirection);
-        m_Projection = glm::perspective(glm::radians(m_Zoom), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 100.0f);
+        m_Projection = glm::perspective(glm::radians(m_Zoom), m_ViewportSize.x / m_ViewportSize.y, m_NearClip, m_FarClip);
     }
 }

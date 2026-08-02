@@ -32,10 +32,7 @@ namespace Eppo
     ///     uint32   shaderCount
     ///     shaderCount x:
     ///         string   name
-    ///         uint32   stageCount
-    ///         per stage present:
-    ///             uint16   stageType
-    ///             string   source
+    ///         string   source
     ///     uint32   includeCount
     ///     includeCount x:
     ///         string   path
@@ -49,18 +46,14 @@ namespace Eppo
 
         std::map<AssetHandle, AssetMetadata> AssetRegistry;
         std::map<AssetHandle, PackedAssetData> PackedAssets;
-        std::map<std::string, PackedShaderData> PackedShaders;
+        std::map<std::string, std::string> PackedShaders;
         // Keyed by path relative to Resources/Shaders, matching what the shader sources #include.
         std::map<std::string, std::string> PackedShaderIncludes;
 
-        /// @brief Serializes a project' data for use in a deployed application
-        /// @param path Destination pak file path
-        /// @return False if at any point the serialization failed
-        auto Serialize(const std::filesystem::path& path) const -> bool;
+        // Serializes a project' data for use in a deployed application
+        [[nodiscard]] auto Serialize(const std::filesystem::path& path) const -> bool;
 
-        /// @brief Deserializes a project' data for use in a deployed application
-        /// @param path Source pak file path
-        /// @return False if at any point the deserialization failed
+        // Deserializes a project' data for use in a deployed application
         auto Deserialize(const std::filesystem::path& path) -> bool;
     };
 }

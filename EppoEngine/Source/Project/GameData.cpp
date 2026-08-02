@@ -56,16 +56,10 @@ namespace Eppo
             !writer.WriteRaw<uint32_t>(static_cast<uint32_t>(PackedShaders.size())))
             return false;
 
-        for (const auto& [name, shader] : PackedShaders)
+        for (const auto& [name, source] : PackedShaders)
         {
-            if (!writer.WriteString(name) || !writer.WriteRaw<uint32_t>(static_cast<uint32_t>(shader.ShaderSources.size())))
+            if (!writer.WriteString(name) || !writer.WriteString(source))
                 return false;
-
-            for (const auto& [type, source] : shader.ShaderSources)
-            {
-                if (!writer.WriteRaw<uint16_t>(static_cast<uint16_t>(type)) || !writer.WriteString(source))
-                    return false;
-            }
         }
 
         if (!writer.WriteRaw<uint32_t>(static_cast<uint32_t>(PackedShaderIncludes.size())))
@@ -165,18 +159,11 @@ namespace Eppo
         for (uint32_t i = 0; i < shaderCount; i++)
         {
             std::string name;
-            uint32_t stageCount = 0;
-            if (!reader.ReadString(name) || !reader.ReadRaw<uint32_t>(stageCount))
+            std::string source;
+            if (!reader.ReadString(name) || !reader.ReadString(source))
                 return false;
 
-            PackedShaderData shader;
-            for (uint32_t j = 0; j < stageCount; j++)
-            {
-                uint16_t type = 0;
-                if (!reader.ReadRaw<uint16_t>(type) || !reader.ReadString(shader.ShaderSources[static_cast<nvrhi::ShaderType>(type)]))
-                    return false;
-            }
-            PackedShaders[name] = std::move(shader);
+            PackedShaders[name] = std::move(source);
         }
 
         // A package written before shader includes were carried runs out here rather than at the version check,

@@ -15,7 +15,12 @@ namespace Eppo
 {
     namespace
     {
-        constexpr std::array s_EngineShaderNames{ "composite", "geometry", "imgui", "skybox", "wireframe" };
+        constexpr std::array s_EngineShaderNames{
+            "bloomDownSample", "bloomUpSample", "bloomComposite", "composite",         "geometry",
+            "imgui",           "shadowDepth",   "skybox",         "ssaoPrepass",       "ssao",
+            "ssaoBlur",        "tonemap",       "wireframe",      "iblEquirectToCube", "iblEnvironmentMip",
+            "iblIrradiance",   "iblPrefilter",  "iblBrdfLut",
+        };
     }
 
     Renderer::Renderer()
@@ -23,7 +28,7 @@ namespace Eppo
         m_DescriptorManager = CreateRef<DescriptorManager>();
     }
 
-    auto Renderer::LoadShaders(const std::map<std::string, PackedShaderData>& packed, const std::map<std::string, std::string>& includes)
+    auto Renderer::LoadShaders(const std::map<std::string, std::string>& packed, const std::map<std::string, std::string>& includes)
         -> void
     {
         for (const auto* name : s_EngineShaderNames)
@@ -32,15 +37,15 @@ namespace Eppo
             if (!packed.empty())
             {
                 const auto it = packed.find(name);
-                // An entry without sources would be compiled from disk, which a packaged game does not have.
-                if (it == packed.end() || it->second.ShaderSources.empty())
+                // An entry without a source would be compiled from disk, which a packaged game does not have.
+                if (it == packed.end() || it->second.empty())
                 {
                     Log::Error("Shader '{}' is missing from the game package.", name);
                     EP_ASSERT(false, "Incomplete game package!");
                     continue;
                 }
 
-                spec.Sources = it->second.ShaderSources;
+                spec.Source = it->second;
                 spec.Includes = includes;
             }
 
@@ -50,7 +55,13 @@ namespace Eppo
 
     auto Renderer::Init() -> void
     {
-        m_CompositeSampler = Sampler::Create({ .AddressMode = nvrhi::SamplerAddressMode::Clamp });
+        m_CompositeSampler = Sampler::Create(
+            {
+                .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+            }
+        );
 
         m_CompositeCommandBuffer = CreateRef<RenderCommandBuffer>();
     }
@@ -59,36 +70,39 @@ namespace Eppo
     {
         const auto& cmd = commandBuffer->GetCommandList();
         const auto& pipeline = renderPass->GetPipeline();
-        const auto& framebuffer = pipeline->GetSpecification().Framebuffer;
         const auto& renderPassSpec = renderPass->GetSpecification();
 
-        cmd->beginMarker(renderPassSpec.Name.c_str());
+        // The pass selects one subresource of its framebuffer; the resolved handle carries the matching mip extents.
+        const nvrhi::FramebufferHandle framebufferHandle = renderPass->GetFramebuffer()->GetFramebuffer(renderPass->GetSubresources());
+        const auto& framebufferInfo = framebufferHandle->getFramebufferInfo();
 
         if (renderPassSpec.ClearColorOnLoad)
         {
             const auto& clearColor = renderPassSpec.ClearColor;
-            for (size_t i = 0; i < framebuffer->GetFramebuffer()->getDesc().colorAttachments.size(); i++)
+            for (size_t i = 0; i < framebufferHandle->getDesc().colorAttachments.size(); i++)
                 nvrhi::utils::ClearColorAttachment(
-                    cmd, framebuffer->GetFramebuffer(), i, nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a)
+                    cmd, framebufferHandle, i, nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a)
                 );
         }
 
         if (renderPassSpec.ClearDepthOnLoad)
+        {
             nvrhi::utils::ClearDepthStencilAttachment(
-                cmd, framebuffer->GetFramebuffer(), renderPassSpec.DepthClearValue, renderPassSpec.StencilClearValue
+                cmd, framebufferHandle, renderPassSpec.DepthClearValue, renderPassSpec.StencilClearValue
             );
+        }
 
         auto& graphicsState = commandBuffer->GetGraphicsState();
         graphicsState.pipeline = pipeline->GetPipeline();
         EP_ASSERT(graphicsState.pipeline != nullptr);
-        graphicsState.framebuffer = framebuffer->GetFramebuffer();
+        graphicsState.framebuffer = framebufferHandle;
         EP_ASSERT(graphicsState.framebuffer != nullptr);
 
         graphicsState.viewport.viewports = {
-            nvrhi::Viewport(static_cast<float>(framebuffer->GetWidth()), static_cast<float>(framebuffer->GetHeight()))
+            nvrhi::Viewport(static_cast<float>(framebufferInfo.width), static_cast<float>(framebufferInfo.height))
         };
         graphicsState.viewport.scissorRects = {
-            nvrhi::Rect(static_cast<int>(framebuffer->GetWidth()), static_cast<int>(framebuffer->GetHeight()))
+            nvrhi::Rect(static_cast<int>(framebufferInfo.width), static_cast<int>(framebufferInfo.height))
         };
 
         graphicsState.bindings = renderPass->GetBindingSets();
@@ -99,7 +113,7 @@ namespace Eppo
 
     auto Renderer::EndRenderPass(const Ref<RenderCommandBuffer>& commandBuffer) -> void
     {
-        commandBuffer->GetCommandList()->endMarker();
+        commandBuffer->GetCommandList()->clearState();
     }
 
     auto Renderer::CompositeToSwapchain(const Ref<Image>& image) -> void
@@ -128,15 +142,14 @@ namespace Eppo
         {
             const PipelineSpecification pipelineSpec{
                 .Shader = m_ShaderLibrary.Get("composite"),
-                .Framebuffer = framebuffer,
-                .Width = framebuffer->GetWidth(),
-                .Height = framebuffer->GetHeight(),
                 .CullMode = nvrhi::RasterCullMode::None,
             };
 
             renderPass = CreateRef<RenderPass>(RenderPassSpecification{
                 .Name = "Composite",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec),
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebufferHandle->getFramebufferInfo()),
+                .Framebuffer = framebuffer,
+                .OwnsFramebuffer = false,
             });
 
             m_CompositeFramebuffers.at(backBufferIndex) = framebufferHandle;
