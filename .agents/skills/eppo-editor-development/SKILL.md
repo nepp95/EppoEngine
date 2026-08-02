@@ -20,6 +20,6 @@ Read [references/architecture.md](references/architecture.md) before changing `E
 
 - Start play from a copy of the editor scene; never mutate the authored scene as runtime state.
 - Stop runtime and clear script contexts before dropping the runtime scene.
-- Resolve runtime assets and UI resources relative to the executable working directory.
+- Resolve editor resources and projects relative to the `EppoEditor/` working directory; keep managed binaries executable-relative.
 - Apply docking-layout restoration before submitting windows for the frame.
 - Preserve panel names referenced by the default docking layout.

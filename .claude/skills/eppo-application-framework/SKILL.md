@@ -14,7 +14,7 @@ Read [references/architecture.md](references/architecture.md) before changing st
 3. Keep event-driven state and polled input coherent. Update the real and simulated input paths together when adding input behavior.
 4. Add deterministic coverage through `Application::StepFrame` and the support harness when the behavior can be observed by frame count or state.
 5. Use headless unit tests for isolated core types; use `App` for real window, device, and repeated-frame behavior, and the `Renderer` suite's `SceneRendering` tests for renderer, input, or camera behavior across frames.
-6. Run from the executable output directory or through CTest to preserve runtime resource resolution.
+6. Run the editor from `EppoEditor/` or tests through CTest so source resources resolve from the working directory; runtime data remains executable-relative.
 
 ## Guardrails
 

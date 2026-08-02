@@ -189,7 +189,7 @@ namespace Eppo
             { "build", projectFile.string(), "-c", "Debug", "-o", outputDirectory.string(),
               // Point the project at this build's core assembly instead of a baked-in
               // path that goes stale when the output layout changes.
-              "-p:CoreManagedDll=" + (FS::GetRootDirectory() / "EppoScriptCore.dll").string(), "--nologo" }
+              "-p:CoreManagedDll=" + (FS::GetExecutableDirectory() / "EppoScriptCore.dll").string(), "--nologo" }
         );
 
         if (exitCode != 0)

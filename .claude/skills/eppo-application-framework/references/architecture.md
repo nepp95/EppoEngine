@@ -74,7 +74,7 @@ Key and mouse numeric values are shared with C# scripting. Update `Core/KeyCodes
 
 `Window` owns the native GLFW window and provides framebuffer size, event callback, VSync/fullscreen/decorated state, native handle, and icon operations. Vulkan surface extensions and framebuffer sizing originate here.
 
-Runtime files resolve relative to the executable output directory. `FS::GetRootDirectory` and `FS::GetResourcesDirectory` depend on that layout. Editor/tests must run from the executable output directory so `Resources`, shader includes/cache, `runtimeconfig.json`, and managed DLLs are found.
+The deployed runtime resolves `Game.eppak`, loose assets, managed files, logs, and its shader cache relative to the executable directory. The editor resolves `Resources/` and `Projects/` from its `EppoEditor/` working directory, while managed files remain executable-relative. CTest uses `EppoEditor/` as the test working directory and loads its deployed managed assemblies beside the test executable.
 
 Writes are separately configurable. `FS::ConfigureWritableDirectory(path)` establishes the root returned by `FS::GetWritableDirectory`, which `FS::GetShaderCacheDirectory` and logging resolve against; unconfigured, the shader cache falls back to `Resources/Shaders/Cache`. The runtime configures it to `FS::GetExecutableDirectory()` before anything else runs, so a shipped game keeps its log and shader cache beside itself rather than inside a read-only install tree. Configure it before the first write, not after.
 

@@ -335,7 +335,7 @@ SUITE(Scene)
     // Scene has no entity enumeration, so read the result back through the serializer.
     TEST(SceneSerializer_HarnessScene_LoadsThreeEntities)
     {
-        const auto scenePath = FS::GetRootDirectory() / "TestData" / "Scenes" / "harness.epscene";
+        const auto scenePath = FS::GetExecutableDirectory() / "TestData" / "Scenes" / "harness.epscene";
         REQUIRE CHECK(FS::Exists(scenePath));
 
         const Ref<Scene> scene = CreateRef<Scene>();

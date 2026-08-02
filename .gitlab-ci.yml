@@ -103,7 +103,7 @@ build-and-test:
     # Configure (restores vcpkg deps from .vcpkg-cache on a hit).
     - cmake --preset linux-debug
     # Build ONLY the test runner: drags in EppoEngine + the managed scripting
-    # provisioning, but skips the EppoEditor exe and its asset-copy steps.
+    # provisioning, but skips the EppoEditor executable.
     - cmake --build --preset linux-debug --target EppoEngineTesting
     # Run every suite EXCEPT the GPU-bound `graphical` one, emitting JUnit XML.
     - ctest --test-dir build/debug --label-exclude graphical --output-on-failure --output-junit "$CI_PROJECT_DIR/build/debug/report.xml"

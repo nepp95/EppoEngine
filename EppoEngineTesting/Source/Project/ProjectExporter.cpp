@@ -202,6 +202,24 @@ SUITE(ProjectExport)
         CHECK(!FS::Exists(options.ParentDirectory / "ExportGame"));
     }
 
+    TEST(ProjectExporter_RequiresSourceDirectoryWhenBuildingRuntime)
+    {
+        if (!Testing::AppHarness::IsAvailable())
+            return;
+
+        ExportProjectFixture fixture;
+        fixture.AddScene(500, "start.epscene");
+        fixture.ProjectInstance->GetSpecification().StartScene = AssetHandle(500);
+        ProjectExportOptions options = fixture.Options();
+        options.BuildRuntime = true;
+        options.CopyRuntime = true;
+
+        const ProjectExportResult result = ProjectExporter(fixture.ProjectInstance).Export(options);
+        CHECK(!result.Success);
+        CHECK_EQUAL(std::string("The engine source directory is required when building the runtime."), result.Errors.front());
+        CHECK(!FS::Exists(options.ParentDirectory / "ExportGame"));
+    }
+
     TEST(ProjectExporter_ReportsMonotonicProgress)
     {
         if (!Testing::AppHarness::IsAvailable())
@@ -348,17 +366,17 @@ SUITE(ProjectExport)
         ProjectExportOptions options = fixture.Options();
         options.CopyRuntime = true;
         options.DebugRuntimeDirectory = runtimeDirectory;
-        options.DebugManagedDirectory = FS::GetRootDirectory();
+        options.DebugManagedDirectory = FS::GetExecutableDirectory();
 
         const ProjectExportResult result = ProjectExporter(fixture.ProjectInstance).Export(options);
         REQUIRE CHECK(result.Success);
         CHECK(
             FS::ReadBytes(result.OutputPath / "Debug" / "EppoScriptCore.dll") ==
-            FS::ReadBytes(FS::GetRootDirectory() / "EppoScriptCore.dll")
+            FS::ReadBytes(FS::GetExecutableDirectory() / "EppoScriptCore.dll")
         );
         CHECK(
             FS::ReadBytes(result.OutputPath / "Debug" / "EppoScriptCore.deps.json") ==
-            FS::ReadBytes(FS::GetRootDirectory() / "EppoScriptCore.deps.json")
+            FS::ReadBytes(FS::GetExecutableDirectory() / "EppoScriptCore.deps.json")
         );
     }
 }
