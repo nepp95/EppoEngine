@@ -60,7 +60,7 @@ Its pass state is **per back buffer and lazily built** — `m_CompositePasses` /
 
 ## Shader and binding contract
 
-Shader sources live in `EppoEngine/Resources/Shaders` and are staged next to the editor/test executables; includes live under `Resources/Shaders/Includes`. Compiled SPIR-V is cached in `FS::GetShaderCacheDirectory()` — `Resources/Shaders/Cache` when no writable directory is configured, otherwise `<writable>/ShaderCache`.
+Shader sources live in `EppoEditor/Resources/Shaders`, with includes under `Resources/Shaders/Includes`. The editor and graphical tests read them directly from the `EppoEditor/` working directory. Compiled SPIR-V is cached in `FS::GetShaderCacheDirectory()` — `Resources/Shaders/Cache` when no writable directory is configured, otherwise `<writable>/ShaderCache`.
 
 A `ShaderSpecification` carrying `Sources` is packed: it compiles those, and resolves `#include`s only from its `Includes` map through a handler that never touches the filesystem. A deployed runtime ships no shader files, so an include missing from the pack fails the compile rather than finding a stray file on disk. Without `Sources` the shader is compiled from `Resources/Shaders` with DXC's default (disk-reading) include handler. `Renderer::LoadShaders` takes the packed set or nothing, and treats a packed entry that has no sources as missing rather than letting it degrade into a disk compile. A failed compile logs and asserts in the constructor: it means a broken editor build, and `EP_ASSERT` throws under `EP_DIST`, so a deployed game surfaces it through the runtime error dialog.
 

@@ -113,8 +113,6 @@ namespace Eppo
         const auto configurations = GetExportConfigurations(options);
         if (options.CopyRuntime)
         {
-            const auto sourceDirectory = GetSourceDirectory(options);
-
             for (size_t index = 0; index < configurations.size(); ++index)
             {
                 const auto& configuration = configurations[index];
@@ -123,7 +121,7 @@ namespace Eppo
                 std::string runtimeError;
 
                 if (options.BuildRuntime &&
-                    !BuildRuntime(options, sourceDirectory, configuration, progressStart, progressSpan, runtimeError))
+                    !BuildRuntime(options, options.SourceDirectory, configuration, progressStart, progressSpan, runtimeError))
                 {
                     result.Errors.emplace_back(std::move(runtimeError));
                     return result;
@@ -269,6 +267,9 @@ namespace Eppo
         if (const auto configurations = GetExportConfigurations(options); configurations.empty())
             result.Errors.emplace_back("At least one export configuration must be selected.");
 
+        if (options.CopyRuntime && options.BuildRuntime && options.SourceDirectory.empty())
+            result.Errors.emplace_back("The engine source directory is required when building the runtime.");
+
         result.OutputPath = (options.ParentDirectory / specification.Name).lexically_normal();
         if (FS::Exists(result.OutputPath))
         {
@@ -307,22 +308,14 @@ namespace Eppo
             options.ProgressCallback(std::clamp(value, 0.0f, 1.0f), phase);
     }
 
-    auto ProjectExporter::GetSourceDirectory(const ProjectExportOptions& options) const -> std::filesystem::path
-    {
-        if (!options.SourceDirectory.empty())
-            return options.SourceDirectory;
-        return FS::GetRootDirectory().parent_path().parent_path().parent_path();
-    }
-
     auto ProjectExporter::GetExportConfigurations(const ProjectExportOptions& options) const -> std::vector<ExportConfiguration>
     {
-        const auto sourceDirectory = GetSourceDirectory(options);
         std::vector<ExportConfiguration> configurations;
 
         if (options.ExportDebug)
         {
             const auto runtimeDirectory =
-                options.DebugRuntimeDirectory.empty() ? sourceDirectory / "build" / "debug" / "EppoRuntime" : options.DebugRuntimeDirectory;
+                options.DebugRuntimeDirectory.empty() ? options.SourceDirectory / "build" / "debug" / "EppoRuntime" : options.DebugRuntimeDirectory;
             configurations.emplace_back(
                 ExportConfiguration{
                     .Name = "Debug",
@@ -342,8 +335,9 @@ namespace Eppo
 
         if (options.ExportRelease)
         {
-            const auto runtimeDirectory = options.ReleaseRuntimeDirectory.empty() ? sourceDirectory / "build" / "dist" / "EppoRuntime"
-                                                                                  : options.ReleaseRuntimeDirectory;
+            const auto runtimeDirectory = options.ReleaseRuntimeDirectory.empty()
+                ? options.SourceDirectory / "build" / "dist" / "EppoRuntime"
+                : options.ReleaseRuntimeDirectory;
             configurations.emplace_back(
                 ExportConfiguration{
                     .Name = "Release",

@@ -63,7 +63,7 @@ namespace Eppo
 			Application::Get().GetWindow()->SetIcon(logoPath);
 
 		const auto& args = Application::Get().GetParams().Args;
-		const auto defaultProject = FS::GetRootDirectory() / "Projects" / "Test" / "Test.epproj";
+		const auto defaultProject = Project::GetProjectsDirectory() / "Test" / "Test.epproj";
 		const auto startupProject = args.Argc > 1 ? std::filesystem::path(args[1]) : defaultProject;
 
 		// Startup must establish a scene synchronously (the SceneRenderer below needs one),
@@ -541,7 +541,7 @@ namespace Eppo
 	    EP_PROFILE_FN("EditorLayer::NewProject");
 
 		// Create project directory
-		const auto projectPath = FS::GetRootDirectory() / "Projects" / name;
+		const auto projectPath = Project::GetProjectsDirectory() / name;
 		FS::CreateDir(projectPath);
 
 	    // Create asset directories
@@ -550,7 +550,7 @@ namespace Eppo
 	    FS::CreateDir(projectPath / "Assets" / "Scripts");
 
 		// Copy new project template
-		FS::Copy("Resources/Templates/NewProject", projectPath);
+		FS::Copy(FS::GetResourcesDirectory() / "Templates" / "NewProject", projectPath);
 
 		// Replace tokens
 		constexpr auto ReplaceToken = [](std::string& input, const char* token, const std::string& value) -> void
@@ -612,7 +612,7 @@ namespace Eppo
 			// storage. Init runs even when the user's scripts fail to build, or scene
 			// load would drop every serialized field value and the next save would
 			// write them back out empty.
-			const auto runtimeConfigPath = FS::GetRootDirectory() / "runtimeconfig.json";
+			const auto runtimeConfigPath = FS::GetExecutableDirectory() / "runtimeconfig.json";
 			if (!ScriptEngine::Init(runtimeConfigPath))
 				Log::Error("Failed to initialize the script runtime for project '{}'.", projSpec.Name);
 			else
@@ -660,7 +660,7 @@ namespace Eppo
 			{
 				ProjectExportOptions options{
 					.ParentDirectory = parentDirectory,
-					.SourceDirectory = FS::GetRootDirectory().parent_path().parent_path().parent_path(),
+					.SourceDirectory = std::filesystem::current_path().parent_path(),
 					.ExportDebug = m_ExportDebug,
 					.ExportRelease = m_ExportRelease,
 				};
@@ -951,7 +951,7 @@ namespace Eppo
 			ImGui::Text("Project Name");
 			ImGui::InputText("##ProjectName", &projectName);
 
-			const auto projectPath = FS::GetRootDirectory() / "Projects" / projectName;
+			const auto projectPath = Project::GetProjectsDirectory() / projectName;
 			const bool projectExists = !projectName.empty() && FS::Exists(projectPath);
 
 			if (projectExists)

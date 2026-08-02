@@ -112,7 +112,7 @@ The content browser displays both registered and unregistered filesystem entries
 
 ## Resources and sample project
 
-`EppoEditor/Resources/` (shaders, fonts, icons, meshes, project templates) is synced incrementally to the executable output directory via a `_ResourcesSync` stamp file; resolve it at runtime through `FS::GetResourcesDirectory()`. Panels use the engine's `ImGui/ScopedBegin.h` and `ImExt.h` helpers; toolbar hit-testing goes through `Utils::IsInsideRoundedRect` so clicks in rounded-corner gaps are ignored. A sample project lives at `EppoEditor/Projects/Test/Test.epproj`.
+`EppoEditor/Resources/` owns shaders, fonts, icons, layouts, and project templates. The editor and graphical tests run with `EppoEditor/` as their working directory and read these files in place through `FS::GetResourcesDirectory()`; builds never stage a copy. Panels use the engine's `ImGui/ScopedBegin.h` and `ImExt.h` helpers; toolbar hit-testing goes through `Utils::IsInsideRoundedRect` so clicks in rounded-corner gaps are ignored. A sample project lives at `EppoEditor/Projects/Test/Test.epproj` and is likewise opened directly from the source tree.
 
 ## Testing boundaries
 

@@ -27,7 +27,7 @@ namespace Eppo
         // Read here rather than in RunRuntime so it lands after RunApplication has started logging, and
         // before the application exists: its shaders are needed during startup. The layer takes the rest.
         GameData gameData;
-        if (!gameData.Deserialize(FS::GetRootDirectory() / GameData::Filename))
+        if (!gameData.Deserialize(FS::GetExecutableDirectory() / GameData::Filename))
             throw std::runtime_error("Game.eppak is missing, corrupt, or incompatible.");
 
         // Without these the engine would compile its shaders from a Resources directory the game does not ship.

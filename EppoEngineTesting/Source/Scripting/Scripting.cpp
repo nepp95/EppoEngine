@@ -37,11 +37,11 @@ SUITE(Scripting)
             {
                 try
                 {
-                    if (!ScriptEngine::Init(FS::GetRootDirectory() / "runtimeconfig.json"))
+                    if (!ScriptEngine::Init(FS::GetExecutableDirectory() / "runtimeconfig.json"))
                         return false;
                     if (!ScriptEngine::Get().IsRuntimeLoaded())
                         return false;
-                    if (!ScriptEngine::Get().LoadUserAssembly(FS::GetRootDirectory() / "EppoTesting.Scripts.dll"))
+                    if (!ScriptEngine::Get().LoadUserAssembly(FS::GetExecutableDirectory() / "EppoTesting.Scripts.dll"))
                         return false;
                     return ScriptEngine::Get().IsValidScriptClass(kUserClass);
                 }
@@ -672,7 +672,7 @@ namespace EppoTesting
         // The suite shares one runtime, so hand the harness assembly back before
         // asserting — a failure here must not take every later test with it.
         Project::SetActive(nullptr);
-        ScriptEngine::Get().LoadUserAssembly(FS::GetRootDirectory() / "EppoTesting.Scripts.dll");
+        ScriptEngine::Get().LoadUserAssembly(FS::GetExecutableDirectory() / "EppoTesting.Scripts.dll");
 
         CHECK_EQUAL(true, reloaded);
         CHECK_EQUAL(true, discovered);

@@ -14,7 +14,7 @@ Read [references/architecture.md](references/architecture.md) before changing re
 3. For shader changes, update source, reflected resource expectations, C++ set/binding declarations, pipeline layouts, pass inputs, and tests together.
 4. For resources, define lifetime and resize behavior. Preserve bindless handle move-only ownership and avoid retaining stale framebuffer or descriptor handles.
 5. Add the smallest renderer regression. Use non-graphical construction tests only where no live device is required; otherwise use the `Renderer` graphical suite, whose `SceneRendering` tests drive end-to-end `Scene -> SceneRenderer` behavior through `TestContext`/`ScenarioLayer`.
-6. Build before running graphical tests. Run from the executable output directory or through CTest so shaders and resources resolve correctly.
+6. Build before running graphical tests. Run from `EppoEditor/` or through CTest so shaders resolve directly from the source resources.
 
 ## Guardrails
 

@@ -7,6 +7,21 @@ using namespace Eppo;
 
 SUITE(Core)
 {
+    TEST(Filesystem_ResourcesDirectoryFollowsWorkingDirectory)
+    {
+        const auto executableDirectory = FS::GetExecutableDirectory();
+        const auto originalWorkingDirectory = std::filesystem::current_path();
+        const Testing::TempDir directory;
+
+        std::filesystem::current_path(directory.Path());
+        const auto resourcesDirectory = FS::GetResourcesDirectory();
+        const auto executableDirectoryAfterChange = FS::GetExecutableDirectory();
+        std::filesystem::current_path(originalWorkingDirectory);
+
+        CHECK_EQUAL((directory.Path() / "Resources").string(), resourcesDirectory.string());
+        CHECK_EQUAL(executableDirectory.string(), executableDirectoryAfterChange.string());
+    }
+
     TEST(Filesystem_ConfiguredWritableDirectoryOwnsLogsAndShaderCache)
     {
         const Testing::TempDir directory;

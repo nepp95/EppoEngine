@@ -109,7 +109,7 @@ cmake --build --preset windows-debug --target EppoEngineTesting
 ctest --test-dir build/debug -R "Scripting|ScriptMarshalling" --output-on-failure
 ```
 
-`CopyBuildScripts` places `EppoScriptCore.dll`, PDB/deps files, and `runtimeconfig.json` beside the executable. `EppoTestingHarness` builds and deploys `EppoTesting.Scripts.dll`. Run via CTest or from the executable output directory; running from the repository root breaks relative runtime discovery.
+`CopyBuildScripts` places `EppoScriptCore.dll`, PDB/deps files, and `runtimeconfig.json` beside the executable. `EppoTestingHarness` builds and deploys `EppoTesting.Scripts.dll`. Those managed files are resolved through `FS::GetExecutableDirectory()`, independent of cwd. Run tests through CTest so their editor resources resolve from the configured `EppoEditor/` working directory.
 
 Use `Scripting` for discovery, invocation, lifecycle, field values, internal calls, managed exceptions, and C# API behavior. Use `ScriptMarshalling` for enum widths and buffer layout. Also run `Scene` for serialization/copy changes and `Physics` for managed physics changes.
 

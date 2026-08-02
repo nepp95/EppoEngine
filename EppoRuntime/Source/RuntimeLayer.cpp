@@ -6,7 +6,7 @@ namespace Eppo
 {
     auto RuntimeLayer::OnAttach() -> void
     {
-        const auto rootDirectory = FS::GetRootDirectory();
+        const auto rootDirectory = FS::GetExecutableDirectory();
         const AssetHandle startScene = m_GameData.StartScene;
         const std::string projectName = m_GameData.ProjectName;
 

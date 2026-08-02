@@ -16,8 +16,11 @@
 
 ## Editor
 
-`EppoEditor` loads the bundled test project by default. Pass a project file path to open a different project:
+Run the editor with `EppoEditor/` as its working directory so it reads `Resources/` and `Projects/` directly from the source tree:
 
 ```bash
-EppoEditor "path/to/MyProject.epproj"
+cd EppoEditor
+../build/debug/EppoEditor/EppoEditor "path/to/MyProject.epproj"
 ```
+
+Without an explicit project path, the editor opens `Projects/Test/Test.epproj`.
