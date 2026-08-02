@@ -9,21 +9,28 @@
 
 namespace Eppo
 {
-    Image::Image(const ImageSpecification& spec, const nvrhi::CommandListHandle& cmdList)
+    Image::Image(const ImageSpecification& spec)
         : m_Specification(spec), m_Width(spec.Width), m_Height(spec.Height)
     {
         EP_PROFILE_FN("Image::Image")
+        EP_ASSERT(spec.ArraySize > 0);
 
         const auto& dm = DeviceManager::Get();
         const auto device = dm->GetDevice();
 
+        auto dimension = nvrhi::TextureDimension::Texture2D;
+        if (spec.IsCubemap)
+            dimension = nvrhi::TextureDimension::TextureCube;
+        if (!spec.IsCubemap && spec.ArraySize > 1)
+            dimension = nvrhi::TextureDimension::Texture2DArray;
+
         const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
-            .arraySize = spec.IsCubemap ? 6u : 1u,
+            .arraySize = spec.IsCubemap ? 6u : spec.ArraySize,
             .mipLevels = spec.MipLevels,
             .format = spec.ImageFormat,
-            .dimension = spec.IsCubemap ? nvrhi::TextureDimension::TextureCube : nvrhi::TextureDimension::Texture2D,
+            .dimension = dimension,
             .debugName = spec.DebugName,
             .isRenderTarget = spec.IsRenderTarget,
             .initialState = spec.InitialState,
@@ -66,8 +73,8 @@ namespace Eppo
         : m_Specification(spec), m_Width(spec.Width), m_Height(spec.Height)
     {
         EP_PROFILE_FN("Image::Image")
-
         EP_ASSERT(!spec.IsCubemap);
+        EP_ASSERT(spec.ArraySize == 1);
 
         const auto device = DeviceManager::Get()->GetDevice();
         const auto cmd = cmdList ? cmdList : device->createCommandList();
@@ -182,7 +189,8 @@ namespace Eppo
         if (it == m_BindlessHandles.end())
         {
             const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
-            it = m_BindlessHandles.emplace(resolved, CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this(), resolved))).first;
+            it = m_BindlessHandles.emplace(resolved, CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this(), resolved)))
+                     .first;
         }
 
         return it->second->Index;

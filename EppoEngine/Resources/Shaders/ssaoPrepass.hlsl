@@ -24,6 +24,8 @@ struct Camera
     float4x4 ViewProjection;
     float4x4 InverseViewProjection;
     float4 Position;
+    float NearClip;
+    float FarClip;
 };
 ConstantBuffer<Camera> uCamera : register(b1, space0);
 

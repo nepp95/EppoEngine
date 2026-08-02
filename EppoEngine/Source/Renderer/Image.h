@@ -17,6 +17,7 @@ namespace Eppo
         uint32_t Width = 0;
         uint32_t Height = 0;
         uint32_t MipLevels = 1;
+        uint32_t ArraySize = 1;
 
         bool IsCubemap = false;
         bool IsRenderTarget = false;
@@ -29,7 +30,7 @@ namespace Eppo
     class Image : public Asset, public std::enable_shared_from_this<Image>
     {
     public:
-        explicit Image(const ImageSpecification& spec, const nvrhi::CommandListHandle& cmdList = nullptr);
+        explicit Image(const ImageSpecification& spec);
         explicit Image(const ImageSpecification& spec, void* ExistingImage);
         explicit Image(const ImageSpecification& spec, const ImageSource& source, const nvrhi::CommandListHandle& cmdList = nullptr);
         ~Image() override = default;

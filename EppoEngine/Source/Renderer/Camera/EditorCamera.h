@@ -21,6 +21,8 @@ namespace Eppo
         [[nodiscard]] auto GetPosition() const -> const glm::vec3& { return m_Position; }
         [[nodiscard]] auto GetPitch() const -> float { return m_Pitch; }
         [[nodiscard]] auto GetYaw() const -> float { return m_Yaw; }
+        [[nodiscard]] auto GetNearClip() const -> float { return m_NearClip; }
+        [[nodiscard]] auto GetFarClip() const -> float { return m_FarClip; }
 
         [[nodiscard]] auto GetViewMatrix() const -> const glm::mat4& { return m_View; }
         [[nodiscard]] auto GetViewProjection() const -> glm::mat4 { return m_Projection * m_View; }
@@ -39,6 +41,8 @@ namespace Eppo
 
         float m_Pitch = 0.0f;
         float m_Yaw = 0.0f;
+        float m_NearClip = 0.1f;
+        float m_FarClip = 100.0f;
 
         float m_Zoom = 45.0f;
         float m_MovementSpeed = 3.0f;

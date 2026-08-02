@@ -15,9 +15,15 @@ namespace Eppo
 {
     namespace
     {
-        constexpr uint32_t s_ShadowDepthMapSize = 2048;
+        constexpr uint32_t s_ShadowMapSize = 2048;
+        constexpr float s_ShadowCascadeSplitLambda = 0.85f;
+        constexpr float s_ShadowDepthPaddingScale = 0.25f;
+        constexpr float s_ShadowDistance = 100.0f;
         constexpr float s_ShadowBias = 0.0015f;
-        constexpr float s_ShadowMinRadius = 1.0f;
+        constexpr float s_ShadowNormalBias = 0.002f;
+
+        constexpr uint32_t s_MaxBloomMipLevels = 6;
+
         constexpr uint32_t s_IblEnvironmentSize = 512;
         constexpr uint32_t s_IblIrradianceSize = 32;
         constexpr uint32_t s_IblPrefilterSize = 128;
@@ -43,21 +49,6 @@ namespace Eppo
             return glm::inverse(proj * view);
         }
 
-        auto ExpandTransformedBounds(const AABB& source, AABB& destination, const glm::mat4& transform) -> void
-        {
-            if (!source.IsValid())
-                return;
-
-            const std::array corners{
-                glm::vec3(source.Min.x, source.Min.y, source.Min.z), glm::vec3(source.Max.x, source.Min.y, source.Min.z),
-                glm::vec3(source.Min.x, source.Max.y, source.Min.z), glm::vec3(source.Max.x, source.Max.y, source.Min.z),
-                glm::vec3(source.Min.x, source.Min.y, source.Max.z), glm::vec3(source.Max.x, source.Min.y, source.Max.z),
-                glm::vec3(source.Min.x, source.Max.y, source.Max.z), glm::vec3(source.Max.x, source.Max.y, source.Max.z),
-            };
-
-            for (const auto& corner : corners)
-                destination.Expand(glm::vec3(transform * glm::vec4(corner, 1.0f)));
-        }
     }
 
     SceneRenderer::SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification)
@@ -121,14 +112,26 @@ namespace Eppo
         // Create render passes
         // Shadow Depth
         {
+            const auto shadowMap = CreateRef<Image>(ImageSpecification{
+                .ImageFormat = nvrhi::Format::D32,
+                .Width = s_ShadowMapSize,
+                .Height = s_ShadowMapSize,
+                .ArraySize = s_ShadowCascadeCount,
+                .IsRenderTarget = true,
+                .DebugName = "Image Shadow Cascades",
+            });
+
             const FramebufferSpecification framebufferSpec{
-                .Width = s_ShadowDepthMapSize,
-                .Height = s_ShadowDepthMapSize,
-                .Attachments = { nvrhi::Format::D32 },
-                .DebugName = "Framebuffer Shadow Depth",
+                .Width = s_ShadowMapSize,
+                .Height = s_ShadowMapSize,
+                .Attachments = { FramebufferTextureSpecification(shadowMap) },
+                .DebugName = "Framebuffer Shadow Cascades",
             };
 
             const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
+            // The pass renders every cascade in one layered draw, so it targets all array slices.
+            const nvrhi::TextureSubresourceSet cascadeSubresources(0, 1, 0, s_ShadowCascadeCount);
 
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("shadowDepth"),
@@ -139,8 +142,9 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Shadow Depth",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer(cascadeSubresources)->getFramebufferInfo()),
                 .Framebuffer = framebuffer,
+                .Subresources = cascadeSubresources,
                 .ClearDepthOnLoad = true,
                 .DepthClearValue = 1.0f,
             };
@@ -646,6 +650,8 @@ namespace Eppo
         m_CameraData.Projection = camera.GetProjectionMatrix();
         m_CameraData.ViewProjection = camera.GetViewProjection();
         m_CameraData.Position = glm::vec4(camera.GetPosition(), 0.0f);
+        m_CameraData.NearClip = camera.GetNearClip();
+        m_CameraData.FarClip = camera.GetFarClip();
 
         BeginSceneInternal();
     }
@@ -658,6 +664,8 @@ namespace Eppo
         m_CameraData.Projection = camera.GetProjectionMatrix();
         m_CameraData.ViewProjection = m_CameraData.Projection * m_CameraData.View;
         m_CameraData.Position = glm::vec4(glm::vec3(transform[3]), 0.0f);
+        m_CameraData.NearClip = camera.GetPerspectiveNearClip();
+        m_CameraData.FarClip = camera.GetPerspectiveFarClip();
 
         BeginSceneInternal();
     }
@@ -1119,61 +1127,109 @@ namespace Eppo
         EP_PROFILE_FN("SceneRenderer::FillShadowData")
 
         m_ShadowDepthData = {
-            .LightViewProjection = glm::mat4(1.0f),
-            .Params = glm::vec4(s_ShadowBias, 1.0f / static_cast<float>(s_ShadowDepthMapSize), 0.0f, 0.0f),
+            .DepthBias = s_ShadowBias,
+            .NormalBias = s_ShadowNormalBias,
+            .InvMapSize = 1.0f / s_ShadowMapSize,
+            .ShadowDistance = s_ShadowDistance,
         };
 
-        if (m_LightData.HasDirectionalLight == 0 || m_DrawCommands.empty())
+        if (!m_LightData.HasDirectionalLight || m_DrawCommands.empty())
             return;
 
-        AABB sceneBounds;
-        for (const auto& drawCmd : m_DrawCommands | std::views::values)
-        {
-            if (!drawCmd.Mesh)
-                continue;
-
-            for (const auto& transform : drawCmd.Transforms)
-                ExpandTransformedBounds(drawCmd.Mesh->GetBounds(), sceneBounds, transform);
-        }
-
-        if (!sceneBounds.IsValid())
-        {
-            Log::Warn("Scene bounds were invalid while trying to fill shadow data!");
-            return;
-        }
-
-        auto lightDirection = glm::vec3(m_LightData.DirectionalLight.Direction);
-        const float directionLengthSq = glm::dot(lightDirection, lightDirection);
+        auto lightDir = glm::vec3(m_LightData.DirectionalLight.Direction);
+        const float directionLengthSq = glm::dot(lightDir, lightDir);
         if (directionLengthSq <= glm::epsilon<float>())
             return;
-        lightDirection /= glm::sqrt(directionLengthSq);
+        lightDir /= glm::sqrt(directionLengthSq);
 
-        const glm::vec3 center = sceneBounds.GetCenter();
-        const float radius = glm::max(glm::length(sceneBounds.GetHalfExtent()) * 1.05f, s_ShadowMinRadius);
-        const float depthPadding = glm::max(radius * 0.1f, 0.1f);
+        const float nearClip = glm::max(m_CameraData.NearClip, 0.001f);
+        const float farClip = glm::min(m_CameraData.FarClip, glm::max(s_ShadowDistance, nearClip));
+        if (farClip <= nearClip)
+            return;
+
+        // View space depth distances
+        std::array<float, s_ShadowCascadeCount> splits{};
+        for (uint32_t i = 0; i < s_ShadowCascadeCount; i++)
+        {
+            const float fraction = static_cast<float>(i + 1) / static_cast<float>(s_ShadowCascadeCount);
+            const float logarithmic = nearClip * glm::pow(farClip / nearClip, fraction);
+            const float uniform = nearClip + (farClip - nearClip) * fraction;
+            splits[i] = glm::mix(uniform, logarithmic, s_ShadowCascadeSplitLambda);
+            m_ShadowDepthData.Cascades[i].SplitDistance = splits[i];
+        }
+
+        // Full-frustum world corners from the inverse view projection. The first four are the near
+        // plane (NDC z = 0), the last four the far plane (NDC z = 1); Eppo uses zero-to-one depth.
+        std::array<glm::vec3, 8> frustumCorners{};
+        uint32_t cornerIndex = 0;
+        for (uint32_t z = 0; z < 2; z++)
+            for (uint32_t y = 0; y < 2; y++)
+                for (uint32_t x = 0; x < 2; x++)
+                {
+                    const glm::vec4 ndc(static_cast<float>(x) * 2.0f - 1.0f, static_cast<float>(y) * 2.0f - 1.0f,
+                        static_cast<float>(z), 1.0f);
+                    const glm::vec4 world = m_CameraData.InverseViewProjection * ndc;
+                    frustumCorners[cornerIndex++] = glm::vec3(world) / world.w;
+                }
 
         constexpr glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
-        const glm::vec3 lightUp = glm::abs(glm::dot(lightDirection, worldUp)) > 0.99f ? glm::vec3(1.0f, 0.0f, 0.0f) : worldUp;
-        const glm::vec3 lightPosition = center - lightDirection * (radius + depthPadding);
-        const glm::mat4 lightView = glm::lookAt(lightPosition, center, lightUp);
-        const glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, depthPadding, radius * 2.0f + depthPadding);
+        const glm::vec3 lightUp = glm::abs(glm::dot(lightDir, worldUp)) > 0.99f ? glm::vec3(1.0f, 0.0f, 0.0f) : worldUp;
+
+        float cascadeNear = nearClip;
+        for (uint32_t cascade = 0; cascade < s_ShadowCascadeCount; cascade++)
+        {
+            const float cascadeFar = splits[cascade];
+            const float nearRatio = glm::clamp((cascadeNear - nearClip) / (farClip - nearClip), 0.0f, 1.0f);
+            const float farRatio = glm::clamp((cascadeFar - nearClip) / (farClip - nearClip), 0.0f, 1.0f);
+
+            // Slice this cascade's eight corners along each near->far frustum edge.
+            std::array<glm::vec3, 8> corners{};
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                const glm::vec3 edge = frustumCorners[i + 4] - frustumCorners[i];
+                corners[i] = frustumCorners[i] + edge * nearRatio;
+                corners[i + 4] = frustumCorners[i] + edge * farRatio;
+            }
+
+            glm::vec3 center(0.0f);
+            for (const glm::vec3& corner : corners)
+                center += corner;
+            center /= static_cast<float>(corners.size());
+
+            // Bounding-sphere radius, rounded up so small frustum changes don't resize the map.
+            float radius = 0.0f;
+            for (const glm::vec3& corner : corners)
+                radius = glm::max(radius, glm::length(corner - center));
+            radius = glm::ceil(radius * 16.0f) / 16.0f;
+
+            // Snap the center to shadow texels so sub-texel camera motion doesn't shimmer. The snap
+            // view shares its rotation with lightView below, so snapping here aligns the final grid.
+            const float worldUnitsPerTexel = (2.0f * radius) / static_cast<float>(s_ShadowMapSize);
+            const glm::mat4 snapView = glm::lookAt(-lightDir, glm::vec3(0.0f), lightUp);
+            glm::vec4 snappedCenter = snapView * glm::vec4(center, 1.0f);
+            snappedCenter.x = glm::floor(snappedCenter.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+            snappedCenter.y = glm::floor(snappedCenter.y / worldUnitsPerTexel) * worldUnitsPerTexel;
+            center = glm::vec3(glm::inverse(snapView) * snappedCenter);
+
+            // Same convention as the single-map path: light behind the sphere, square extent, positive ortho depth.
+            const float depthPadding = glm::max(radius * s_ShadowDepthPaddingScale, 0.1f);
+            const glm::vec3 lightPosition = center - lightDir * (radius + depthPadding);
+            const glm::mat4 lightView = glm::lookAt(lightPosition, center, lightUp);
+            const glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, depthPadding, radius * 2.0f + depthPadding);
+            m_ShadowDepthData.Cascades[cascade].LightViewProjection = lightProjection * lightView;
+
+            cascadeNear = cascadeFar;
+        }
 
         const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
-        m_ShadowDepthData.LightViewProjection = lightProjection * lightView;
-        m_ShadowDepthData.Indices = glm::uvec4(shadowMap->GetBindlessIndex(), m_ClampAllFiltersFalseSampler->GetBindlessIndex(), 1u, 0u);
+        m_ShadowDepthData.ShadowMapIndex = shadowMap->GetBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, s_ShadowCascadeCount));
+        m_ShadowDepthData.ShadowSamplerIndex = m_ClampAllFiltersFalseSampler->GetBindlessIndex();
     }
 
     auto SceneRenderer::ShadowDepthPass() -> void
     {
         EP_PROFILE_FN("SceneRenderer::ShadowDepthPass")
         EP_GPU_ZONE(m_RenderCommandBuffer, "ShadowDepthPass")
-
-        if (m_ShadowDepthData.Indices.z == 0)
-        {
-            m_RenderCommandBuffer->BeginTimerQuery(m_ShadowDepthPass->GetName());
-            m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
-            return;
-        }
 
         struct PC
         {
@@ -1195,6 +1251,10 @@ namespace Eppo
             const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
             if (instanceCount == 0)
                 continue;
+
+            // Each object instance is drawn once per cascade; the vertex shader derives the cascade
+            // and object index from SV_InstanceID and writes SV_RenderTargetArrayIndex.
+            const uint32_t layeredInstanceCount = instanceCount * s_ShadowCascadeCount;
 
             for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
             {
@@ -1220,7 +1280,7 @@ namespace Eppo
 
                     nvrhi::DrawArguments drawArgs{
                         .vertexCount = static_cast<uint32_t>(indexCount),
-                        .instanceCount = instanceCount,
+                        .instanceCount = layeredInstanceCount,
                         .startIndexLocation = firstIndex,
                         .startVertexLocation = firstVertex,
                     };
@@ -1228,12 +1288,12 @@ namespace Eppo
                     cmdList->drawIndexed(drawArgs);
 
                     statistics.DrawCalls++;
-                    statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
-                    statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                    statistics.Vertices += static_cast<uint32_t>(vertexCount) * layeredInstanceCount;
+                    statistics.Indices += static_cast<uint32_t>(indexCount) * layeredInstanceCount;
                 }
                 statistics.Submeshes++;
             }
-            statistics.Instances += instanceCount;
+            statistics.Instances += layeredInstanceCount;
             statistics.Meshes++;
         }
 
