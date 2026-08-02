@@ -58,8 +58,11 @@ namespace Eppo
 
     auto PrepareRuntimeStorage() -> bool
     {
+        const auto executableDirectory = FS::GetExecutableDirectory();
+        std::filesystem::current_path(executableDirectory);
+
         // Logs and the shader cache stay beside the game so its writes are visible in one place.
-        if (!FS::ConfigureWritableDirectory(FS::GetExecutableDirectory()))
+        if (!FS::ConfigureWritableDirectory(executableDirectory))
         {
             ErrorDialog::Show("Eppo Runtime Error", "Failed to create the runtime writable directory.");
             return false;
