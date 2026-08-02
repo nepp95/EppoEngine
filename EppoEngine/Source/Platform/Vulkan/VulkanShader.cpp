@@ -19,18 +19,37 @@ namespace Eppo
 {
     namespace
     {
-        auto NvrhiShaderTypeToSuffix(const nvrhi::ShaderType type) -> std::string
+        struct ShaderStage
         {
-            switch (type)
-            {
-                case nvrhi::ShaderType::Vertex:
-                    return "vert";
-                case nvrhi::ShaderType::Pixel:
-                    return "frag";
-            }
+            nvrhi::ShaderType Type;
+            const wchar_t* TargetProfile;
+            const char* CacheSuffix;
+        };
 
-            EP_ASSERT(false);
-            return "Unknown";
+        constexpr std::array s_ShaderStages{
+            ShaderStage{ .Type = nvrhi::ShaderType::Vertex, .TargetProfile = L"vs_6_6", .CacheSuffix = "vert" },
+            ShaderStage{ .Type = nvrhi::ShaderType::Pixel,  .TargetProfile = L"ps_6_6", .CacheSuffix = "frag" },
+        };
+
+        auto FindStage(const nvrhi::ShaderType type) -> const ShaderStage&
+        {
+            const auto it = std::ranges::find(s_ShaderStages, type, &ShaderStage::Type);
+            EP_ASSERT(it != s_ShaderStages.end());
+            return *it;
+        }
+
+        auto ShaderStageSuffix(const nvrhi::ShaderType type) -> std::string
+        {
+            return FindStage(type).CacheSuffix;
+        }
+
+        auto DetectStages(const std::string& source) -> std::vector<nvrhi::ShaderType>
+        {
+            std::vector<nvrhi::ShaderType> stages;
+            for (const auto& stage : s_ShaderStages)
+                if (source.find(Utils::ShaderEntryPoint(stage.Type)) != std::string::npos)
+                    stages.push_back(stage.Type);
+            return stages;
         }
 
         // Resolves #includes strictly from a packed game. A deployed runtime has no shader files on disk,
@@ -213,52 +232,48 @@ namespace Eppo
 
     auto VulkanShader::CompileOrGetCache() -> bool
     {
-        // Packed sources are all a packed shader may read, along with its packed includes; it must not reach
+        // A packed source is all a packed shader may read, along with its packed includes; it must not reach
         // the filesystem for either. (The SPIR-V cache below is still on disk, but it is this shader's own
-        // output, keyed by a hash of the packed text.)
-        if (!m_Specification.Sources.empty())
+        // output, keyed by a hash of the source.)
+        if (!m_Specification.Source.empty())
         {
-            m_ShaderSources = m_Specification.Sources;
+            m_ShaderSource = m_Specification.Source;
         }
         else
         {
-            const std::filesystem::path vertPath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.vert", m_Specification.Name);
-            const std::filesystem::path pixelPath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.frag", m_Specification.Name);
-            m_ShaderSources[nvrhi::ShaderType::Vertex] = FS::ReadText(vertPath);
-            m_ShaderSources[nvrhi::ShaderType::Pixel] = FS::ReadText(pixelPath);
+            const std::filesystem::path sourcePath = FS::GetResourcesDirectory() / "Shaders" / std::format("{}.hlsl", m_Specification.Name);
+            m_ShaderSource = FS::ReadText(sourcePath);
             m_Specification.Includes = ReadIncludesFromDisk();
         }
 
-        bool verified = true;
-        for (const auto& [type, source] : m_ShaderSources)
+        const std::vector<nvrhi::ShaderType> stages = DetectStages(m_ShaderSource);
+        if (stages.empty())
+        {
+            Log::Error("Shader '{}' defines no known stage entry points.", m_Specification.Name);
+            return false;
+        }
+
+        // One source compiles to several stage binaries, so a single hash of that source keys them all.
+        const std::string hash = HashSource(m_ShaderSource, m_Specification.Includes);
+        const std::filesystem::path shaderHashPath = FS::GetShaderCacheDirectory() / std::format("{}.hash", m_Specification.Name);
+
+        bool verified = FS::Exists(shaderHashPath) && FS::ReadText(shaderHashPath) == hash;
+        for (const auto type : stages)
         {
             const std::filesystem::path shaderBinaryPath =
-                FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
-            const std::filesystem::path shaderHashPath =
-                FS::GetShaderCacheDirectory() / std::format("{}.{}.hash", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
-
-            if (FS::Exists(shaderBinaryPath) && FS::Exists(shaderHashPath))
-            {
-                std::string hash = HashSource(source, m_Specification.Includes);
-                std::string cacheHash = FS::ReadText(shaderHashPath);
-
-                if (hash != cacheHash)
-                    verified = false;
-            }
-            else
-            {
+                FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, ShaderStageSuffix(type));
+            if (!FS::Exists(shaderBinaryPath))
                 verified = false;
-            }
         }
 
         if (verified)
         {
             Log::Info("Loading shader cache for '{}'", m_Specification.Name);
 
-            for (const auto& type : m_ShaderSources | std::views::keys)
+            for (const auto type : stages)
             {
                 const std::filesystem::path shaderBinaryPath =
-                    FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
+                    FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, ShaderStageSuffix(type));
                 m_ShaderBytes[type] = FS::ReadBytes(shaderBinaryPath);
             }
 
@@ -267,18 +282,13 @@ namespace Eppo
 
         Log::Info("Compiling shader '{}'", m_Specification.Name);
 
-        for (const auto& type : m_ShaderSources | std::views::keys)
+        for (const auto type : stages)
         {
-            // Compile shader
             if (!Compile(type))
                 return false;
-
-            // Write shader hash
-            const std::filesystem::path shaderHashPath =
-                FS::GetShaderCacheDirectory() / std::format("{}.{}.hash", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
-            const std::string hash = HashSource(m_ShaderSources.at(type), m_Specification.Includes);
-            FS::WriteText(shaderHashPath, hash, true);
         }
+
+        FS::WriteText(shaderHashPath, hash, true);
 
         return true;
     }
@@ -297,7 +307,7 @@ namespace Eppo
 
         // Create include handler. A packed shader gets the pack-backed one and never the default:
         // the default reads from disk, which a deployed game has none of.
-        const bool packed = !m_Specification.Sources.empty();
+        const bool packed = !m_Specification.Source.empty();
         PackedIncludeHandler packedIncludeHandler(utils, m_Specification.Includes);
         CComPtr<IDxcIncludeHandler> diskIncludeHandler;
         if (!packed)
@@ -306,21 +316,21 @@ namespace Eppo
 
         // Command line args for compiler. A packed shader is named relative to the virtual Resources/Shaders
         // root, so DXC hands its #include paths to the handler the way the pack keys them.
-        const auto shaderFilename = std::format("{}.{}", m_Specification.Name, NvrhiShaderTypeToSuffix(type));
+        const auto shaderFilename = std::format("{}.hlsl", m_Specification.Name);
         const std::wstring shaderPath = packed ? std::filesystem::path(shaderFilename).wstring()
                                                : std::filesystem::path(FS::GetResourcesDirectory() / "Shaders" / shaderFilename).wstring();
         const std::wstring binaryPath =
-            std::filesystem::path(
-                FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, NvrhiShaderTypeToSuffix(type))
-            )
+            std::filesystem::path(FS::GetShaderCacheDirectory() / std::format("{}.{}.spv", m_Specification.Name, ShaderStageSuffix(type)))
                 .wstring();
 
-        const bool isVertex = type == nvrhi::ShaderType::Vertex ? true : false;
+        const std::string entryPointNarrow = Utils::ShaderEntryPoint(type);
+        const std::wstring entryPoint(entryPointNarrow.begin(), entryPointNarrow.end());
         LPCWSTR args[] = { L"-E",
-                           L"Main",
+                           entryPoint.c_str(),
                            L"-T",
-                           isVertex ? L"vs_6_6" : L"ps_6_6",
+                           FindStage(type).TargetProfile,
                            L"-spirv",
+                           L"-fspv-target-env=vulkan1.3",
                            L"-fvk-t-shift",
                            L"0",
                            L"0",
@@ -347,8 +357,8 @@ namespace Eppo
                            binaryPath.c_str() };
 
         DxcBuffer srcBuffer{
-            .Ptr = m_ShaderSources.at(type).c_str(),
-            .Size = m_ShaderSources.at(type).size(),
+            .Ptr = m_ShaderSource.c_str(),
+            .Size = m_ShaderSource.size(),
             .Encoding = DXC_CP_UTF8,
         };
 

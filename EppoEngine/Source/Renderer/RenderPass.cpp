@@ -17,8 +17,15 @@ namespace Eppo
 
     auto RenderPass::Resize(const uint32_t width, const uint32_t height) const -> void
     {
-        if (m_Specification.Pipeline)
-            m_Specification.Pipeline->Resize(width, height);
+        if (m_Specification.OwnsFramebuffer)
+            m_Specification.Framebuffer->Resize(width, height);
+    }
+
+    auto RenderPass::SetFramebuffer(const Ref<Framebuffer>& framebuffer) -> void
+    {
+        const bool compatible = m_Specification.Pipeline->IsCompatible(framebuffer);
+        EP_ASSERT(compatible);
+        m_Specification.Framebuffer = framebuffer;
     }
 
     auto RenderPass::SetInput(const uint32_t set, const uint32_t binding, const Ref<Image>& resource) -> void
@@ -41,36 +48,6 @@ namespace Eppo
         SetInputInternal(set, binding, nvrhi::ResourceType::ConstantBuffer, resource);
     }
 
-    auto RenderPass::SetInputInternal(
-        const uint32_t set, const uint32_t binding, const nvrhi::ResourceType type, const Ref<void>& resource
-    ) -> void
-    {
-        EP_ASSERT(resource != nullptr, "Cannot bind a null resource to a render pass.");
-        if (!resource)
-            return;
-
-        auto& inputs = m_Inputs[set];
-        for (auto& input : inputs)
-        {
-            if (input.Binding != binding || input.Type != type)
-                continue;
-
-            if (input.Owner.get() == resource.get())
-                return;
-
-            input.Owner = resource;
-            Invalidate();
-            return;
-        }
-
-        inputs.push_back({
-            .Binding = binding,
-            .Type = type,
-            .Owner = resource,
-        });
-        Invalidate();
-    }
-
     auto RenderPass::Invalidate() -> void
     {
         m_Invalidated = true;
@@ -78,9 +55,9 @@ namespace Eppo
 
     auto RenderPass::Bake() -> void
     {
-        if (!IsValid())
+        if (!m_Specification.Pipeline)
         {
-            Log::Warn("RenderPass::Bake failed because render pass is invalid!");
+            Log::Warn("RenderPass::Bake failed because it has no pipeline!");
             return;
         }
 
@@ -110,7 +87,9 @@ namespace Eppo
                         case nvrhi::ResourceType::Texture_SRV:
                         {
                             const auto* image = static_cast<const Image*>(input.Owner.get());
-                            desc.bindings.push_back(nvrhi::BindingSetItem::Texture_SRV(input.Binding, image->GetTexture(), image->GetFormat()));
+                            desc.bindings.push_back(
+                                nvrhi::BindingSetItem::Texture_SRV(input.Binding, image->GetTexture(), image->GetFormat())
+                            );
                             break;
                         }
                         case nvrhi::ResourceType::Sampler:
@@ -122,9 +101,7 @@ namespace Eppo
                         case nvrhi::ResourceType::StructuredBuffer_SRV:
                         {
                             const auto* storageBuffer = static_cast<const StorageBuffer*>(input.Owner.get());
-                            desc.bindings.push_back(
-                                nvrhi::BindingSetItem::StructuredBuffer_SRV(input.Binding, storageBuffer->GetBuffer())
-                            );
+                            desc.bindings.push_back(nvrhi::BindingSetItem::StructuredBuffer_SRV(input.Binding, storageBuffer->GetBuffer()));
                             break;
                         }
                         case nvrhi::ResourceType::ConstantBuffer:
@@ -184,13 +161,42 @@ namespace Eppo
         m_Invalidated = false;
     }
 
+    auto RenderPass::SetInputInternal(const uint32_t set, const uint32_t binding, const nvrhi::ResourceType type, const Ref<void>& resource)
+        -> void
+    {
+        EP_ASSERT(resource != nullptr, "Cannot bind a null resource to a render pass.");
+        if (!resource)
+            return;
+
+        auto& inputs = m_Inputs[set];
+        for (auto& input : inputs)
+        {
+            if (input.Binding != binding || input.Type != type)
+                continue;
+
+            if (input.Owner.get() == resource.get())
+                return;
+
+            input.Owner = resource;
+            Invalidate();
+            return;
+        }
+
+        inputs.push_back(
+            {
+                .Binding = binding,
+                .Type = type,
+                .Owner = resource,
+            }
+        );
+        Invalidate();
+    }
+
     auto RenderPass::IsValid() const -> bool
     {
-        if (!m_Specification.Pipeline)
-            return false;
-        if (!m_Specification.Pipeline->GetSpecification().Framebuffer)
+        if (!m_Specification.Pipeline || !m_Specification.Framebuffer)
             return false;
 
-        return true;
+        return m_Specification.Pipeline->IsCompatible(m_Specification.Framebuffer);
     }
 }

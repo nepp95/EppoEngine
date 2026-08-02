@@ -3,7 +3,7 @@ project(Engine)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "Source/*.cpp" "Vendor/*.cpp")
 add_library(EppoEngine STATIC ${SOURCES})
 
-target_compile_definitions(EppoEngine PUBLIC ${EP_PLATFORM})
+target_compile_definitions(EppoEngine PUBLIC ${EP_PLATFORM} GLM_FORCE_DEPTH_ZERO_TO_ONE)
 
 if (${EP_PLATFORM} STREQUAL "EP_PLATFORM_WINDOWS")
     target_compile_options(EppoEngine PUBLIC /utf-8)

@@ -1,5 +1,6 @@
 #include "Panels/PropertyPanel.h"
 
+#include <glm/gtc/type_ptr.hpp>
 #include <imgui_stdlib.h>
 
 namespace Eppo
@@ -79,7 +80,7 @@ namespace Eppo
 
         DrawComponent<TagComponent>(
             entity,
-            [](auto& component)
+            [](auto& component) -> auto
             {
                 ImGui::InputText("##Tag", &component.Tag);
             }
@@ -94,6 +95,7 @@ namespace Eppo
         {
             DrawAddComponentEntry<MeshComponent>("Mesh");
             DrawAddComponentEntry<CameraComponent>("Camera");
+            DrawAddComponentEntry<DirectionalLightComponent>("Directional Light");
             DrawAddComponentEntry<PointLightComponent>("Point Light");
             DrawAddComponentEntry<ScriptComponent>("Script");
             DrawAddComponentEntry<RigidBodyComponent>("Rigid Body");
@@ -107,7 +109,7 @@ namespace Eppo
 
         DrawComponent<TransformComponent>(
             entity,
-            [](auto& component)
+            [](auto& component) -> auto
             {
                 if (ImGui::BeginTable("##", 4))
                 {
@@ -191,7 +193,7 @@ namespace Eppo
 
         DrawComponent<MeshComponent>(
             entity,
-            [](auto& component)
+            [](auto& component) -> auto
             {
                 if (component.MeshHandle)
                 {
@@ -220,6 +222,8 @@ namespace Eppo
                         }
                         ImGui::EndDragDropTarget();
                     }
+
+                    ImGui::SameLine();
 
                     if (ImGui::Button("Create mesh", ImVec2(100.0f, 0.0f)))
                         ImGui::OpenPopup("CreateMesh");
@@ -258,7 +262,7 @@ namespace Eppo
 
         DrawComponent<CameraComponent>(
             entity,
-            [](auto& component)
+            [](auto& component) -> auto
             {
                 ImGui::Checkbox("Primary", &component.Primary);
 
@@ -276,11 +280,22 @@ namespace Eppo
             }
         );
 
+        DrawComponent<DirectionalLightComponent>(
+            entity,
+            [](auto& component) -> auto
+            {
+                ImGui::ColorEdit3("Color", glm::value_ptr(component.Color));
+                ImGui::DragFloat("Intensity", &component.Intensity, 0.1f, 0.0f, 0.0f);
+                if (component.Intensity < 0.0f)
+                    component.Intensity = 0.0f;
+            }
+        );
+
         DrawComponent<PointLightComponent>(
             entity,
-            [](auto& component)
+            [](auto& component) -> auto
             {
-                ImGui::ColorEdit3("Color", &component.Color.x);
+                ImGui::ColorEdit3("Color", glm::value_ptr(component.Color));
                 ImGui::DragFloat("Intensity", &component.Intensity, 0.1f, 0.0f, 0.0f);
                 if (component.Intensity < 0.0f)
                     component.Intensity = 0.0f;

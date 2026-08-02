@@ -13,8 +13,14 @@ namespace Eppo
                 Log::Error("Device extension '{}' is not supported by the device!", extension);
                 return;
             }
-            else
-                Log::Info("Enabled device extension '{}'", extension);
+
+            Log::Info("Enabled device extension '{}'", extension);
+        }
+
+        if (!physicalDevice->SupportsRequiredFeatures())
+        {
+            Log::Error("Device does not support all required Vulkan features!");
+            return;
         }
 
         // Create device queue infos
@@ -32,8 +38,6 @@ namespace Eppo
         }
 
         // Create device
-        auto& deviceFeatures = physicalDevice->GetDeviceFeatures();
-
         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT featuresMutable{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
             .mutableDescriptorType = VK_TRUE,
@@ -59,17 +63,22 @@ namespace Eppo
             .runtimeDescriptorArray = VK_TRUE,
             .timelineSemaphore = VK_TRUE,
             .bufferDeviceAddress = VK_TRUE,
+            .shaderOutputLayer = VK_TRUE,
         };
 
         VkPhysicalDeviceVulkan13Features features13{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = &features12,
+            .shaderDemoteToHelperInvocation = VK_TRUE,
             .synchronization2 = VK_TRUE,
             .dynamicRendering = VK_TRUE,
         };
 
-        deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        deviceFeatures.pNext = &features13;
+        VkPhysicalDeviceFeatures2 deviceFeatures{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &features13,
+            .features = physicalDevice->GetDeviceFeatures().features,
+        };
 
         VkDeviceCreateInfo deviceInfo{
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,

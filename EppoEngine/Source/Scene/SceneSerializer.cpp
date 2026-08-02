@@ -120,23 +120,6 @@ namespace Eppo
         : m_SceneContext(scene)
     {}
 
-    auto SceneSerializer::FindScriptFields(const UUID entityId) const -> const ScriptFieldMap*
-    {
-        return ScriptEngine::IsInitialized() ? ScriptEngine::Get().TryGetFieldMap(entityId) : nullptr;
-    }
-
-    auto SceneSerializer::GetScriptFields(const UUID entityId) const -> ScriptFieldMap*
-    {
-        return ScriptEngine::IsInitialized() ? &ScriptEngine::Get().GetFieldMap(entityId) : nullptr;
-    }
-
-    auto SceneSerializer::ConsumeRelationshipRepairNotices() -> std::vector<std::string>
-    {
-        std::vector<std::string> notices = std::move(s_RelationshipRepairNotices);
-        s_RelationshipRepairNotices.clear();
-        return notices;
-    }
-
     auto SceneSerializer::Serialize(const std::filesystem::path& path) const -> bool
     {
         EP_PROFILE_FN("SceneSerializer::Serialize");
@@ -148,19 +131,31 @@ namespace Eppo
         data["Scene"]["Name"] = sceneName;
         data["Scene"]["Handle"] = m_SceneContext->Handle;
 
-        const auto& env = m_SceneContext->GetEnvironment();
+        const auto& env = m_SceneContext->GetEnvironmentSettings();
         data["Scene"]["Environment"]["SkyboxHandle"] = env.SkyboxHandle;
         data["Scene"]["Environment"]["ZenithColor"] = env.ZenithColor;
         data["Scene"]["Environment"]["HorizonColor"] = env.HorizonColor;
         data["Scene"]["Environment"]["GroundColor"] = env.GroundColor;
         data["Scene"]["Environment"]["AmbientIntensity"] = env.AmbientIntensity;
 
+        const auto& bloom = m_SceneContext->GetBloomSettings();
+        data["Scene"]["Bloom"]["Threshold"] = bloom.Threshold;
+        data["Scene"]["Bloom"]["Knee"] = bloom.Knee;
+        data["Scene"]["Bloom"]["Intensity"] = bloom.Intensity;
+        data["Scene"]["Bloom"]["Radius"] = bloom.Radius;
+
+        const auto& ssao = m_SceneContext->GetSsaoSettings();
+        data["Scene"]["Ssao"]["Radius"] = ssao.Radius;
+        data["Scene"]["Ssao"]["Bias"] = ssao.Bias;
+        data["Scene"]["Ssao"]["Power"] = ssao.Power;
+        data["Scene"]["Ssao"]["Intensity"] = ssao.Intensity;
+
         auto entities = json::array();
 
         m_SceneContext->SortEntitiesByID();
 
         m_SceneContext->ForEachEntity(
-            [&](Entity entity)
+            [&](const Entity entity) -> void
             {
                 SerializeEntity(entities, entity);
             }
@@ -213,6 +208,13 @@ namespace Eppo
         return DeserializeScene(data);
     }
 
+    auto SceneSerializer::ConsumeRelationshipRepairNotices() -> std::vector<std::string>
+    {
+        std::vector<std::string> notices = std::move(s_RelationshipRepairNotices);
+        s_RelationshipRepairNotices.clear();
+        return notices;
+    }
+
     auto SceneSerializer::DeserializeScene(const json& data) const -> bool
     {
         const auto sceneName = data["Scene"]["Name"].get<std::string>();
@@ -222,7 +224,7 @@ namespace Eppo
         if (data["Scene"].contains("Environment"))
         {
             const auto& envJson = data["Scene"]["Environment"];
-            auto& env = m_SceneContext->GetEnvironment();
+            auto& env = m_SceneContext->GetEnvironmentSettings();
 
             if (envJson.contains("SkyboxHandle"))
                 env.SkyboxHandle = envJson["SkyboxHandle"].get<AssetHandle>();
@@ -234,6 +236,36 @@ namespace Eppo
                 env.GroundColor = envJson["GroundColor"].get<glm::vec3>();
             if (envJson.contains("AmbientIntensity"))
                 env.AmbientIntensity = envJson["AmbientIntensity"].get<float>();
+        }
+
+        if (data["Scene"].contains("Bloom"))
+        {
+            const auto& bloomJson = data["Scene"]["Bloom"];
+            auto& bloom = m_SceneContext->GetBloomSettings();
+
+            if (bloomJson.contains("Threshold"))
+                bloom.Threshold = bloomJson["Threshold"].get<float>();
+            if (bloomJson.contains("Knee"))
+                bloom.Knee = bloomJson["Knee"].get<float>();
+            if (bloomJson.contains("Intensity"))
+                bloom.Intensity = bloomJson["Intensity"].get<float>();
+            if (bloomJson.contains("Radius"))
+                bloom.Radius = bloomJson["Radius"].get<float>();
+        }
+
+        if (data["Scene"].contains("Ssao"))
+        {
+            const auto& ssaoJson = data["Scene"]["Ssao"];
+            auto& ssao = m_SceneContext->GetSsaoSettings();
+
+            if (ssaoJson.contains("Radius"))
+                ssao.Radius = ssaoJson["Radius"].get<float>();
+            if (ssaoJson.contains("Bias"))
+                ssao.Bias = ssaoJson["Bias"].get<float>();
+            if (ssaoJson.contains("Power"))
+                ssao.Power = ssaoJson["Power"].get<float>();
+            if (ssaoJson.contains("Intensity"))
+                ssao.Intensity = ssaoJson["Intensity"].get<float>();
         }
 
         auto& entities = data["Scene"]["Entities"];
@@ -301,6 +333,14 @@ namespace Eppo
                 auto& nc = newEntity.AddComponent<CameraComponent>();
                 nc.Primary = c["Primary"].get<bool>();
                 nc.Camera.SetPerspective(c["VerticalFov"].get<float>(), c["NearClip"].get<float>(), c["FarClip"].get<float>());
+            }
+
+            if (entity.contains("DirectionalLightComponent"))
+            {
+                auto& c = entity["DirectionalLightComponent"];
+                auto& nc = newEntity.AddComponent<DirectionalLightComponent>();
+                nc.Color = c["Color"].get<glm::vec3>();
+                nc.Intensity = c["Intensity"].get<float>();
             }
 
             if (entity.contains("PointLightComponent"))
@@ -406,108 +446,6 @@ namespace Eppo
         return true;
     }
 
-    auto SceneSerializer::RepairRelationships(const std::string& sceneName) const -> void
-    {
-        std::vector<std::string> repairs;
-        bool changed = true;
-        while (changed)
-        {
-            changed = false;
-            std::unordered_set<UUID> invalidRelationships;
-
-            m_SceneContext->ForEachEntity(
-                [&](Entity entity)
-                {
-                    if (!entity.HasComponent<RelationshipComponent>())
-                        return;
-
-                    const auto& relationship = entity.GetComponent<RelationshipComponent>();
-                    if (!relationship.Parent)
-                        return;
-
-                    const Entity parent = m_SceneContext->GetEntityByUUID(relationship.Parent);
-                    const bool listedByParent = parent && parent.HasComponent<RelationshipComponent>() && [&]
-                    {
-                        const auto& children = parent.GetComponent<RelationshipComponent>().Children;
-                        return std::find(children.begin(), children.end(), entity.GetUUID()) != children.end();
-                    }();
-
-                    std::unordered_set<UUID> visited{ entity.GetUUID() };
-                    Entity ancestor = parent;
-                    bool cyclic = false;
-                    while (ancestor)
-                    {
-                        if (!visited.insert(ancestor.GetUUID()).second)
-                        {
-                            cyclic = true;
-                            break;
-                        }
-
-                        const UUID ancestorParent = ancestor.HasComponent<RelationshipComponent>()
-                            ? ancestor.GetComponent<RelationshipComponent>().Parent
-                            : UUID(0);
-                        ancestor = ancestorParent ? m_SceneContext->GetEntityByUUID(ancestorParent) : Entity{};
-                    }
-
-                    if (!listedByParent || cyclic)
-                        invalidRelationships.insert(entity.GetUUID());
-                }
-            );
-
-            for (const UUID entityId : invalidRelationships)
-            {
-                Entity entity = m_SceneContext->GetEntityByUUID(entityId);
-                if (!entity || !entity.HasComponent<RelationshipComponent>())
-                    continue;
-
-                repairs.push_back(fmt::format("'{}' had an inconsistent relationship; detached to root.", entity.GetName()));
-                m_SceneContext->SetParent(entity, {});
-                changed = true;
-            }
-
-            m_SceneContext->ForEachEntity(
-                [&](Entity entity)
-                {
-                    if (!entity.HasComponent<RelationshipComponent>())
-                        return;
-
-                    auto& relationship = entity.GetComponent<RelationshipComponent>();
-                    const size_t oldSize = relationship.Children.size();
-                    std::erase_if(
-                        relationship.Children,
-                        [&](const UUID childId)
-                        {
-                            const Entity child = m_SceneContext->GetEntityByUUID(childId);
-                            return !child || !child.HasComponent<RelationshipComponent>() ||
-                                child.GetComponent<RelationshipComponent>().Parent != entity.GetUUID();
-                        }
-                    );
-                    std::unordered_set<UUID> uniqueChildren;
-                    std::erase_if(
-                        relationship.Children,
-                        [&](const UUID childId)
-                        {
-                            return !uniqueChildren.insert(childId).second;
-                        }
-                    );
-                    changed |= oldSize != relationship.Children.size();
-
-                    if (!relationship.Parent && relationship.Children.empty())
-                    {
-                        entity.RemoveComponent<RelationshipComponent>();
-                        changed = true;
-                    }
-                }
-            );
-        }
-
-        for (const std::string& repair : repairs)
-        {
-            Log::Warn("Scene '{}' relationship repaired: {}", sceneName, repair);
-            s_RelationshipRepairNotices.push_back(fmt::format("Scene '{}': {}", sceneName, repair));
-        }
-    }
-
     auto SceneSerializer::SerializeEntity(nlohmann::json& data, const Entity entity) const -> void
     {
         EP_PROFILE_FN("SceneSerializer::SerializeEntity");
@@ -540,6 +478,13 @@ namespace Eppo
             e["CameraComponent"]["VerticalFov"] = c.Camera.GetPerspectiveVerticalFov();
             e["CameraComponent"]["NearClip"] = c.Camera.GetPerspectiveNearClip();
             e["CameraComponent"]["FarClip"] = c.Camera.GetPerspectiveFarClip();
+        }
+
+        if (entity.HasComponent<DirectionalLightComponent>())
+        {
+            const auto& c = entity.GetComponent<DirectionalLightComponent>();
+            e["DirectionalLightComponent"]["Color"] = c.Color;
+            e["DirectionalLightComponent"]["Intensity"] = c.Intensity;
         }
 
         if (entity.HasComponent<PointLightComponent>())
@@ -645,5 +590,117 @@ namespace Eppo
         }
 
         data.emplace_back(e);
+    }
+
+    auto SceneSerializer::FindScriptFields(const UUID entityId) const -> const ScriptFieldMap*
+    {
+        return ScriptEngine::IsInitialized() ? ScriptEngine::Get().TryGetFieldMap(entityId) : nullptr;
+    }
+
+    auto SceneSerializer::GetScriptFields(const UUID entityId) const -> ScriptFieldMap*
+    {
+        return ScriptEngine::IsInitialized() ? &ScriptEngine::Get().GetFieldMap(entityId) : nullptr;
+    }
+
+    auto SceneSerializer::RepairRelationships(const std::string& sceneName) const -> void
+    {
+        std::vector<std::string> repairs;
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            std::unordered_set<UUID> invalidRelationships;
+
+            m_SceneContext->ForEachEntity(
+                [&](const Entity entity) -> void
+                {
+                    if (!entity.HasComponent<RelationshipComponent>())
+                        return;
+
+                    const auto& relationship = entity.GetComponent<RelationshipComponent>();
+                    if (!relationship.Parent)
+                        return;
+
+                    const Entity parent = m_SceneContext->GetEntityByUUID(relationship.Parent);
+                    const bool listedByParent = parent && parent.HasComponent<RelationshipComponent>() && [&]
+                    {
+                        const auto& children = parent.GetComponent<RelationshipComponent>().Children;
+                        return std::find(children.begin(), children.end(), entity.GetUUID()) != children.end();
+                    }();
+
+                    std::unordered_set<UUID> visited{ entity.GetUUID() };
+                    Entity ancestor = parent;
+                    bool cyclic = false;
+                    while (ancestor)
+                    {
+                        if (!visited.insert(ancestor.GetUUID()).second)
+                        {
+                            cyclic = true;
+                            break;
+                        }
+
+                        const UUID ancestorParent = ancestor.HasComponent<RelationshipComponent>()
+                            ? ancestor.GetComponent<RelationshipComponent>().Parent
+                            : UUID(0);
+                        ancestor = ancestorParent ? m_SceneContext->GetEntityByUUID(ancestorParent) : Entity{};
+                    }
+
+                    if (!listedByParent || cyclic)
+                        invalidRelationships.insert(entity.GetUUID());
+                }
+            );
+
+            for (const UUID entityId : invalidRelationships)
+            {
+                Entity entity = m_SceneContext->GetEntityByUUID(entityId);
+                if (!entity || !entity.HasComponent<RelationshipComponent>())
+                    continue;
+
+                repairs.push_back(fmt::format("'{}' had an inconsistent relationship; detached to root.", entity.GetName()));
+                m_SceneContext->SetParent(entity, {});
+                changed = true;
+            }
+
+            m_SceneContext->ForEachEntity(
+                [&](const Entity entity)
+                {
+                    if (!entity.HasComponent<RelationshipComponent>())
+                        return;
+
+                    auto& relationship = entity.GetComponent<RelationshipComponent>();
+                    const size_t oldSize = relationship.Children.size();
+                    std::erase_if(
+                        relationship.Children,
+                        [&](const UUID childId) -> bool
+                        {
+                            const Entity child = m_SceneContext->GetEntityByUUID(childId);
+                            return !child || !child.HasComponent<RelationshipComponent>() ||
+                                child.GetComponent<RelationshipComponent>().Parent != entity.GetUUID();
+                        }
+                    );
+                    std::unordered_set<UUID> uniqueChildren;
+                    std::erase_if(
+                        relationship.Children,
+                        [&](const UUID childId) -> bool
+                        {
+                            return !uniqueChildren.insert(childId).second;
+                        }
+                    );
+                    changed |= oldSize != relationship.Children.size();
+
+                    if (!relationship.Parent && relationship.Children.empty())
+                    {
+                        entity.RemoveComponent<RelationshipComponent>();
+                        changed = true;
+                    }
+                }
+            );
+        }
+
+        for (const std::string& repair : repairs)
+        {
+            Log::Warn("Scene '{}' relationship repaired: {}", sceneName, repair);
+            s_RelationshipRepairNotices.push_back(fmt::format("Scene '{}': {}", sceneName, repair));
+        }
     }
 }

@@ -199,6 +199,8 @@ namespace Eppo
                 return entity.HasComponent<MeshComponent>();
             if (name == "CameraComponent")
                 return entity.HasComponent<CameraComponent>();
+            if (name == "DirectionalLightComponent")
+                return entity.HasComponent<DirectionalLightComponent>();
             if (name == "PointLightComponent")
                 return entity.HasComponent<PointLightComponent>();
             if (name == "ScriptComponent")
@@ -232,6 +234,8 @@ namespace Eppo
                 entity.TryAddComponent<MeshComponent>();
             if (name == "CameraComponent")
                 entity.TryAddComponent<CameraComponent>();
+            if (name == "DirectionalLightComponent")
+                entity.TryAddComponent<DirectionalLightComponent>();
             if (name == "PointLightComponent")
                 entity.TryAddComponent<PointLightComponent>();
             if (name == "ScriptComponent")
@@ -263,6 +267,8 @@ namespace Eppo
                 return entity.RemoveComponent<MeshComponent>();
             if (name == "CameraComponent")
                 return entity.RemoveComponent<CameraComponent>();
+            if (name == "DirectionalLightComponent")
+                return entity.RemoveComponent<DirectionalLightComponent>();
             if (name == "PointLightComponent")
                 return entity.RemoveComponent<PointLightComponent>();
             if (name == "ScriptComponent")
@@ -512,6 +518,42 @@ namespace Eppo
             entity.GetComponent<CameraComponent>().Camera.SetPerspectiveFarClip(farClip);
         }
 
+        auto DirectionalLightComponent_GetColor(const uint64_t id, glm::vec3* outColor) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<DirectionalLightComponent>())
+                return;
+
+            *outColor = entity.GetComponent<DirectionalLightComponent>().Color;
+        }
+
+        auto DirectionalLightComponent_SetColor(const uint64_t id, const glm::vec3* color) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<DirectionalLightComponent>())
+                return;
+
+            entity.GetComponent<DirectionalLightComponent>().Color = *color;
+        }
+
+        auto DirectionalLightComponent_GetIntensity(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<DirectionalLightComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<DirectionalLightComponent>().Intensity;
+        }
+
+        auto DirectionalLightComponent_SetIntensity(const uint64_t id, const float intensity) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<DirectionalLightComponent>())
+                return;
+
+            entity.GetComponent<DirectionalLightComponent>().Intensity = intensity;
+        }
+
         auto PointLightComponent_GetColor(const uint64_t id, glm::vec3* outColor) -> void
         {
             const Entity entity = GetEntity(id);
@@ -521,7 +563,7 @@ namespace Eppo
             *outColor = entity.GetComponent<PointLightComponent>().Color;
         }
 
-        auto PointLightComponent_SetColor(const uint64_t id, glm::vec3* color) -> void
+        auto PointLightComponent_SetColor(const uint64_t id, const glm::vec3* color) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<PointLightComponent>())
@@ -1206,6 +1248,10 @@ namespace Eppo
             { "CameraComponent_SetNearClip",              reinterpret_cast<void*>(&CameraComponent_SetNearClip)              },
             { "CameraComponent_GetFarClip",               reinterpret_cast<void*>(&CameraComponent_GetFarClip)               },
             { "CameraComponent_SetFarClip",               reinterpret_cast<void*>(&CameraComponent_SetFarClip)               },
+            { "DirectionalLightComponent_GetColor",       reinterpret_cast<void*>(&DirectionalLightComponent_GetColor)       },
+            { "DirectionalLightComponent_SetColor",       reinterpret_cast<void*>(&DirectionalLightComponent_SetColor)       },
+            { "DirectionalLightComponent_GetIntensity",   reinterpret_cast<void*>(&DirectionalLightComponent_GetIntensity)   },
+            { "DirectionalLightComponent_SetIntensity",   reinterpret_cast<void*>(&DirectionalLightComponent_SetIntensity)   },
             { "PointLightComponent_GetColor",             reinterpret_cast<void*>(&PointLightComponent_GetColor)             },
             { "PointLightComponent_SetColor",             reinterpret_cast<void*>(&PointLightComponent_SetColor)             },
             { "PointLightComponent_GetIntensity",         reinterpret_cast<void*>(&PointLightComponent_GetIntensity)         },

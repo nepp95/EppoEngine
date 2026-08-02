@@ -27,16 +27,28 @@ namespace Eppo
 
         m_HasActiveMarker = !name.empty();
         if (m_HasActiveMarker)
-            m_ActiveCommandList->beginMarker(std::string(name).c_str());
+            BeginMarker(name);
     }
 
     auto RenderCommandBuffer::End() -> void
     {
         EP_ASSERT(m_ActiveCommandList);
         if (m_HasActiveMarker)
-            m_ActiveCommandList->endMarker();
+            EndMarker();
         m_ActiveCommandList->endTimerQuery(m_ActiveTimerQuery);
         m_HasActiveMarker = false;
+    }
+
+    auto RenderCommandBuffer::BeginMarker(const std::string_view name) const -> void
+    {
+        EP_ASSERT(m_ActiveCommandList);
+        m_ActiveCommandList->beginMarker(std::string(name).c_str());
+    }
+
+    auto RenderCommandBuffer::EndMarker() const -> void
+    {
+        EP_ASSERT(m_ActiveCommandList);
+        m_ActiveCommandList->endMarker();
     }
 
     auto RenderCommandBuffer::Submit() -> void

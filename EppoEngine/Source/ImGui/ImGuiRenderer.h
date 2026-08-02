@@ -21,7 +21,7 @@ namespace Eppo
         auto Resize() -> void;
         auto UpdateFontTexture() -> void;
         auto RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain, bool clearSwapchainTarget = true) -> void;
-        auto Render(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline, bool clearTarget = true) -> void;
+        auto Render(ImGuiViewport* viewport, const Ref<RenderPass>& renderPass, bool clearTarget = true) -> void;
 
         [[nodiscard]] auto GetGPUTime(uint32_t frameIndex) const -> float;
         [[nodiscard]] auto GetOwnGPUTime(uint32_t frameIndex) const -> float;
@@ -31,7 +31,7 @@ namespace Eppo
     private:
         auto UpdateGeometry(ImDrawData* drawData) -> void;
         auto ReallocateBuffer(uint64_t size, bool indexBuffer) -> nvrhi::BufferHandle;
-        auto GetOrCreatePipeline(const ScopedPtr<Swapchain>& swapchain) -> const Ref<Pipeline>&;
+        auto GetOrCreateRenderPass(const ScopedPtr<Swapchain>& swapchain) -> const Ref<RenderPass>&;
         auto GetOrCreateBindingSet(const nvrhi::TextureHandle& texture) -> nvrhi::BindingSetHandle;
 
     private:
@@ -40,15 +40,11 @@ namespace Eppo
         RenderCommandBuffer m_RenderCommandBuffer;
         PassStatistics m_Stats{};
 
-        // Template spec (no framebuffer) cloned per swapchain in GetOrCreatePipeline.
+        // Template spec (FramebufferInfo filled per swapchain in GetOrCreateRenderPass).
         PipelineSpecification m_PipelineSpecTemplate{};
 
-        struct PipelineCache
-        {
-            std::array<nvrhi::FramebufferHandle, 3> Framebuffers;
-            std::array<Ref<Pipeline>, 3> Pipelines;
-        };
-        std::map<Swapchain*, PipelineCache> m_PipelineCache;
+        // One pass per swapchain: all backbuffers share one FramebufferInfo, so only the target framebuffer changes per frame.
+        std::map<Swapchain*, Ref<RenderPass>> m_RenderPassCache;
 
         nvrhi::BindingLayoutHandle m_BindingSetLayout = nullptr;
 

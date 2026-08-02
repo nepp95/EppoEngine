@@ -8,7 +8,9 @@ namespace Eppo
 {
     struct SamplerSpecification
     {
-        nvrhi::SamplerAddressMode AddressMode = nvrhi::SamplerAddressMode::Wrap;
+        nvrhi::SamplerAddressMode AddressModeU = nvrhi::SamplerAddressMode::Wrap;
+        nvrhi::SamplerAddressMode AddressModeV = nvrhi::SamplerAddressMode::Wrap;
+        nvrhi::SamplerAddressMode AddressModeW = nvrhi::SamplerAddressMode::Wrap;
         bool AllFilters = true;
     };
 

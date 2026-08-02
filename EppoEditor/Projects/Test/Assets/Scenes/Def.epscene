@@ -1,5 +1,11 @@
 {
     "Scene": {
+        "Bloom": {
+            "Intensity": 0.55,
+            "Knee": 0.25,
+            "Radius": 1.0,
+            "Threshold": 0.5
+        },
         "Entities": [
             {
                 "BoxColliderComponent": {
@@ -27,6 +33,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -76,6 +88,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -125,6 +143,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -174,6 +198,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -255,6 +285,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -304,6 +340,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -353,6 +395,12 @@
                     "AngularDamping": 0.0,
                     "GravityScale": 1.0,
                     "LinearDamping": 0.0,
+                    "LockAngularX": false,
+                    "LockAngularY": false,
+                    "LockAngularZ": false,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 0
                 },
                 "TagComponent": {
@@ -506,6 +554,34 @@
             },
             {
                 "IDComponent": {
+                    "ID": 16319850260215055170
+                },
+                "MeshComponent": {
+                    "MeshHandle": 16319850260215055169
+                },
+                "TagComponent": {
+                    "Tag": "AO + Emissive Showcase"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        0.3499999940395355,
+                        0.3499999940395355,
+                        0.3499999940395355
+                    ],
+                    "Translation": [
+                        -0.8999999761581421,
+                        1.350000023841858,
+                        5.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
                     "ID": 1013
                 },
                 "PointLightComponent": {
@@ -596,6 +672,9 @@
                     "LockAngularX": true,
                     "LockAngularY": true,
                     "LockAngularZ": true,
+                    "LockLinearX": false,
+                    "LockLinearY": false,
+                    "LockLinearZ": false,
                     "Type": 2
                 },
                 "ScriptComponent": {
@@ -657,10 +736,43 @@
                         10.0
                     ]
                 }
+            },
+            {
+                "DirectionalLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.672358512878418,
+                        0.29361701011657715
+                    ],
+                    "Intensity": 1.0
+                },
+                "IDComponent": {
+                    "ID": 14584937119869564110
+                },
+                "TagComponent": {
+                    "Tag": "Directional Light"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        15.0,
+                        0.0
+                    ]
+                }
             }
         ],
         "Environment": {
-            "AmbientIntensity": 1.0,
+            "AmbientIntensity": 0.2,
             "GroundColor": [
                 0.20000000298023224,
                 0.17000000178813934,
@@ -671,7 +783,7 @@
                 0.6600000262260437,
                 0.6700000166893005
             ],
-            "SkyboxHandle": 0,
+            "SkyboxHandle": 9446329736917411582,
             "ZenithColor": [
                 0.3499999940395355,
                 0.44999998807907104,

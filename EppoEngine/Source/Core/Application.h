@@ -42,7 +42,7 @@ namespace Eppo
 
         // Supplied by a deployed runtime from its game package. Empty in the editor and tests, which
         // compile the engine shaders from Resources/Shaders instead.
-        std::map<std::string, PackedShaderData> PackedShaders;
+        std::map<std::string, std::string> PackedShaders;
         std::map<std::string, std::string> PackedShaderIncludes;
     };
 

@@ -2,23 +2,35 @@
 #include "Renderer/Image.h"
 
 #include "Renderer/DeviceManager.h"
+#include "Renderer/DescriptorManager.h"
+#include "Renderer/Renderer.h"
 
 #include <stb_image.h>
 
 namespace Eppo
 {
-    Image::Image(const ImageSpecification& spec, const nvrhi::CommandListHandle& cmdList)
+    Image::Image(const ImageSpecification& spec)
         : m_Specification(spec), m_Width(spec.Width), m_Height(spec.Height)
     {
         EP_PROFILE_FN("Image::Image")
+        EP_ASSERT(spec.ArraySize > 0);
 
         const auto& dm = DeviceManager::Get();
-        auto device = dm->GetDevice();
+        const auto device = dm->GetDevice();
 
-        nvrhi::TextureDesc textureDesc{
+        auto dimension = nvrhi::TextureDimension::Texture2D;
+        if (spec.IsCubemap)
+            dimension = nvrhi::TextureDimension::TextureCube;
+        if (!spec.IsCubemap && spec.ArraySize > 1)
+            dimension = nvrhi::TextureDimension::Texture2DArray;
+
+        const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
+            .arraySize = spec.IsCubemap ? 6u : spec.ArraySize,
+            .mipLevels = spec.MipLevels,
             .format = spec.ImageFormat,
+            .dimension = dimension,
             .debugName = spec.DebugName,
             .isRenderTarget = spec.IsRenderTarget,
             .initialState = spec.InitialState,
@@ -26,6 +38,7 @@ namespace Eppo
         };
 
         m_Texture = device->createTexture(textureDesc);
+        m_MipLevels = m_Texture->getDesc().mipLevels;
         m_Stride = GetStride(m_Texture->getDesc().format);
     }
 
@@ -37,7 +50,7 @@ namespace Eppo
         const auto& dm = DeviceManager::Get();
         const auto device = dm->GetDevice();
 
-        nvrhi::TextureDesc textureDesc{
+        const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
             .format = spec.ImageFormat,
@@ -52,29 +65,43 @@ namespace Eppo
         else
             EP_ASSERT(false);
 
+        m_MipLevels = m_Texture->getDesc().mipLevels;
         m_Stride = GetStride(m_Texture->getDesc().format);
     }
 
-    Image::Image(const ImageSpecification& spec, ImageSource source, const nvrhi::CommandListHandle& cmdList)
+    Image::Image(const ImageSpecification& spec, const ImageSource& source, const nvrhi::CommandListHandle& cmdList)
         : m_Specification(spec), m_Width(spec.Width), m_Height(spec.Height)
     {
         EP_PROFILE_FN("Image::Image")
+        EP_ASSERT(!spec.IsCubemap);
+        EP_ASSERT(spec.ArraySize == 1);
 
         const auto device = DeviceManager::Get()->GetDevice();
         const auto cmd = cmdList ? cmdList : device->createCommandList();
-        auto* imageData = DecodeImageData(source);
 
-        nvrhi::TextureDesc textureDesc{
-            .width = m_Width,
-            .height = m_Height,
-            .format = spec.ImageFormat,
-            .debugName = spec.DebugName,
-            .isRenderTarget = spec.IsRenderTarget,
-            .initialState = spec.InitialState,
-            .keepInitialState = spec.AutomaticStateTracking,
+        uint32_t channels = 0;
+        bool isHdr = false;
+        auto* imageData = DecodeImageData(source, channels, isHdr);
+
+        // Decoding is the authority on size and (for an unspecified format) format: .hdr -> float,
+        // else sRGB. Fold both back into the spec so it stays the single source for the texture desc.
+        m_Specification.Width = m_Width;
+        m_Specification.Height = m_Height;
+        if (m_Specification.ImageFormat == nvrhi::Format::UNKNOWN)
+            m_Specification.ImageFormat = SelectFormat(channels, isHdr);
+
+        const nvrhi::TextureDesc textureDesc{
+            .width = m_Specification.Width,
+            .height = m_Specification.Height,
+            .format = m_Specification.ImageFormat,
+            .debugName = m_Specification.DebugName,
+            .isRenderTarget = m_Specification.IsRenderTarget,
+            .initialState = m_Specification.InitialState,
+            .keepInitialState = m_Specification.AutomaticStateTracking,
         };
 
         m_Texture = device->createTexture(textureDesc);
+        m_MipLevels = m_Texture->getDesc().mipLevels;
         m_Stride = GetStride(m_Texture->getDesc().format);
 
         if (!cmdList)
@@ -91,8 +118,8 @@ namespace Eppo
             device->executeCommandList(cmd);
         }
 
-        if (std::get_if<std::filesystem::path>(&source))
-            stbi_image_free(imageData);
+        // Both the path and in-memory decode paths allocate through stb, so free either.
+        stbi_image_free(imageData);
     }
 
     auto Image::SetData(const void* data, uint64_t size, const nvrhi::CommandListHandle& cmdList) -> void
@@ -131,9 +158,21 @@ namespace Eppo
 
         // Copy into an engine-owned Buffer so the caller frees with delete[] (via
         // Buffer::Release) rather than needing stbi_image_free.
-        Buffer buffer = Buffer::Copy(pixels, static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4);
+        const Buffer buffer = Buffer::Copy(pixels, static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4);
         stbi_image_free(pixels);
         return buffer;
+    }
+
+    auto Image::GetMipWidth(const uint32_t mipLevel) const -> uint32_t
+    {
+        EP_ASSERT(mipLevel < m_MipLevels);
+        return glm::max(1u, m_Width >> mipLevel);
+    }
+
+    auto Image::GetMipHeight(const uint32_t mipLevel) const -> uint32_t
+    {
+        EP_ASSERT(mipLevel < m_MipLevels);
+        return glm::max(1u, m_Height >> mipLevel);
     }
 
     auto Image::IsDepthImage() const -> bool
@@ -142,7 +181,31 @@ namespace Eppo
             m_Specification.ImageFormat == nvrhi::Format::D32 || m_Specification.ImageFormat == nvrhi::Format::D32S8;
     }
 
-    auto Image::DecodeImageData(const ImageSource& source) -> void*
+    auto Image::GetBindlessIndex(const nvrhi::TextureSubresourceSet& subresources) -> uint32_t
+    {
+        const auto resolved = subresources.resolve(m_Texture->getDesc(), false);
+
+        auto it = m_BindlessHandles.find(resolved);
+        if (it == m_BindlessHandles.end())
+        {
+            const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+            it = m_BindlessHandles.emplace(resolved, CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this(), resolved)))
+                     .first;
+        }
+
+        return it->second->Index;
+    }
+
+    auto Image::CalculateMipLevels(const uint32_t width, const uint32_t height) -> uint32_t
+    {
+        EP_ASSERT(width > 0 && height > 0);
+        const uint32_t mipLevels =
+            1 + static_cast<uint32_t>(glm::floor(glm::log2(glm::max(static_cast<float>(width), static_cast<float>(height)))));
+        EP_ASSERT(mipLevels > 0);
+        return mipLevels;
+    }
+
+    auto Image::DecodeImageData(const ImageSource& source, uint32_t& outChannels, bool& outIsHdr) -> void*
     {
         const auto* path = std::get_if<std::filesystem::path>(&source);
         const auto* buffer = std::get_if<Buffer>(&source);
@@ -163,46 +226,44 @@ namespace Eppo
 
         bool isHdr = false;
         if (buffer)
-            stbi_is_hdr_from_memory(buffer->Data, static_cast<int>(buffer->Size));
+            isHdr = stbi_is_hdr_from_memory(buffer->Data, static_cast<int>(buffer->Size));
         else if (path)
-            stbi_is_hdr(path->string().c_str());
+            isHdr = stbi_is_hdr(path->string().c_str());
 
         if (isHdr)
         {
-            EP_ASSERT(false);
+            if (buffer)
+                decodedData =
+                    stbi_loadf_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, STBI_rgb_alpha);
+            else if (path)
+                decodedData = stbi_loadf(path->string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+            channels = 4;
         }
         else
         {
-            if (channels == 3 || channels == 4)
-            {
-                if (buffer)
-                    decodedData =
-                        stbi_load_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, STBI_rgb_alpha);
-                else if (path)
-                    decodedData = stbi_load(path->string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
-                channels = 4;
-            }
-            else
-            {
-                if (buffer)
-                    decodedData = stbi_load_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, 0);
-                else if (path)
-                    decodedData = stbi_load(path->string().c_str(), &width, &height, &channels, 0);
-            }
+            if (buffer)
+                decodedData =
+                    stbi_load_from_memory(buffer->Data, static_cast<int>(buffer->Size), &width, &height, &channels, STBI_rgb_alpha);
+            else if (path)
+                decodedData = stbi_load(path->string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+            channels = 4;
         }
 
         EP_ASSERT(decodedData);
+
+        outChannels = static_cast<uint32_t>(channels);
+        outIsHdr = isHdr;
         return decodedData;
     }
 
-    auto Image::SelectFormat(uint32_t channels, bool isHdr) -> nvrhi::Format
+    auto Image::SelectFormat(const uint32_t channels, const bool isHdr) -> nvrhi::Format
     {
-        nvrhi::Format format = nvrhi::Format::UNKNOWN;
+        auto format = nvrhi::Format::UNKNOWN;
 
         if (isHdr)
         {
             if (channels == 3 || channels == 4)
-                format = nvrhi::Format::RGBA16_FLOAT;
+                format = nvrhi::Format::RGBA32_FLOAT;
         }
         else
         {

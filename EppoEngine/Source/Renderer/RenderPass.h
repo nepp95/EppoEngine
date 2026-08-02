@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Base.h"
+#include "Renderer/Framebuffer.h"
 #include "Renderer/Pipeline.h"
 
 #include <nvrhi/nvrhi.h>
@@ -37,6 +37,10 @@ namespace Eppo
     {
         std::string Name;
         Ref<Pipeline> Pipeline = nullptr;
+        Ref<Framebuffer> Framebuffer = nullptr;
+        bool OwnsFramebuffer = true;
+
+        nvrhi::TextureSubresourceSet Subresources = nvrhi::TextureSubresourceSet(0, 1, 0, 1); // 1 miplevel default
 
         bool ClearColorOnLoad = false;
         glm::vec4 ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -60,8 +64,13 @@ namespace Eppo
 
         auto Resize(uint32_t width, uint32_t height) const -> void;
 
+        auto SetFramebuffer(const Ref<Framebuffer>& framebuffer) -> void;
+        auto SetSubresources(const nvrhi::TextureSubresourceSet& subresources) -> void { m_Specification.Subresources = subresources; }
+
         [[nodiscard]] auto GetSpecification() const -> const RenderPassSpecification& { return m_Specification; }
         [[nodiscard]] auto GetPipeline() const -> const Ref<Pipeline>& { return m_Specification.Pipeline; }
+        [[nodiscard]] auto GetFramebuffer() const -> const Ref<Framebuffer>& { return m_Specification.Framebuffer; }
+        [[nodiscard]] auto GetSubresources() const -> const nvrhi::TextureSubresourceSet& { return m_Specification.Subresources; }
         [[nodiscard]] auto GetName() const -> const std::string& { return m_Specification.Name; }
         [[nodiscard]] auto GetStatistics() -> PassStatistics& { return m_Statistics; }
         [[nodiscard]] auto GetStatistics() const -> const PassStatistics& { return m_Statistics; }
