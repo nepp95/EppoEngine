@@ -99,10 +99,6 @@ namespace Eppo
         uint32_t m_Height = 0;
 
         // Render passes
-        static constexpr uint32_t s_MaxBloomMipLevels = 6;
-        uint32_t m_BloomMipLevels = 0;
-        Ref<Framebuffer> m_BloomPyramidFramebuffer = nullptr;
-
         Ref<RenderPass> m_ShadowDepthPass = nullptr;
         Ref<RenderPass> m_SsaoPrePass = nullptr;
         Ref<RenderPass> m_SsaoEvaluationPass = nullptr;
@@ -110,9 +106,13 @@ namespace Eppo
         Ref<RenderPass> m_SsaoBlurVerticalPass = nullptr;
         Ref<RenderPass> m_GeometryPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
+
+        uint32_t m_BloomMipLevels = 0;
+        Ref<Framebuffer> m_BloomPyramidFramebuffer = nullptr;
         Ref<RenderPass> m_BloomDownSamplePass = nullptr;
         Ref<RenderPass> m_BloomUpSamplePass = nullptr;
         Ref<RenderPass> m_BloomCompositePass = nullptr;
+
         Ref<RenderPass> m_TonemapPass = nullptr;
         Ref<RenderPass> m_WireframePass = nullptr;
 
@@ -128,11 +128,22 @@ namespace Eppo
         Ref<Sampler> m_EquirectSampler = nullptr;
 
         // Uniforms
-        struct ShadowDepthData
+        static constexpr uint32_t s_ShadowCascadeCount = 4;
+        struct Cascade
         {
             glm::mat4 LightViewProjection;
-            glm::uvec4 Indices; // shadow map, sampler, enabled, unused
-            glm::vec4 Params; // bias, inverse map size, unused, unused
+            float SplitDistance; // view-space far depth of this cascade
+            glm::vec3 Padding; // constant-buffer array elements pad to a 16-byte (80-byte) stride
+        };
+        struct ShadowDepthData
+        {
+            std::array<Cascade, s_ShadowCascadeCount> Cascades;
+            uint32_t ShadowMapIndex;
+            uint32_t ShadowSamplerIndex;
+            float DepthBias;
+            float NormalBias;
+            float InvMapSize;
+            float ShadowDistance;
         } m_ShadowDepthData;
         Ref<UniformBuffer> m_ShadowDepthUB = nullptr;
 
@@ -153,6 +164,8 @@ namespace Eppo
             glm::mat4 ViewProjection;
             glm::mat4 InverseViewProjection;
             glm::vec4 Position;
+            float NearClip;
+            float FarClip;
         } m_CameraData{};
         Ref<UniformBuffer> m_CameraUB = nullptr;
 

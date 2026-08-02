@@ -17,11 +17,21 @@ struct PushConstants
 PUSH_CONSTANTS
 ConstantBuffer<PushConstants> uPC : register(b0, space0);
 
-struct ShadowDepthData
+static const uint s_CascadeCount = 4;
+struct Cascade
 {
     float4x4 LightViewProjection;
-    uint4 Indices; // shadow map, sampler, enabled, unused
-    float4 Params; // bias, inverse map size, unused, unused
+    float SplitDistance;
+};
+struct ShadowDepthData
+{
+    Cascade Cascades[s_CascadeCount];
+    uint ShadowMapIndex;
+    uint ShadowSamplerIndex;
+    float DepthBias;
+    float NormalBias;
+    float InvMapSize;
+    float ShadowDistance;
 };
 ConstantBuffer<ShadowDepthData> uShadowDepth : register(b1, space0);
 
@@ -32,6 +42,8 @@ struct Camera
     float4x4 ViewProjection;
     float4x4 InverseViewProjection;
     float4 Position;
+    float NearClip;
+    float FarClip;
 };
 ConstantBuffer<Camera> uCamera : register(b2, space0);
 
@@ -104,12 +116,18 @@ SamplerState uMaterialSampler : register(s0, space0);
 Texture2D uSsaoTex : register(t3, space0);
 SamplerState uSsaoSampler : register(s1, space0);
 
-float CalcShadowFactor(const float3 worldPosition)
+float CalcShadowFactor(const float3 worldPosition, const float3 worldNormal)
 {
-    if (uShadowDepth.Indices.z == 0)
+    const float viewDepth = -mul(uCamera.View, float4(worldPosition, 1.0)).z;
+    if (viewDepth <= 0.0 || viewDepth > uShadowDepth.ShadowDistance)
         return 1.0;
 
-    const float4 lightClip = mul(uShadowDepth.LightViewProjection, float4(worldPosition, 1.0));
+    uint cascade = 0;
+    while (cascade + 1 < s_CascadeCount && viewDepth > uShadowDepth.Cascades[cascade].SplitDistance)
+        cascade++;
+
+    const float3 biasedWorldPosition = worldPosition + normalize(worldNormal) * uShadowDepth.NormalBias;
+    const float4 lightClip = mul(uShadowDepth.Cascades[cascade].LightViewProjection, float4(biasedWorldPosition, 1.0));
     if (lightClip.w <= 0.0)
         return 1.0;
 
@@ -119,8 +137,8 @@ float CalcShadowFactor(const float3 worldPosition)
 
     const float2 uv = lightNdc.xy * float2(0.5, -0.5) + 0.5;
 
-    Texture2D<float> shadowMap = ResourceDescriptorHeap[uShadowDepth.Indices.x];
-    SamplerState shadowSampler = SamplerDescriptorHeap[uShadowDepth.Indices.y];
+    Texture2DArray<float> shadowMap = ResourceDescriptorHeap[uShadowDepth.ShadowMapIndex];
+    SamplerState shadowSampler = SamplerDescriptorHeap[uShadowDepth.ShadowSamplerIndex];
     float visibleSamples = 0.0;
 
     [unroll]
@@ -129,9 +147,9 @@ float CalcShadowFactor(const float3 worldPosition)
         [unroll]
         for (int x = -1; x <= 1; x++)
         {
-            const float2 sampleUv = uv + float2(x, y) * uShadowDepth.Params.y;
+            const float3 sampleUv = float3(uv + float2(x, y) * uShadowDepth.InvMapSize, cascade);
             const float storedDepth = shadowMap.SampleLevel(shadowSampler, sampleUv, 0);
-            visibleSamples += lightNdc.z - uShadowDepth.Params.x <= storedDepth ? 1.0 : 0.0;
+            visibleSamples += lightNdc.z - uShadowDepth.DepthBias <= storedDepth ? 1.0 : 0.0;
         }
     }
 
@@ -228,7 +246,7 @@ float4 PSMain(Varyings input) : SV_Target
     {
         const float3 L = normalize(-uLights.DirLight.Direction.xyz);
         const float3 radiance = uLights.DirLight.Color.rgb * uLights.DirLight.Color.a;
-        Lo += CalcShadowFactor(input.WorldPos) * BRDF(albedo, L, V, N, metallic, roughness, radiance);
+        Lo += CalcShadowFactor(input.WorldPos, N) * BRDF(albedo, L, V, N, metallic, roughness, radiance);
     }
 
     // Point lights

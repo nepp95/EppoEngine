@@ -425,7 +425,7 @@ SUITE(Renderer)
         constexpr uint32_t initialHeight = 256u;
         const Ref<SceneRenderer> sceneRenderer =
             CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
-        EditorCamera camera(glm::vec3(0.0f, 5.0f, 8.0f), -32.0f, -90.0f);
+        EditorCamera camera(glm::vec3(0.0f, 5.0f, 16.0f), -32.0f, -90.0f);
         camera.SetViewportSize(initialWidth, initialHeight);
 
         ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
