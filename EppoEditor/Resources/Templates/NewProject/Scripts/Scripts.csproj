@@ -3,6 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <CoreManagedDll Condition="'$(CoreManagedDll)' == ''">$(MSBuildThisFileDirectory)../../../../build/bin/Debug-windows-x86_64/EppoScriptCore/EppoScriptCore.dll</CoreManagedDll>
   </PropertyGroup>
   <ItemGroup>
     <!-- CoreManagedDll is passed by the editor at build time; the runtime loads

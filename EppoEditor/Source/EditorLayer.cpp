@@ -570,6 +570,12 @@ namespace Eppo
 			FS::Move(projectPath / "project.epproj", projectPath / std::filesystem::path(name + ".epproj"));
 		}
 
+		{
+			auto inputStr = FS::ReadText(projectPath / "premake5.lua");
+			ReplaceToken(inputStr, "$PROJECT_NAME$", name);
+			FS::WriteText(projectPath / "premake5.lua", inputStr, true);
+		}
+
 		// Rename the scripts project after the project. The EppoScriptCore
 		// reference is resolved at build time via $(CoreManagedDll) (passed by
 		// OpenProject), so there is no path to bake in here.
