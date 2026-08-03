@@ -1,5 +1,5 @@
-#include "Support/EppoTest.h"
-#include "Support/TempDir.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/TempDir.h"
 
 #include "Asset/PackFormat.h"
 #include "Project/GameData.h"

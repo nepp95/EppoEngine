@@ -1,5 +1,5 @@
-#include "Support/EppoTest.h"
-#include "Support/TempDir.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/TempDir.h"
 
 #include "Asset/AssetManager.h"
 #include "Project/Project.h"

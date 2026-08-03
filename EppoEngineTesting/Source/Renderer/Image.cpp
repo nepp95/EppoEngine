@@ -1,6 +1,6 @@
-#include "Support/EppoTest.h"
-#include "Support/AppHarness.h"
-#include "Support/TempDir.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/AppHarness.h"
+#include "TestSupport/TempDir.h"
 
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/Image.h"

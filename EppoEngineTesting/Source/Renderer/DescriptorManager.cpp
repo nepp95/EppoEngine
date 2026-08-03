@@ -1,5 +1,5 @@
-#include "Support/EppoTest.h"
-#include "Support/AppHarness.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/AppHarness.h"
 
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/Sampler.h"

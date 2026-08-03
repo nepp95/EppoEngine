@@ -1,4 +1,4 @@
-#include "Support/EppoTest.h"
+#include "TestSupport/EppoTest.h"
 
 #include "Scripting/ScriptEngine.h"
 

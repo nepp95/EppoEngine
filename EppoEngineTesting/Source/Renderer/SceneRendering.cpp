@@ -1,7 +1,7 @@
-#include "Support/EppoTest.h"
-#include "Support/AppHarness.h"
-#include "Support/TestContext.h"
-#include "Support/TempDir.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/AppHarness.h"
+#include "TestSupport/TestContext.h"
+#include "TestSupport/TempDir.h"
 
 #include "Asset/AssetManager.h"
 #include "Core/Log.h"

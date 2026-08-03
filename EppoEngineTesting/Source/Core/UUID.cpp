@@ -1,6 +1,4 @@
-#include "Support/EppoTest.h"
-
-#include <type_traits>
+#include "TestSupport/EppoTest.h"
 
 using Eppo::UUID;
 

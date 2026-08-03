@@ -1,5 +1,5 @@
-#include "Support/EppoTest.h"
-#include "Support/AppHarness.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/AppHarness.h"
 
 #include "Platform/Vulkan/DeviceManagerVK.h"
 #include "Renderer/DeviceManager.h"
