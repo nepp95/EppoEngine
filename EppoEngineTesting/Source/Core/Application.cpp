@@ -1,5 +1,5 @@
-#include "Support/EppoTest.h"
-#include "Support/AppHarness.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/AppHarness.h"
 
 #include "Event/KeyEvent.h"
 #include "ImGui/ImGuiLayer.h"
@@ -7,6 +7,21 @@
 #include <imgui.h>
 
 using namespace Eppo;
+
+// Headless: pure argument accessor, no Application boot. The out-of-bounds path is an
+// assert-guarded dead return, so only valid indices are pinned.
+TEST(Core, CommandLineArgs_ValidIndex_ReturnsMatchingArgv)
+{
+    char arg0[] = "EppoEditor";
+    char arg1[] = "--project";
+    char arg2[] = "Sandbox.eproj";
+    char* argv[] = { arg0, arg1, arg2 };
+    const CommandLineArgs args(3, argv);
+
+    EXPECT_EQ(arg0, args[0]);
+    EXPECT_EQ(arg1, args[1]);
+    EXPECT_EQ(arg2, args[2]);
+}
 
 // Foundation for the scenario tests: boots the real Application and steps frames.
 // Needs a display + GPU (label `graphical`, excluded on headless CI).

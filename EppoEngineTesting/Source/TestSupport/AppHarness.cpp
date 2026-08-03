@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "Support/AppHarness.h"
+#include "TestSupport/AppHarness.h"
 
 #include "Renderer/DeviceManager.h"
 

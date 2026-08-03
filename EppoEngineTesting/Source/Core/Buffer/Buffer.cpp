@@ -1,8 +1,6 @@
-#include "Support/EppoTest.h"
+#include "TestSupport/EppoTest.h"
 
 #include "Core/Buffer/Buffer.h"
-
-#include <type_traits>
 
 using Eppo::Buffer;
 using Eppo::ScopedBuffer;

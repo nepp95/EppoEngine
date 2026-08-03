@@ -1,8 +1,8 @@
 #include "pch.h"
 
-#include "Support/TestContext.h"
-#include "Support/AppHarness.h"
-#include "Support/ScenarioLayer.h"
+#include "TestSupport/TestContext.h"
+#include "TestSupport/AppHarness.h"
+#include "TestSupport/ScenarioLayer.h"
 
 namespace Eppo::Testing
 {

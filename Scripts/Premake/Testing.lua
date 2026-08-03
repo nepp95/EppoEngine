@@ -7,6 +7,7 @@ local suites = {
     { "Scripting", "scripting" },
     { "ScriptMarshalling", "scripting" },
     { "App", "graphical" },
+    { "CoreGraphical", "graphical" },
     { "ProjectExport", "graphical" },
     { "Renderer", "graphical" },
 }

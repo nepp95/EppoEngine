@@ -1,6 +1,6 @@
-#include "Support/EppoTest.h"
-#include "Support/GlmCheck.h"
-#include "Support/TempDir.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/GlmCheck.h"
+#include "TestSupport/TempDir.h"
 
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
