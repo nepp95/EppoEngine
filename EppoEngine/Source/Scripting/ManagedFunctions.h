@@ -36,7 +36,7 @@ namespace Eppo
         BootstrapFn Bootstrap = nullptr;
 
         GetClassCountFn GetClassCount = nullptr;
-        GetClassNameFn GetClassName = nullptr;
+        GetClassNameFn GetManagedClassName = nullptr;
         GetClassFieldCountFn GetClassFieldCount = nullptr;
         GetClassFieldNameFn GetClassFieldName = nullptr;
         GetClassFieldTypeFn GetClassFieldType = nullptr;

@@ -32,10 +32,11 @@ on the managed side.
 ## Build note
 
 After editing any C#, rebuild the `EppoEngineTesting` / `EppoEditor` target so
-`CMake/Dotnet.cmake`'s custom commands recompile and re-copy the DLLs. A plain
-`dotnet build` will not wire them into the C++ build.
+the generated Visual Studio dependency or Ninja custom rule recompiles the
+managed project and the post-build commands copy its DLLs beside the executable.
 
 ## Verify
 
-`ctest -R Scripting` and `-R ScriptMarshalling`. If you added a struct-marshalled
+Run `ctest --test-dir build/bin/Debug-<system>-x86_64 -R Scripting` and the same
+command with `-R ScriptMarshalling`. If you added a struct-marshalled
 value, the marshalling suite is where a wrong size/layout shows up.

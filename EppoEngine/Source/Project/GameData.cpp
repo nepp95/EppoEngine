@@ -5,6 +5,7 @@
 #include "Core/Buffer/FileStreamReader.h"
 #include "Core/Buffer/FileStreamWriter.h"
 
+#include <algorithm>
 #include <ranges>
 
 namespace Eppo
@@ -35,8 +36,10 @@ namespace Eppo
             if (metadata.IsRuntimeAsset)
                 continue;
 
+            auto filepath = metadata.Filepath.generic_string();
+            std::replace(filepath.begin(), filepath.end(), '\\', '/');
             if (!writer.WriteRaw<uint64_t>(static_cast<uint64_t>(handle)) ||
-                !writer.WriteRaw<uint8_t>(static_cast<uint8_t>(metadata.Type)) || !writer.WriteString(metadata.Filepath.generic_string()))
+                !writer.WriteRaw<uint8_t>(static_cast<uint8_t>(metadata.Type)) || !writer.WriteString(filepath))
                 return false;
         }
 
@@ -113,6 +116,7 @@ namespace Eppo
             if (!reader.ReadRaw<uint64_t>(handle) || !reader.ReadRaw<uint8_t>(type) || !reader.ReadString(filepath))
                 return false;
 
+            std::replace(filepath.begin(), filepath.end(), '\\', '/');
             AssetRegistry[AssetHandle(handle)] = AssetMetadata{
                 .Handle = AssetHandle(handle),
                 .Type = static_cast<AssetType>(type),
