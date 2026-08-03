@@ -1,6 +1,6 @@
 ---
 name: eppo-scripting-integration
-description: Develop and diagnose Eppo's C++/C# scripting integration across CoreCLR hosting, managed assembly discovery, native internal calls, field and method marshalling, entity script lifecycle, script hot reload and the managed build, deployment, and scripting tests. Use for changes under EppoEngine/Source/Scripting, EppoScriptCore, script-aware scene/editor code, Utility/FileWatcher or Process when driving script rebuilds, CMake/Dotnet.cmake, or the Scripting and ScriptMarshalling suites.
+description: Develop and diagnose Eppo's C++/C# scripting integration across CoreCLR hosting, managed assembly discovery, native internal calls, field and method marshalling, entity script lifecycle, script hot reload and the managed build, deployment, and scripting tests. Use for changes under EppoEngine/Source/Scripting, EppoScriptCore, script-aware scene/editor code, Utility/FileWatcher or Process when driving script rebuilds, EppoScriptCore/premake5.lua, or the Scripting and ScriptMarshalling suites.
 ---
 
 # Eppo Scripting Integration
@@ -13,7 +13,7 @@ Read [references/architecture.md](references/architecture.md) before changing th
 2. Define the ABI before editing. Keep type widths, enum ordinals, calling conventions, entry-point names, argument order, ownership, and string allocation/freeing identical on both sides.
 3. Add or update the smallest regression in `EppoEngineTesting/Source/Scripting/`. Extend `EppoEngineTesting/TestData/Scripts/Source/HarnessScript.cs` when managed user code is required.
 4. Implement both sides of a cross-boundary change in the same change set. Preserve guarded behavior when the runtime, scene context, entity, component, or physics world is unavailable.
-5. Rebuild `EppoEngineTesting` after any C# edit so CMake rebuilds and deploys both managed assemblies.
+5. Rebuild `EppoEngineTesting` after any C# edit so the generated build (VS or Ninja) rebuilds and deploys both managed assemblies.
 6. Run `Scripting` and `ScriptMarshalling`; run the broader headless set when lifecycle, scene, physics, or build wiring changes.
 
 ## Guardrails

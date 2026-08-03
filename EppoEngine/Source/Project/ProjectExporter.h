@@ -41,7 +41,7 @@ namespace Eppo
         struct ExportConfiguration
         {
             std::string Name;
-            std::string CMakePreset;
+            std::string BuildConfiguration;
             std::string ScriptConfiguration;
             std::filesystem::path RuntimeDirectory;
             std::filesystem::path ManagedDirectory;
