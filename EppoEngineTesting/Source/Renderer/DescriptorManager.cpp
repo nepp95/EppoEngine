@@ -6,611 +6,608 @@
 
 using namespace Eppo;
 
-SUITE(Renderer)
+TEST(Renderer, DescriptorManager_CreatesBindlessLayouts)
 {
-    TEST(DescriptorManager_CreatesBindlessLayouts)
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+    EXPECT_TRUE(resourceHeap->BindingLayout);
+
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
+    EXPECT_TRUE(samplerHeap->BindingLayout);
+}
+
+TEST(Renderer, DescriptorManager_CreatesDescriptorHeaps)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+    EXPECT_TRUE(resourceHeap->DescriptorTable);
+    EXPECT_EQ(256, resourceHeap->Capacity);
+
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
+    EXPECT_TRUE(samplerHeap->DescriptorTable);
+    EXPECT_EQ(256, samplerHeap->Capacity);
+}
+
+TEST(Renderer, DescriptorManager_RegisterResourceIncreasesNextFreeSlot)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& dm = DeviceManager::Get();
+    const auto& image = dm->GetCurrentSwapchainImage().Framebuffer->GetFinalImage();
+    EP_REQUIRE(image);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    EXPECT_EQ(0, resourceHeap->NextFreeSlot);
+    (void)manager->Register(image);
+    EXPECT_EQ(1, resourceHeap->NextFreeSlot);
+}
+
+TEST(Renderer, DescriptorManager_RegisterSamplerIncreasesNextFreeSlot)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto sampler = Sampler::Create({}, manager);
+    EP_REQUIRE(sampler);
+
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
+
+    EXPECT_EQ(1, samplerHeap->NextFreeSlot);
+}
+
+TEST(Renderer, DescriptorManager_RegisterResourceReturnsValidHandle)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& dm = DeviceManager::Get();
+    const auto& image = dm->GetCurrentSwapchainImage().Framebuffer->GetFinalImage();
+    EP_REQUIRE(image);
+
+    const auto handle = manager->Register(image);
+    EXPECT_TRUE(handle.Index != std::numeric_limits<uint32_t>::max());
+    EXPECT_TRUE(handle.HeapType == BindlessHeapType::Resource);
+}
+
+TEST(Renderer, DescriptorManager_RegisterSamplerReturnsValidHandle)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto sampler = Sampler::Create({}, manager);
+    EP_REQUIRE(sampler);
+
+    const auto& handle = sampler->GetBindlessHandle();
+    EXPECT_TRUE(handle.Index != std::numeric_limits<uint32_t>::max());
+    EXPECT_TRUE(handle.Index < 2048);
+    EXPECT_TRUE(handle.HeapType == BindlessHeapType::Sampler);
+}
+
+TEST(Renderer, DescriptorManager_RegisterResourceIncreasesCapacityIfFull)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    constexpr uint32_t initialSize = 256;
+    constexpr uint32_t trySize = initialSize + 1;
+
+    std::array<BindlessHandle, trySize> handles{};
+    for (uint32_t i = 0; i < trySize; i++)
     {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-        CHECK(resourceHeap->BindingLayout);
-
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
-        CHECK(samplerHeap->BindingLayout);
+        const auto buffer = CreateRef<UniformBuffer>(256);
+        EP_REQUIRE(buffer);
+        handles.at(i) = manager->Register(buffer);
+        EXPECT_TRUE(handles.at(i).Index != std::numeric_limits<uint32_t>::max());
+        EXPECT_TRUE(handles.at(i).HeapType == BindlessHeapType::Resource);
     }
 
-    TEST(DescriptorManager_CreatesDescriptorHeaps)
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+    EXPECT_EQ(384, resourceHeap->Capacity);
+    EXPECT_EQ(trySize, resourceHeap->NextFreeSlot);
+}
+
+TEST(Renderer, DescriptorManager_RegisterSamplerIncreasesCapacityIfFull)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto& manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    constexpr uint32_t initialSize = 256;
+    constexpr uint32_t trySize = initialSize + 1;
+
+    std::vector<Ref<Sampler>> samplers;
+    samplers.reserve(trySize);
+    for (uint32_t i = 0; i < trySize; i++)
     {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-        CHECK(resourceHeap->DescriptorTable);
-        CHECK_EQUAL(256, resourceHeap->Capacity);
-
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
-        CHECK(samplerHeap->DescriptorTable);
-        CHECK_EQUAL(256, samplerHeap->Capacity);
+        samplers.emplace_back(Sampler::Create({}, manager));
+        EP_REQUIRE(samplers.back());
+        EXPECT_TRUE(samplers.back()->GetBindlessHandle().Index != std::numeric_limits<uint32_t>::max());
+        EXPECT_TRUE(samplers.back()->GetBindlessHandle().HeapType == BindlessHeapType::Sampler);
     }
 
-    TEST(DescriptorManager_RegisterResourceIncreasesNextFreeSlot)
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
+    EXPECT_EQ(384, samplerHeap->Capacity);
+    EXPECT_EQ(trySize, samplerHeap->NextFreeSlot);
+}
+
+TEST(Renderer, DescriptorManager_ReleaseAddsToFreeList)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    uint32_t index = std::numeric_limits<uint32_t>::max();
     {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& dm = DeviceManager::Get();
-        const auto& image = dm->GetCurrentSwapchainImage().Framebuffer->GetFinalImage();
-        REQUIRE CHECK(image);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        CHECK_EQUAL(0, resourceHeap->NextFreeSlot);
-        (void)manager->Register(image);
-        CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
-    }
-
-    TEST(DescriptorManager_RegisterSamplerIncreasesNextFreeSlot)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto sampler = Sampler::Create({}, manager);
-        REQUIRE CHECK(sampler);
-
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
-
-        CHECK_EQUAL(1, samplerHeap->NextFreeSlot);
-    }
-
-    TEST(DescriptorManager_RegisterResourceReturnsValidHandle)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& dm = DeviceManager::Get();
-        const auto& image = dm->GetCurrentSwapchainImage().Framebuffer->GetFinalImage();
-        REQUIRE CHECK(image);
-
-        const auto handle = manager->Register(image);
-        CHECK(handle.Index != std::numeric_limits<uint32_t>::max());
-        CHECK(handle.HeapType == BindlessHeapType::Resource);
-    }
-
-    TEST(DescriptorManager_RegisterSamplerReturnsValidHandle)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto sampler = Sampler::Create({}, manager);
-        REQUIRE CHECK(sampler);
-
-        const auto& handle = sampler->GetBindlessHandle();
-        CHECK(handle.Index != std::numeric_limits<uint32_t>::max());
-        CHECK(handle.Index < 2048);
-        CHECK(handle.HeapType == BindlessHeapType::Sampler);
-    }
-
-    TEST(DescriptorManager_RegisterResourceIncreasesCapacityIfFull)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        constexpr uint32_t initialSize = 256;
-        constexpr uint32_t trySize = initialSize + 1;
-
-        std::array<BindlessHandle, trySize> handles{};
-        for (uint32_t i = 0; i < trySize; i++)
-        {
-            const auto buffer = CreateRef<UniformBuffer>(256);
-            REQUIRE CHECK(buffer);
-            handles.at(i) = manager->Register(buffer);
-            CHECK(handles.at(i).Index != std::numeric_limits<uint32_t>::max());
-            CHECK(handles.at(i).HeapType == BindlessHeapType::Resource);
-        }
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-        CHECK_EQUAL(384, resourceHeap->Capacity);
-        CHECK_EQUAL(trySize, resourceHeap->NextFreeSlot);
-    }
-
-    TEST(DescriptorManager_RegisterSamplerIncreasesCapacityIfFull)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto& manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        constexpr uint32_t initialSize = 256;
-        constexpr uint32_t trySize = initialSize + 1;
-
-        std::vector<Ref<Sampler>> samplers;
-        samplers.reserve(trySize);
-        for (uint32_t i = 0; i < trySize; i++)
-        {
-            samplers.emplace_back(Sampler::Create({}, manager));
-            REQUIRE CHECK(samplers.back());
-            CHECK(samplers.back()->GetBindlessHandle().Index != std::numeric_limits<uint32_t>::max());
-            CHECK(samplers.back()->GetBindlessHandle().HeapType == BindlessHeapType::Sampler);
-        }
-
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
-        CHECK_EQUAL(384, samplerHeap->Capacity);
-        CHECK_EQUAL(trySize, samplerHeap->NextFreeSlot);
-    }
-
-    TEST(DescriptorManager_ReleaseAddsToFreeList)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        uint32_t index = std::numeric_limits<uint32_t>::max();
-        {
-            const auto buffer = CreateRef<UniformBuffer>(256);
-            const auto handle = manager->Register(buffer);
-            index = handle.Index;
-            CHECK(resourceHeap->FreeList.empty());
-        }
-
-        CHECK_EQUAL(1, resourceHeap->FreeList.size());
-        CHECK_EQUAL(index, resourceHeap->FreeList.back());
-    }
-
-    TEST(DescriptorManager_ReleasedSlotIsReused)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        uint32_t freed = std::numeric_limits<uint32_t>::max();
-        {
-            const auto buffer = CreateRef<UniformBuffer>(256);
-            const auto handle = manager->Register(buffer);
-            freed = handle.Index;
-        }
-
         const auto buffer = CreateRef<UniformBuffer>(256);
         const auto handle = manager->Register(buffer);
-        CHECK_EQUAL(freed, handle.Index);
-        CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
-        CHECK(resourceHeap->FreeList.empty());
+        index = handle.Index;
+        EXPECT_TRUE(resourceHeap->FreeList.empty());
     }
 
-    TEST(DescriptorManager_MoveConstructorTransfersOwnership)
+    EXPECT_EQ(1, resourceHeap->FreeList.size());
+    EXPECT_EQ(index, resourceHeap->FreeList.back());
+}
+
+TEST(Renderer, DescriptorManager_ReleasedSlotIsReused)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    uint32_t freed = std::numeric_limits<uint32_t>::max();
     {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        uint32_t index = std::numeric_limits<uint32_t>::max();
-        {
-            const auto buffer = CreateRef<UniformBuffer>(256);
-            BindlessHandle handle = manager->Register(buffer);
-            index = handle.Index;
-
-            const BindlessHandle moved = std::move(handle);
-            CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), handle.Index);
-            CHECK(handle.HeapType == BindlessHeapType::Resource);
-            CHECK_EQUAL(moved.Index, index);
-            CHECK(resourceHeap->FreeList.empty());
-        }
-
-        CHECK_EQUAL(1, resourceHeap->FreeList.size());
-        CHECK_EQUAL(index, resourceHeap->FreeList.back());
-    }
-
-    TEST(DescriptorManager_MoveAssignReleasesTargetSlot)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        const auto bufferA = CreateRef<UniformBuffer>(256);
-        const auto bufferB = CreateRef<UniformBuffer>(256);
-        BindlessHandle a = manager->Register(bufferA);
-        BindlessHandle b = manager->Register(bufferB);
-        const uint32_t indexA = a.Index;
-        const uint32_t indexB = b.Index;
-
-        a = std::move(b);
-        CHECK_EQUAL(1, resourceHeap->FreeList.size());
-        CHECK_EQUAL(indexA, resourceHeap->FreeList.back());
-        CHECK_EQUAL(indexB, a.Index);
-        CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), b.Index);
-        CHECK_EQUAL(2, resourceHeap->NextFreeSlot);
-    }
-
-    TEST(DescriptorManager_ResourceLayoutIsMutableSrvUavCbv)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        const auto& layout = manager->GetResourceHeap()->BindingLayout;
-        REQUIRE CHECK(layout);
-
-        CHECK(layout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv);
-    }
-
-    TEST(DescriptorManager_SamplerLayoutIsMutableSampler)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
-
-        const auto& layout = samplerHeap->BindingLayout;
-        REQUIRE CHECK(layout);
-
-        CHECK(layout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSampler);
-    }
-
-    TEST(DescriptorManager_DescriptorTableCapacityMatchesLayoutMaxCapacity)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        const auto& layout = resourceHeap->BindingLayout;
-        REQUIRE CHECK(layout);
-
-        CHECK_EQUAL(layout->getBindlessDesc()->maxCapacity, resourceHeap->DescriptorTable->getCapacity());
-    }
-
-    TEST(DescriptorManager_HandleReleasesToOwningManager)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        uint32_t index = std::numeric_limits<uint32_t>::max();
-        {
-            const auto buffer = CreateRef<UniformBuffer>(256);
-            const auto handle = manager->Register(buffer);
-            index = handle.Index;
-            CHECK(handle.Manager.lock() == manager);
-        }
-
-        CHECK_EQUAL(1, resourceHeap->FreeList.size());
-        CHECK_EQUAL(index, resourceHeap->FreeList.back());
-    }
-
-    TEST(DescriptorManager_ResourceAndSamplerHeapsAllocateIndependently)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
-
         const auto buffer = CreateRef<UniformBuffer>(256);
-        REQUIRE CHECK(buffer);
-        (void)manager->Register(buffer);
-        CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
-        CHECK_EQUAL(0, samplerHeap->NextFreeSlot);
-
-        const auto sampler = Sampler::Create({}, manager);
-        REQUIRE CHECK(sampler);
-        CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
-        CHECK_EQUAL(1, samplerHeap->NextFreeSlot);
+        const auto handle = manager->Register(buffer);
+        freed = handle.Index;
     }
 
-    TEST(DescriptorManager_FreeListReuseTakesPriorityOverGrowth)
+    const auto buffer = CreateRef<UniformBuffer>(256);
+    const auto handle = manager->Register(buffer);
+    EXPECT_EQ(freed, handle.Index);
+    EXPECT_EQ(1, resourceHeap->NextFreeSlot);
+    EXPECT_TRUE(resourceHeap->FreeList.empty());
+}
+
+TEST(Renderer, DescriptorManager_MoveConstructorTransfersOwnership)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    uint32_t index = std::numeric_limits<uint32_t>::max();
     {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        std::vector<Ref<UniformBuffer>> buffers;
-        std::vector<BindlessHandle> handles;
-        for (uint32_t i = 0; i < 256; i++)
-        {
-            buffers.emplace_back(CreateRef<UniformBuffer>(256));
-            handles.emplace_back(manager->Register(buffers.back()));
-        }
-        CHECK_EQUAL(256, resourceHeap->NextFreeSlot);
-
-        const uint32_t freed = handles.back().Index;
-        handles.pop_back();
-
-        // With the heap full, the freed slot must be reused rather than triggering a grow.
-        buffers.emplace_back(CreateRef<UniformBuffer>(256));
-        const auto reused = manager->Register(buffers.back());
-        CHECK_EQUAL(freed, reused.Index);
-        CHECK_EQUAL(256, resourceHeap->Capacity);
-        CHECK(resourceHeap->FreeList.empty());
-
-        // A following allocation will grow the heap
-        buffers.emplace_back(CreateRef<UniformBuffer>(256));
-        const auto grown = manager->Register(buffers.back());
-        CHECK(resourceHeap->Capacity > 256);
-        CHECK_EQUAL(256, grown.Index);
-        CHECK(resourceHeap->FreeList.empty());
-    }
-
-    TEST(DescriptorManager_RegisterAssignsDistinctSequentialSlots)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        std::array<Ref<UniformBuffer>, 256> buffers{};
-        std::array<BindlessHandle, 256> handles{};
-        for (uint32_t i = 0; i < 256; i++)
-        {
-            const auto buffer = CreateRef<UniformBuffer>(256);
-            buffers.at(i) = buffer;
-            handles.at(i) = manager->Register(buffer);
-        }
-
-        for (uint32_t i = 0; i < 256; i++)
-            CHECK_EQUAL(i, handles.at(i).Index);
-    }
-
-    TEST(DescriptorManager_CapacityGrowsByHalfEachTime)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
-        std::vector<Ref<UniformBuffer>> buffers;
-        std::vector<BindlessHandle> handles;
-
-        CHECK_EQUAL(256, resourceHeap->Capacity);
-        for (uint32_t i = 0; i < 256 + 1; i++)
-        {
-            buffers.emplace_back(CreateRef<UniformBuffer>(256));
-            handles.emplace_back(manager->Register(buffers.back()));
-        }
-        CHECK_EQUAL(384, resourceHeap->Capacity);
-    }
-
-    TEST(DescriptorManager_ReleaseDoesNotChangeNextFreeSlot)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-
         const auto buffer = CreateRef<UniformBuffer>(256);
-        CHECK_EQUAL(0, resourceHeap->NextFreeSlot);
+        BindlessHandle handle = manager->Register(buffer);
+        index = handle.Index;
 
-        {
-            const auto handle = manager->Register(buffer);
-            CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
-        }
-
-        CHECK_EQUAL(1, resourceHeap->NextFreeSlot);
-        CHECK_EQUAL(1, resourceHeap->FreeList.size());
+        const BindlessHandle moved = std::move(handle);
+        EXPECT_EQ(std::numeric_limits<uint32_t>::max(), handle.Index);
+        EXPECT_TRUE(handle.HeapType == BindlessHeapType::Resource);
+        EXPECT_EQ(moved.Index, index);
+        EXPECT_TRUE(resourceHeap->FreeList.empty());
     }
 
-    TEST(DescriptorManager_DefaultHandleIsInvalid)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    EXPECT_EQ(1, resourceHeap->FreeList.size());
+    EXPECT_EQ(index, resourceHeap->FreeList.back());
+}
 
+TEST(Renderer, DescriptorManager_MoveAssignReleasesTargetSlot)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    const auto bufferA = CreateRef<UniformBuffer>(256);
+    const auto bufferB = CreateRef<UniformBuffer>(256);
+    BindlessHandle a = manager->Register(bufferA);
+    BindlessHandle b = manager->Register(bufferB);
+    const uint32_t indexA = a.Index;
+    const uint32_t indexB = b.Index;
+
+    a = std::move(b);
+    EXPECT_EQ(1, resourceHeap->FreeList.size());
+    EXPECT_EQ(indexA, resourceHeap->FreeList.back());
+    EXPECT_EQ(indexB, a.Index);
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), b.Index);
+    EXPECT_EQ(2, resourceHeap->NextFreeSlot);
+}
+
+TEST(Renderer, DescriptorManager_ResourceLayoutIsMutableSrvUavCbv)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    const auto& layout = manager->GetResourceHeap()->BindingLayout;
+    EP_REQUIRE(layout);
+
+    EXPECT_TRUE(layout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv);
+}
+
+TEST(Renderer, DescriptorManager_SamplerLayoutIsMutableSampler)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
+
+    const auto& layout = samplerHeap->BindingLayout;
+    EP_REQUIRE(layout);
+
+    EXPECT_TRUE(layout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSampler);
+}
+
+TEST(Renderer, DescriptorManager_DescriptorTableCapacityMatchesLayoutMaxCapacity)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    const auto& layout = resourceHeap->BindingLayout;
+    EP_REQUIRE(layout);
+
+    EXPECT_EQ(layout->getBindlessDesc()->maxCapacity, resourceHeap->DescriptorTable->getCapacity());
+}
+
+TEST(Renderer, DescriptorManager_HandleReleasesToOwningManager)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    uint32_t index = std::numeric_limits<uint32_t>::max();
+    {
+        const auto buffer = CreateRef<UniformBuffer>(256);
+        const auto handle = manager->Register(buffer);
+        index = handle.Index;
+        EXPECT_TRUE(handle.Manager.lock() == manager);
+    }
+
+    EXPECT_EQ(1, resourceHeap->FreeList.size());
+    EXPECT_EQ(index, resourceHeap->FreeList.back());
+}
+
+TEST(Renderer, DescriptorManager_ResourceAndSamplerHeapsAllocateIndependently)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
+
+    const auto buffer = CreateRef<UniformBuffer>(256);
+    EP_REQUIRE(buffer);
+    (void)manager->Register(buffer);
+    EXPECT_EQ(1, resourceHeap->NextFreeSlot);
+    EXPECT_EQ(0, samplerHeap->NextFreeSlot);
+
+    const auto sampler = Sampler::Create({}, manager);
+    EP_REQUIRE(sampler);
+    EXPECT_EQ(1, resourceHeap->NextFreeSlot);
+    EXPECT_EQ(1, samplerHeap->NextFreeSlot);
+}
+
+TEST(Renderer, DescriptorManager_FreeListReuseTakesPriorityOverGrowth)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    std::vector<Ref<UniformBuffer>> buffers;
+    std::vector<BindlessHandle> handles;
+    for (uint32_t i = 0; i < 256; i++)
+    {
+        buffers.emplace_back(CreateRef<UniformBuffer>(256));
+        handles.emplace_back(manager->Register(buffers.back()));
+    }
+    EXPECT_EQ(256, resourceHeap->NextFreeSlot);
+
+    const uint32_t freed = handles.back().Index;
+    handles.pop_back();
+
+    // With the heap full, the freed slot must be reused rather than triggering a grow.
+    buffers.emplace_back(CreateRef<UniformBuffer>(256));
+    const auto reused = manager->Register(buffers.back());
+    EXPECT_EQ(freed, reused.Index);
+    EXPECT_EQ(256, resourceHeap->Capacity);
+    EXPECT_TRUE(resourceHeap->FreeList.empty());
+
+    // A following allocation will grow the heap
+    buffers.emplace_back(CreateRef<UniformBuffer>(256));
+    const auto grown = manager->Register(buffers.back());
+    EXPECT_TRUE(resourceHeap->Capacity > 256);
+    EXPECT_EQ(256, grown.Index);
+    EXPECT_TRUE(resourceHeap->FreeList.empty());
+}
+
+TEST(Renderer, DescriptorManager_RegisterAssignsDistinctSequentialSlots)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    std::array<Ref<UniformBuffer>, 256> buffers{};
+    std::array<BindlessHandle, 256> handles{};
+    for (uint32_t i = 0; i < 256; i++)
+    {
+        const auto buffer = CreateRef<UniformBuffer>(256);
+        buffers.at(i) = buffer;
+        handles.at(i) = manager->Register(buffer);
+    }
+
+    for (uint32_t i = 0; i < 256; i++)
+        EXPECT_EQ(i, handles.at(i).Index);
+}
+
+TEST(Renderer, DescriptorManager_CapacityGrowsByHalfEachTime)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    std::vector<Ref<UniformBuffer>> buffers;
+    std::vector<BindlessHandle> handles;
+
+    EXPECT_EQ(256, resourceHeap->Capacity);
+    for (uint32_t i = 0; i < 256 + 1; i++)
+    {
+        buffers.emplace_back(CreateRef<UniformBuffer>(256));
+        handles.emplace_back(manager->Register(buffers.back()));
+    }
+    EXPECT_EQ(384, resourceHeap->Capacity);
+}
+
+TEST(Renderer, DescriptorManager_ReleaseDoesNotChangeNextFreeSlot)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+
+    const auto buffer = CreateRef<UniformBuffer>(256);
+    EXPECT_EQ(0, resourceHeap->NextFreeSlot);
+
+    {
+        const auto handle = manager->Register(buffer);
+        EXPECT_EQ(1, resourceHeap->NextFreeSlot);
+    }
+
+    EXPECT_EQ(1, resourceHeap->NextFreeSlot);
+    EXPECT_EQ(1, resourceHeap->FreeList.size());
+}
+
+TEST(Renderer, DescriptorManager_DefaultHandleIsInvalid)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const BindlessHandle handle;
+
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), handle.Index);
+    EXPECT_TRUE(handle.HeapType == BindlessHeapType::Resource);
+    EXPECT_TRUE(!handle.Manager.lock());
+}
+
+TEST(Renderer, DescriptorManager_DefaultHandleDestructionDoesNotTouchFreeList)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
+
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
+
+    {
         const BindlessHandle handle;
-
-        CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), handle.Index);
-        CHECK(handle.HeapType == BindlessHeapType::Resource);
-        CHECK(!handle.Manager.lock());
     }
 
-    TEST(DescriptorManager_DefaultHandleDestructionDoesNotTouchFreeList)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    EXPECT_TRUE(resourceHeap->FreeList.empty());
+    EXPECT_TRUE(samplerHeap->FreeList.empty());
+}
 
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
+TEST(Renderer, DescriptorManager_MoveAssignFromInvalidHandleReleasesTargetSlot)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
 
-        {
-            const BindlessHandle handle;
-        }
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
 
-        CHECK(resourceHeap->FreeList.empty());
-        CHECK(samplerHeap->FreeList.empty());
-    }
+    const auto buffer = CreateRef<UniformBuffer>(256);
+    BindlessHandle a = manager->Register(buffer);
+    const uint32_t indexA = a.Index;
 
-    TEST(DescriptorManager_MoveAssignFromInvalidHandleReleasesTargetSlot)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    BindlessHandle invalid;
+    a = std::move(invalid);
 
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), a.Index);
+    EXPECT_EQ(1, resourceHeap->FreeList.size());
+    EXPECT_EQ(indexA, resourceHeap->FreeList.back());
+}
 
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
+TEST(Renderer, DescriptorManager_MoveAssignIntoInvalidHandleTakesOwnership)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const auto buffer = CreateRef<UniformBuffer>(256);
-        BindlessHandle a = manager->Register(buffer);
-        const uint32_t indexA = a.Index;
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
 
-        BindlessHandle invalid;
-        a = std::move(invalid);
+    const auto& resourceHeap = manager->GetResourceHeap();
+    EP_REQUIRE(resourceHeap);
 
-        CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), a.Index);
-        CHECK_EQUAL(1, resourceHeap->FreeList.size());
-        CHECK_EQUAL(indexA, resourceHeap->FreeList.back());
-    }
+    const auto buffer = CreateRef<UniformBuffer>(256);
+    BindlessHandle a = manager->Register(buffer);
+    const uint32_t indexA = a.Index;
 
-    TEST(DescriptorManager_MoveAssignIntoInvalidHandleTakesOwnership)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    BindlessHandle target;
+    target = std::move(a);
 
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
+    EXPECT_EQ(indexA, target.Index);
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), a.Index);
+    EXPECT_TRUE(resourceHeap->FreeList.empty());
+}
 
-        const auto& resourceHeap = manager->GetResourceHeap();
-        REQUIRE CHECK(resourceHeap);
+TEST(Renderer, DescriptorManager_SelfMoveAssignmentKeepsSlot)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const auto buffer = CreateRef<UniformBuffer>(256);
-        BindlessHandle a = manager->Register(buffer);
-        const uint32_t indexA = a.Index;
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
 
-        BindlessHandle target;
-        target = std::move(a);
+    const auto& resourceHeap = manager->GetResourceHeap();
 
-        CHECK_EQUAL(indexA, target.Index);
-        CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), a.Index);
-        CHECK(resourceHeap->FreeList.empty());
-    }
+    const auto buffer = CreateRef<UniformBuffer>(256);
+    BindlessHandle a = manager->Register(buffer);
+    const uint32_t indexA = a.Index;
 
-    TEST(DescriptorManager_SelfMoveAssignmentKeepsSlot)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    BindlessHandle& alias = a;
+    a = std::move(alias);
 
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
+    EXPECT_EQ(indexA, a.Index);
+    EXPECT_TRUE(resourceHeap->FreeList.empty());
+}
 
-        const auto& resourceHeap = manager->GetResourceHeap();
+TEST(Renderer, DescriptorManager_SeparateManagersAllocateIndependently)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const auto buffer = CreateRef<UniformBuffer>(256);
-        BindlessHandle a = manager->Register(buffer);
-        const uint32_t indexA = a.Index;
+    const auto managerA = CreateRef<DescriptorManager>();
+    EP_REQUIRE(managerA);
+    const auto managerB = CreateRef<DescriptorManager>();
+    EP_REQUIRE(managerB);
 
-        BindlessHandle& alias = a;
-        a = std::move(alias);
+    const auto buffer = CreateRef<UniformBuffer>(256);
+    (void)managerA->Register(buffer);
 
-        CHECK_EQUAL(indexA, a.Index);
-        CHECK(resourceHeap->FreeList.empty());
-    }
+    EXPECT_EQ(1, managerA->GetResourceHeap()->NextFreeSlot);
+    EXPECT_EQ(0, managerB->GetResourceHeap()->NextFreeSlot);
+}
 
-    TEST(DescriptorManager_SeparateManagersAllocateIndependently)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+TEST(Renderer, DescriptorManager_RegisterOnFullHeapReturnsInvalidHandle)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const auto managerA = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(managerA);
-        const auto managerB = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(managerB);
+    // The sampler heap's hard cap is 2048; registering past it must fail rather than grow beyond max.
+    const auto manager = CreateRef<DescriptorManager>();
+    EP_REQUIRE(manager);
 
-        const auto buffer = CreateRef<UniformBuffer>(256);
-        (void)managerA->Register(buffer);
+    const auto& samplerHeap = manager->GetSamplerHeap();
+    EP_REQUIRE(samplerHeap);
 
-        CHECK_EQUAL(1, managerA->GetResourceHeap()->NextFreeSlot);
-        CHECK_EQUAL(0, managerB->GetResourceHeap()->NextFreeSlot);
-    }
+    std::vector<Ref<Sampler>> samplers;
+    for (uint32_t i = 0; i < 2048; i++)
+        samplers.emplace_back(Sampler::Create({}, manager));
+    EXPECT_TRUE(samplerHeap->NextFreeSlot == 2048);
 
-    TEST(DescriptorManager_RegisterOnFullHeapReturnsInvalidHandle)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        // The sampler heap's hard cap is 2048; registering past it must fail rather than grow beyond max.
-        const auto manager = CreateRef<DescriptorManager>();
-        REQUIRE CHECK(manager);
-
-        const auto& samplerHeap = manager->GetSamplerHeap();
-        REQUIRE CHECK(samplerHeap);
-
-        std::vector<Ref<Sampler>> samplers;
-        for (uint32_t i = 0; i < 2048; i++)
-            samplers.emplace_back(Sampler::Create({}, manager));
-        CHECK(samplerHeap->NextFreeSlot == 2048);
-
-        const auto sampler = Sampler::Create({}, manager);
-        CHECK_EQUAL(std::numeric_limits<uint32_t>::max(), sampler->GetBindlessIndex());
-        CHECK(samplerHeap->Capacity <= 2048);
-    }
+    const auto sampler = Sampler::Create({}, manager);
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), sampler->GetBindlessIndex());
+    EXPECT_TRUE(samplerHeap->Capacity <= 2048);
 }

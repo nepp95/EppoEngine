@@ -30,8 +30,6 @@ find "$ROOT" -type f \( \
     -name '*.sln' -o \
     -name '*.slnx' -o \
     -name '*.vcxproj' -o \
-    -name '*.vcxproj.filters' -o \
-    -name '*.vcxproj.user' -o \
     -name '*.ninja' -o \
     -name '.ninja_deps' -o \
     -name '.ninja_log' -o \

@@ -14,7 +14,10 @@ project "EppoEngineTesting"
     targetdir ("%{wks.location}/build/bin/" .. OutputDir .. "/%{prj.name}")
 
     defines {
-        "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+        "GLM_FORCE_DEPTH_ZERO_TO_ONE",
+        -- Baked-in working directory so the runner can chdir to EppoEditor itself, independent of
+        -- how it is launched (Test Explorer runs from the output dir; CTest sets WORKING_DIRECTORY).
+        'EP_TEST_WORKING_DIR="' .. EppoRoot .. '/EppoEditor"',
     }
 
     files {
@@ -30,20 +33,23 @@ project "EppoEngineTesting"
         Dependencies.IncludeDirectories.Vulkan,
     }
 
-    links { "EppoEngine", "UnitTest++" }
+    -- vcpkg's gtest is x64-windows (a DLL) and x64-linux (static); the same link name
+    -- resolves in both because the per-config libdirs point at the right tree. On
+    -- Windows the shared build needs GTEST_LINKED_AS_SHARED_LIBRARY (set below).
+    links { "EppoEngine", "gtest" }
     if _ACTION ~= "ninja" then
         dependson { "EppoScriptCore", "EppoTesting.Scripts" }
     end
     debugdir "%{wks.location}/EppoEditor"
 
     filter "configurations:Debug"
-        defines { "EP_DEBUG", "TRACY_ENABLE" }
+        defines { "EP_DEBUG", "TRACY_ENABLE", "TRACY_ON_DEMAND" }
         runtime "Debug"
         symbols "On"
         libdirs { Dependencies.LibraryDirectories.Debug, Dependencies.LibraryDirectories.DebugTracy, Dependencies.LibraryDirectories.Vulkan }
 
     filter "configurations:Release"
-        defines { "EP_RELEASE", "TRACY_ENABLE" }
+        defines { "EP_RELEASE", "TRACY_ENABLE", "TRACY_ON_DEMAND" }
         runtime "Release"
         symbols "On"
         optimize "Speed"
@@ -57,7 +63,7 @@ project "EppoEngineTesting"
         libdirs { Dependencies.LibraryDirectories.Release, Dependencies.LibraryDirectories.Vulkan }
 
     filter "system:windows"
-        defines { "EP_PLATFORM_WINDOWS" }
+        defines { "EP_PLATFORM_WINDOWS", "GTEST_LINKED_AS_SHARED_LIBRARY=1" }
         systemversion "latest"
         buildoptions "/utf-8"
 
@@ -129,12 +135,15 @@ project "EppoEngineTesting"
             string.format('{COPYFILE} "%s" "%s/build/bin/%s/EppoEngineTesting"', Dependencies.VulkanDxcompiler, EppoRoot, OutputDir),
             string.format('{COPYDIR} "%s" "%s/build/bin/%s/EppoEngineTesting"', Dependencies.RuntimeDirectories.Debug, EppoRoot, OutputDir),
             string.format('{COPYDIR} "%s" "%s/build/bin/%s/EppoEngineTesting"', Dependencies.RuntimeDirectories.DebugTracy, EppoRoot, OutputDir),
+            -- Marks the exe as a Google Test binary so Visual Studio's Test Explorer discovers it.
+            string.format('{TOUCH} "%s/build/bin/%s/EppoEngineTesting/EppoEngineTesting.exe.is_google_test"', EppoRoot, OutputDir),
         }
 
     filter { "system:windows", "configurations:Release or Dist" }
         postbuildcommands {
             string.format('{COPYFILE} "%s" "%s/build/bin/%s/EppoEngineTesting"', Dependencies.VulkanDxcompiler, EppoRoot, OutputDir),
             string.format('{COPYDIR} "%s" "%s/build/bin/%s/EppoEngineTesting"', Dependencies.RuntimeDirectories.Release, EppoRoot, OutputDir),
+            string.format('{TOUCH} "%s/build/bin/%s/EppoEngineTesting/EppoEngineTesting.exe.is_google_test"', EppoRoot, OutputDir),
         }
 
     filter {}

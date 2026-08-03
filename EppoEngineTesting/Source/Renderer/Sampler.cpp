@@ -6,42 +6,39 @@
 
 using namespace Eppo;
 
-SUITE(Renderer)
+TEST(Renderer, Sampler_OwnsItsBindlessHandle)
 {
-	TEST(Sampler_OwnsItsBindlessHandle)
-	{
-		if (!Testing::AppHarness::IsAvailable())
-			return;
+	if (!Testing::AppHarness::IsAvailable())
+		return;
 
-		const auto descriptorManager = CreateRef<DescriptorManager>();
-		const auto sampler = Sampler::Create({}, descriptorManager);
+	const auto descriptorManager = CreateRef<DescriptorManager>();
+	const auto sampler = Sampler::Create({}, descriptorManager);
 
-		CHECK_EQUAL(0u, sampler->GetBindlessIndex());
-		CHECK_EQUAL(1u, descriptorManager->GetSamplerHeap()->NextFreeSlot);
-	}
+	EXPECT_EQ(0u, sampler->GetBindlessIndex());
+	EXPECT_EQ(1u, descriptorManager->GetSamplerHeap()->NextFreeSlot);
+}
 
-    TEST(Sampler_CreateAppliesIndependentAddressModes)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+TEST(Renderer, Sampler_CreateAppliesIndependentAddressModes)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const auto descriptorManager = CreateRef<DescriptorManager>();
-        const auto sampler = Sampler::Create(
-            {
-                .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
-                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
-                .AddressModeW = nvrhi::SamplerAddressMode::Mirror,
-                .AllFilters = false,
-            },
-            descriptorManager
-        );
-        const auto& desc = sampler->GetSampler()->getDesc();
+    const auto descriptorManager = CreateRef<DescriptorManager>();
+    const auto sampler = Sampler::Create(
+        {
+            .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
+            .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+            .AddressModeW = nvrhi::SamplerAddressMode::Mirror,
+            .AllFilters = false,
+        },
+        descriptorManager
+    );
+    const auto& desc = sampler->GetSampler()->getDesc();
 
-        CHECK(desc.addressU == nvrhi::SamplerAddressMode::Wrap);
-        CHECK(desc.addressV == nvrhi::SamplerAddressMode::Clamp);
-        CHECK(desc.addressW == nvrhi::SamplerAddressMode::Mirror);
-        CHECK(!desc.minFilter);
-        CHECK(!desc.magFilter);
-        CHECK(!desc.mipFilter);
-    }
+    EXPECT_TRUE(desc.addressU == nvrhi::SamplerAddressMode::Wrap);
+    EXPECT_TRUE(desc.addressV == nvrhi::SamplerAddressMode::Clamp);
+    EXPECT_TRUE(desc.addressW == nvrhi::SamplerAddressMode::Mirror);
+    EXPECT_TRUE(!desc.minFilter);
+    EXPECT_TRUE(!desc.magFilter);
+    EXPECT_TRUE(!desc.mipFilter);
 }

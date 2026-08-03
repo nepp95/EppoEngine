@@ -33,13 +33,13 @@ project "EppoRuntime"
     debugdir "%{cfg.targetdir}"
 
     filter "configurations:Debug"
-        defines { "EP_DEBUG", "TRACY_ENABLE" }
+        defines { "EP_DEBUG", "TRACY_ENABLE", "TRACY_ON_DEMAND" }
         runtime "Debug"
         symbols "On"
         libdirs { Dependencies.LibraryDirectories.Debug, Dependencies.LibraryDirectories.DebugTracy, Dependencies.LibraryDirectories.Vulkan }
 
     filter "configurations:Release"
-        defines { "EP_RELEASE", "TRACY_ENABLE" }
+        defines { "EP_RELEASE", "TRACY_ENABLE", "TRACY_ON_DEMAND" }
         runtime "Release"
         symbols "On"
         optimize "Speed"

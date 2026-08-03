@@ -2,24 +2,21 @@
 
 #include "ImGui/FileDialog.h"
 
-SUITE(FileDialogFilter)
+using Eppo::FileDialog;
+
+TEST(FileDialogFilter, BuildFilter_SingleExtension_OmitsLabelAndGrouping)
 {
-    using Eppo::FileDialog;
+    EXPECT_EQ(std::string(".epscene"), FileDialog::BuildFilter("EppoEngine Scene", { "epscene" }));
+}
 
-    TEST(BuildFilter_SingleExtension_OmitsLabelAndGrouping)
-    {
-        CHECK_EQUAL(std::string(".epscene"), FileDialog::BuildFilter("EppoEngine Scene", { "epscene" }));
-    }
+TEST(FileDialogFilter, BuildFilter_MultipleExtensions_GroupUnderLabel)
+{
+    EXPECT_EQ(
+        std::string("Importable Assets{.gltf,.glb,.png}"), FileDialog::BuildFilter("Importable Assets", { "gltf", "glb", "png" })
+    );
+}
 
-    TEST(BuildFilter_MultipleExtensions_GroupUnderLabel)
-    {
-        CHECK_EQUAL(
-            std::string("Importable Assets{.gltf,.glb,.png}"), FileDialog::BuildFilter("Importable Assets", { "gltf", "glb", "png" })
-        );
-    }
-
-    TEST(BuildFilter_NoExtensions_IsEmpty)
-    {
-        CHECK_EQUAL(std::string(), FileDialog::BuildFilter("Anything", {}));
-    }
+TEST(FileDialogFilter, BuildFilter_NoExtensions_IsEmpty)
+{
+    EXPECT_EQ(std::string(), FileDialog::BuildFilter("Anything", {}));
 }
