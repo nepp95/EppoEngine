@@ -159,7 +159,7 @@ namespace Eppo
 
         m_ManagedFns->Bootstrap = reinterpret_cast<BootstrapFn>(ResolveFn(EP_NATIVE_STR("Bootstrap")));
         m_ManagedFns->GetClassCount = reinterpret_cast<GetClassCountFn>(ResolveFn(EP_NATIVE_STR("GetClassCount")));
-        m_ManagedFns->GetClassName = reinterpret_cast<GetClassNameFn>(ResolveFn(EP_NATIVE_STR("GetClassName")));
+        m_ManagedFns->GetManagedClassName = reinterpret_cast<GetClassNameFn>(ResolveFn(EP_NATIVE_STR("GetClassName")));
         m_ManagedFns->GetClassFieldCount = reinterpret_cast<GetClassFieldCountFn>(ResolveFn(EP_NATIVE_STR("GetClassFieldCount")));
         m_ManagedFns->GetClassFieldName = reinterpret_cast<GetClassFieldNameFn>(ResolveFn(EP_NATIVE_STR("GetClassFieldName")));
         m_ManagedFns->GetClassFieldType = reinterpret_cast<GetClassFieldTypeFn>(ResolveFn(EP_NATIVE_STR("GetClassFieldType")));
@@ -202,7 +202,7 @@ namespace Eppo
         const auto count = m_ManagedFns->GetClassCount();
         for (int32_t i = 0; i < count; i++)
         {
-            const auto fullName = TakeManagedString(m_ManagedFns->GetClassName(i));
+            const auto fullName = TakeManagedString(m_ManagedFns->GetManagedClassName(i));
             if (fullName.empty())
                 continue;
 

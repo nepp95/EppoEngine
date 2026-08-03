@@ -1,10 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <Platforms>x64</Platforms>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <!-- Calls native engine services through C# unmanaged function pointers. -->
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <OutputPath>../build/bin/Debug-windows-x86_64/EppoScriptCore/</OutputPath>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <OutputPath>../build/bin/Release-windows-x86_64/EppoScriptCore/</OutputPath>
     </PropertyGroup>
     <ItemGroup>
 		<Folder Include="Source\Core\" />

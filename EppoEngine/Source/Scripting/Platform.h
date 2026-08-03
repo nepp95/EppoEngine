@@ -39,7 +39,7 @@
 
     inline auto LoadLib(const EP_CharType* path) -> EP_LIBRARY
     {
-        return dlopen(path);
+        return dlopen(path, RTLD_LAZY | RTLD_LOCAL);
     }
 
     inline auto GetSymbol(EP_LIBRARY lib, const char* name) -> void*

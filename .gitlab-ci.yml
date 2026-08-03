@@ -1,30 +1,3 @@
-# GitLab CI for EppoEngine
-# =============================================================================
-# GitLab's shared Linux runners supply the compute; the toolchain (clang, CMake,
-# vcpkg, Vulkan SDK, .NET 10) comes from a container image we build once and keep
-# in this project's Container Registry (.gitlab/ci/Dockerfile).
-#
-# Pipeline:
-#   build-image  — (re)build the toolchain image and push it to the registry.
-#                  Runs ONLY when the Dockerfile changes, so it costs nothing on
-#                  a normal code push.
-#   build-test   — pull that image, build the engine + headless test runner, run
-#                  every non-graphical suite (Core/Input/Scene/Project/Scripting)
-#                  and publish a JUnit report to the MR "Tests" tab.
-#
-# The graphical `App` suite needs a real GPU + display and is excluded by label
-# (see EppoEngineTesting/Source/Support/AppHarness.h).
-#
-# COMPUTE BUDGET (the important requirement) — levers, biggest first:
-#   1. vcpkg BINARY CACHE   — the manifest (imgui, nvrhi, tracy, ...) is slow to
-#      build from source. Cached binaries make it ~instant. Keyed on vcpkg.json,
-#      so it only rebuilds when dependencies actually change.
-#   2. Toolchain in an image — no per-run SDK installs; image rebuilds only on a
-#      Dockerfile change.
-#   3. Build only the test target (skip the editor exe) + run only headless suites.
-#   4. interruptible + workflow rules — never run redundant/duplicate pipelines.
-# =============================================================================
-
 stages:
   - build-image
   - build-test
@@ -39,15 +12,10 @@ workflow:
 variables:
   GIT_DEPTH: "1"
   GIT_SUBMODULE_STRATEGY: none
-  # Ninja is much faster than Make; the linux-* presets don't pin a generator.
-  CMAKE_GENERATOR: Ninja
-  # vcpkg binary cache -> a repo-local dir handed to GitLab's cache: below.
   VCPKG_BINARY_SOURCES: "clear;files,$CI_PROJECT_DIR/.vcpkg-cache,readwrite"
   VCPKG_DISABLE_METRICS: "1"
   DOCKER_IMAGE: "$CI_REGISTRY_IMAGE/ci:latest"
 
-# --- Build & push the toolchain image (only when the Dockerfile changes) -------
-# Kaniko builds images inside the runner without a privileged Docker daemon.
 build-ci-image:
   stage: build-image
   image:
@@ -55,12 +23,10 @@ build-ci-image:
     entrypoint: [""]
   interruptible: true
   rules:
-    # Rebuild when the image recipe changes (on an MR or a push to the branch).
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes: [.gitlab/ci/Dockerfile]
     - if: '$CI_COMMIT_BRANCH'
       changes: [.gitlab/ci/Dockerfile]
-    # Manual escape hatch to (re)build the image on demand, e.g. the first time.
     - when: manual
       allow_failure: true
   script:
@@ -73,55 +39,35 @@ build-ci-image:
       --destination "$DOCKER_IMAGE"
       --cache=true
 
-# --- Build the engine + test runner and run the headless suites ----------------
 build-and-test:
   stage: build-test
   image: "$DOCKER_IMAGE"
   interruptible: true
-  # Wait for the image job when it runs (Dockerfile changed); otherwise just pull
-  # the last image already in the registry.
   needs:
     - job: build-ci-image
       optional: true
   cache:
-    # Invalidated only when the manifest / baseline changes -> deps stay cached
-    # across the vast majority of pipelines.
     - key:
         files:
           - vcpkg.json
-          - CMakePresets.json
+          - vcpkg-configuration.json
       paths:
         - .vcpkg-cache/
       policy: pull-push
   before_script:
     - mkdir -p .vcpkg-cache
-    # Sanity: the image must carry the toolchain the presets expect.
-    - 'test -n "$VCPKG_ROOT"  || { echo "VCPKG_ROOT missing from image";  exit 1; }'
-    - 'test -n "$VULKAN_SDK"  || { echo "VULKAN_SDK missing from image";  exit 1; }'
+    - 'test -n "$VCPKG_ROOT" || { echo "VCPKG_ROOT missing from image"; exit 1; }'
+    - 'test -n "$VULKAN_SDK" || { echo "VULKAN_SDK missing from image"; exit 1; }'
     - 'test -n "$DOTNET_ROOT" || { echo "DOTNET_ROOT missing from image"; exit 1; }'
+    - premake5 --version | grep '5.0.0-beta8'
   script:
-    # Configure (restores vcpkg deps from .vcpkg-cache on a hit).
-    - cmake --preset linux-debug
-    # Build ONLY the test runner: drags in EppoEngine + the managed scripting
-    # provisioning, but skips the EppoEditor executable.
-    - cmake --build --preset linux-debug --target EppoEngineTesting
-    # Run every suite EXCEPT the GPU-bound `graphical` one, emitting JUnit XML.
-    - ctest --test-dir build/debug --label-exclude graphical --output-on-failure --output-junit "$CI_PROJECT_DIR/build/debug/report.xml"
+    - python3 Scripts/Setup.py --action ninja --compiler clang --yes
+    - ninja EppoEngineTesting_Debug_x64
+    - ctest --test-dir build/bin/Debug-linux-x86_64 --label-exclude graphical --output-on-failure --output-junit "$CI_PROJECT_DIR/build/bin/Debug-linux-x86_64/report.xml"
   artifacts:
-    when: always            # publish the report even when a test fails
+    when: always
     reports:
-      junit: build/debug/report.xml
+      junit: build/bin/Debug-linux-x86_64/report.xml
     paths:
-      - build/debug/report.xml
+      - build/bin/Debug-linux-x86_64/report.xml
     expire_in: 1 week
-
-# =============================================================================
-# FURTHER SPEED OPTIONS (situational)
-#  * Bake the vcpkg deps INTO the image (COPY vcpkg.json; vcpkg install) so even
-#    a cold cache is instant — at the cost of a heavier image rebuilt whenever
-#    the manifest changes. The cache approach above is the lighter default.
-#  * Debug-only vcpkg triplet (VCPKG_BUILD_TYPE=debug) ~halves the cold build.
-#  * sccache with CMAKE_<LANG>_COMPILER_LAUNCHER to cache the project's own TUs.
-#  * The graphical `App` suite: run it by dropping `--label-exclude graphical` on
-#    a GPU runner, or under Xvfb + Mesa lavapipe (software Vulkan).
-# =============================================================================

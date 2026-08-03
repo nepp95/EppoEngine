@@ -10,7 +10,7 @@
 | Native callbacks | `ScriptGlue.*` | Implement callbacks invoked by managed public APIs and publish the name/function table consumed by `Assembly::RegisterInternalCalls`. |
 | Managed bridge | `EppoScriptCore/Source/Core/ScriptGlue.cs`, `InternalCalls.cs` | Export unmanaged entry points, discover user types, own managed instances, marshal calls, and store registered native pointers. |
 | Public C# API | `EppoScriptCore/Source/Scene`, `Physics`, `Core`, `Math` | Present user-facing entities, components, input, logging, physics, key codes, and blittable vector types. |
-| Build/deploy | `CMake/Dotnet.cmake`, target CMake files, `EppoEditor/runtimeconfig.json` | Build `EppoScriptCore.dll`, build the test user assembly, and copy managed outputs beside native executables. |
+| Build/deploy | `EppoScriptCore/premake5.lua`, `EppoEngineTesting/TestData/Scripts/premake5.lua`, target `premake5.lua` files, `EppoEditor/runtimeconfig.json` | Build `EppoScriptCore.dll`, build the test user assembly, and copy managed outputs beside native executables. |
 | Tests | `EppoEngineTesting/Source/Scripting`, `TestData/Scripts` | Exercise reflection, lifecycle, fields, method invocation, internal calls, exceptions, and layout. |
 
 ## Boot and assembly flow
@@ -104,12 +104,12 @@ Keep these synchronized:
 Use the required order:
 
 ```text
-cmake --preset windows-debug
-cmake --build --preset windows-debug --target EppoEngineTesting
-ctest --test-dir build/debug -R "Scripting|ScriptMarshalling" --output-on-failure
+Scripts\Setup.bat --action vs2026        # generate (sh Scripts/setup.sh on Linux)
+# build EppoEngineTesting: in the generated VS solution, or `ninja EppoEngineTesting_Debug_x64`
+ctest --test-dir build/bin/Debug-windows-x86_64 -R "Scripting|ScriptMarshalling" --output-on-failure
 ```
 
-`CopyBuildScripts` places `EppoScriptCore.dll`, PDB/deps files, and `runtimeconfig.json` beside the executable. `EppoTestingHarness` builds and deploys `EppoTesting.Scripts.dll`. Those managed files are resolved through `FS::GetExecutableDirectory()`, independent of cwd. Run tests through CTest so their editor resources resolve from the configured `EppoEditor/` working directory.
+Each target's `premake5.lua` post-build commands place `EppoScriptCore.dll`, PDB/deps files, and `runtimeconfig.json` beside the executable, and the harness project (`EppoEngineTesting/TestData/Scripts/premake5.lua`) builds and deploys `EppoTesting.Scripts.dll`. Those managed files are resolved through `FS::GetExecutableDirectory()`, independent of cwd. Run tests through CTest so their editor resources resolve from the configured `EppoEditor/` working directory.
 
 Use `Scripting` for discovery, invocation, lifecycle, field values, internal calls, managed exceptions, and C# API behavior. Use `ScriptMarshalling` for enum widths and buffer layout. Also run `Scene` for serialization/copy changes and `Physics` for managed physics changes.
 
