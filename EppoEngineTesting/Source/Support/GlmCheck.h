@@ -1,18 +1,18 @@
 #pragma once
 
-#include <UnitTest++/UnitTest++.h>
+#include <gtest/gtest.h>
 
 #include <glm/glm.hpp>
 
-// Component-wise CHECK_CLOSE for glm types, so a failure reports which component drifted.
+// Component-wise EXPECT_NEAR for glm types, so a failure reports which component drifted.
 
 #define CHECK_VEC2_CLOSE(expected, actual, tolerance)                                                                                      \
     do                                                                                                                                     \
     {                                                                                                                                      \
         const glm::vec2 lhs = (expected);                                                                                                  \
         const glm::vec2 rhs = (actual);                                                                                                    \
-        CHECK_CLOSE(lhs.x, rhs.x, tolerance);                                                                                              \
-        CHECK_CLOSE(lhs.y, rhs.y, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.x, rhs.x, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.y, rhs.y, tolerance);                                                                                              \
     }                                                                                                                                      \
     while (false)
 
@@ -21,9 +21,9 @@
     {                                                                                                                                      \
         const glm::vec3 lhs = (expected);                                                                                                  \
         const glm::vec3 rhs = (actual);                                                                                                    \
-        CHECK_CLOSE(lhs.x, rhs.x, tolerance);                                                                                              \
-        CHECK_CLOSE(lhs.y, rhs.y, tolerance);                                                                                              \
-        CHECK_CLOSE(lhs.z, rhs.z, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.x, rhs.x, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.y, rhs.y, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.z, rhs.z, tolerance);                                                                                              \
     }                                                                                                                                      \
     while (false)
 
@@ -32,10 +32,10 @@
     {                                                                                                                                      \
         const glm::vec4 lhs = (expected);                                                                                                  \
         const glm::vec4 rhs = (actual);                                                                                                    \
-        CHECK_CLOSE(lhs.x, rhs.x, tolerance);                                                                                              \
-        CHECK_CLOSE(lhs.y, rhs.y, tolerance);                                                                                              \
-        CHECK_CLOSE(lhs.z, rhs.z, tolerance);                                                                                              \
-        CHECK_CLOSE(lhs.w, rhs.w, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.x, rhs.x, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.y, rhs.y, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.z, rhs.z, tolerance);                                                                                              \
+        EXPECT_NEAR(lhs.w, rhs.w, tolerance);                                                                                              \
     }                                                                                                                                      \
     while (false)
 

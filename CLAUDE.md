@@ -29,8 +29,9 @@ ctest --test-dir build/bin/Debug-windows-x86_64 --label-exclude graphical
 ctest --test-dir build/bin/Debug-windows-x86_64 -R Scripting
 ```
 
-Run a suite directly from `EppoEditor/` so source resources resolve correctly: `../build/bin/Debug-windows-x86_64/EppoEngineTesting/EppoEngineTesting Scripting`.
+Run a suite directly from `EppoEditor/` so source resources resolve correctly: `../build/bin/Debug-windows-x86_64/EppoEngineTesting/EppoEngineTesting --gtest_filter=Scripting.*` (Google Test; suite = the first `TEST(Suite, Name)` argument). CTest passes exactly this filter per suite.
 Suites and labels (registered in `Scripts/Premake/Testing.lua`): `Core`, `Physics`, `Scene` (`core`); `Project` (`unit`); `Scripting`, `ScriptMarshalling` (`scripting`); `App`, `ProjectExport`, `Renderer` (`graphical`).
+Visual Studio's built-in Test Adapter for Google Test discovers the suite in Test Explorer with no per-developer setup. The runner's `main.cpp` `chdir`s to `EppoEditor` on startup (via the premake-baked `EP_TEST_WORKING_DIR`), so `Resources/`/`Projects/`/`TestData/` resolve for graphical and data-driven suites regardless of how the exe is launched (Test Explorer runs it from the output dir; CTest also sets `WORKING_DIRECTORY`).
 
 Required order: **generate → build → test**. After editing C# only, rebuild the `EppoEngineTesting` (or `EppoEditor`) target so the dotnet custom commands re-run and DLLs are re-copied.
 
@@ -41,11 +42,11 @@ Required order: **generate → build → test**. After editing C# only, rebuild 
 - `EppoEngine/` — static library, the engine. `Source/` modules: `Asset`, `Core`, `Event`, `ImGui`, `Physics`, `Platform`, `Project`, `Renderer`, `Scene`, `Scripting`, `Utility`. Public umbrella header `Source/EppoEngine.h`; PCH `Source/pch.h`. `Core/Buffer/` is the binary serialization substrate: abstract `StreamWriter`/`StreamReader` with `Buffer*` (in-memory) and `FileStream*` (on-disk) implementations, plus paired `StreamSerializable`/`StreamDeserializable` concepts backing `WriteObject`/`ReadObject`. `GameData` is built on it.
 - `EppoEditor/` — editor executable (`EppoEditor.cpp` → `EditorLayer`). Depends on `EppoEngine` + `EppoScriptCore`. Owns `Resources/` and `runtimeconfig.json`.
 - `EppoScriptCore/` — C# class library (net10.0). Visual Studio exposes the real `.csproj` in the EppoScriptCore solution group and maps solution Dist to managed Release. Ninja invokes `dotnet` through the project Premake definition. Namespaces mirror the folder path minus `Source/`.
-- `EppoEngineTesting/` — UnitTest++ runner. `Source/` suites mirror engine modules; `Source/Support/` has `AppHarness` (boots a real `Application` for graphical suites), `TestContext` + `ScenarioLayer` (multi-frame scene/camera scenarios, used by the `Renderer` suite), and the `EppoTest.h` / `GlmCheck.h` / `TempDir.h` helpers. `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites are registered in `Scripts/Premake/Testing.lua`.
+- `EppoEngineTesting/` — Google Test runner (custom `main.cpp` wraps `RUN_ALL_TESTS` with logging + `AppHarness::Shutdown`). `Source/` suites mirror engine modules; `Source/Support/` has `AppHarness` (boots a real `Application` for graphical suites), `TestContext` + `ScenarioLayer` (multi-frame scene/camera scenarios, used by the `Renderer` suite), and the `EppoTest.h` / `GlmCheck.h` / `TempDir.h` helpers. `EppoTest.h` provides `EP_REQUIRE`/`EP_REQUIRE_EQ` (a fatal check usable in value-returning helpers where `ASSERT_*` cannot) and `EP_EXPECT_ARRAY_EQ`; `GlmCheck.h` keeps `CHECK_VEC*/MAT4_CLOSE` on `EXPECT_NEAR`. `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites are registered in `Scripts/Premake/Testing.lua`.
 - `EppoRuntime/` — standalone player. Reads `Game.eppak` before creating the application, since its engine shaders come from there. It stages **no** `Resources/`: shader sources and their includes travel in the pack, and it never reads them from disk. Logs and its shader cache are written beside the executable.
 - `Scripts/Premake/` — shared dependency names and standalone CTest manifest generation. Each native target owns a `premake5.lua`; vcpkg overlays live under `Dependencies/Ports`.
 
-Key libraries: entt (ECS), NVRHI (Vulkan RHI), GLFW + ImGui (docking), glm, box3d (physics), spdlog, tinygltf, Tracy, UnitTest++.
+Key libraries: entt (ECS), NVRHI (Vulkan RHI), GLFW + ImGui (docking), glm, box3d (physics), spdlog, tinygltf, Tracy, Google Test.
 
 ### Packaging and the deployed runtime (spans Project, Asset, Renderer, EppoRuntime)
 
@@ -137,7 +138,7 @@ Seven domain skills live in `.claude/skills/` (each `SKILL.md` + `references/arc
 
 - **Discover worktrees first.** Before inspecting, editing, building, or testing, run `git worktree list` from the repository and identify the worktree that contains the task. Never assume the primary checkout is the target; use the selected worktree consistently for every command.
 - **Plan before code.** For anything beyond a trivial change, write a plan first and confirm key decisions (including naming/layout choices) with the user before implementing.
-- **Test-driven development.** Write the test first (matching `EppoEngineTesting/Source/<module>/` suite, or a new suite registered in `Scripts/Premake/Testing.lua`). Name suites/tests after the class/behaviour under test, not the goal ("Smoke"/"Sanity" are banned). Critical bug fixes get a regression test.
+- **Test-driven development.** Write the test first as `TEST(Suite, Name)` (Google Test) in the matching `EppoEngineTesting/Source/<module>/` file; a suite is just the shared first argument, so a new suite must also be registered in `Scripts/Premake/Testing.lua`. Use `EXPECT_*`/`ASSERT_*`, `EP_REQUIRE` for fatal checks inside value-returning helpers, and the `CHECK_VEC*_CLOSE` glm helpers. Name suites/tests after the class/behaviour under test, not the goal ("Smoke"/"Sanity" are banned). Critical bug fixes get a regression test.
 - **Systematic debugging.** Root cause before fix; no patching symptoms.
 - **Code review via subagent** after substantial changes — do not review your own work.
 - **No formatting changes to existing code.** Don't reindent or reflow lines you aren't otherwise editing, and never run clang-format across a file you didn't create. New and edited lines use 4 spaces (see Style); the tab-to-space conversion of legacy files is a deliberate, separately-run pass, not something to do as a drive-by.

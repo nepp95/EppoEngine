@@ -30,8 +30,6 @@ FOR /R %%F IN (
     *.sln
     *.slnx
     *.vcxproj
-    *.vcxproj.filters
-    *.vcxproj.user
     *.ninja
     .ninja_deps
     .ninja_log

@@ -6,52 +6,49 @@
 
 using namespace Eppo;
 
-SUITE(Renderer)
+TEST(Renderer, RenderCommandBuffer_AllocatesTimingDataForEveryBackBuffer)
 {
-    TEST(RenderCommandBuffer_AllocatesTimingDataForEveryBackBuffer)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const RenderCommandBuffer renderCommandBuffer;
-        const uint32_t frameIndex = DeviceManager::Get()->GetBackBufferCount() - 1;
+    const RenderCommandBuffer renderCommandBuffer;
+    const uint32_t frameIndex = DeviceManager::Get()->GetBackBufferCount() - 1;
 
-        CHECK_EQUAL(0.0f, renderCommandBuffer.GetTime(frameIndex));
-        CHECK_EQUAL(0.0f, renderCommandBuffer.GetTimeMs(frameIndex));
-        CHECK_EQUAL(0.0f, renderCommandBuffer.GetTime(frameIndex + 1));
-        CHECK_EQUAL(0.0f, renderCommandBuffer.GetTime("Unrecorded", frameIndex + 1));
-    }
+    EXPECT_EQ(0.0f, renderCommandBuffer.GetTime(frameIndex));
+    EXPECT_EQ(0.0f, renderCommandBuffer.GetTimeMs(frameIndex));
+    EXPECT_EQ(0.0f, renderCommandBuffer.GetTime(frameIndex + 1));
+    EXPECT_EQ(0.0f, renderCommandBuffer.GetTime("Unrecorded", frameIndex + 1));
+}
 
-    TEST(RenderCommandBuffer_BeginEndSubmitCompletes)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+TEST(Renderer, RenderCommandBuffer_BeginEndSubmitCompletes)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        RenderCommandBuffer renderCommandBuffer;
-        const uint32_t frameIndex = DeviceManager::Get()->GetCurrentBackBufferIndex();
+    RenderCommandBuffer renderCommandBuffer;
+    const uint32_t frameIndex = DeviceManager::Get()->GetCurrentBackBufferIndex();
 
-        renderCommandBuffer.Begin("Test");
-        CHECK(renderCommandBuffer.GetCommandList());
-        renderCommandBuffer.End();
-        renderCommandBuffer.Submit();
+    renderCommandBuffer.Begin("Test");
+    EXPECT_TRUE(renderCommandBuffer.GetCommandList());
+    renderCommandBuffer.End();
+    renderCommandBuffer.Submit();
 
-        CHECK(renderCommandBuffer.GetTime(frameIndex) >= 0.0f);
-    }
+    EXPECT_TRUE(renderCommandBuffer.GetTime(frameIndex) >= 0.0f);
+}
 
-    TEST(RenderCommandBuffer_NamedTimerIsReadableAfterSubmit)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+TEST(Renderer, RenderCommandBuffer_NamedTimerIsReadableAfterSubmit)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        RenderCommandBuffer renderCommandBuffer;
-        const uint32_t frameIndex = DeviceManager::Get()->GetCurrentBackBufferIndex();
+    RenderCommandBuffer renderCommandBuffer;
+    const uint32_t frameIndex = DeviceManager::Get()->GetCurrentBackBufferIndex();
 
-        renderCommandBuffer.Begin();
-        renderCommandBuffer.BeginTimerQuery("Pass");
-        renderCommandBuffer.EndTimerQuery("Pass");
-        renderCommandBuffer.End();
-        renderCommandBuffer.Submit();
+    renderCommandBuffer.Begin();
+    renderCommandBuffer.BeginTimerQuery("Pass");
+    renderCommandBuffer.EndTimerQuery("Pass");
+    renderCommandBuffer.End();
+    renderCommandBuffer.Submit();
 
-        CHECK(renderCommandBuffer.GetTime("Pass", frameIndex) >= 0.0f);
-    }
+    EXPECT_TRUE(renderCommandBuffer.GetTime("Pass", frameIndex) >= 0.0f);
 }
