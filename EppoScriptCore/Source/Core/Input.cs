@@ -9,13 +9,13 @@ namespace EppoScriptCore.Core
 
         public static bool IsMouseButtonPressed(MouseCode button)
             => InternalCalls.Input_IsMouseButtonPressed((ushort)button);
-        
+
         public static Vector2 GetMousePosition()
             => InternalCalls.Input_GetMousePosition();
-        
+
         public static float GetMouseX()
             => GetMousePosition().X;
-        
+
         public static float GetMouseY()
             => GetMousePosition().Y;
     }

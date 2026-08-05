@@ -207,7 +207,7 @@ namespace EppoScriptCore.Scene
             get => InternalCalls.BoxColliderComponent_GetDensity(Entity.ID);
             set => InternalCalls.BoxColliderComponent_SetDensity(Entity.ID, value);
         }
-        
+
         public float Friction
         {
             get => InternalCalls.BoxColliderComponent_GetFriction(Entity.ID);
