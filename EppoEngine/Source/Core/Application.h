@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Layer.h"
+#include "Core/ThreadPool.h"
 #include "Core/Window.h"
 #include "Event/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
@@ -95,6 +96,7 @@ namespace Eppo
     private:
         Ref<Window> m_Window = nullptr;
         Ref<DeviceManager> m_DeviceManager = nullptr;
+        Ref<ThreadPool> m_ThreadPool = nullptr;
 
         std::vector<Ref<Layer>> m_LayerStack;
         Ref<ImGuiLayer> m_ImGuiLayer = nullptr;
