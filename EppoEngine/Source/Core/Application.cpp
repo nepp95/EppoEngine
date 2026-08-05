@@ -41,6 +41,9 @@ namespace Eppo
 
         m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
         m_DeviceManager->Init();
+
+        m_ThreadPool = CreateRef<ThreadPool>();
+
         m_DeviceManager->InitRenderer();
 
         // A deployed runtime hands over the shaders it read from its game package; the editor and tests
@@ -65,6 +68,7 @@ namespace Eppo
             it = m_LayerStack.erase(it);
         }
 
+        m_ThreadPool->Shutdown(true);
         m_DeviceManager->Shutdown();
         m_Window->Shutdown();
 
@@ -92,6 +96,7 @@ namespace Eppo
         EP_PROFILE_FN("Application::StepFrame")
 
         m_Window->ProcessEvents();
+        m_ThreadPool->Flush();
 
         if (!m_IsMinimized && m_DeviceManager->BeginFrame())
         {
