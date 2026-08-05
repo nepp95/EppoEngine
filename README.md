@@ -33,6 +33,8 @@ sh Scripts/setup.sh
 
 Setup generates `EppoEngine.sln` for Visual Studio 2022, `EppoEngine.slnx` for Visual Studio 2026, or Linux `build.ninja` at the repository root. The Visual Studio solution groups the real C# projects under EppoScriptCore; those projects expose Debug and Release, with solution Dist mapped to managed Release. Visual Studio project files are generated in their project directories; Premake beta8's Ninja project files sit beside the root `build.ninja`. Generated build files can be opened or built directly; there is no build wrapper.
 
+After the first setup, regenerate the build files without reprovisioning tools or reconciling the vcpkg manifest with `Scripts\GenerateBuildFiles.bat` on Windows or `sh Scripts/generatebuildfiles.sh` on Linux. It reuses the action, compiler, Premake and vcpkg root recorded in `.eppo/build.json`, so it never prompts; `--action` and `--compiler` still override the recorded values.
+
 For Visual Studio, open the generated EppoEngine solution and build the desired project and configuration. Visual Studio builds the real C# projects directly. For Ninja:
 
 ```bash

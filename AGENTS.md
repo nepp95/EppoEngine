@@ -19,10 +19,12 @@ EppoEngine — a C++20 cross-platform (Windows/Linux) game engine + editor with 
 ## Commands
 
 Run `Scripts\Setup.bat` on Windows and choose VS2022 or VS2026. Run `sh Scripts/setup.sh` on Linux for Ninja + Clang. Windows generates one `EppoEngine` solution; its real C# projects are grouped under EppoScriptCore and map solution Dist to managed Release. Generated solutions/build files are used directly; there is no build wrapper. Binary dirs are `build/bin/<Configuration>-<System>-x86_64/<Project>`.
+Run `Scripts\GenerateBuildFiles.bat` on Windows or `sh Scripts/generatebuildfiles.sh` on Linux to only rerun Premake (`Setup.py --generate-only`) after the first setup: it reuses the action, compiler, Premake and vcpkg root recorded in `.eppo/build.json`, skips tool provisioning and `vcpkg install`, and never prompts. `--action`/`--compiler` still override.
 Run `Scripts\Clean.bat` on Windows or `sh Scripts/clean.sh` on Linux to remove all setup and build outputs, including locally provisioned tools under `.eppo`.
 
 ```bash
 Scripts\Setup.bat --action vs2026                                  # generate Visual Studio 2026 on Windows
+Scripts\GenerateBuildFiles.bat                                     # regenerate only, reusing the recorded setup
 # Build EppoEngineTesting in the generated solution
 ctest --test-dir build/bin/Debug-windows-x86_64 --output-on-failure
 ctest --test-dir build/bin/Debug-windows-x86_64 --label-exclude graphical
