@@ -359,6 +359,27 @@ def find_ninja(root: Path) -> Path | None:
     return None
 
 
+def build_info_path(root: Path) -> Path:
+    return root / ".eppo" / "build.json"
+
+
+def read_build_info(root: Path) -> dict[str, object]:
+    document = build_info_path(root)
+    if not document.is_file():
+        raise SetupError(f"'{document}' was not found. Run Scripts{os.sep}Setup.bat or sh Scripts/setup.sh once before generating build files.")
+    try:
+        recorded = json.loads(document.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        raise SetupError(f"'{document}' could not be read. Rerun setup.") from None
+    if not isinstance(recorded, dict):
+        raise SetupError(f"'{document}' does not contain a setup record. Rerun setup.")
+    return recorded
+
+
+def recorded_path(value: object) -> Path | None:
+    return Path(value) if isinstance(value, str) and value else None
+
+
 def build_info_document(
     *,
     action: str,
@@ -412,10 +433,14 @@ def choose_action(requested: str | None, system: str) -> str:
         raise SetupError("Invalid generator selection.") from None
 
 
-def validate_environment(system: str, action: str, compiler: str) -> tuple[Path | None, Path]:
+def require_environment_variables() -> None:
     missing = [name for name in ("VULKAN_SDK", "DOTNET_ROOT") if not os.environ.get(name)]
     if missing:
         raise SetupError(f"Missing required environment variables: {', '.join(missing)}")
+
+
+def validate_environment(system: str, action: str, compiler: str) -> tuple[Path | None, Path]:
+    require_environment_variables()
 
     dotnet = Path(os.environ["DOTNET_ROOT"]) / ("dotnet.exe" if system == "windows" else "dotnet")
     version = executable_version(dotnet, ["--version"])
@@ -509,6 +534,52 @@ def write_compile_commands(root: Path, system: str) -> None:
     print(f"Wrote compile_commands.json ({len(entries)} translation units)")
 
 
+def generate_only(root: Path, system: str, arguments: argparse.Namespace) -> None:
+    # Reuses the record written by the last full setup, so regenerating never
+    # provisions tools, reconciles the vcpkg manifest, or prompts for a generator.
+    recorded = read_build_info(root)
+    requested = arguments.action or recorded.get("action")
+    compiler = arguments.compiler or recorded.get("compiler")
+    if not isinstance(requested, str) or not isinstance(compiler, str):
+        raise SetupError(f"'{build_info_path(root)}' does not record an action and compiler. Rerun setup.")
+    action = choose_action(requested, system)
+    require_environment_variables()
+
+    premake = recorded_path(recorded.get("premake"))
+    if not premake or not parse_premake_version(executable_version(premake, ["--version"]) or ""):
+        premake = find_premake(root, system)
+    if not premake:
+        raise SetupError(f"Premake {PREMAKE_VERSION} was not found. Rerun setup to provision it.")
+    print(f"Using Premake {PREMAKE_VERSION}: {premake}")
+
+    vcpkg_root = recorded_path(recorded.get("vcpkgRoot"))
+    if not vcpkg_root or not vcpkg_root.is_dir():
+        vcpkg = find_vcpkg(root, system)
+        if not vcpkg:
+            raise SetupError("vcpkg was not found. Rerun setup to provision it.")
+        vcpkg_root = vcpkg[1]
+
+    generate(premake, root, action, compiler, vcpkg_root)
+    write_compile_commands(root, system)
+
+    if action != recorded.get("action") or compiler != recorded.get("compiler") or str(premake.resolve()) != recorded.get("premake"):
+        if system == "windows":
+            vcvars, build_tool = find_windows_toolchain(action)
+        else:
+            vcvars, build_tool = None, find_ninja(root) or Path("ninja")
+        write_build_info(
+            root,
+            action=action,
+            compiler=compiler,
+            premake=premake,
+            build_tool=build_tool,
+            ctest=recorded_path(recorded.get("ctest")) or find_ctest(system),
+            vcpkg_root=vcpkg_root,
+            vcvars=vcvars,
+        )
+    print(f"Generated action: {action} ({compiler})")
+
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Provision Eppo build tools and generate native build files.")
     parser.add_argument("--action", choices=SUPPORTED_ACTIONS)
@@ -516,6 +587,11 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--yes", action="store_true", help="Approve downloading missing Premake or vcpkg without prompting.")
     parser.add_argument("--offline", action="store_true", help="Do not access the network.")
     parser.add_argument("--no-generate", action="store_true", help="Provision and validate tools without running Premake.")
+    parser.add_argument(
+        "--generate-only",
+        action="store_true",
+        help="Only run Premake, reusing the action, compiler and tools recorded by the last setup.",
+    )
     parser.add_argument("--skip-dependencies", action="store_true", help="Do not run vcpkg install.")
     return parser.parse_args()
 
@@ -525,6 +601,11 @@ def main() -> int:
     root = Path(__file__).resolve().parent.parent
     system = host_system()
     try:
+        if arguments.generate_only:
+            if arguments.no_generate:
+                raise SetupError("--generate-only and --no-generate cannot be combined.")
+            generate_only(root, system, arguments)
+            return 0
         action = choose_action(arguments.action, system)
         compiler = arguments.compiler or ("msc" if system == "windows" else "clang")
         vcvars, default_build_tool = validate_environment(system, action, compiler)
