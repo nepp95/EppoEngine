@@ -59,6 +59,8 @@ namespace Eppo
     {
         Log::Info("Application shutting down...");
 
+        m_ThreadPool->Shutdown(true);
+
         m_ImGuiLayer.reset();
 
         for (auto it = m_LayerStack.begin(); it != m_LayerStack.end();)
@@ -68,7 +70,6 @@ namespace Eppo
             it = m_LayerStack.erase(it);
         }
 
-        m_ThreadPool->Shutdown(true);
         m_DeviceManager->Shutdown();
         m_Window->Shutdown();
 

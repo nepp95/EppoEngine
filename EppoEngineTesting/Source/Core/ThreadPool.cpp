@@ -1,5 +1,5 @@
 #include "TestSupport/EppoTest.h"
-#include "Core/ThreadPool.h"
+#include "Core/ThreadPool/ThreadPool.h"
 
 #include <atomic>
 #include <chrono>
@@ -246,6 +246,57 @@ TEST(Core, ThreadPool_Shutdown_FlushesCompletionCallbacksBeforeReturning)
     pool.Shutdown(false);
 
     EXPECT_EQ(50u, invoked.load());
+}
+
+TEST(Core, ThreadPool_Flush_ContinuesAfterCompletionCallbackThrows)
+{
+    std::atomic<bool> subsequentCallbackInvoked = false;
+    ThreadPool pool;
+
+    pool.QueueTask(
+        "Throwing completion",
+        []() -> void
+        {
+        },
+        [](TaskStatus) -> void
+        {
+            throw std::runtime_error("Completion failed");
+        }
+    );
+    pool.QueueTask(
+        "Subsequent completion",
+        []() -> void
+        {
+        },
+        [&subsequentCallbackInvoked](TaskStatus) -> void
+        {
+            subsequentCallbackInvoked.store(true);
+        }
+    );
+
+    EXPECT_NO_THROW(pool.Shutdown(false));
+    EXPECT_TRUE(subsequentCallbackInvoked.load());
+}
+
+TEST(Core, ThreadPool_Shutdown_RejectsNewTasks)
+{
+    std::atomic<bool> ran = false;
+    ThreadPool pool;
+
+    pool.Shutdown(true);
+
+    const auto id = pool.QueueTask(
+        "Late task",
+        [&ran]() -> void
+        {
+            ran.store(true);
+        },
+        nullptr
+    );
+
+    EXPECT_EQ(0u, id);
+    EXPECT_FALSE(ran.load());
+    EXPECT_EQ(0u, pool.GetPendingTasksCount());
 }
 
 TEST(Core, ThreadPool_GetPendingTasksCount_ReflectsQueuedAndInFlightTasks)

@@ -127,17 +127,17 @@ namespace Eppo
         EP_ASSERT(m_Stride > 0);
 
         const auto device = DeviceManager::Get()->GetDevice();
-        const auto cmd = cmdList ? cmdList : device->createCommandList({ .queueType = nvrhi::CommandQueue::Copy });
+        const auto cmd = cmdList ? cmdList : device->createCommandList();
 
         if (!cmdList)
             cmd->open();
 
-        cmdList->writeTexture(m_Texture, 0, 0, data, m_Stride);
+        cmd->writeTexture(m_Texture, 0, 0, data, m_Stride);
 
         if (!cmdList)
         {
             cmd->close();
-            device->executeCommandList(cmd, nvrhi::CommandQueue::Copy);
+            device->executeCommandList(cmd);
         }
     }
 
@@ -163,6 +163,15 @@ namespace Eppo
         return buffer;
     }
 
+    auto Image::CalculateMipLevels(const uint32_t width, const uint32_t height) -> uint32_t
+    {
+        EP_ASSERT(width > 0 && height > 0);
+        const uint32_t mipLevels =
+            1 + static_cast<uint32_t>(glm::floor(glm::log2(glm::max(static_cast<float>(width), static_cast<float>(height)))));
+        EP_ASSERT(mipLevels > 0);
+        return mipLevels;
+    }
+
     auto Image::GetMipWidth(const uint32_t mipLevel) const -> uint32_t
     {
         EP_ASSERT(mipLevel < m_MipLevels);
@@ -181,28 +190,59 @@ namespace Eppo
             m_Specification.ImageFormat == nvrhi::Format::D32 || m_Specification.ImageFormat == nvrhi::Format::D32S8;
     }
 
+    auto Image::RegisterBindlessIndex(const nvrhi::TextureSubresourceSet& subresources) -> uint32_t
+    {
+        const auto resolved = subresources.resolve(m_Texture->getDesc(), false);
+        if (m_BindlessHandles.contains(resolved))
+            return m_BindlessHandles.at(resolved)->Index;
+
+        const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+        m_BindlessHandles.emplace(resolved, CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this(), resolved)));
+
+        return m_BindlessHandles.at(resolved)->Index;
+    }
+
     auto Image::GetBindlessIndex(const nvrhi::TextureSubresourceSet& subresources) -> uint32_t
     {
         const auto resolved = subresources.resolve(m_Texture->getDesc(), false);
+        if (m_BindlessHandles.contains(resolved))
+            return m_BindlessHandles.at(resolved)->Index;
 
-        auto it = m_BindlessHandles.find(resolved);
-        if (it == m_BindlessHandles.end())
-        {
-            const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
-            it = m_BindlessHandles.emplace(resolved, CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this(), resolved)))
-                     .first;
-        }
+        Log::Warn("GetBindlessIndex called on a image that did not yet have a bindless index, registering now...");
 
-        return it->second->Index;
+        return RegisterBindlessIndex(subresources);
     }
 
-    auto Image::CalculateMipLevels(const uint32_t width, const uint32_t height) -> uint32_t
+    auto Image::GenerateFallbackImage() -> Ref<Image>
     {
-        EP_ASSERT(width > 0 && height > 0);
-        const uint32_t mipLevels =
-            1 + static_cast<uint32_t>(glm::floor(glm::log2(glm::max(static_cast<float>(width), static_cast<float>(height)))));
-        EP_ASSERT(mipLevels > 0);
-        return mipLevels;
+        constexpr uint32_t imageSize = 16;
+        ScopedBuffer buffer(imageSize * imageSize * 4);
+
+        for (uint32_t y = 0; y < imageSize; y++)
+        {
+            for (uint32_t x = 0; x < imageSize; x++)
+            {
+                const bool magenta = ((x / 2) + (y / 2)) % 2 == 0;
+                uint8_t* p = buffer.Data() + (y * imageSize + x) * 4;
+                p[0] = magenta ? 255 : 0;
+                p[1] = 0;
+                p[2] = magenta ? 255 : 0;
+                p[3] = 255;
+            }
+        }
+
+        const ImageSpecification spec{
+            .ImageFormat = nvrhi::Format::SRGBA8_UNORM,
+            .Width = imageSize,
+            .Height = imageSize,
+            .DebugName = "Fallback Image",
+        };
+
+        auto image = CreateRef<Image>(spec);
+        image->SetData(buffer.Data(), buffer.Size());
+        image->RegisterBindlessIndex();
+
+        return image;
     }
 
     auto Image::DecodeImageData(const ImageSource& source, uint32_t& outChannels, bool& outIsHdr) -> void*

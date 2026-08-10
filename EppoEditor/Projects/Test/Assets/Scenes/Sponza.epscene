@@ -1,0 +1,131 @@
+{
+    "Scene": {
+        "Bloom": {
+            "Intensity": 0.03999999910593033,
+            "Knee": 0.25,
+            "Radius": 1.0,
+            "Threshold": 0.5
+        },
+        "Entities": [
+            {
+                "DirectionalLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.6704390645027161,
+                        0.14893615245819092
+                    ],
+                    "Intensity": 1.0
+                },
+                "IDComponent": {
+                    "ID": 3471340695254829780
+                },
+                "TagComponent": {
+                    "Tag": "Sun"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 4122832582716333473
+                },
+                "MeshComponent": {
+                    "MeshHandle": 2615731145679736945
+                },
+                "TagComponent": {
+                    "Tag": "Sponza"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "CameraComponent": {
+                    "FarClip": 1000.0,
+                    "NearClip": 0.10000000149011612,
+                    "Primary": true,
+                    "VerticalFov": 45.0
+                },
+                "IDComponent": {
+                    "ID": 8137969319758298661
+                },
+                "TagComponent": {
+                    "Tag": "Camera"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            }
+        ],
+        "Environment": {
+            "AmbientIntensity": 1.0,
+            "GroundColor": [
+                0.20000000298023224,
+                0.17000000178813934,
+                0.12999999523162842
+            ],
+            "HorizonColor": [
+                0.6499999761581421,
+                0.6600000262260437,
+                0.6700000166893005
+            ],
+            "SkyboxHandle": 0,
+            "ZenithColor": [
+                0.3499999940395355,
+                0.44999998807907104,
+                0.550000011920929
+            ]
+        },
+        "Handle": 11902558459493855131,
+        "Name": "Sponza",
+        "Ssao": {
+            "Bias": 0.02500000037252903,
+            "Intensity": 1.0,
+            "Power": 1.5,
+            "Radius": 0.5
+        }
+    }
+}

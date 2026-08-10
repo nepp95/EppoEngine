@@ -8,6 +8,8 @@
 
 namespace Eppo
 {
+    using TaskId = uint64_t;
+
     enum class TaskPriority : uint8_t
     {
         Low = 0,
@@ -24,7 +26,23 @@ namespace Eppo
         Cancelled,
     };
 
-    using TaskId = uint64_t;
+    struct TaskGroupSnapshot
+    {
+        std::string Name;
+        uint32_t Pending = 0;
+        uint32_t Running = 0;
+        uint32_t Completed = 0;
+        uint32_t Failed = 0;
+        uint32_t Cancelled = 0;
+        uint32_t Total = 0;
+
+        auto IsFinished() const -> bool
+        {
+            auto remaining = Total - Completed - Failed - Cancelled;
+            return remaining == 0;
+        }
+    };
+
     using TaskFn = std::function<void()>;
     using CompletionFn = std::function<void(TaskStatus)>;
 
@@ -35,11 +53,18 @@ namespace Eppo
         ~ThreadPool();
 
         // Callable: All threads
+        auto QueueTask(TaskFn taskFn, CompletionFn completionFn, TaskPriority priority = TaskPriority::Medium) -> TaskId;
         auto QueueTask(std::string name, TaskFn taskFn, CompletionFn completionFn, TaskPriority priority = TaskPriority::Medium) -> TaskId;
+        auto QueueTaskWithDependencies(
+            TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority = TaskPriority::Medium
+        ) -> TaskId;
         auto QueueTaskWithDependencies(
             std::string name, TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies,
             TaskPriority priority = TaskPriority::Medium
         ) -> TaskId;
+
+        // Callable: All threads
+        auto GetTaskGroupSnapshots() -> std::unordered_map<std::string, TaskGroupSnapshot>;
 
         // Callable: Main thread
         auto Flush() -> uint32_t;
@@ -66,7 +91,6 @@ namespace Eppo
             // Dependencies
             std::vector<TaskId> Dependents;
             std::atomic<uint32_t> RemainingDeps = 0;
-            std::atomic<bool> Queued = false;
         };
 
         auto WorkerLoop() -> void;
@@ -76,7 +100,6 @@ namespace Eppo
     private:
         // Pending tasks
         std::mutex m_PendingMutex;
-        std::condition_variable m_WorkAvailableCV;
         std::atomic<uint32_t> m_TasksPending = 0;
         std::array<std::deque<Ref<Task>>, 3> m_PendingTasks{};
         std::unordered_map<TaskId, Ref<Task>> m_AllTasks;
@@ -85,8 +108,13 @@ namespace Eppo
         std::mutex m_CompletedMutex;
         std::deque<Ref<Task>> m_CompletedTasks;
 
+        // Snapshotting
+        std::shared_mutex m_SnapshotMutex;
+        std::unordered_map<std::string, TaskGroupSnapshot> m_Snapshots;
+
         // Workpool
         std::vector<std::thread> m_Threads;
+        std::condition_variable m_WorkAvailableCV;
         std::atomic<bool> m_IsRunning = true;
         std::atomic<uint32_t> m_TasksInFlight = 0;
         std::atomic<TaskId> m_NextTaskId = 1;

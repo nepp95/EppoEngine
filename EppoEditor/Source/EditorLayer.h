@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Panels/PanelManager.h"
+#include "StatusBar.h"
 
 #include <EppoEngine.h>
 
@@ -98,6 +99,9 @@ namespace Eppo
 
         // Gizmo
         ImGuizmo::OPERATION m_GizmoType = ImGuizmo::TRANSLATE;
+
+        // Status bar (non-dockable bottom strip)
+        StatusBar m_StatusBar;
     };
 
     namespace Utils
