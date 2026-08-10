@@ -50,6 +50,41 @@ public:
     uint32_t ResizeHeight = 0;
 };
 
+struct ThreadPoolTeardownState
+{
+    bool Detached = false;
+    bool CompletionCalled = false;
+    bool CompletionBeforeDetach = false;
+};
+
+class ThreadPoolTeardownLayer : public Layer
+{
+public:
+    explicit ThreadPoolTeardownLayer(Ref<ThreadPoolTeardownState> state)
+        : m_State(std::move(state))
+    {}
+
+    auto OnAttach() -> void override
+    {
+        Application::Get().GetThreadPool()->QueueTask(
+            "Teardown order",
+            []() -> void
+            {
+            },
+            [state = m_State](TaskStatus) -> void
+            {
+                state->CompletionCalled = true;
+                state->CompletionBeforeDetach = !state->Detached;
+            }
+        );
+    }
+
+    auto OnDetach() -> void override { m_State->Detached = true; }
+
+private:
+    Ref<ThreadPoolTeardownState> m_State;
+};
+
 TEST(App, Application_Boot_ProducesWindowAndDevice)
 {
     Application* app = Testing::AppHarness::Get();
@@ -181,4 +216,24 @@ TEST(App, Application_WindowResizePropagatesToLayers)
     EXPECT_TRUE(!event.Handled);
     EXPECT_EQ(1280, layer->ResizeWidth);
     EXPECT_EQ(720, layer->ResizeHeight);
+}
+
+TEST(App, Application_ShutdownFlushesTaskCompletionsBeforeDetachingLayers)
+{
+    Testing::AppHarness::Shutdown();
+    ApplicationParams params{
+        .Args = CommandLineArgs(0, nullptr),
+        .EnableImGui = false,
+    };
+    Application* app = Testing::AppHarness::Get(std::move(params));
+    EP_REQUIRE(app != nullptr);
+
+    const auto state = CreateRef<ThreadPoolTeardownState>();
+    app->PushLayer<ThreadPoolTeardownLayer>(state);
+
+    Testing::AppHarness::Shutdown();
+
+    EXPECT_TRUE(state->CompletionCalled);
+    EXPECT_TRUE(state->CompletionBeforeDetach);
+    EXPECT_TRUE(state->Detached);
 }

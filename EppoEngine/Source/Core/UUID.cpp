@@ -4,7 +4,13 @@
 namespace Eppo
 {
     // Reserved UUIDs (1 - 99)
-    // 1 - 9: Mesh Primitives
+    // 1 = Cone Mesh
+    // 2 = Cube Mesh
+    // 3 = Cylinder Mesh
+    // 4 = Sphere Mesh
+    // 5 = Capsule Mesh
+    // 6-9 reserved for mesh primitives
+    // 10 = Placeholder Texture
 
     UUID::UUID()
     {

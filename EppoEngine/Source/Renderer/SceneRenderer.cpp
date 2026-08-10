@@ -920,8 +920,8 @@ namespace Eppo
                         return;
 
                     const glm::mat4 worldTransform = m_Scene->GetWorldTransform(entity);
-                    const glm::mat4 lightTransform = glm::translate(glm::mat4(1.0f), glm::vec3(worldTransform[3])) *
-                        glm::mat4_cast(m_Scene->GetWorldRotation(entity));
+                    const glm::mat4 lightTransform =
+                        glm::translate(glm::mat4(1.0f), glm::vec3(worldTransform[3])) * glm::mat4_cast(m_Scene->GetWorldRotation(entity));
                     markerDraw.Transforms.emplace_back(lightTransform * glm::scale(glm::mat4(1.0f), glm::vec3(0.3f)));
                     shaftDraw.Transforms.emplace_back(
                         lightTransform * glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.6f, 0.0f)) *
@@ -1157,10 +1157,11 @@ namespace Eppo
 
         // Pre-register the subresources bloom samples bindlessly: GetBindlessIndex lazily writes the bindless
         // table on first use, which is illegal once an earlier pass has bound it, so warm the cache here first.
-        static_cast<void>(m_GeometryPass->GetFramebuffer()->GetFinalImage()->GetBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, 1)));
+        m_GeometryPass->GetFramebuffer()->GetFinalImage()->RegisterBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, 1));
+
         const auto& bloomPyramid = m_BloomPyramidFramebuffer->GetFinalImage();
         for (uint32_t mip = 0; mip < m_BloomMipLevels; mip++)
-            static_cast<void>(bloomPyramid->GetBindlessIndex(nvrhi::TextureSubresourceSet(mip, 1, 0, 1)));
+            bloomPyramid->RegisterBindlessIndex(nvrhi::TextureSubresourceSet(mip, 1, 0, 1));
     }
 
     auto SceneRenderer::FillShadowData() -> void
@@ -1207,8 +1208,9 @@ namespace Eppo
             for (uint32_t y = 0; y < 2; y++)
                 for (uint32_t x = 0; x < 2; x++)
                 {
-                    const glm::vec4 ndc(static_cast<float>(x) * 2.0f - 1.0f, static_cast<float>(y) * 2.0f - 1.0f,
-                        static_cast<float>(z), 1.0f);
+                    const glm::vec4 ndc(
+                        static_cast<float>(x) * 2.0f - 1.0f, static_cast<float>(y) * 2.0f - 1.0f, static_cast<float>(z), 1.0f
+                    );
                     const glm::vec4 world = m_CameraData.InverseViewProjection * ndc;
                     frustumCorners[cornerIndex++] = glm::vec3(world) / world.w;
                 }

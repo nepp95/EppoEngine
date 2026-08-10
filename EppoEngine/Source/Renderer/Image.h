@@ -55,9 +55,11 @@ namespace Eppo
         [[nodiscard]] auto GetFormat() const -> nvrhi::Format { return m_Specification.ImageFormat; }
         [[nodiscard]] auto IsDepthImage() const -> bool;
 
-        // Registers a bindless SRV for the requested subresource range on first request and returns its slot.
-        // The whole-image default and an equivalent explicit range resolve to one shared slot; distinct mip/array views get distinct slots.
+        auto RegisterBindlessIndex(const nvrhi::TextureSubresourceSet& subresources = nvrhi::AllSubresources) -> uint32_t;
         [[nodiscard]] auto GetBindlessIndex(const nvrhi::TextureSubresourceSet& subresources = nvrhi::AllSubresources) -> uint32_t;
+
+        // Fallback image used by asset manager
+        static auto GenerateFallbackImage() -> Ref<Image>;
 
     private:
         [[nodiscard]] auto DecodeImageData(const ImageSource& source, uint32_t& outChannels, bool& outIsHdr) -> void*;
