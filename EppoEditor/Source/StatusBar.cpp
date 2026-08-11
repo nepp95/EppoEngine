@@ -116,36 +116,42 @@ namespace Eppo
             {
                 for (const auto& [name, snapshot] : snapshots)
                 {
+                    const auto pending = snapshot.Pending.load(std::memory_order_relaxed);
+                    const auto running = snapshot.Running.load(std::memory_order_relaxed);
+                    const auto completed = snapshot.Completed.load(std::memory_order_relaxed);
+                    const auto failed = snapshot.Failed.load(std::memory_order_relaxed);
+                    const auto cancelled = snapshot.Cancelled.load(std::memory_order_relaxed);
+                    const auto total = snapshot.Total.load(std::memory_order_relaxed);
+
                     ImGui::TextUnformatted(name.c_str());
                     // Progress = completed / total. Pending and Running are shown as
                     // a status line so a partially-dispatched group is distinguishable
                     // from a stalled one.
-                    const float frac =
-                        snapshot.Total > 0 ? static_cast<float>(snapshot.Completed) / static_cast<float>(snapshot.Total) : 0.0f;
+                    const float frac = total > 0 ? static_cast<float>(completed) / static_cast<float>(total) : 0.0f;
                     ImGui::ProgressBar(frac, ImVec2(-1.0f, 0.0f));
                     ImGui::SameLine(0.0f, 8.0f);
-                    ImGui::TextDisabled("%u/%u", snapshot.Completed, snapshot.Total);
+                    ImGui::TextDisabled("%u/%u", completed, total);
 
                     std::string status;
-                    if (snapshot.Running > 0)
-                        status += std::format("{} running", snapshot.Running);
-                    if (snapshot.Pending > 0)
+                    if (running > 0)
+                        status += std::format("{} running", running);
+                    if (pending > 0)
                     {
                         if (!status.empty())
                             status += ", ";
-                        status += std::format("{} pending", snapshot.Pending);
+                        status += std::format("{} pending", pending);
                     }
-                    if (snapshot.Failed > 0)
+                    if (failed > 0)
                     {
                         if (!status.empty())
                             status += ", ";
-                        status += std::format("{} failed", snapshot.Failed);
+                        status += std::format("{} failed", failed);
                     }
-                    if (snapshot.Cancelled > 0)
+                    if (cancelled > 0)
                     {
                         if (!status.empty())
                             status += ", ";
-                        status += std::format("{} cancelled", snapshot.Cancelled);
+                        status += std::format("{} cancelled", cancelled);
                     }
                     if (!status.empty())
                     {

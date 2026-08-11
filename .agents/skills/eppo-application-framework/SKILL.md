@@ -1,6 +1,6 @@
 ---
 name: eppo-application-framework
-description: Develop and diagnose Eppo's application framework across entry-point creation, Application and layer lifecycle, frame ordering, window and GLFW event delivery, input backends and simulated input, device and renderer startup, resize and minimization, ImGui frame integration, writable and resource directory resolution, the deployed EppoRuntime player, and the App harness. Use for changes to Application, Window, Layer, EntryPoint, Input, SimulatedInput, Event, ImGui, platform window/input code, EppoEditor/Source/EppoEditor.cpp, EppoRuntime/Source, or application-level tests; do not trigger for unrelated Core utilities such as UUID or Hash.
+description: Develop and diagnose Eppo's application framework across entry-point creation, Application and layer lifecycle, frame ordering, window and GLFW event delivery, input backends and simulated input, device and renderer startup, resize and minimization, ImGui frame integration, background-task scheduling (Core/ThreadPool), writable and resource directory resolution, the deployed EppoRuntime player, and the App harness. Use for changes to Application, Window, Layer, EntryPoint, Input, SimulatedInput, Event, ImGui, Core/ThreadPool, platform window/input code, EppoEditor/Source/EppoEditor.cpp, EppoRuntime/Source, or application-level tests; do not trigger for unrelated Core utilities such as UUID or Hash.
 ---
 
 # Eppo Application Framework

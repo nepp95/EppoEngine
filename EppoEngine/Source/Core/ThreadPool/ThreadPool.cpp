@@ -5,6 +5,48 @@
 
 namespace Eppo
 {
+    TaskGroupSnapshot::TaskGroupSnapshot(const TaskGroupSnapshot& other)
+    {
+        *this = other;
+    }
+
+    auto TaskGroupSnapshot::operator=(const TaskGroupSnapshot& other) -> TaskGroupSnapshot&
+    {
+        if (this == &other)
+            return *this;
+
+        while (true)
+        {
+            const auto version = other.m_Version.load(std::memory_order_seq_cst);
+            if ((version & 1u) != 0)
+            {
+                std::this_thread::yield();
+                continue;
+            }
+
+            const auto name = other.Name;
+            const auto pending = other.Pending.load(std::memory_order_seq_cst);
+            const auto running = other.Running.load(std::memory_order_seq_cst);
+            const auto completed = other.Completed.load(std::memory_order_seq_cst);
+            const auto failed = other.Failed.load(std::memory_order_seq_cst);
+            const auto cancelled = other.Cancelled.load(std::memory_order_seq_cst);
+            const auto total = other.Total.load(std::memory_order_seq_cst);
+
+            if (version != other.m_Version.load(std::memory_order_seq_cst))
+                continue;
+
+            Name = name;
+            Pending.store(pending, std::memory_order_relaxed);
+            Running.store(running, std::memory_order_relaxed);
+            Completed.store(completed, std::memory_order_relaxed);
+            Failed.store(failed, std::memory_order_relaxed);
+            Cancelled.store(cancelled, std::memory_order_relaxed);
+            Total.store(total, std::memory_order_relaxed);
+            m_Version.store(0, std::memory_order_relaxed);
+            return *this;
+        }
+    }
+
     ThreadPool::ThreadPool()
         : m_OwnerThread(std::this_thread::get_id())
     {
@@ -30,79 +72,13 @@ namespace Eppo
     auto ThreadPool::QueueTask(TaskFn taskFn, CompletionFn completionFn, TaskPriority priority) -> TaskId
     {
         EP_PROFILE_FN("ThreadPool::QueueTask")
-
-        if (!m_IsRunning.load(std::memory_order_relaxed))
-        {
-            Log::Warn("Tried to queue task after thread pool shutdown!");
-            return 0;
-        }
-
-        const TaskId id = m_NextTaskId.fetch_add(1);
-
-        auto task = CreateRef<Task>();
-        task->Id = id;
-        task->Priority = priority;
-        task->Fn = std::move(taskFn);
-        task->OnComplete = std::move(completionFn);
-
-        {
-            std::scoped_lock lock(m_PendingMutex);
-            m_PendingTasks.at(static_cast<size_t>(priority)).emplace_back(task);
-            m_AllTasks[id] = task;
-            m_TasksPending++;
-        }
-
-        m_WorkAvailableCV.notify_one();
-        return id;
+        return QueueTaskInternal(std::move(taskFn), std::move(completionFn), {}, priority);
     }
 
     auto ThreadPool::QueueTask(std::string name, TaskFn taskFn, CompletionFn completionFn, TaskPriority priority) -> TaskId
     {
         EP_PROFILE_FN("ThreadPool::QueueTask")
-
-        if (!m_IsRunning.load(std::memory_order_relaxed))
-        {
-            Log::Warn("Tried to queue task '{}' after thread pool shutdown!", name);
-            return 0;
-        }
-
-        const TaskId id = m_NextTaskId.fetch_add(1);
-
-        auto task = CreateRef<Task>();
-        task->Id = id;
-        task->Name = std::move(name);
-        task->Priority = priority;
-        task->Fn = std::move(taskFn);
-        task->OnComplete = std::move(completionFn);
-
-        {
-            std::scoped_lock lock(m_SnapshotMutex);
-            if (m_Snapshots.contains(task->Name))
-            {
-                // Add task to group
-                m_Snapshots.at(task->Name).Total++;
-                m_Snapshots.at(task->Name).Pending++;
-            }
-            else
-            {
-                // New group
-                m_Snapshots[task->Name] = TaskGroupSnapshot{
-                    .Name = task->Name,
-                    .Pending = 1,
-                    .Total = 1,
-                };
-            }
-        }
-
-        {
-            std::scoped_lock lock(m_PendingMutex);
-            m_PendingTasks.at(static_cast<size_t>(priority)).emplace_back(task);
-            m_AllTasks[id] = task;
-            m_TasksPending++;
-        }
-
-        m_WorkAvailableCV.notify_one();
-        return id;
+        return QueueTaskInternal(std::move(name), std::move(taskFn), std::move(completionFn), {}, priority);
     }
 
     auto ThreadPool::QueueTaskWithDependencies(
@@ -110,14 +86,24 @@ namespace Eppo
     ) -> TaskId
     {
         EP_PROFILE_FN("ThreadPool::QueueTaskWithDependencies")
+        return QueueTaskInternal(std::move(taskFn), std::move(completionFn), dependencies, priority);
+    }
 
-        if (!m_IsRunning.load(std::memory_order_relaxed))
-        {
-            Log::Warn("Tried to queue task after thread pool shutdown!");
-            return 0;
-        }
+    auto ThreadPool::QueueTaskWithDependencies(
+        std::string name, TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority
+    ) -> TaskId
+    {
+        EP_PROFILE_FN("ThreadPool::QueueTaskWithDependencies")
+        return QueueTaskInternal(std::move(name), std::move(taskFn), std::move(completionFn), dependencies, priority);
+    }
 
-        const TaskId id = m_NextTaskId.fetch_add(1);
+    auto
+    ThreadPool::QueueTaskInternal(TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority)
+        -> TaskId
+    {
+        EP_PROFILE_FN("ThreadPool::QueueTaskInternal")
+
+        const TaskId id = m_NextTaskId.fetch_add(1, std::memory_order_relaxed);
 
         auto task = CreateRef<Task>();
         task->Id = id;
@@ -126,56 +112,59 @@ namespace Eppo
         task->Priority = priority;
 
         // NOTE: Currently if dependencies have a low priority, it might take a long while for a high priority dependent to run
+        bool isReady = false;
         {
             std::scoped_lock lock(m_PendingMutex);
+            if (!m_IsRunning.load(std::memory_order_relaxed))
+            {
+                Log::Warn("Tried to queue task after thread pool shutdown!");
+                return 0;
+            }
 
-            for (const auto& dependencyId : dependencies)
+            for (const auto dependencyId : dependencies)
             {
                 if (dependencyId >= id)
                 {
-                    Log::Error("Task '{}' depends on task id {} which was never issued!", task->Name, dependencyId);
+                    Log::Error("Task with id {} depends on task id {} which was never issued!", id, dependencyId);
                     return 0;
                 }
             }
 
             uint32_t remainingDeps = 0;
-            for (const auto& dependencyId : dependencies)
+            for (const auto dependencyId : dependencies)
             {
-                if (!m_AllTasks.contains(dependencyId))
+                const auto dependencyIt = m_AllTasks.find(dependencyId);
+                if (dependencyIt == m_AllTasks.end())
                     continue;
 
-                const auto status = m_AllTasks.at(dependencyId)->Status.load(std::memory_order_relaxed);
+                const auto status = dependencyIt->second->Status.load(std::memory_order_relaxed);
                 if (status == TaskStatus::Completed || status == TaskStatus::Failed || status == TaskStatus::Cancelled)
                     continue;
 
-                m_AllTasks.at(dependencyId)->Dependents.emplace_back(id);
+                dependencyIt->second->Dependents.emplace_back(task);
                 remainingDeps++;
             }
 
-            task->RemainingDeps = remainingDeps;
-            if (remainingDeps == 0)
+            task->RemainingDeps.store(remainingDeps, std::memory_order_relaxed);
+            isReady = remainingDeps == 0;
+            if (isReady)
                 m_PendingTasks.at(static_cast<size_t>(priority)).emplace_back(task);
             m_AllTasks[id] = task;
-            m_TasksPending++;
+            m_TasksPending.fetch_add(1, std::memory_order_seq_cst);
         }
 
-        m_WorkAvailableCV.notify_one();
+        if (isReady)
+            m_WorkAvailableCV.notify_one();
         return id;
     }
 
-    auto ThreadPool::QueueTaskWithDependencies(
+    auto ThreadPool::QueueTaskInternal(
         std::string name, TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority
     ) -> TaskId
     {
-        EP_PROFILE_FN("ThreadPool::QueueTaskWithDependencies")
+        EP_PROFILE_FN("ThreadPool::QueueTaskInternal")
 
-        if (!m_IsRunning.load(std::memory_order_relaxed))
-        {
-            Log::Warn("Tried to queue task '{}' after thread pool shutdown!", name);
-            return 0;
-        }
-
-        const TaskId id = m_NextTaskId.fetch_add(1);
+        const TaskId id = m_NextTaskId.fetch_add(1, std::memory_order_relaxed);
 
         auto task = CreateRef<Task>();
         task->Id = id;
@@ -185,10 +174,16 @@ namespace Eppo
         task->Priority = priority;
 
         // NOTE: Currently if dependencies have a low priority, it might take a long while for a high priority dependent to run
+        bool isReady = false;
         {
             std::scoped_lock lock(m_PendingMutex);
+            if (!m_IsRunning.load(std::memory_order_relaxed))
+            {
+                Log::Warn("Tried to queue task '{}' after thread pool shutdown!", task->Name);
+                return 0;
+            }
 
-            for (const auto& dependencyId : dependencies)
+            for (const auto dependencyId : dependencies)
             {
                 if (dependencyId >= id)
                 {
@@ -198,42 +193,42 @@ namespace Eppo
             }
 
             uint32_t remainingDeps = 0;
-            for (const auto& dependencyId : dependencies)
+            for (const auto dependencyId : dependencies)
             {
-                if (!m_AllTasks.contains(dependencyId))
+                const auto dependencyIt = m_AllTasks.find(dependencyId);
+                if (dependencyIt == m_AllTasks.end())
                     continue;
 
-                const auto status = m_AllTasks.at(dependencyId)->Status.load(std::memory_order_relaxed);
+                const auto status = dependencyIt->second->Status.load(std::memory_order_relaxed);
                 if (status == TaskStatus::Completed || status == TaskStatus::Failed || status == TaskStatus::Cancelled)
                     continue;
 
-                m_AllTasks.at(dependencyId)->Dependents.emplace_back(id);
+                dependencyIt->second->Dependents.emplace_back(task);
                 remainingDeps++;
             }
 
-            task->RemainingDeps = remainingDeps;
-            if (remainingDeps == 0)
+            {
+                std::scoped_lock snapshotLock(m_SnapshotMutex);
+                const auto [snapshotIt, inserted] = m_Snapshots.try_emplace(task->Name);
+                if (inserted)
+                {
+                    snapshotIt->second = CreateRef<TaskGroupSnapshot>();
+                    snapshotIt->second->Name = task->Name;
+                }
+                task->Group = snapshotIt->second;
+            }
+            UpdateTaskGroup(task->Group, TaskStatus::Pending);
+
+            task->RemainingDeps.store(remainingDeps, std::memory_order_relaxed);
+            isReady = remainingDeps == 0;
+            if (isReady)
                 m_PendingTasks.at(static_cast<size_t>(priority)).emplace_back(task);
             m_AllTasks[id] = task;
-            m_TasksPending++;
-
-            std::scoped_lock snapshotLock(m_SnapshotMutex);
-            if (m_Snapshots.contains(task->Name))
-            {
-                m_Snapshots.at(task->Name).Total++;
-                m_Snapshots.at(task->Name).Pending++;
-            }
-            else
-            {
-                m_Snapshots[task->Name] = TaskGroupSnapshot{
-                    .Name = task->Name,
-                    .Pending = 1,
-                    .Total = 1,
-                };
-            }
+            m_TasksPending.fetch_add(1, std::memory_order_seq_cst);
         }
 
-        m_WorkAvailableCV.notify_one();
+        if (isReady)
+            m_WorkAvailableCV.notify_one();
         return id;
     }
 
@@ -245,10 +240,114 @@ namespace Eppo
         std::shared_lock lock(m_SnapshotMutex);
 
         std::unordered_map<std::string, TaskGroupSnapshot> snapshots;
+        snapshots.reserve(m_Snapshots.size());
         for (const auto& [name, snapshot] : m_Snapshots)
-            snapshots[name] = snapshot;
+            snapshots.emplace(name, *snapshot);
 
         return snapshots;
+    }
+
+    auto ThreadPool::UpdateTaskGroup(const Ref<TaskGroupSnapshot>& group, const TaskStatus status) -> void
+    {
+        if (!group)
+            return;
+
+        auto version = group->m_Version.load(std::memory_order_seq_cst);
+        while (true)
+        {
+            if ((version & 1u) != 0)
+            {
+                std::this_thread::yield();
+                version = group->m_Version.load(std::memory_order_seq_cst);
+                continue;
+            }
+
+            if (group->m_Version.compare_exchange_weak(version, version + 1, std::memory_order_seq_cst, std::memory_order_seq_cst))
+                break;
+        }
+
+        switch (status)
+        {
+            case TaskStatus::Pending:
+                group->Pending.fetch_add(1, std::memory_order_seq_cst);
+                group->Total.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Running:
+                EP_ASSERT(group->Pending.load(std::memory_order_relaxed) > 0, "Task group has no pending task to start!");
+                group->Pending.fetch_sub(1, std::memory_order_seq_cst);
+                group->Running.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Completed:
+                EP_ASSERT(group->Running.load(std::memory_order_relaxed) > 0, "Task group has no running task to complete!");
+                group->Running.fetch_sub(1, std::memory_order_seq_cst);
+                group->Completed.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Failed:
+                EP_ASSERT(group->Running.load(std::memory_order_relaxed) > 0, "Task group has no running task to fail!");
+                group->Running.fetch_sub(1, std::memory_order_seq_cst);
+                group->Failed.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Cancelled:
+                EP_ASSERT(group->Pending.load(std::memory_order_relaxed) > 0, "Task group has no pending task to cancel!");
+                group->Pending.fetch_sub(1, std::memory_order_seq_cst);
+                group->Cancelled.fetch_add(1, std::memory_order_seq_cst);
+                break;
+        }
+
+        group->m_Version.store(version + 2, std::memory_order_seq_cst);
+    }
+
+    auto ThreadPool::FinalizeTask(const Ref<Task>& task, const TaskStatus status) -> void
+    {
+        std::vector<Ref<Task>> dependents;
+        {
+            std::scoped_lock lock(m_PendingMutex);
+            if (status != TaskStatus::Cancelled)
+                task->Status.store(status, std::memory_order_relaxed);
+            dependents = std::move(task->Dependents);
+        }
+
+        std::vector<Ref<Task>> readyTasks;
+        readyTasks.reserve(dependents.size());
+        for (const auto& dependent : dependents)
+        {
+            const auto remaining = dependent->RemainingDeps.fetch_sub(1, std::memory_order_acq_rel);
+            EP_ASSERT(remaining > 0, "Task dependency counter underflowed!");
+            if (remaining == 1)
+                readyTasks.emplace_back(dependent);
+        }
+
+        if (!readyTasks.empty())
+        {
+            {
+                std::scoped_lock lock(m_PendingMutex);
+                for (const auto& readyTask : readyTasks)
+                {
+                    if (readyTask->Status.load(std::memory_order_relaxed) != TaskStatus::Pending)
+                        continue;
+                    m_PendingTasks.at(static_cast<size_t>(readyTask->Priority)).emplace_back(readyTask);
+                }
+            }
+
+            m_WorkAvailableCV.notify_all();
+        }
+
+        CompleteTask(task, status);
+    }
+
+    auto ThreadPool::CompleteTask(const Ref<Task>& task, const TaskStatus status) -> void
+    {
+        UpdateTaskGroup(task->Group, status);
+
+        {
+            std::scoped_lock lock(m_CompletedMutex);
+            m_CompletedTasks.emplace_back(task);
+        }
+
+        if (status == TaskStatus::Cancelled)
+            m_TasksPending.fetch_sub(1, std::memory_order_seq_cst);
+        else
+            m_TasksInFlight.fetch_sub(1, std::memory_order_seq_cst);
     }
 
     auto ThreadPool::Flush() -> uint32_t
@@ -277,7 +376,7 @@ namespace Eppo
             {
                 try
                 {
-                    task->OnComplete(task->Status);
+                    task->OnComplete(task->Status.load(std::memory_order_relaxed));
                 }
                 catch (const std::exception& e)
                 {
@@ -292,53 +391,82 @@ namespace Eppo
             completedTaskIds[i] = task->Id;
         }
 
-        std::scoped_lock lock(m_PendingMutex);
-        for (size_t i = 0; i < completedTaskIds.size(); i++)
-            m_AllTasks.erase(completedTaskIds.at(i));
-
         {
-            std::scoped_lock lock(m_SnapshotMutex);
-            for (size_t i = 0; i < batch.size(); i++)
-            {
-                auto& task = batch.at(i);
-
-                if (m_Snapshots.contains(task->Name))
-                {
-                    m_Snapshots.at(task->Name).Running--;
-                    if (task->Status.load(std::memory_order_relaxed) == TaskStatus::Completed)
-                        m_Snapshots.at(task->Name).Completed++;
-                    if (task->Status.load(std::memory_order_relaxed) == TaskStatus::Cancelled)
-                        m_Snapshots.at(task->Name).Cancelled++;
-                    if (task->Status.load(std::memory_order_relaxed) == TaskStatus::Failed)
-                        m_Snapshots.at(task->Name).Failed++;
-                }
-            }
+            std::scoped_lock lock(m_PendingMutex);
+            for (const auto taskId : completedTaskIds)
+                m_AllTasks.erase(taskId);
         }
 
         return static_cast<uint32_t>(batch.size());
+    }
+
+    auto ThreadPool::CancelTask(TaskId taskId) -> bool
+    {
+        EP_PROFILE_FN("ThreadPool::CancelTask")
+
+        Ref<Task> task = nullptr;
+
+        {
+            std::scoped_lock lock(m_PendingMutex);
+
+            const auto taskIt = m_AllTasks.find(taskId);
+            if (taskIt == m_AllTasks.end())
+                return false;
+            task = taskIt->second;
+        }
+
+        auto expected = TaskStatus::Pending;
+        if (!task->Status.compare_exchange_strong(expected, TaskStatus::Cancelled, std::memory_order_relaxed))
+            return false;
+
+        FinalizeTask(task, TaskStatus::Cancelled);
+        return true;
     }
 
     auto ThreadPool::CancelAll() -> void
     {
         EP_PROFILE_FN("ThreadPool::CancelAll")
 
-        std::scoped_lock lock(m_PendingMutex);
-
-        for (auto& [taskId, task] : m_AllTasks)
+        std::vector<Ref<Task>> cancelledTasks;
         {
-            if (task->Status == TaskStatus::Pending)
-                task->Status = TaskStatus::Cancelled;
+            std::scoped_lock lock(m_PendingMutex);
+
+            cancelledTasks.reserve(m_AllTasks.size());
+            for (const auto& [taskId, task] : m_AllTasks)
+            {
+                auto expected = TaskStatus::Pending;
+                if (task->Status.compare_exchange_strong(expected, TaskStatus::Cancelled, std::memory_order_relaxed))
+                    cancelledTasks.emplace_back(task);
+            }
         }
+
+        for (const auto& task : cancelledTasks)
+            FinalizeTask(task, TaskStatus::Cancelled);
     }
 
     auto ThreadPool::Shutdown(bool cancelPending) -> void
     {
         EP_PROFILE_FN("ThreadPool::Shutdown")
 
-        m_IsRunning.store(false, std::memory_order_relaxed);
+        std::vector<Ref<Task>> cancelledTasks;
+        {
+            std::scoped_lock lock(m_PendingMutex);
+            m_IsRunning.store(false, std::memory_order_relaxed);
 
-        if (cancelPending)
-            CancelAll();
+            if (cancelPending)
+            {
+                cancelledTasks.reserve(m_AllTasks.size());
+                for (const auto& [taskId, task] : m_AllTasks)
+                {
+                    auto expected = TaskStatus::Pending;
+                    if (task->Status.compare_exchange_strong(expected, TaskStatus::Cancelled, std::memory_order_relaxed))
+                        cancelledTasks.emplace_back(task);
+                }
+            }
+        }
+
+        for (const auto& task : cancelledTasks)
+            FinalizeTask(task, TaskStatus::Cancelled);
 
         m_WorkAvailableCV.notify_all();
 
@@ -352,7 +480,7 @@ namespace Eppo
 
     auto ThreadPool::GetPendingTasksCount() const -> uint32_t
     {
-        return m_TasksPending.load(std::memory_order_relaxed) + m_TasksInFlight.load(std::memory_order_relaxed);
+        return m_TasksPending.load(std::memory_order_seq_cst) + m_TasksInFlight.load(std::memory_order_seq_cst);
     }
 
     auto ThreadPool::WorkerLoop() -> void
@@ -369,11 +497,11 @@ namespace Eppo
                     lock,
                     [this]() -> bool
                     {
-                        return !m_IsRunning || HasPendingTasks();
+                        return !m_IsRunning.load(std::memory_order_relaxed) || HasPendingTasks();
                     }
                 );
 
-                if (!m_IsRunning && !HasPendingTasks())
+                if (!m_IsRunning.load(std::memory_order_relaxed) && !HasPendingTasks())
                     return;
 
                 task = GetNextTask();
@@ -382,55 +510,25 @@ namespace Eppo
             if (!task)
                 continue;
 
-            TaskStatus taskStatus = task->Status.load(std::memory_order_relaxed);
-            if (taskStatus == TaskStatus::Running)
+            UpdateTaskGroup(task->Group, TaskStatus::Running);
+
+            auto taskStatus = TaskStatus::Completed;
+            try
             {
-                try
-                {
-                    task->Fn();
-                    taskStatus = TaskStatus::Completed;
-                }
-                catch (const std::exception& e)
-                {
-                    Log::Error("Task '{}' with id {} threw: {}", task->Name, task->Id, e.what());
-                    taskStatus = TaskStatus::Failed;
-                }
-                catch (...)
-                {
-                    Log::Error("Task '{}' with id {} threw unknown exception!", task->Name, task->Id);
-                    taskStatus = TaskStatus::Failed;
-                }
+                task->Fn();
+            }
+            catch (const std::exception& e)
+            {
+                Log::Error("Task '{}' with id {} threw: {}", task->Name, task->Id, e.what());
+                taskStatus = TaskStatus::Failed;
+            }
+            catch (...)
+            {
+                Log::Error("Task '{}' with id {} threw unknown exception!", task->Name, task->Id);
+                taskStatus = TaskStatus::Failed;
             }
 
-            // Process task dependencies
-            {
-                std::scoped_lock lock(m_PendingMutex);
-                task->Status.store(taskStatus, std::memory_order_relaxed);
-
-                for (const auto& dependentId : task->Dependents)
-                {
-                    if (!m_AllTasks.contains(dependentId))
-                        continue;
-
-                    auto& dependentTask = m_AllTasks.at(dependentId);
-
-                    // fetch_sub returns the value from *before* the subtraction, so the last dependency
-                    // to resolve sees 1, not 0.
-                    const uint32_t remaining = dependentTask->RemainingDeps.fetch_sub(1, std::memory_order_relaxed);
-                    if (remaining == 1)
-                    {
-                        m_PendingTasks.at(static_cast<size_t>(dependentTask->Priority)).emplace_back(dependentTask);
-                        m_WorkAvailableCV.notify_one();
-                    }
-                }
-            }
-
-            // Add to completed tasks
-            {
-                std::scoped_lock lock(m_CompletedMutex);
-                m_CompletedTasks.emplace_back(task);
-                m_TasksInFlight.fetch_sub(1, std::memory_order_relaxed);
-            }
+            FinalizeTask(task, taskStatus);
         }
     }
 
@@ -454,29 +552,19 @@ namespace Eppo
         // Run in reverse so highest priority gets selected first
         for (auto it = m_PendingTasks.rbegin(); it != m_PendingTasks.rend(); ++it)
         {
-            if (it->empty())
-                continue;
-
-            auto task = std::move(it->front());
-            it->pop_front();
-
-            // Claim it while the queue lock is still held, so CancelAll can no longer reach it. A task it
-            // already cancelled keeps that status and its body is skipped.
-            auto expected = TaskStatus::Pending;
-            task->Status.compare_exchange_strong(expected, TaskStatus::Running, std::memory_order_relaxed);
-
+            while (!it->empty())
             {
-                std::scoped_lock lock(m_SnapshotMutex);
-                if (m_Snapshots.contains(task->Name))
-                {
-                    m_Snapshots.at(task->Name).Pending--;
-                    m_Snapshots.at(task->Name).Running++;
-                }
-            }
+                auto task = std::move(it->front());
+                it->pop_front();
 
-            m_TasksInFlight.fetch_add(1, std::memory_order_relaxed);
-            m_TasksPending.fetch_sub(1, std::memory_order_relaxed);
-            return task;
+                auto expected = TaskStatus::Pending;
+                if (!task->Status.compare_exchange_strong(expected, TaskStatus::Running, std::memory_order_relaxed))
+                    continue;
+
+                m_TasksInFlight.fetch_add(1, std::memory_order_seq_cst);
+                m_TasksPending.fetch_sub(1, std::memory_order_seq_cst);
+                return task;
+            }
         }
 
         return nullptr;
