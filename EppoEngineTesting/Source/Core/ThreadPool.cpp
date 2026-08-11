@@ -4,10 +4,12 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <vector>
 
 using Eppo::TaskFn;
 using Eppo::TaskId;
 using Eppo::TaskStatus;
+using Eppo::TaskResult;
 using Eppo::ThreadPool;
 
 // Every wait here is deadline-bounded. A wedged pool must fail its test, not hang the
@@ -580,4 +582,917 @@ TEST(Core, ThreadPool_QueueTaskWithDependencies_ChainOfThousandTasksCompletesInO
         }
     ));
     EXPECT_EQ(0u, outOfOrder.load());
+}
+
+// CancelTask must flip a pending task to Cancelled so its body never runs and its
+// completion fires with Cancelled status. Filling all workers with gated tasks
+// guarantees the target is still queued when CancelTask runs.
+TEST(Core, ThreadPool_CancelTask_CancelsPendingTask)
+{
+    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto taskCount = workerCount + 1;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> running = 0;
+    std::atomic<bool> targetBodyRan = false;
+    std::atomic<TaskStatus> targetStatus = TaskStatus::Pending;
+    std::atomic<bool> targetCompletionFired = false;
+    std::atomic<uint32_t> otherCompleted = 0;
+    ThreadPool pool;
+
+    std::vector<TaskId> ids;
+    ids.reserve(taskCount);
+
+    for (uint32_t i = 0; i < taskCount; i++)
+    {
+        ids.emplace_back(pool.QueueTask(
+            "Gated",
+            [&gate, &running, &targetBodyRan, i, taskCount]() -> void
+            {
+                running.fetch_add(1, std::memory_order_release);
+                if (i == taskCount - 1)
+                    targetBodyRan.store(true);
+                WaitForGate(gate);
+            },
+            [&targetCompletionFired, &targetStatus, &otherCompleted, i, taskCount](const TaskStatus status) -> void
+            {
+                if (i == taskCount - 1)
+                {
+                    targetStatus.store(status);
+                    targetCompletionFired.store(true);
+                }
+                else if (status == TaskStatus::Completed)
+                {
+                    otherCompleted.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+        ));
+    }
+
+    ASSERT_TRUE(WaitUntil(
+        [&running, &workerCount]() -> bool
+        {
+            return running.load(std::memory_order_acquire) >= workerCount;
+        }
+    ));
+
+    EXPECT_TRUE(pool.CancelTask(ids.back()));
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&targetCompletionFired, &otherCompleted, &workerCount]() -> bool
+        {
+            return targetCompletionFired.load() && otherCompleted.load() == workerCount;
+        }
+    ));
+
+    EXPECT_EQ(TaskStatus::Cancelled, targetStatus.load());
+    EXPECT_FALSE(targetBodyRan.load());
+    EXPECT_EQ(workerCount, otherCompleted.load());
+}
+
+// A task that has already been claimed by a worker cannot be cancelled.
+TEST(Core, ThreadPool_CancelTask_IgnoresRunningTask)
+{
+    std::atomic<bool> started = false;
+    std::atomic<bool> gate = false;
+    std::atomic<bool> invoked = false;
+    std::atomic<TaskStatus> reported = TaskStatus::Pending;
+    ThreadPool pool;
+
+    const auto id = pool.QueueTask(
+        "Gated",
+        [&started, &gate]() -> void
+        {
+            started.store(true, std::memory_order_release);
+            WaitForGate(gate);
+        },
+        [&invoked, &reported](const TaskStatus status) -> void
+        {
+            reported.store(status);
+            invoked.store(true);
+        }
+    );
+
+    ASSERT_TRUE(WaitUntil(
+        [&started]() -> bool
+        {
+            return started.load(std::memory_order_acquire);
+        }
+    ));
+
+    EXPECT_FALSE(pool.CancelTask(id));
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&invoked]() -> bool
+        {
+            return invoked.load();
+        }
+    ));
+    EXPECT_EQ(TaskStatus::Completed, reported.load());
+}
+
+// CancelTask on a task that already completed is a no-op.
+TEST(Core, ThreadPool_CancelTask_ReturnsFalseForCompletedTask)
+{
+    std::atomic<bool> invoked = false;
+    ThreadPool pool;
+
+    const auto id = pool.QueueTask(
+        "Done",
+        []() -> void {},
+        [&invoked](TaskStatus) -> void
+        {
+            invoked.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&invoked]() -> bool
+        {
+            return invoked.load();
+        }
+    ));
+
+    EXPECT_FALSE(pool.CancelTask(id));
+}
+
+// CancelTask on an unknown ID must not crash or hang.
+TEST(Core, ThreadPool_CancelTask_ReturnsFalseForUnknownId)
+{
+    ThreadPool pool;
+
+    EXPECT_FALSE(pool.CancelTask(999999));
+}
+
+// ---------------------------------------------------------------------------
+// CancelTask: snapshot integration
+// ---------------------------------------------------------------------------
+
+// Cancelling a pending task must update the group snapshot: Pending decrements and
+// Cancelled increments. The snapshot is the editor's progress UI source of truth.
+TEST(Core, ThreadPool_CancelTask_UpdatesGroupSnapshot)
+{
+    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto taskCount = workerCount + 2;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> running = 0;
+    std::atomic<uint32_t> completions = 0;
+    ThreadPool pool;
+
+    std::vector<TaskId> ids;
+    ids.reserve(taskCount);
+
+    for (uint32_t i = 0; i < taskCount; i++)
+    {
+        ids.emplace_back(pool.QueueTask(
+            "SnapshotProbe",
+            [&gate, &running]() -> void
+            {
+                running.fetch_add(1, std::memory_order_release);
+                WaitForGate(gate);
+            },
+            [&completions](TaskStatus) -> void
+            {
+                completions.fetch_add(1, std::memory_order_relaxed);
+            }
+        ));
+    }
+
+    ASSERT_TRUE(WaitUntil(
+        [&running, &workerCount]() -> bool
+        {
+            return running.load(std::memory_order_acquire) >= workerCount;
+        }
+    ));
+
+    const auto before = pool.GetTaskGroupSnapshots().at("SnapshotProbe");
+    EXPECT_EQ(taskCount, before.Total.load(std::memory_order_relaxed));
+    EXPECT_EQ(workerCount, before.Running.load(std::memory_order_relaxed));
+    EXPECT_EQ(taskCount - workerCount, before.Pending.load(std::memory_order_relaxed));
+
+    EXPECT_TRUE(pool.CancelTask(ids[workerCount]));
+    EXPECT_TRUE(pool.CancelTask(ids[workerCount + 1]));
+
+    const auto afterCancel = pool.GetTaskGroupSnapshots().at("SnapshotProbe");
+    EXPECT_EQ(2u, afterCancel.Cancelled.load(std::memory_order_relaxed));
+    EXPECT_EQ(0u, afterCancel.Pending.load(std::memory_order_relaxed));
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completions, &taskCount]() -> bool
+        {
+            return completions.load(std::memory_order_relaxed) == taskCount;
+        }
+    ));
+
+    const auto afterFlush = pool.GetTaskGroupSnapshots().at("SnapshotProbe");
+    EXPECT_EQ(workerCount, afterFlush.Completed.load(std::memory_order_relaxed));
+    EXPECT_EQ(2u, afterFlush.Cancelled.load(std::memory_order_relaxed));
+    EXPECT_EQ(taskCount, afterFlush.Total.load(std::memory_order_relaxed));
+    EXPECT_TRUE(afterFlush.IsFinished());
+}
+
+// Cancelling a task must decrement GetPendingTasksCount so the StatusBar busy
+// signal clears when the last task is cancelled, not when a worker picks it up.
+TEST(Core, ThreadPool_CancelTask_DecrementsPendingCount)
+{
+    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto taskCount = workerCount + 1;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> running = 0;
+    ThreadPool pool;
+
+    std::vector<TaskId> ids;
+    ids.reserve(taskCount);
+
+    for (uint32_t i = 0; i < taskCount; i++)
+    {
+        ids.emplace_back(pool.QueueTask(
+            "CountProbe",
+            [&gate, &running]() -> void
+            {
+                running.fetch_add(1, std::memory_order_release);
+                WaitForGate(gate);
+            },
+            nullptr
+        ));
+    }
+
+    ASSERT_TRUE(WaitUntil(
+        [&running, &workerCount]() -> bool
+        {
+            return running.load(std::memory_order_acquire) >= workerCount;
+        }
+    ));
+
+    const auto countBefore = pool.GetPendingTasksCount();
+    EXPECT_EQ(taskCount, countBefore);
+
+    EXPECT_TRUE(pool.CancelTask(ids.back()));
+
+    EXPECT_EQ(countBefore - 1, pool.GetPendingTasksCount());
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(WaitUntil(
+        [&pool]() -> bool
+        {
+            return pool.GetPendingTasksCount() == 0;
+        }
+    ));
+}
+
+// ---------------------------------------------------------------------------
+// CancelTask: idempotency and terminal states
+// ---------------------------------------------------------------------------
+
+// Cancelling an already-cancelled task is a no-op, not a double-cancel.
+TEST(Core, ThreadPool_CancelTask_AlreadyCancelledReturnsFalse)
+{
+    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto taskCount = workerCount + 1;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> running = 0;
+    std::atomic<uint32_t> cancelledCompletions = 0;
+    ThreadPool pool;
+
+    std::vector<TaskId> ids;
+    ids.reserve(taskCount);
+
+    for (uint32_t i = 0; i < taskCount; i++)
+    {
+        ids.emplace_back(pool.QueueTask(
+            "IdempotencyProbe",
+            [&gate, &running]() -> void
+            {
+                running.fetch_add(1, std::memory_order_release);
+                WaitForGate(gate);
+            },
+            [&cancelledCompletions](const TaskStatus status) -> void
+            {
+                if (status == TaskStatus::Cancelled)
+                    cancelledCompletions.fetch_add(1, std::memory_order_relaxed);
+            }
+        ));
+    }
+
+    ASSERT_TRUE(WaitUntil(
+        [&running, &workerCount]() -> bool
+        {
+            return running.load(std::memory_order_acquire) >= workerCount;
+        }
+    ));
+
+    EXPECT_TRUE(pool.CancelTask(ids.back()));
+    EXPECT_FALSE(pool.CancelTask(ids.back()));
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&cancelledCompletions]() -> bool
+        {
+            return cancelledCompletions.load() == 1;
+        }
+    ));
+
+    EXPECT_EQ(1u, cancelledCompletions.load());
+}
+
+// Cancelling a failed task returns false — the task already ran and threw.
+TEST(Core, ThreadPool_CancelTask_FailedTaskReturnsFalse)
+{
+    std::atomic<bool> invoked = false;
+    ThreadPool pool;
+
+    const auto id = pool.QueueTask(
+        "Throwing",
+        []() -> void
+        {
+            throw std::runtime_error("expected");
+        },
+        [&invoked](TaskStatus) -> void
+        {
+            invoked.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&invoked]() -> bool
+        {
+            return invoked.load();
+        }
+    ));
+
+    EXPECT_FALSE(pool.CancelTask(id));
+}
+
+// ---------------------------------------------------------------------------
+// CancelTask: dependency chain interaction
+// ---------------------------------------------------------------------------
+
+// Cancelling a dependency must still resolve its dependents so they don't hang.
+// The dependent should run (or be cancellable separately) — it must not deadlock.
+TEST(Core, ThreadPool_CancelTask_DependentStillResolvesAfterDependencyCancelled)
+{
+    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto fillerCount = workerCount;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> running = 0;
+    std::atomic<bool> dependentRan = false;
+    std::atomic<bool> dependencyCompletionFired = false;
+    std::atomic<TaskStatus> dependencyStatus = TaskStatus::Pending;
+    ThreadPool pool;
+
+    // Fill all workers so the dependency stays pending.
+    for (uint32_t i = 0; i < fillerCount; i++)
+    {
+        pool.QueueTask(
+            "Filler",
+            [&gate, &running]() -> void
+            {
+                running.fetch_add(1, std::memory_order_release);
+                WaitForGate(gate);
+            },
+            nullptr
+        );
+    }
+
+    ASSERT_TRUE(WaitUntil(
+        [&running, &workerCount]() -> bool
+        {
+            return running.load(std::memory_order_acquire) >= workerCount;
+        }
+    ));
+
+    // Queue a dependency that will be cancelled while pending.
+    const auto depId = pool.QueueTask(
+        "Dependency",
+        []() -> void {},
+        [&dependencyCompletionFired, &dependencyStatus](const TaskStatus status) -> void
+        {
+            dependencyStatus.store(status);
+            dependencyCompletionFired.store(true);
+        }
+    );
+
+    // Queue a dependent on it.
+    pool.QueueTaskWithDependencies(
+        "Dependent",
+        [&dependentRan]() -> void
+        {
+            dependentRan.store(true);
+        },
+        nullptr, { depId }
+    );
+
+    // Cancel the dependency while it's still pending.
+    EXPECT_TRUE(pool.CancelTask(depId));
+
+    // The cancelled dependency's completion fires, and the dependent is released.
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&dependencyCompletionFired]() -> bool
+        {
+            return dependencyCompletionFired.load();
+        }
+    ));
+    EXPECT_EQ(TaskStatus::Cancelled, dependencyStatus.load());
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(WaitUntil(
+        [&dependentRan]() -> bool
+        {
+            return dependentRan.load();
+        }
+    ));
+    EXPECT_TRUE(dependentRan.load());
+}
+
+// ---------------------------------------------------------------------------
+// TaskResult<T>: shared-state data propagation
+// ---------------------------------------------------------------------------
+
+// Worker writes Data; completion reads it on the main thread via Flush.
+TEST(Core, ThreadPool_TaskResult_PropagatesPrimitiveFromWorkerToCompletion)
+{
+    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
+    result->Data = -1;
+
+    std::atomic<bool> completionFired = false;
+    int32_t completionValue = -1;
+    ThreadPool pool;
+
+    pool.QueueTask(
+        "ResultProbe",
+        [result]() -> void
+        {
+            result->Data = 42;
+        },
+        [&completionFired, &completionValue, result](const TaskStatus status) -> void
+        {
+            if (status == TaskStatus::Completed)
+                completionValue = result->Data;
+            completionFired.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+
+    EXPECT_EQ(42, completionValue);
+    EXPECT_EQ(42, result->Data);
+}
+
+// TaskResult<T> with a non-trivial type — verifies the template works for structs.
+TEST(Core, ThreadPool_TaskResult_PropagatesStructFromWorkerToCompletion)
+{
+    struct Payload
+    {
+        int32_t Int = 0;
+        std::string Text;
+    };
+
+    auto result = Eppo::CreateRef<TaskResult<Payload>>();
+
+    std::atomic<bool> completionFired = false;
+    Payload captured{};
+    ThreadPool pool;
+
+    pool.QueueTask(
+        "StructProbe",
+        [result]() -> void
+        {
+            result->Data.Int = 7;
+            result->Data.Text = "hello";
+        },
+        [&completionFired, &captured, result](const TaskStatus status) -> void
+        {
+            if (status == TaskStatus::Completed)
+                captured = result->Data;
+            completionFired.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+
+    EXPECT_EQ(7, captured.Int);
+    EXPECT_EQ("hello", captured.Text);
+}
+
+// TaskResult<T> with a large payload — verifies no size limit beyond memory.
+TEST(Core, ThreadPool_TaskResult_PropagatesLargeVectorFromWorkerToCompletion)
+{
+    auto result = Eppo::CreateRef<TaskResult<std::vector<uint32_t>>>();
+
+    std::atomic<bool> completionFired = false;
+    std::vector<uint32_t> captured;
+    ThreadPool pool;
+
+    constexpr size_t kSize = 10000;
+
+    pool.QueueTask(
+        "VectorProbe",
+        [result]() -> void
+        {
+            result->Data.resize(kSize);
+            for (size_t i = 0; i < kSize; i++)
+                result->Data[i] = static_cast<uint32_t>(i);
+        },
+        [&completionFired, &captured, result](const TaskStatus status) -> void
+        {
+            if (status == TaskStatus::Completed)
+                captured = result->Data;
+            completionFired.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+
+    EXPECT_EQ(kSize, captured.size());
+    for (size_t i = 0; i < kSize; i++)
+        EXPECT_EQ(static_cast<uint32_t>(i), captured[i]);
+}
+
+// ---------------------------------------------------------------------------
+// TaskResult<T>: Status field
+// ---------------------------------------------------------------------------
+
+// Worker sets Status to Completed; completion reads it from the shared result
+// rather than relying solely on the TaskStatus argument.
+TEST(Core, ThreadPool_TaskResult_WorkerSetsStatusCompleted)
+{
+    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
+    result->Status = TaskStatus::Pending;
+
+    std::atomic<bool> completionFired = false;
+    TaskStatus resultStatus = TaskStatus::Pending;
+    ThreadPool pool;
+
+    pool.QueueTask(
+        "StatusProbe",
+        [result]() -> void
+        {
+            result->Status = TaskStatus::Completed;
+            result->Data = 1;
+        },
+        [&completionFired, &resultStatus, result](const TaskStatus status) -> void
+        {
+            if (status == TaskStatus::Completed)
+                resultStatus = result->Status;
+            completionFired.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+
+    EXPECT_EQ(TaskStatus::Completed, resultStatus);
+}
+
+// Worker sets Status to Failed; completion reads it and the Data payload
+// (error info) even though the task threw.
+TEST(Core, ThreadPool_TaskResult_WorkerSetsStatusFailedAndDeliversPartialData)
+{
+    struct ErrorInfo
+    {
+        int32_t Code = 0;
+        std::string Message;
+    };
+
+    auto result = Eppo::CreateRef<TaskResult<ErrorInfo>>();
+    result->Status = TaskStatus::Pending;
+
+    std::atomic<bool> completionFired = false;
+    TaskStatus resultStatus = TaskStatus::Pending;
+    ErrorInfo captured{};
+    ThreadPool pool;
+
+    pool.QueueTask(
+        "FailureProbe",
+        [result]() -> void
+        {
+            result->Status = TaskStatus::Failed;
+            result->Data.Code = 42;
+            result->Data.Message = "build failed";
+            throw std::runtime_error("worker error");
+        },
+        [&completionFired, &resultStatus, &captured, result](const TaskStatus status) -> void
+        {
+            resultStatus = result->Status;
+            captured = result->Data;
+            completionFired.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+
+    // The CompletionFn receives Failed from the pool, and the TaskResult carries
+    // the worker's own status plus the error payload.
+    EXPECT_EQ(TaskStatus::Failed, resultStatus);
+    EXPECT_EQ(42, captured.Code);
+    EXPECT_EQ("build failed", captured.Message);
+}
+
+// ---------------------------------------------------------------------------
+// TaskResult<T>: default initialization
+// ---------------------------------------------------------------------------
+
+// TaskResult<T> must value-initialize Data so an unread field is predictable.
+TEST(Core, ThreadPool_TaskResult_DefaultInitializesPrimitiveData)
+{
+    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
+    EXPECT_EQ(0, result->Data);
+    EXPECT_EQ(TaskStatus::Pending, result->Status);
+}
+
+// TaskResult<T> must call the Data type's default constructor.
+TEST(Core, ThreadPool_TaskResult_DefaultInitializesStructData)
+{
+    struct Payload
+    {
+        int32_t Int = 99;
+        std::string Text = "default";
+    };
+
+    auto result = Eppo::CreateRef<TaskResult<Payload>>();
+    EXPECT_EQ(99, result->Data.Int);
+    EXPECT_EQ("default", result->Data.Text);
+}
+
+// ---------------------------------------------------------------------------
+// TaskResult<T>: lifetime and multiple-task sharing
+// ---------------------------------------------------------------------------
+
+// The Ref<TaskResult> outlives the task — the caller can still read it after
+// Flush has drained the task from the pool.
+TEST(Core, ThreadPool_TaskResult_RemainsValidAfterFlushDrainsTask)
+{
+    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
+    std::atomic<bool> completionFired = false;
+    ThreadPool pool;
+
+    pool.QueueTask(
+        "LifetimeProbe",
+        [result]() -> void
+        {
+            result->Data = 77;
+        },
+        [&completionFired, result](TaskStatus) -> void
+        {
+            completionFired.store(true);
+        }
+    );
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+
+    // The pool has erased the task, but the Ref keeps the result alive.
+    EXPECT_EQ(77, result->Data);
+    EXPECT_EQ(0u, pool.GetPendingTasksCount());
+}
+
+// Multiple tasks write to the same TaskResult (fan-in). The completion of the
+// last task observes the accumulated data.
+TEST(Core, ThreadPool_TaskResult_MultipleTasksShareOneResult)
+{
+    auto result = Eppo::CreateRef<TaskResult<std::vector<int32_t>>>();
+    result->Data.resize(3, 0);
+
+    std::atomic<int32_t> completionCount = 0;
+    ThreadPool pool;
+
+    for (int32_t i = 0; i < 3; i++)
+    {
+        pool.QueueTask(
+            "FanIn",
+            [result, i]() -> void
+            {
+                result->Data[i] = i * 10;
+            },
+            [&completionCount, result](TaskStatus status) -> void
+            {
+                if (status == TaskStatus::Completed)
+                    completionCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        );
+    }
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionCount]() -> bool
+        {
+            return completionCount.load() == 3;
+        }
+    ));
+
+    // All three workers wrote to the same vector. Each element holds its value.
+    EXPECT_EQ(3, result->Data.size());
+    EXPECT_EQ(0, result->Data[0]);
+    EXPECT_EQ(10, result->Data[1]);
+    EXPECT_EQ(20, result->Data[2]);
+}
+
+// ---------------------------------------------------------------------------
+// TaskResult<T>: cancelled task interaction
+// ---------------------------------------------------------------------------
+
+// A cancelled task's result Data stays at its default — the worker never ran.
+TEST(Core, ThreadPool_TaskResult_CancelledTaskLeavesDataUnchanged)
+{
+    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+
+    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
+    result->Data = -999;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> running = 0;
+    std::atomic<bool> completionFired = false;
+    std::atomic<TaskStatus> reported = TaskStatus::Pending;
+    ThreadPool pool;
+
+    for (uint32_t i = 0; i < workerCount; i++)
+    {
+        pool.QueueTask(
+            "Filler",
+            [&gate, &running]() -> void
+            {
+                running.fetch_add(1, std::memory_order_release);
+                WaitForGate(gate);
+            },
+            nullptr
+        );
+    }
+
+    ASSERT_TRUE(WaitUntil(
+        [&running, &workerCount]() -> bool
+        {
+            return running.load(std::memory_order_acquire) >= workerCount;
+        }
+    ));
+
+    const auto id = pool.QueueTask(
+        "CancelledResult",
+        [result]() -> void
+        {
+            result->Data = 123;
+        },
+        [&completionFired, &reported, result](const TaskStatus status) -> void
+        {
+            reported.store(status);
+            completionFired.store(true);
+        }
+    );
+
+    EXPECT_TRUE(pool.CancelTask(id));
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+
+    EXPECT_EQ(TaskStatus::Cancelled, reported.load());
+    EXPECT_EQ(-999, result->Data);
+}
+
+TEST(Core, ThreadPool_GetTaskGroupSnapshots_RemainsCoherentDuringConcurrentTransitions)
+{
+    constexpr uint32_t taskCount = 512;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> completions = 0;
+    ThreadPool pool;
+
+    for (uint32_t i = 0; i < taskCount; i++)
+    {
+        pool.QueueTask(
+            "CoherentSnapshot",
+            [&gate]() -> void
+            {
+                WaitForGate(gate);
+            },
+            [&completions](TaskStatus) -> void
+            {
+                completions.fetch_add(1, std::memory_order_relaxed);
+            }
+        );
+    }
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&pool, &completions]() -> bool
+        {
+            const auto snapshot = pool.GetTaskGroupSnapshots().at("CoherentSnapshot");
+            const auto accounted = snapshot.Pending.load(std::memory_order_relaxed) + snapshot.Running.load(std::memory_order_relaxed) +
+                                   snapshot.Completed.load(std::memory_order_relaxed) + snapshot.Failed.load(std::memory_order_relaxed) +
+                                   snapshot.Cancelled.load(std::memory_order_relaxed);
+            EXPECT_EQ(snapshot.Total.load(std::memory_order_relaxed), accounted);
+            return completions.load(std::memory_order_relaxed) == taskCount;
+        }
+    ));
+}
+
+TEST(Core, ThreadPool_QueueTaskWithDependencies_PublishesAllDependencyWrites)
+{
+    constexpr uint32_t dependencyCount = 64;
+
+    std::array<uint32_t, dependencyCount> values{};
+    std::atomic<bool> gate = false;
+    std::atomic<bool> completionFired = false;
+    bool observedAllWrites = false;
+    ThreadPool pool;
+
+    std::vector<TaskId> dependencies;
+    dependencies.reserve(dependencyCount);
+    for (uint32_t i = 0; i < dependencyCount; i++)
+    {
+        dependencies.emplace_back(pool.QueueTask(
+            [&gate, &values, i]() -> void
+            {
+                WaitForGate(gate);
+                values[i] = i + 1;
+            },
+            nullptr
+        ));
+    }
+
+    pool.QueueTaskWithDependencies(
+        [&values, &observedAllWrites]() -> void
+        {
+            observedAllWrites = true;
+            for (uint32_t i = 0; i < values.size(); i++)
+                observedAllWrites &= values[i] == i + 1;
+        },
+        [&completionFired](TaskStatus) -> void
+        {
+            completionFired.store(true);
+        },
+        dependencies
+    );
+
+    gate.store(true, std::memory_order_release);
+
+    ASSERT_TRUE(FlushUntil(
+        pool,
+        [&completionFired]() -> bool
+        {
+            return completionFired.load();
+        }
+    ));
+    EXPECT_TRUE(observedAllWrites);
 }

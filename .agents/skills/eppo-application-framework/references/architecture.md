@@ -13,6 +13,7 @@ Two targets implement the factory:
 
 - `Window` and its platform backend;
 - `DeviceManager` and NVRHI renderer;
+- `ThreadPool` (created after device init, shut down before layer detach);
 - application layers;
 - `ImGuiLayer` and its renderer integration.
 
@@ -33,7 +34,11 @@ Reverse dependency order during destruction. Wait for GPU idle before releasing 
 
 ## Frame order
 
-`Run` computes a wall-clock timestep and repeatedly calls `StepFrame`. `StepFrame` exists so tests can drive deterministic fixed timesteps and frame counts.
+`Run` computes a wall-clock timestep and repeatedly calls `StepFrame`. `StepFrame` exists so tests can drive deterministic fixed timesteps and frame counts. It calls `ThreadPool::Flush` each frame so queued-task completions run on the main thread.
+
+## Background task pool
+
+`Core/ThreadPool/` (`Application::GetThreadPool()`) executes priority/dependency-queued background tasks. All threads may call `QueueTask` (with optional name and dependencies), `GetTaskGroupSnapshots`, and `GetPendingTasksCount`; `Flush`, `CancelAll`, and `Shutdown` are main-thread only. Named tasks aggregate into `TaskGroupSnapshot` statistics (`Pending`/`Running`/`Completed`/`Failed`/`Cancelled`/`Total`) that the editor `StatusBar` renders. The destructor calls `Shutdown(true)` before detaching layers.
 
 The effective frame phases are:
 
@@ -92,12 +97,13 @@ Keep ImGui GPU resources synchronized with back-buffer count and viewport/swapch
 
 ## Testing infrastructure
 
-`EppoEngineTesting/Source/Support/AppHarness` boots a real `Application`, window, device, renderer, and resources. It can advance a deterministic number of frames. `TestContext` and `ScenarioLayer` build on it for multi-frame scenarios and simulated input; they are consumed by the `Renderer` suite's `SceneRendering` tests.
+`EppoEngineTesting/Source/TestSupport/AppHarness` boots a real `Application`, window, device, renderer, and resources. It can advance a deterministic number of frames. `TestContext` and `ScenarioLayer` build on it for multi-frame scenarios and simulated input; they are consumed by the `Renderer` suite's `SceneRendering` tests.
 
 Test routing:
 
-- headless `Core`: buffers, streams, hashes, UUIDs, filesystem, process/file-watch, and isolated non-window logic;
+- headless `Core`: buffers, streams, hashes, UUIDs, filesystem, process/file-watch, thread-pool scheduling, and isolated non-window logic (the `App` suite, despite its name, lives in `EppoEngineTesting/Source/Core/Application.cpp`);
 - graphical `App`: boot, live window/device, and repeated frame advancement;
+- graphical `CoreGraphical`: window boot, cursor modes, and icon behavior;
 - graphical `Renderer`: direct GPU abstraction behavior, plus the `SceneRendering` tests covering state changes across frames, editor camera, input, scene loading, and rendering.
 
 Graphical suites require a real display and GPU and are excluded by headless CI. Run them from CTest so the configured working directory is correct.

@@ -28,19 +28,37 @@ namespace Eppo
 
     struct TaskGroupSnapshot
     {
+        TaskGroupSnapshot() = default;
+        TaskGroupSnapshot(const TaskGroupSnapshot& other);
+        auto operator=(const TaskGroupSnapshot& other) -> TaskGroupSnapshot&;
+
         std::string Name;
-        uint32_t Pending = 0;
-        uint32_t Running = 0;
-        uint32_t Completed = 0;
-        uint32_t Failed = 0;
-        uint32_t Cancelled = 0;
-        uint32_t Total = 0;
+        std::atomic<uint32_t> Pending = 0;
+        std::atomic<uint32_t> Running = 0;
+        std::atomic<uint32_t> Completed = 0;
+        std::atomic<uint32_t> Failed = 0;
+        std::atomic<uint32_t> Cancelled = 0;
+        std::atomic<uint32_t> Total = 0;
 
         auto IsFinished() const -> bool
         {
-            auto remaining = Total - Completed - Failed - Cancelled;
-            return remaining == 0;
+            const auto total = Total.load(std::memory_order_relaxed);
+            const auto finished = Completed.load(std::memory_order_relaxed) + Failed.load(std::memory_order_relaxed) +
+                Cancelled.load(std::memory_order_relaxed);
+            return finished >= total;
         }
+
+    private:
+        std::atomic<uint64_t> m_Version = 0;
+
+        friend class ThreadPool;
+    };
+
+    template<typename T>
+    struct TaskResult
+    {
+        TaskStatus Status = TaskStatus::Pending;
+        T Data{};
     };
 
     using TaskFn = std::function<void()>;
@@ -69,6 +87,9 @@ namespace Eppo
         // Callable: Main thread
         auto Flush() -> uint32_t;
 
+        // Callable: All threads
+        auto CancelTask(TaskId taskId) -> bool;
+
         // Callable: Main thread
         auto CancelAll() -> void;
 
@@ -89,10 +110,20 @@ namespace Eppo
             std::atomic<TaskStatus> Status = TaskStatus::Pending;
 
             // Dependencies
-            std::vector<TaskId> Dependents;
+            std::vector<Ref<Task>> Dependents;
             std::atomic<uint32_t> RemainingDeps = 0;
+
+            Ref<TaskGroupSnapshot> Group;
         };
 
+        auto QueueTaskInternal(TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority)
+            -> TaskId;
+        auto QueueTaskInternal(
+            std::string name, TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority
+        ) -> TaskId;
+        auto UpdateTaskGroup(const Ref<TaskGroupSnapshot>& group, TaskStatus status) -> void;
+        auto FinalizeTask(const Ref<Task>& task, TaskStatus status) -> void;
+        auto CompleteTask(const Ref<Task>& task, TaskStatus status) -> void;
         auto WorkerLoop() -> void;
         [[nodiscard]] auto HasPendingTasks() const -> bool;
         [[nodiscard]] auto GetNextTask() -> Ref<Task>;
@@ -110,7 +141,7 @@ namespace Eppo
 
         // Snapshotting
         std::shared_mutex m_SnapshotMutex;
-        std::unordered_map<std::string, TaskGroupSnapshot> m_Snapshots;
+        std::unordered_map<std::string, Ref<TaskGroupSnapshot>> m_Snapshots;
 
         // Workpool
         std::vector<std::thread> m_Threads;

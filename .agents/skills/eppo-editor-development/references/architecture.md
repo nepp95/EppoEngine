@@ -9,6 +9,7 @@
 - `m_SceneState`: edit or play;
 - `SceneRenderer` and `EditorCamera`;
 - `PanelManager`, toolbar icons, viewport state, gizmo state, and project/scene commands;
+- `StatusBar`, which renders background-task progress from `Application::GetThreadPool()`;
 - the export-game command, which collects `ProjectExportOptions` from the UI and hands them to `ProjectExporter(project).Export(options)` — the editor supplies paths and toggles and reports progress, it does not gather packed payloads itself.
 
 `PanelManager` owns panels and centralizes scene context plus selected `Entity`. Panels receive a non-owning manager pointer through `Panel`. Current panels are:
@@ -57,6 +58,8 @@ Never retain an `Entity` across scene replacement: it contains an EnTT handle an
 5. Updates the editor camera or runtime scene and renders.
 
 `OnUIRender` applies deferred layout restoration before any windows begin, builds the dockspace/menu, renders the viewport image, records viewport bounds/focus/hover, draws toolbar/notices, updates panels, and handles popups.
+
+The `StatusBar` occupies a strip at the bottom of the DockSpace host window: `EditorLayer` sizes the DockSpace `statusBarHeight` (24px) shorter and calls `m_StatusBar.Render()` while the host window is still current, before `End()`. It shows `ThreadPool::GetPendingTasksCount()` (the authoritative busy signal) and a drop-up of per-group `TaskGroupSnapshot`s, dropping finished groups so the list stays bounded.
 
 One-frame lag for focus or selection is intentional where documented. Avoid mixing same-frame UI mutation into render-update state unless the ordering is deliberately redesigned.
 

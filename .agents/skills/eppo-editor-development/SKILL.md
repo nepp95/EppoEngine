@@ -1,6 +1,6 @@
 ---
 name: eppo-editor-development
-description: Extend and diagnose EppoEditor workflows across EditorLayer, edit/play scene state, panels and shared selection, viewport rendering and input focus, gizmos, project and scene commands, content browsing, docking, editor resources, and editor-to-engine boundaries. Use for changes under EppoEditor/Source or EppoEditor/Resources and for engine APIs introduced specifically to support editor behavior.
+description: Extend and diagnose EppoEditor workflows across EditorLayer, edit/play scene state, panels and shared selection, viewport rendering and input focus, gizmos, project and scene commands, content browsing, docking, the status bar's background-task UI, editor resources, and editor-to-engine boundaries. Use for changes under EppoEditor/Source or EppoEditor/Resources and for engine APIs introduced specifically to support editor behavior.
 ---
 
 # Eppo Editor Development

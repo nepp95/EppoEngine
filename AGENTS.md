@@ -4,7 +4,7 @@ Compact guide for agents working in this repo. Read before editing.
 
 ## Project
 
-EppoEngine — a C++20 cross-platform (Windows/Linux) game engine + editor with C# scripting via CoreCLR (.NET 10) and Vulkan rendering through NVRHI. Built with Premake 5.0.0-beta8 + vcpkg (manifest mode). CLAUDE.md holds the same core guidance for Claude Code; keep the two in sync when editing either.
+EppoEngine — a C++20 cross-platform (Windows/Linux) game engine + editor with C# scripting via CoreCLR (.NET 10) and Vulkan rendering through NVRHI. Built with Premake 5.0.0-beta8 + vcpkg (manifest mode).
 
 ## Prerequisites (validated by `Scripts/Setup.py`)
 
@@ -32,7 +32,7 @@ ctest --test-dir build/bin/Debug-windows-x86_64 -R Scripting
 ```
 
 Run a suite directly from `EppoEditor/` so source resources resolve correctly: `../build/bin/Debug-windows-x86_64/EppoEngineTesting/EppoEngineTesting --gtest_filter=Scripting.*` (Google Test; suite = the first `TEST(Suite, Name)` argument). CTest passes exactly this filter per suite.
-Suites and labels (registered in `Scripts/Premake/Testing.lua`): `Core`, `Physics`, `Scene` (`core`); `Project` (`unit`); `Scripting`, `ScriptMarshalling` (`scripting`); `App`, `ProjectExport`, `Renderer` (`graphical`).
+Suites and labels (registered in `Scripts/Premake/Testing.lua`): `Core`, `Physics`, `Scene` (`core`); `FileDialogFilter`, `Project` (`unit`); `Scripting`, `ScriptMarshalling` (`scripting`); `App`, `CoreGraphical`, `ProjectExport`, `Renderer` (`graphical`).
 Visual Studio's built-in Test Adapter for Google Test discovers the suite in Test Explorer with no per-developer setup. The runner's `main.cpp` `chdir`s to `EppoEditor` on startup (via the premake-baked `EP_TEST_WORKING_DIR`), so `Resources/`/`Projects/`/`TestData/` resolve for graphical and data-driven suites regardless of how the exe is launched (Test Explorer runs it from the output dir; CTest also sets `WORKING_DIRECTORY`).
 
 Required order: **generate → build → test**. After editing C# only, rebuild the `EppoEngineTesting` (or `EppoEditor`) target so the dotnet custom commands re-run and DLLs are re-copied.
@@ -41,10 +41,10 @@ Required order: **generate → build → test**. After editing C# only, rebuild 
 
 ### Targets
 
-- `EppoEngine/` — static library, the engine. `Source/` modules: `Asset`, `Core`, `Event`, `ImGui`, `Physics`, `Platform`, `Project`, `Renderer`, `Scene`, `Scripting`, `Utility`. Public umbrella header `Source/EppoEngine.h`; PCH `Source/pch.h`. `Core/Buffer/` is the binary serialization substrate: abstract `StreamWriter`/`StreamReader` with `Buffer*` (in-memory) and `FileStream*` (on-disk) implementations, plus paired `StreamSerializable`/`StreamDeserializable` concepts backing `WriteObject`/`ReadObject`. `GameData` is built on it.
+- `EppoEngine/` — static library, the engine. `Source/` modules: `Asset`, `Core`, `Event`, `ImGui`, `Physics`, `Platform`, `Project`, `Renderer`, `Scene`, `Scripting`, `Utility`. Public umbrella header `Source/EppoEngine.h`; PCH `Source/pch.h`. `Core/Buffer/` is the binary serialization substrate: abstract `StreamWriter`/`StreamReader` with `Buffer*` (in-memory) and `FileStream*` (on-disk) implementations, plus paired `StreamSerializable`/`StreamDeserializable` concepts backing `WriteObject`/`ReadObject`. `GameData` is built on it. `Core/ThreadPool/` is the background-task pool owned by `Application` (`GetThreadPool()`): priority/dependency-queued tasks, named task groups with `TaskGroupSnapshot` statistics, and main-thread `Flush`/`CancelAll`/`Shutdown`; the editor's `StatusBar` renders its live state.
 - `EppoEditor/` — editor executable (`EppoEditor.cpp` → `EditorLayer`). Depends on `EppoEngine` + `EppoScriptCore`. Owns `Resources/` and `runtimeconfig.json`.
 - `EppoScriptCore/` — C# class library (net10.0). Visual Studio exposes the real `.csproj` in the EppoScriptCore solution group and maps solution Dist to managed Release. Ninja invokes `dotnet` through the project Premake definition. Namespaces mirror the folder path minus `Source/`.
-- `EppoEngineTesting/` — Google Test runner (custom `main.cpp` wraps `RUN_ALL_TESTS` with logging + `AppHarness::Shutdown`). `Source/` suites mirror engine modules; `Source/Support/` has `AppHarness` (boots a real `Application` for graphical suites), `TestContext` + `ScenarioLayer` (multi-frame scene/camera scenarios, used by the `Renderer` suite), and the `EppoTest.h` / `GlmCheck.h` / `TempDir.h` helpers. `EppoTest.h` provides `EP_REQUIRE`/`EP_REQUIRE_EQ` (a fatal check usable in value-returning helpers where `ASSERT_*` cannot) and `EP_EXPECT_ARRAY_EQ`; `GlmCheck.h` keeps `CHECK_VEC*/MAT4_CLOSE` on `EXPECT_NEAR`. `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites are registered in `Scripts/Premake/Testing.lua`.
+- `EppoEngineTesting/` — Google Test runner (custom `main.cpp` wraps `RUN_ALL_TESTS` with logging + `AppHarness::Shutdown`). `Source/` suites mirror engine modules; `Source/TestSupport/` has `AppHarness` (boots a real `Application` for graphical suites), `TestContext` + `ScenarioLayer` (multi-frame scene/camera scenarios, used by the `Renderer` suite), and the `EppoTest.h` / `GlmCheck.h` / `TempDir.h` helpers. `EppoTest.h` provides `EP_REQUIRE`/`EP_REQUIRE_EQ` (a fatal check usable in value-returning helpers where `ASSERT_*` cannot) and `EP_EXPECT_ARRAY_EQ`; `GlmCheck.h` keeps `CHECK_VEC*/MAT4_CLOSE` on `EXPECT_NEAR`. `TestData/Scripts/` builds the `EppoTesting.Scripts.dll` harness the Scripting suite loads. Suites are registered in `Scripts/Premake/Testing.lua`.
 - `EppoRuntime/` — standalone player. Reads `Game.eppak` before creating the application, since its engine shaders come from there. It stages **no** `Resources/`: shader sources and their includes travel in the pack, and it never reads them from disk. Logs and its shader cache are written beside the executable.
 - `Scripts/Premake/` — shared dependency names and standalone CTest manifest generation. Each native target owns a `premake5.lua`; vcpkg overlays live under `Dependencies/Ports`.
 
@@ -71,7 +71,7 @@ Key libraries: entt (ECS), NVRHI (Vulkan RHI), GLFW + ImGui (docking), glm, box3
 
 - **Run the editor from `EppoEditor/`; run tests through CTest.** The editor and graphical tests resolve `Resources/` and `Projects/` from the working directory, while `runtimeconfig.json`, `EppoScriptCore.dll`, and test assemblies resolve beside their executable. CTest sets the source working directory automatically.
 - **Managed projects follow the generated build system.** Visual Studio builds the real `.csproj` projects; Ninja invokes `dotnet` custom rules. Post-build steps copy managed outputs beside the native executable.
-- **Graphical suites (`App`, `ProjectExport`, `Renderer`) need a real display + GPU.** They early-return if `AppHarness` can't boot; on headless/CI use `--label-exclude graphical`.
+- **Graphical suites (`App`, `CoreGraphical`, `ProjectExport`, `Renderer`) need a real display + GPU.** They early-return if `AppHarness` can't boot; on headless/CI use `--label-exclude graphical`.
 - **"SPIR-V CodeGen not available"** at runtime means the Microsoft `dxcompiler.dll` is shadowing the Vulkan SDK one; copy the Vulkan SDK's `dxcompiler.dll` next to the exe.
 - **`EppoRuntime` owns its entry point.** It defines `EP_CUSTOM_ENTRY_POINT` (suppressing the `main` in `Core/EntryPoint.h`) and calls `Eppo::RunApplication` from its own `WinMain`/`main`, so it can wrap startup in a try/catch that reports through `ErrorDialog`. It reads `Game.eppak` inside `CreateApplication` — before the `Application` exists — because the shaders it hands to `ApplicationParams` are needed during construction.
 - **Where files get written is configured, not assumed.** `FS::ConfigureWritableDirectory` sets the root that `FS::GetWritableDirectory` and `FS::GetShaderCacheDirectory` resolve against; the runtime points it at its own executable directory so logs and the shader cache land beside the game. Unconfigured, the shader cache falls back to `Resources/Shaders/Cache`.
@@ -126,7 +126,9 @@ Conventions below are near-universal in `Core`, `Platform/Vulkan` and `Renderer`
 
 ## Domain skills
 
-Seven domain skills live in `.agents/skills/` (each `SKILL.md` + `references/architecture.md`). Read the matching skill before investigating or changing a major subsystem; use every applicable skill for cross-system work. Claude Code loads full copies of the same skills from `.claude/skills/` — when editing a skill, apply the same change to both trees.
+Seven domain skills live in `.agents/skills/` (each `SKILL.md` + `references/architecture.md`, plus an `agents/openai.yaml` agent definition). Read the matching skill before investigating or changing a major subsystem; use every applicable skill for cross-system work. There is no mirrored skill tree — `.agents/skills/` is the single source of truth, and the openai.yaml sits alongside its skill so both stay consistent.
+
+Seven domain skills:
 
 - `eppo-scripting-integration` — CoreCLR hosting, native/managed ABI, assemblies, ScriptGlue, fields, lifecycle, deployment, and scripting tests.
 - `eppo-rendering-pipeline` — Vulkan/NVRHI devices, shaders, descriptors, GPU resources, render passes, SceneRenderer, and graphical tests.
@@ -135,6 +137,14 @@ Seven domain skills live in `.agents/skills/` (each `SKILL.md` + `references/arc
 - `eppo-physics-integration` — Box3D bodies, hierarchy-aware colliders, transform conversion, runtime synchronization, scripting, and physics tests.
 - `eppo-assets-and-projects` — asset handles, registry persistence, paths, loading/import/export, project lifecycle, `Game.eppak` packaging, and content-browser coordination.
 - `eppo-application-framework` — application/frame lifecycle, layers, windows, events, input, ImGui, startup order, the deployed runtime, and application harnesses.
+
+### Agents and skills outside the repo
+
+The repo skills sit alongside global, user-level definitions that are not committed here:
+
+- **Subagents** (`build` primary, plus `planner`, `coder`, `reviewer`, `researcher`, `junior` subagents) are defined in the global opencode config `~/.config/opencode/opencode.json` and apply to any project. Their descriptions are deliberately project-agnostic — use them in this repo, and supply project facts through this file and the domain skills.
+- **General workflow skills** live in `~/.agents/skills/` (each `SKILL.md` + `agents/openai.yaml`): `build-test-verification`, `git-worktree-workflow`, `plan-and-confirm`, `preserve-local-style`, `requesting-code-review`, `systematic-debugging`, `test-driven-development`. They are deliberately workflow-only — no project-specific commands; project facts (build/test commands, suite names, paths) belong in this file and the domain skills.
+- **Generic opencode user skills** live in `~/.config/opencode/skills/`. Same-named entries there shadow `~/.agents/skills/` — when a name exists in both trees, the opencode copy is the one loaded.
 
 ## Workflow rules (required)
 
@@ -145,6 +155,8 @@ Seven domain skills live in `.agents/skills/` (each `SKILL.md` + `references/arc
 - **Code review via subagent** after substantial changes — do not review your own work.
 - **No formatting changes to existing code.** Don't reindent or reflow lines you aren't otherwise editing, and never run clang-format across a file you didn't create. New and edited lines use 4 spaces (see Style); the tab-to-space conversion of legacy files is a deliberate, separately-run pass, not something to do as a drive-by.
 - **Verify before claiming done.** Run the relevant build + `ctest` and confirm it passes. A green build alone does not verify editor/GUI behaviour — state what was actually verified.
+- **Be honest, not agreeable.** Do not reflexively agree with the user. If you think they are wrong, say so and explain why. Sycophancy ("you're right", "fair", "good point") without independent judgment is a failure mode. Disagreement must be substantive — do not manufacture contrarianism either. The user pays you to think, not to nod.
+- **Don't invalidate the build cache by default.** The user's build cache is expensive to rebuild. Do not run `Scripts\Setup.bat`/`setup.sh` (re-provisions tools and re-runs `vcpkg install`), `Scripts\Clean.bat`/`clean.sh` (wipes all build outputs and provisioned tools), or `Scripts\GenerateBuildFiles.bat`/`generatebuildfiles.sh` (re-runs Premake) by default. Do not delete or touch the `build/` tree or `.eppo/` directly. Routine edits do not require regeneration; `GenerateBuildFiles` is only needed when premake inputs change (e.g., adding/removing/renaming files). If a cache-invalidating step is genuinely necessary, just do it.
 
 ## CI
 

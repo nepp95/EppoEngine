@@ -110,6 +110,8 @@ namespace Eppo
 
     auto ScriptEngine::VerifyRuntime() -> void
     {
+        EP_PROFILE_FN("ScriptEngine::VerifyRuntime");
+
         if (!m_ScriptWatcher || !Project::GetActive())
             return;
 
@@ -361,9 +363,8 @@ namespace Eppo
         return nullptr;
     }
 
-    auto ScriptEngine::GetFieldValueOrDefault(
-        const UUID& entityId, const int32_t classIndex, const int32_t fieldIndex
-    ) const -> ScriptFieldValue
+    auto ScriptEngine::GetFieldValueOrDefault(const UUID& entityId, const int32_t classIndex, const int32_t fieldIndex) const
+        -> ScriptFieldValue
     {
         if (!m_CoreAssembly || classIndex < 0 || classIndex >= static_cast<int32_t>(GetClasses().size()))
             return {};
