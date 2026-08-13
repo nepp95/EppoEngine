@@ -1024,72 +1024,38 @@ TEST(Core, ThreadPool_CancelTask_DependentStillResolvesAfterDependencyCancelled)
     EXPECT_TRUE(dependentRan.load());
 }
 
-// ---------------------------------------------------------------------------
-// TaskResult<T>: shared-state data propagation
-// ---------------------------------------------------------------------------
-
-// Worker writes Data; completion reads it on the main thread via Flush.
-TEST(Core, ThreadPool_TaskResult_PropagatesPrimitiveFromWorkerToCompletion)
+TEST(Core, ThreadPool_TaskResult_IsEmptyUntilWorkerProducesPayload)
 {
-    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
-    result->Data = -1;
+    const TaskResult<int32_t> result;
 
-    std::atomic<bool> completionFired = false;
-    int32_t completionValue = -1;
-    ThreadPool pool;
-
-    pool.QueueTask(
-        "ResultProbe",
-        [result]() -> void
-        {
-            result->Data = 42;
-        },
-        [&completionFired, &completionValue, result](const TaskStatus status) -> void
-        {
-            if (status == TaskStatus::Completed)
-                completionValue = result->Data;
-            completionFired.store(true);
-        }
-    );
-
-    ASSERT_TRUE(FlushUntil(
-        pool,
-        [&completionFired]() -> bool
-        {
-            return completionFired.load();
-        }
-    ));
-
-    EXPECT_EQ(42, completionValue);
-    EXPECT_EQ(42, result->Data);
+    EXPECT_FALSE(result.has_value());
 }
 
-// TaskResult<T> with a non-trivial type — verifies the template works for structs.
-TEST(Core, ThreadPool_TaskResult_PropagatesStructFromWorkerToCompletion)
+TEST(Core, ThreadPool_TaskResult_HandsWorkerPayloadToCompletion)
 {
     struct Payload
     {
-        int32_t Int = 0;
+        int32_t Value = 0;
         std::string Text;
     };
 
-    auto result = Eppo::CreateRef<TaskResult<Payload>>();
-
+    const auto result = Eppo::CreateRef<TaskResult<Payload>>();
     std::atomic<bool> completionFired = false;
-    Payload captured{};
+    TaskStatus reported = TaskStatus::Pending;
+    Payload captured;
     ThreadPool pool;
 
     pool.QueueTask(
         "StructProbe",
         [result]() -> void
         {
-            result->Data.Int = 7;
-            result->Data.Text = "hello";
+            result->emplace(Payload{ .Value = 42, .Text = "worker payload" });
         },
-        [&completionFired, &captured, result](const TaskStatus status) -> void
+        [&completionFired, &reported, &captured, result](const TaskStatus status) -> void
         {
-            if (status == TaskStatus::Completed)
-                captured = result->Data;
+            reported = status;
+            if (result->has_value())
+                captured = result->value();
             completionFired.store(true);
         }
     );
@@ -1102,122 +1068,28 @@ TEST(Core, ThreadPool_TaskResult_PropagatesStructFromWorkerToCompletion)
         }
     ));
 
-    EXPECT_EQ(7, captured.Int);
-    EXPECT_EQ("hello", captured.Text);
+    EXPECT_EQ(TaskStatus::Completed, reported);
+    EXPECT_EQ(42, captured.Value);
+    EXPECT_EQ("worker payload", captured.Text);
 }
 
-// TaskResult<T> with a large payload — verifies no size limit beyond memory.
-TEST(Core, ThreadPool_TaskResult_PropagatesLargeVectorFromWorkerToCompletion)
+TEST(Core, ThreadPool_TaskResult_DoesNotEncodeTaskOutcome)
 {
-    auto result = Eppo::CreateRef<TaskResult<std::vector<uint32_t>>>();
-
+    const auto result = Eppo::CreateRef<TaskResult<std::string>>();
     std::atomic<bool> completionFired = false;
-    std::vector<uint32_t> captured;
-    ThreadPool pool;
-
-    constexpr size_t kSize = 10000;
-
-    pool.QueueTask(
-        "VectorProbe",
-        [result]() -> void
-        {
-            result->Data.resize(kSize);
-            for (size_t i = 0; i < kSize; i++)
-                result->Data[i] = static_cast<uint32_t>(i);
-        },
-        [&completionFired, &captured, result](const TaskStatus status) -> void
-        {
-            if (status == TaskStatus::Completed)
-                captured = result->Data;
-            completionFired.store(true);
-        }
-    );
-
-    ASSERT_TRUE(FlushUntil(
-        pool,
-        [&completionFired]() -> bool
-        {
-            return completionFired.load();
-        }
-    ));
-
-    EXPECT_EQ(kSize, captured.size());
-    for (size_t i = 0; i < kSize; i++)
-        EXPECT_EQ(static_cast<uint32_t>(i), captured[i]);
-}
-
-// ---------------------------------------------------------------------------
-// TaskResult<T>: Status field
-// ---------------------------------------------------------------------------
-
-// Worker sets Status to Completed; completion reads it from the shared result
-// rather than relying solely on the TaskStatus argument.
-TEST(Core, ThreadPool_TaskResult_WorkerSetsStatusCompleted)
-{
-    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
-    result->Status = TaskStatus::Pending;
-
-    std::atomic<bool> completionFired = false;
-    TaskStatus resultStatus = TaskStatus::Pending;
-    ThreadPool pool;
-
-    pool.QueueTask(
-        "StatusProbe",
-        [result]() -> void
-        {
-            result->Status = TaskStatus::Completed;
-            result->Data = 1;
-        },
-        [&completionFired, &resultStatus, result](const TaskStatus status) -> void
-        {
-            if (status == TaskStatus::Completed)
-                resultStatus = result->Status;
-            completionFired.store(true);
-        }
-    );
-
-    ASSERT_TRUE(FlushUntil(
-        pool,
-        [&completionFired]() -> bool
-        {
-            return completionFired.load();
-        }
-    ));
-
-    EXPECT_EQ(TaskStatus::Completed, resultStatus);
-}
-
-// Worker sets Status to Failed; completion reads it and the Data payload
-// (error info) even though the task threw.
-TEST(Core, ThreadPool_TaskResult_WorkerSetsStatusFailedAndDeliversPartialData)
-{
-    struct ErrorInfo
-    {
-        int32_t Code = 0;
-        std::string Message;
-    };
-
-    auto result = Eppo::CreateRef<TaskResult<ErrorInfo>>();
-    result->Status = TaskStatus::Pending;
-
-    std::atomic<bool> completionFired = false;
-    TaskStatus resultStatus = TaskStatus::Pending;
-    ErrorInfo captured{};
+    TaskStatus reported = TaskStatus::Pending;
     ThreadPool pool;
 
     pool.QueueTask(
         "FailureProbe",
         [result]() -> void
         {
-            result->Status = TaskStatus::Failed;
-            result->Data.Code = 42;
-            result->Data.Message = "build failed";
-            throw std::runtime_error("worker error");
+            result->emplace("diagnostic payload");
+            throw std::runtime_error("expected");
         },
-        [&completionFired, &resultStatus, &captured, result](const TaskStatus status) -> void
+        [&completionFired, &reported](const TaskStatus status) -> void
         {
-            resultStatus = result->Status;
-            captured = result->Data;
+            reported = status;
             completionFired.store(true);
         }
     );
@@ -1230,182 +1102,9 @@ TEST(Core, ThreadPool_TaskResult_WorkerSetsStatusFailedAndDeliversPartialData)
         }
     ));
 
-    // The CompletionFn receives Failed from the pool, and the TaskResult carries
-    // the worker's own status plus the error payload.
-    EXPECT_EQ(TaskStatus::Failed, resultStatus);
-    EXPECT_EQ(42, captured.Code);
-    EXPECT_EQ("build failed", captured.Message);
-}
-
-// ---------------------------------------------------------------------------
-// TaskResult<T>: default initialization
-// ---------------------------------------------------------------------------
-
-// TaskResult<T> must value-initialize Data so an unread field is predictable.
-TEST(Core, ThreadPool_TaskResult_DefaultInitializesPrimitiveData)
-{
-    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
-    EXPECT_EQ(0, result->Data);
-    EXPECT_EQ(TaskStatus::Pending, result->Status);
-}
-
-// TaskResult<T> must call the Data type's default constructor.
-TEST(Core, ThreadPool_TaskResult_DefaultInitializesStructData)
-{
-    struct Payload
-    {
-        int32_t Int = 99;
-        std::string Text = "default";
-    };
-
-    auto result = Eppo::CreateRef<TaskResult<Payload>>();
-    EXPECT_EQ(99, result->Data.Int);
-    EXPECT_EQ("default", result->Data.Text);
-}
-
-// ---------------------------------------------------------------------------
-// TaskResult<T>: lifetime and multiple-task sharing
-// ---------------------------------------------------------------------------
-
-// The Ref<TaskResult> outlives the task — the caller can still read it after
-// Flush has drained the task from the pool.
-TEST(Core, ThreadPool_TaskResult_RemainsValidAfterFlushDrainsTask)
-{
-    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
-    std::atomic<bool> completionFired = false;
-    ThreadPool pool;
-
-    pool.QueueTask(
-        "LifetimeProbe",
-        [result]() -> void
-        {
-            result->Data = 77;
-        },
-        [&completionFired, result](TaskStatus) -> void
-        {
-            completionFired.store(true);
-        }
-    );
-
-    ASSERT_TRUE(FlushUntil(
-        pool,
-        [&completionFired]() -> bool
-        {
-            return completionFired.load();
-        }
-    ));
-
-    // The pool has erased the task, but the Ref keeps the result alive.
-    EXPECT_EQ(77, result->Data);
-    EXPECT_EQ(0u, pool.GetPendingTasksCount());
-}
-
-// Multiple tasks write to the same TaskResult (fan-in). The completion of the
-// last task observes the accumulated data.
-TEST(Core, ThreadPool_TaskResult_MultipleTasksShareOneResult)
-{
-    auto result = Eppo::CreateRef<TaskResult<std::vector<int32_t>>>();
-    result->Data.resize(3, 0);
-
-    std::atomic<int32_t> completionCount = 0;
-    ThreadPool pool;
-
-    for (int32_t i = 0; i < 3; i++)
-    {
-        pool.QueueTask(
-            "FanIn",
-            [result, i]() -> void
-            {
-                result->Data[i] = i * 10;
-            },
-            [&completionCount, result](TaskStatus status) -> void
-            {
-                if (status == TaskStatus::Completed)
-                    completionCount.fetch_add(1, std::memory_order_relaxed);
-            }
-        );
-    }
-
-    ASSERT_TRUE(FlushUntil(
-        pool,
-        [&completionCount]() -> bool
-        {
-            return completionCount.load() == 3;
-        }
-    ));
-
-    // All three workers wrote to the same vector. Each element holds its value.
-    EXPECT_EQ(3, result->Data.size());
-    EXPECT_EQ(0, result->Data[0]);
-    EXPECT_EQ(10, result->Data[1]);
-    EXPECT_EQ(20, result->Data[2]);
-}
-
-// ---------------------------------------------------------------------------
-// TaskResult<T>: cancelled task interaction
-// ---------------------------------------------------------------------------
-
-// A cancelled task's result Data stays at its default — the worker never ran.
-TEST(Core, ThreadPool_TaskResult_CancelledTaskLeavesDataUnchanged)
-{
-    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
-
-    auto result = Eppo::CreateRef<TaskResult<int32_t>>();
-    result->Data = -999;
-
-    std::atomic<bool> gate = false;
-    std::atomic<uint32_t> running = 0;
-    std::atomic<bool> completionFired = false;
-    std::atomic<TaskStatus> reported = TaskStatus::Pending;
-    ThreadPool pool;
-
-    for (uint32_t i = 0; i < workerCount; i++)
-    {
-        pool.QueueTask(
-            "Filler",
-            [&gate, &running]() -> void
-            {
-                running.fetch_add(1, std::memory_order_release);
-                WaitForGate(gate);
-            },
-            nullptr
-        );
-    }
-
-    ASSERT_TRUE(WaitUntil(
-        [&running, &workerCount]() -> bool
-        {
-            return running.load(std::memory_order_acquire) >= workerCount;
-        }
-    ));
-
-    const auto id = pool.QueueTask(
-        "CancelledResult",
-        [result]() -> void
-        {
-            result->Data = 123;
-        },
-        [&completionFired, &reported, result](const TaskStatus status) -> void
-        {
-            reported.store(status);
-            completionFired.store(true);
-        }
-    );
-
-    EXPECT_TRUE(pool.CancelTask(id));
-
-    gate.store(true, std::memory_order_release);
-
-    ASSERT_TRUE(FlushUntil(
-        pool,
-        [&completionFired]() -> bool
-        {
-            return completionFired.load();
-        }
-    ));
-
-    EXPECT_EQ(TaskStatus::Cancelled, reported.load());
-    EXPECT_EQ(-999, result->Data);
+    ASSERT_TRUE(result->has_value());
+    EXPECT_EQ("diagnostic payload", result->value());
+    EXPECT_EQ(TaskStatus::Failed, reported);
 }
 
 TEST(Core, ThreadPool_GetTaskGroupSnapshots_RemainsCoherentDuringConcurrentTransitions)

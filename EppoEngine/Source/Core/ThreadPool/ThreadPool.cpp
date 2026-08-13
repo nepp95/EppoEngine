@@ -491,7 +491,6 @@ namespace Eppo
 
             // Wait for task
             {
-                // TODO: Why unique?
                 std::unique_lock lock(m_PendingMutex);
                 m_WorkAvailableCV.wait(
                     lock,

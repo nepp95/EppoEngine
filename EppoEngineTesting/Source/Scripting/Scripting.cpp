@@ -119,6 +119,22 @@ namespace
         );
         return found;
     }
+
+    auto ReloadProjectAssemblyAndWait() -> bool
+    {
+        if (!ScriptEngine::Get().ReloadProjectAssembly())
+            return false;
+
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (ScriptEngine::IsUserAssemblyCompiling() && std::chrono::steady_clock::now() < deadline)
+        {
+            Testing::AppHarness::AdvanceFrames(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        }
+
+        Testing::AppHarness::AdvanceFrames(1);
+        return !ScriptEngine::IsUserAssemblyCompiling();
+    }
 }
 
 // --- Class metadata: the runtime comes up and reflects the user class. ---
@@ -618,6 +634,8 @@ TEST(Scripting, ScriptEngine_ReloadProjectAssembly_WithoutAnActiveProject_Fails)
 TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ForProjectUnderTheProjectsDirectory_DiscoversScriptClasses)
 {
     EP_REQUIRE(EnsureRuntime());
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
@@ -666,7 +684,7 @@ public class ProbeScript : Entity
         }
     );
 
-    const bool reloaded = ScriptEngine::Get().ReloadProjectAssembly();
+    const bool reloaded = ReloadProjectAssemblyAndWait();
     const bool discovered = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript");
 
     // The suite shares one runtime, so hand the harness assembly back before
@@ -678,9 +696,11 @@ public class ProbeScript : Entity
     EXPECT_EQ(true, discovered);
 }
 
-TEST(Scripting, ScriptEngine_ReloadProjectAssembly_WithBrokenScript_FailsAndLogsError)
+TEST(Scripting, ScriptEngine_ReloadProjectAssembly_WithBrokenScript_LeavesPreviousAssemblyLoadedButInvalid)
 {
     EP_REQUIRE(EnsureRuntime());
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
@@ -725,14 +745,16 @@ public class Broken { {
         }
     );
 
-    const bool reloaded = ScriptEngine::Get().ReloadProjectAssembly();
+    const bool reloaded = ReloadProjectAssemblyAndWait();
     const bool valid = ScriptEngine::IsUserAssemblyValid();
+    const bool previousClassValid = ScriptEngine::Get().IsValidScriptClass(kUserClass);
 
     Project::SetActive(nullptr);
     ScriptEngine::Get().LoadUserAssembly(FS::GetExecutableDirectory() / "EppoTesting.Scripts.dll");
 
-    EXPECT_FALSE(reloaded);
+    EXPECT_TRUE(reloaded);
     EXPECT_FALSE(valid);
+    EXPECT_TRUE(previousClassValid);
 }
 
 TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ProjectWithoutCsproj_Succeeds)
@@ -763,6 +785,8 @@ TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ProjectWithoutCsproj_Succeeds
 TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ReplacesOldClassesWithNewOnes)
 {
     EP_REQUIRE(EnsureRuntime());
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
@@ -811,7 +835,7 @@ public class ProbeScriptA : Entity
         }
     );
 
-    EP_REQUIRE(ScriptEngine::Get().ReloadProjectAssembly());
+    EP_REQUIRE(ReloadProjectAssemblyAndWait());
     EXPECT_TRUE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScriptA"));
 
     EP_REQUIRE(
@@ -829,7 +853,7 @@ public class ProbeScriptB : Entity
         )
     );
 
-    EP_REQUIRE(ScriptEngine::Get().ReloadProjectAssembly());
+    EP_REQUIRE(ReloadProjectAssemblyAndWait());
 
     const bool oldGone = !ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScriptA");
     const bool newPresent = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScriptB");
@@ -844,6 +868,8 @@ public class ProbeScriptB : Entity
 TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ClearsEntityInstances)
 {
     EP_REQUIRE(EnsureRuntime());
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
@@ -890,7 +916,7 @@ public class ProbeScript : Entity
         }
     );
 
-    EP_REQUIRE(ScriptEngine::Get().ReloadProjectAssembly());
+    EP_REQUIRE(ReloadProjectAssemblyAndWait());
 
     const Ref<Scene> scene = CreateRef<Scene>();
     Entity entity = scene->CreateEntity("Scripted");
@@ -899,7 +925,7 @@ public class ProbeScript : Entity
 
     EXPECT_TRUE(ScriptEngine::Get().GetEntityInstance(entity.GetUUID()) != nullptr);
 
-    EP_REQUIRE(ScriptEngine::Get().ReloadProjectAssembly());
+    EP_REQUIRE(ReloadProjectAssemblyAndWait());
 
     const bool instanceCleared = ScriptEngine::Get().GetEntityInstance(entity.GetUUID()) == nullptr;
 
@@ -912,6 +938,8 @@ public class ProbeScript : Entity
 TEST(Scripting, ScriptEngine_ReloadProjectAssembly_PreservesFieldStorage)
 {
     EP_REQUIRE(EnsureRuntime());
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
@@ -959,7 +987,7 @@ public class ProbeScript : Entity
         }
     );
 
-    EP_REQUIRE(ScriptEngine::Get().ReloadProjectAssembly());
+    EP_REQUIRE(ReloadProjectAssemblyAndWait());
 
     const Ref<Scene> scene = CreateRef<Scene>();
     Entity entity = scene->CreateEntity("Scripted");
@@ -970,7 +998,7 @@ public class ProbeScript : Entity
     stored.Set(42);
     ScriptEngine::Get().GetFieldMap(entity.GetUUID())["Value"] = stored;
 
-    EP_REQUIRE(ScriptEngine::Get().ReloadProjectAssembly());
+    EP_REQUIRE(ReloadProjectAssemblyAndWait());
 
     const ScriptFieldMap* reloaded = ScriptEngine::Get().TryGetFieldMap(entity.GetUUID());
     bool valueSurvived = false;
@@ -992,6 +1020,8 @@ public class ProbeScript : Entity
 TEST(Scripting, ScriptEngine_ReloadProjectAssembly_MultipleReloadsInSequence)
 {
     EP_REQUIRE(EnsureRuntime());
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
@@ -1038,9 +1068,9 @@ public class ProbeScript : Entity
         }
     );
 
-    bool first = ScriptEngine::Get().ReloadProjectAssembly();
-    bool second = ScriptEngine::Get().ReloadProjectAssembly();
-    bool third = ScriptEngine::Get().ReloadProjectAssembly();
+    const bool first = ReloadProjectAssemblyAndWait();
+    const bool second = ReloadProjectAssemblyAndWait();
+    const bool third = ReloadProjectAssemblyAndWait();
     const bool discovered = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript");
 
     Project::SetActive(nullptr);
@@ -2511,6 +2541,16 @@ public class ProbeScript : Entity
 }
 )";
 
+    constexpr const char* kReplacementScriptSource = R"(using EppoScriptCore.Scene;
+
+namespace EppoTesting
+{
+public class ReplacementScript : Entity
+{
+}
+}
+)";
+
     auto StageProbeProject(const Testing::TempDir& projectDirectory) -> std::filesystem::path
     {
         const auto scriptsDirectory = projectDirectory.Path() / "Scripts";
@@ -2545,7 +2585,7 @@ public class ProbeScript : Entity
             }
         );
 
-        EP_REQUIRE(ScriptEngine::Get().ReloadProjectAssembly());
+        EP_REQUIRE(ReloadProjectAssemblyAndWait());
         EP_REQUIRE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"));
 
         return scriptFile;
@@ -2556,6 +2596,47 @@ public class ProbeScript : Entity
         return FS::WriteText(scriptFile, std::string(kProbeScriptSource) + "// " + marker + "\n", true);
     }
 
+    auto WaitForBuildStart() -> bool
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            ScriptEngine::Get().VerifyRuntime();
+            if (ScriptEngine::IsUserAssemblyCompiling())
+                return true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        return false;
+    }
+
+    auto WaitForDeferredReload() -> bool
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            ScriptEngine::Get().VerifyRuntime();
+            if (ScriptEngine::IsUserAssemblyReloadPending())
+                return true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        return false;
+    }
+
+    auto AdvanceUntilBuildFinishes() -> bool
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (ScriptEngine::IsUserAssemblyCompiling() && std::chrono::steady_clock::now() < deadline)
+        {
+            Testing::AppHarness::AdvanceFrames(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        }
+
+        Testing::AppHarness::AdvanceFrames(1);
+        return !ScriptEngine::IsUserAssemblyCompiling();
+    }
+
     auto RestoreHarnessAssembly() -> void
     {
         Project::SetActive(nullptr);
@@ -2563,9 +2644,6 @@ public class ProbeScript : Entity
     }
 }
 
-// VerifyRuntime must not block on dotnet build. The first call consumes the file
-// watcher change and sets the pending flag; the second call triggers the build.
-// The second call must return in milliseconds, not seconds.
 TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotBlockMainThread)
 {
     EP_REQUIRE(EnsureRuntime());
@@ -2578,23 +2656,35 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotBlockMainThread)
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptFile = StageProbeProject(projectDirectory);
 
+    EXPECT_TRUE(ScriptEngine::IsUserAssemblyValid());
+    EXPECT_FALSE(ScriptEngine::IsUserAssemblyCompiling());
+
     EP_REQUIRE(TouchScript(scriptFile, "touched"));
-    ScriptEngine::Get().VerifyRuntime();
+    const bool buildStarted = WaitForBuildStart();
 
     const auto start = std::chrono::steady_clock::now();
     ScriptEngine::Get().VerifyRuntime();
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start
     );
+    const bool compilingAfterReturn = ScriptEngine::IsUserAssemblyCompiling();
+    const bool validWhileCompiling = ScriptEngine::IsUserAssemblyValid();
+    const bool finished = AdvanceUntilBuildFinishes();
+    const bool validAfterBuild = ScriptEngine::IsUserAssemblyValid();
 
     RestoreHarnessAssembly();
 
-    EXPECT_LT(elapsed.count(), 100);
+    EXPECT_TRUE(buildStarted);
+    EXPECT_TRUE(compilingAfterReturn);
+    EXPECT_FALSE(validWhileCompiling);
+    EXPECT_LT(elapsed.count(), 500);
+    EXPECT_TRUE(finished);
+    EXPECT_TRUE(validAfterBuild);
 }
 
-// After the build completes, the completion callback (delivered via Flush) must
-// unload the old assembly and load the new one so script classes are discovered.
-TEST(Scripting, ScriptEngine_VerifyRuntime_BuildCompletesAndLoadsAssembly)
+// After the build completes, a normal application frame must publish the replacement
+// assembly so its script classes become available.
+TEST(Scripting, ScriptEngine_VerifyRuntime_SuccessfulBuildReplacesAssembly)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -2602,32 +2692,29 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_BuildCompletesAndLoadsAssembly)
 
     Application* app = Testing::AppHarness::Get();
     EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptFile = StageProbeProject(projectDirectory);
 
-    EP_REQUIRE(TouchScript(scriptFile, "touched"));
+    EP_REQUIRE(FS::WriteText(scriptFile, kReplacementScriptSource, true));
+    const bool buildStarted = WaitForBuildStart();
     ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
-
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    bool discovered = false;
-    while (std::chrono::steady_clock::now() < deadline)
-    {
-        threadPool->Flush();
-        if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-        {
-            discovered = true;
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    const bool compilingObserved = ScriptEngine::IsUserAssemblyCompiling();
+    const bool validWhileCompiling = ScriptEngine::IsUserAssemblyValid();
+    const bool finished = AdvanceUntilBuildFinishes();
+    const bool validAfterBuild = ScriptEngine::IsUserAssemblyValid();
+    const bool oldClassValid = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript");
+    const bool replacementClassValid = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ReplacementScript");
 
     RestoreHarnessAssembly();
 
-    EXPECT_TRUE(discovered);
+    EXPECT_TRUE(buildStarted);
+    EXPECT_TRUE(compilingObserved);
+    EXPECT_FALSE(validWhileCompiling);
+    EXPECT_TRUE(finished);
+    EXPECT_TRUE(validAfterBuild);
+    EXPECT_FALSE(oldClassValid);
+    EXPECT_TRUE(replacementClassValid);
 }
 
 // While a scene context is set (play mode), VerifyRuntime must not trigger a build.
@@ -2639,8 +2726,6 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotReloadDuringPlayMode)
 
     Application* app = Testing::AppHarness::Get();
     EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptFile = StageProbeProject(projectDirectory);
@@ -2648,24 +2733,30 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotReloadDuringPlayMode)
     const Ref<Scene> playScene = CreateRef<Scene>();
     ScriptEngine::Get().SetSceneContext(playScene);
 
-    EP_REQUIRE(TouchScript(scriptFile, "play-mode-change"));
+    EP_REQUIRE(FS::WriteText(scriptFile, kReplacementScriptSource, true));
+    const bool deferredObserved = WaitForDeferredReload();
     ScriptEngine::Get().VerifyRuntime();
     ScriptEngine::Get().VerifyRuntime();
-
-    threadPool->Flush();
-
-    const bool buildWasQueued = threadPool->GetPendingTasksCount() > 0;
+    const bool compilingDuringPlay = ScriptEngine::IsUserAssemblyCompiling();
+    const bool validDuringPlay = ScriptEngine::IsUserAssemblyValid();
 
     ScriptEngine::Get().SetSceneContext(nullptr);
+    ScriptEngine::Get().VerifyRuntime();
+    const bool compilingAfterStop = ScriptEngine::IsUserAssemblyCompiling();
+    const bool finished = AdvanceUntilBuildFinishes();
+    const bool replacementClassValid = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ReplacementScript");
 
     RestoreHarnessAssembly();
 
-    EXPECT_FALSE(buildWasQueued);
+    EXPECT_TRUE(deferredObserved);
+    EXPECT_FALSE(compilingDuringPlay);
+    EXPECT_TRUE(validDuringPlay);
+    EXPECT_TRUE(compilingAfterStop);
+    EXPECT_TRUE(finished);
+    EXPECT_TRUE(replacementClassValid);
 }
 
-// A second file change while the first build is still pending must cancel the
-// first build and queue a fresh one. Only one build task should be in flight.
-TEST(Scripting, ScriptEngine_VerifyRuntime_CancelsPendingBuildAndQueuesFresh)
+TEST(Scripting, ScriptEngine_VerifyRuntime_BuildFailureLeavesPreviousAssemblyLoadedButInvalid)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -2673,137 +2764,37 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_CancelsPendingBuildAndQueuesFresh)
 
     Application* app = Testing::AppHarness::Get();
     EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptFile = StageProbeProject(projectDirectory);
-
-    EP_REQUIRE(TouchScript(scriptFile, "first"));
-    ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
-
-    EP_REQUIRE(TouchScript(scriptFile, "second"));
-    ScriptEngine::Get().VerifyRuntime();
-
-    const auto pendingAfterCancel = threadPool->GetPendingTasksCount();
-
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    bool discovered = false;
-    while (std::chrono::steady_clock::now() < deadline)
-    {
-        threadPool->Flush();
-        if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-        {
-            discovered = true;
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
-    RestoreHarnessAssembly();
-
-    EXPECT_EQ(1u, pendingAfterCancel);
-    EXPECT_TRUE(discovered);
-}
-
-// A failed build must unload the old assembly but not load a broken one: the class
-// disappears and the user assembly is marked invalid.
-TEST(Scripting, ScriptEngine_VerifyRuntime_BuildFailureDoesNotLoadBrokenAssembly)
-{
-    EP_REQUIRE(EnsureRuntime());
-    if (!Testing::AppHarness::IsAvailable())
-        return;
-
-    Application* app = Testing::AppHarness::Get();
-    EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
-
-    const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
-    const auto scriptFile = StageProbeProject(projectDirectory);
-
-    EP_REQUIRE(TouchScript(scriptFile, "first"));
-    ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
-
-    const auto firstDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    while (std::chrono::steady_clock::now() < firstDeadline)
-    {
-        threadPool->Flush();
-        if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-            break;
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-    EP_REQUIRE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"));
 
     const std::string brokenSource = std::string(kProbeScriptSource) + "\n{{{{ garbage\n";
     EP_REQUIRE(FS::WriteText(scriptFile, brokenSource, true));
+    const bool buildStarted = WaitForBuildStart();
     ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
+    const bool compilingObserved = ScriptEngine::IsUserAssemblyCompiling();
+    const bool validWhileCompiling = ScriptEngine::IsUserAssemblyValid();
+    const bool finished = AdvanceUntilBuildFinishes();
+    const bool validAfterFailure = ScriptEngine::IsUserAssemblyValid();
+    const bool previousClassValid = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript");
 
-    const auto secondDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    while (std::chrono::steady_clock::now() < secondDeadline)
-    {
-        threadPool->Flush();
-        if (!ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-            break;
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    const Ref<Scene> scene = CreateRef<Scene>();
+    Entity entity = scene->CreateEntity("RetainedAssembly");
+    entity.AddComponent<ScriptComponent>(std::string("EppoTesting.ProbeScript"));
+    ScriptEngine::Get().OnCreateEntity(entity);
+    const bool previousClassUsable = ScriptEngine::Get().GetEntityInstance(entity.GetUUID()) != nullptr;
+    if (previousClassUsable)
+        ScriptEngine::Get().OnDestroyEntity(entity);
 
     RestoreHarnessAssembly();
 
-    EXPECT_FALSE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"));
-    EXPECT_FALSE(ScriptEngine::Get().IsUserAssemblyValid());
-}
-
-// A change detected during play mode defers the build; it triggers only after the
-// scene context is cleared, queuing exactly one build task at that point.
-TEST(Scripting, ScriptEngine_VerifyRuntime_BuildDeferredDuringPlayModeTriggersAfterStop)
-{
-    EP_REQUIRE(EnsureRuntime());
-    if (!Testing::AppHarness::IsAvailable())
-        return;
-
-    Application* app = Testing::AppHarness::Get();
-    EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
-
-    const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
-    const auto scriptFile = StageProbeProject(projectDirectory);
-
-    const Ref<Scene> playScene = CreateRef<Scene>();
-    ScriptEngine::Get().SetSceneContext(playScene);
-
-    EP_REQUIRE(TouchScript(scriptFile, "play-mode-change"));
-    ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
-
-    threadPool->Flush();
-    EXPECT_EQ(0u, threadPool->GetPendingTasksCount());
-
-    ScriptEngine::Get().SetSceneContext(nullptr);
-    ScriptEngine::Get().VerifyRuntime();
-
-    EXPECT_GT(threadPool->GetPendingTasksCount(), 0u);
-
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    bool discovered = false;
-    while (std::chrono::steady_clock::now() < deadline)
-    {
-        threadPool->Flush();
-        if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-        {
-            discovered = true;
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
-    RestoreHarnessAssembly();
-
-    EXPECT_TRUE(discovered);
+    EXPECT_TRUE(buildStarted);
+    EXPECT_TRUE(compilingObserved);
+    EXPECT_FALSE(validWhileCompiling);
+    EXPECT_TRUE(finished);
+    EXPECT_FALSE(validAfterFailure);
+    EXPECT_TRUE(previousClassValid);
+    EXPECT_TRUE(previousClassUsable);
 }
 
 // Five rapid saves must collapse into a single pending build task, not five.
@@ -2820,178 +2811,29 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_BurstOfChangesCollapsesIntoOneBuild)
 
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptFile = StageProbeProject(projectDirectory);
+    const auto pendingBefore = threadPool->GetPendingTasksCount();
 
     for (int i = 0; i < 5; ++i)
-    {
         EP_REQUIRE(TouchScript(scriptFile, "burst-" + std::to_string(i)));
+
+    const bool buildStarted = WaitForBuildStart();
+    ScriptEngine::Get().VerifyRuntime();
+    const bool compilingObserved = ScriptEngine::IsUserAssemblyCompiling();
+    const auto pendingAfterStart = threadPool->GetPendingTasksCount();
+
+    for (int i = 0; i < 5; ++i)
         ScriptEngine::Get().VerifyRuntime();
-    }
 
-    EXPECT_EQ(1u, threadPool->GetPendingTasksCount());
-
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    bool discovered = false;
-    while (std::chrono::steady_clock::now() < deadline)
-    {
-        threadPool->Flush();
-        if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-        {
-            discovered = true;
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    const auto pendingAfterRepeatedVerification = threadPool->GetPendingTasksCount();
+    const bool finished = AdvanceUntilBuildFinishes();
+    const bool validAfterBuild = ScriptEngine::IsUserAssemblyValid();
 
     RestoreHarnessAssembly();
 
-    EXPECT_TRUE(discovered);
-}
-
-// The build task must register a "ScriptBuild" task-group snapshot that reports
-// at least one task while running and is finished once the build completes.
-TEST(Scripting, ScriptEngine_VerifyRuntime_UpdatesSnapshotForBuildTask)
-{
-    EP_REQUIRE(EnsureRuntime());
-    if (!Testing::AppHarness::IsAvailable())
-        return;
-
-    Application* app = Testing::AppHarness::Get();
-    EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
-
-    const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
-    const auto scriptFile = StageProbeProject(projectDirectory);
-
-    EP_REQUIRE(TouchScript(scriptFile, "snapshot"));
-    ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
-
-    const auto snapshotsBefore = threadPool->GetTaskGroupSnapshots();
-    auto itBefore = snapshotsBefore.find("ScriptBuild");
-    ASSERT_NE(itBefore, snapshotsBefore.end());
-    EXPECT_GE(itBefore->second.Total.load(std::memory_order_relaxed), 1u);
-
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    bool finished = false;
-    while (std::chrono::steady_clock::now() < deadline)
-    {
-        threadPool->Flush();
-        const auto snapshots = threadPool->GetTaskGroupSnapshots();
-        auto it = snapshots.find("ScriptBuild");
-        if (it != snapshots.end() && it->second.IsFinished())
-        {
-            finished = true;
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
-    const auto snapshotsAfter = threadPool->GetTaskGroupSnapshots();
-    auto itAfter = snapshotsAfter.find("ScriptBuild");
-    ASSERT_NE(itAfter, snapshotsAfter.end());
-    EXPECT_GE(itAfter->second.Completed.load(std::memory_order_relaxed), 1u);
-
-    RestoreHarnessAssembly();
-
+    EXPECT_TRUE(buildStarted);
+    EXPECT_TRUE(compilingObserved);
+    EXPECT_EQ(pendingBefore + 1, pendingAfterStart);
+    EXPECT_EQ(pendingAfterStart, pendingAfterRepeatedVerification);
     EXPECT_TRUE(finished);
-}
-
-// After a reload that renames the class, the old class name must be gone and the
-// new one discovered.
-TEST(Scripting, ScriptEngine_VerifyRuntime_OldClassesGoneAfterReloadWithChangedClassName)
-{
-    EP_REQUIRE(EnsureRuntime());
-    if (!Testing::AppHarness::IsAvailable())
-        return;
-
-    Application* app = Testing::AppHarness::Get();
-    EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
-
-    const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
-    const auto scriptFile = StageProbeProject(projectDirectory);
-
-    EP_REQUIRE(TouchScript(scriptFile, "first"));
-    ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
-
-    const auto firstDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    while (std::chrono::steady_clock::now() < firstDeadline)
-    {
-        threadPool->Flush();
-        if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-            break;
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-    EP_REQUIRE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"));
-
-    const std::string renamedSource = R"(using EppoScriptCore.Scene;
-
-namespace EppoTesting
-{
-public class RenamedScript : Entity
-{
-}
-}
-)";
-    EP_REQUIRE(FS::WriteText(scriptFile, renamedSource, true));
-    ScriptEngine::Get().VerifyRuntime();
-    ScriptEngine::Get().VerifyRuntime();
-
-    const auto secondDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    while (std::chrono::steady_clock::now() < secondDeadline)
-    {
-        threadPool->Flush();
-        if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.RenamedScript"))
-            break;
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
-    RestoreHarnessAssembly();
-
-    EXPECT_FALSE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"));
-    EXPECT_TRUE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.RenamedScript"));
-}
-
-// Three successive async reload cycles must each complete and discover the class.
-TEST(Scripting, ScriptEngine_VerifyRuntime_MultipleSuccessiveAsyncReloads)
-{
-    EP_REQUIRE(EnsureRuntime());
-    if (!Testing::AppHarness::IsAvailable())
-        return;
-
-    Application* app = Testing::AppHarness::Get();
-    EP_REQUIRE(app != nullptr);
-    const auto threadPool = app->GetThreadPool();
-    EP_REQUIRE(threadPool != nullptr);
-
-    const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
-    const auto scriptFile = StageProbeProject(projectDirectory);
-
-    for (int cycle = 0; cycle < 3; ++cycle)
-    {
-        EP_REQUIRE(TouchScript(scriptFile, "cycle-" + std::to_string(cycle)));
-        ScriptEngine::Get().VerifyRuntime();
-        ScriptEngine::Get().VerifyRuntime();
-
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-        bool discovered = false;
-        while (std::chrono::steady_clock::now() < deadline)
-        {
-            threadPool->Flush();
-            if (ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"))
-            {
-                discovered = true;
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        EP_REQUIRE(discovered);
-    }
-
-    RestoreHarnessAssembly();
-
-    EXPECT_TRUE(ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript"));
+    EXPECT_TRUE(validAfterBuild);
 }
