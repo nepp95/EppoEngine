@@ -452,6 +452,12 @@ namespace Eppo
             return;
 
         // Backs up the disabled toolbar button.
+        if (!ScriptEngine::IsUserAssemblyCompiling())
+        {
+            Log::Warn("Cannot enter play mode: the project's scripts are currently compiling.");
+            return;
+        }
+
         if (!ScriptEngine::IsUserAssemblyValid())
         {
             Log::Warn("Cannot enter play mode: the project's scripts failed to compile.");
@@ -1167,7 +1173,7 @@ namespace Eppo
         const ImVec2 imageMin = ImGui::GetItemRectMin();
         constexpr ImVec2 pad = { 8.0f, 5.0f };
         float y = imageMin.y + 10.0f;
-        const auto drawNotice = [&](const char* notice)
+        const auto DrawNotice = [&](const char* notice)
         {
             const ImVec2 textPos = { imageMin.x + 10.0f, y };
             const ImVec2 textSize = ImGui::CalcTextSize(notice);
@@ -1180,8 +1186,10 @@ namespace Eppo
         };
 
         // Shown in edit mode too, unlike the notices below.
-        if (!ScriptEngine::IsUserAssemblyValid())
-            drawNotice("Scripts failed to compile - see the log. Play is disabled until the build succeeds.");
+        if (!ScriptEngine::IsUserAssemblyCompiling())
+            DrawNotice("Scripts are currently compiling. Play is disabled until the build succeeds.");
+        else if (!ScriptEngine::IsUserAssemblyValid())
+            DrawNotice("Scripts failed to compile - see the log. Play is disabled until the build succeeds.");
 
         if (m_SceneState != SceneState::Play)
             return;
@@ -1197,7 +1205,7 @@ namespace Eppo
 
                     hasCameraEntity = true;
                     const std::string notice = "Camera entity '" + entity.GetName() + "' is not primary - showing editor view";
-                    drawNotice(notice.c_str());
+                    DrawNotice(notice.c_str());
                 }
             );
 
@@ -1205,14 +1213,14 @@ namespace Eppo
             {
                 const std::string sceneName = m_ActiveScenePath.empty() ? "Untitled" : m_ActiveScenePath.stem().string();
                 const std::string notice = "Scene '" + sceneName + "' has no camera entity - showing editor view";
-                drawNotice(notice.c_str());
+                DrawNotice(notice.c_str());
             }
         }
 
         for (const std::string& entityName : m_ActiveScene->GetColliderlessRigidBodies())
         {
             const std::string notice = "Entity '" + entityName + "' has a rigid body without a collider - it is still simulated";
-            drawNotice(notice.c_str());
+            DrawNotice(notice.c_str());
         }
     }
 

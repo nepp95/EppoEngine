@@ -55,11 +55,7 @@ namespace Eppo
     };
 
     template<typename T>
-    struct TaskResult
-    {
-        TaskStatus Status = TaskStatus::Pending;
-        T Data{};
-    };
+    using TaskResult = std::optional<T>;
 
     using TaskFn = std::function<void()>;
     using CompletionFn = std::function<void(TaskStatus)>;
