@@ -140,6 +140,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          mkdir -p "$VCPKG_DOWNLOADS"
           if [[ ! -x "$VCPKG_ROOT/vcpkg" ]]; then
             mkdir -p "$(dirname "$VCPKG_ROOT")"
             git init "$VCPKG_ROOT"
