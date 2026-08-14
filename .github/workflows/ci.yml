@@ -62,7 +62,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .eppo/tools
-          key: eppo-tools-${{ runner.os }}-vulkan-1.4.309.0-premake-5.0.0-beta8-vcpkg-8779f47d
+          key: eppo-tools-${{ runner.os }}-vulkan-1.4.309.0-premake-5.0.0-beta8-vcpkg-8779f47d${{ runner.os == 'Windows' && '-debug-libraries' || '' }}
 
       - name: Install Linux prerequisites
         if: runner.os == 'Linux'
@@ -97,7 +97,8 @@ jobs:
           }
           $process = Start-Process -FilePath $installer -ArgumentList @(
               "--root", $destination,
-              "--accept-licenses", "--default-answer", "--confirm-command", "install", "copy_only=1"
+              "--accept-licenses", "--default-answer", "--confirm-command", "install",
+              "com.lunarg.vulkan", "com.lunarg.vulkan.debug", "copy_only=1"
           ) -Wait -PassThru
           if ($process.ExitCode -ne 0) {
               throw "The Vulkan SDK installer failed with exit code $($process.ExitCode)."
