@@ -5,26 +5,26 @@
 void* operator new(size_t size)
 {
     void* block = malloc(size);
-    TracySecureAllocS(block, size, 32);
+    TracyAllocS(block, size, 32);
     return block;
 }
 
 void* operator new[](size_t size)
 {
     void* block = malloc(size);
-    TracySecureAllocS(block, size, 32);
+    TracyAllocS(block, size, 32);
     return block;
 }
 
 void operator delete(void* block) noexcept
 {
-    TracySecureFreeS(block, 32);
+    TracyFreeS(block, 32);
     free(block);
 }
 
 void operator delete[](void* block) noexcept
 {
-    TracySecureFreeS(block, 32);
+    TracyFreeS(block, 32);
     free(block);
 }
 #endif
