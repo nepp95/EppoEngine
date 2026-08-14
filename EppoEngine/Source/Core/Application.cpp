@@ -4,6 +4,7 @@
 #include "Core/Filesystem.h"
 #include "Physics/Physics.h"
 #include "Scripting/ScriptEngine.h"
+#include "Physics/Physics.h"
 
 #include <GLFW/glfw3.h>
 

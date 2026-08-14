@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Platform/Vulkan/DescriptorAllocator.h"
+#include "Renderer/DebugRenderer.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/ShaderLibrary.h"
 
@@ -23,14 +24,16 @@ namespace Eppo
         void SubmitCommand(RenderCommand command) override;
 
         // Render passes
-        void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true) override;
-        void EndRenderPass(const Ref<CommandBuffer>& commandBuffer) override;
+        void BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline = true,
+                             bool debugLabel = true) override;
+        void EndRenderPass(const Ref<CommandBuffer>& commandBuffer, bool debugLabel = true) override;
 
         // Shaders
         Ref<Shader> GetShader(const std::string& name) override { return m_ShaderLibrary.Get(name); }
         void* AllocateDescriptor(void* layout) override;
 
     private:
+        Ref<DebugRenderer> m_DebugRenderer;
         CommandQueue m_CommandQueue;
         ShaderLibrary m_ShaderLibrary;
 

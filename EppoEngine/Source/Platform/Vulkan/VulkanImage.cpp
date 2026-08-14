@@ -207,19 +207,12 @@ namespace Eppo
             vkDestroyImageView(device, m_ImageInfo.ImageView, nullptr);
             m_ImageInfo.ImageView = nullptr;
         }
-
-        if (m_ImageInfo.Image)
-        {
-            EPPO_MEM_WARN("Releasing image {}", static_cast<void*>(m_ImageInfo.Image));
-            VulkanAllocator::DestroyImage(m_ImageInfo.Image, m_ImageInfo.Allocation);
-            m_ImageInfo.Image = nullptr;
-            m_ImageInfo.Allocation = nullptr;
-        }
     }
 
-    void VulkanImage::TransitionImage(const VkCommandBuffer commandBuffer, const VkImage image, const VkImageLayout srcLayout, const VkImageLayout dstLayout,
-                                      VkPipelineStageFlags2 srcStageMask,
-                                      VkPipelineStageFlags2 dstStageMask)
+    void VulkanImage::TransitionImage(const VkCommandBuffer commandBuffer, const VkImage image,
+                                      const VkImageLayout srcLayout, const VkImageLayout dstLayout,
+                                      VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
+                                      VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask)
     {
         EPPO_PROFILE_FUNCTION("VulkanImage::TransitionImage");
 
@@ -227,13 +220,17 @@ namespace Eppo
             srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
         if (!dstStageMask)
             dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        if (!srcAccessMask)
+            srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+        if (!dstAccessMask)
+            dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
 
         VkImageMemoryBarrier2 imageBarrier{};
         imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
         imageBarrier.srcStageMask = srcStageMask;
         imageBarrier.dstStageMask = dstStageMask;
-        imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-        imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+        imageBarrier.srcAccessMask = srcAccessMask;
+        imageBarrier.dstAccessMask = dstAccessMask; //VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
         imageBarrier.oldLayout = srcLayout;
         imageBarrier.newLayout = dstLayout;
         imageBarrier.image = image;
@@ -253,7 +250,7 @@ namespace Eppo
         vkCmdPipelineBarrier2(commandBuffer, &depInfo);
     }
 
-    VkImageAspectFlags VulkanImage::GetImageAspectFlags(const VkImageLayout layout)
+    VkImageAspectFlags VulkanImage::GetImageAspectFlags(VkImageLayout layout)
     {
         switch (layout)
         {

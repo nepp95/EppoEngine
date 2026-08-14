@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "Platform/Vulkan/VulkanCommandBuffer.h"
+#include "Platform/Vulkan/VulkanCmd.h"
 #include "Platform/Vulkan/VulkanDebugRenderer.h"
 #include "Renderer/Renderer.h"
 
@@ -8,7 +8,7 @@ namespace Eppo
 {
     void VulkanDebugRenderer::StartDebugLabel(const Ref<CommandBuffer>& commandBuffer, const std::string& label)
     {
-        const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+        const auto cmd = std::static_pointer_cast<VulkanCmd>(commandBuffer);
         const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
 
         VkDebugUtilsLabelEXT debugLabel{};
@@ -24,7 +24,7 @@ namespace Eppo
 
     void VulkanDebugRenderer::EndDebugLabel(const Ref<CommandBuffer>& commandBuffer)
     {
-        const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+        const auto cmd = std::static_pointer_cast<VulkanCmd>(commandBuffer);
         const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
 
         vkCmdEndDebugUtilsLabelEXT(cb);

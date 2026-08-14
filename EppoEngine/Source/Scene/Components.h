@@ -90,7 +90,7 @@ namespace Eppo
         bool IsActive = false;
         float Mass = 1.0f;
 
-        // Equivalent of JPHJ::BodyID
+        // Equivalent of JPH::BodyID
         uint32_t BodyId;
 
         RigidBodyComponent() = default;

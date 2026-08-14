@@ -19,10 +19,6 @@ namespace Eppo
     {
     public:
         explicit VulkanImage(ImageSpecification specification);
-        VulkanImage(const VulkanImage&) = delete;
-        VulkanImage(const VulkanImage&&) = delete;
-        VulkanImage& operator=(const VulkanImage&) = delete;
-        VulkanImage& operator=(const VulkanImage&&) = delete;
         ~VulkanImage() override;
 
         void SetData(void* data, uint32_t channels = 4) override;
@@ -35,9 +31,13 @@ namespace Eppo
 
         ImageInfo& GetImageInfo() { return m_ImageInfo; }
 
-        static void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout,
+        static void TransitionImage(VkCommandBuffer commandBuffer, VkImage image,
+                                    VkImageLayout srcLayout, VkImageLayout dstLayout,
                                     VkPipelineStageFlags2 srcStageMask = VK_PIPELINE_STAGE_2_NONE,
-                                    VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE);
+                                    VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE,
+                                    VkAccessFlags2 srcAccessMask = VK_ACCESS_2_NONE, VkAccessFlags2 dstAccessMask = VK_ACCESS_2_NONE);
+        // TODO: Add transition image for multiple images
+
         static VkImageAspectFlags GetImageAspectFlags(VkImageLayout layout);
 
     private:
@@ -51,12 +51,12 @@ namespace Eppo
 
     namespace Utils
     {
-        inline VkFormat ImageFormatToVkFormat(ImageFormat format)
+        inline VkFormat ImageFormatToVkFormat(const ImageFormat format)
         {
             EPPO_ASSERT(format != ImageFormat::None);
 
-            Ref<VulkanContext> context = VulkanContext::Get();
-            Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
+            const Ref<VulkanContext> context = VulkanContext::Get();
+            const Ref<VulkanPhysicalDevice> physicalDevice = context->GetPhysicalDevice();
 
             return physicalDevice->GetSupportedImageFormat(format);
         }

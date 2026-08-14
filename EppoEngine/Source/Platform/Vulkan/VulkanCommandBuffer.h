@@ -23,10 +23,8 @@ namespace Eppo
 
         void RT_Begin() override;
         void RT_End() override;
-        void RT_Submit() const override;
+        void RT_Submit() const;
 
-        uint32_t RT_BeginTimestampQuery();
-        void RT_EndTimestampQuery(uint32_t queryIndex) const;
         [[nodiscard]] float GetTimestamp(uint32_t frameIndex, uint32_t queryIndex = 0) const;
 
         [[nodiscard]] const PipelineStatistics& GetPipelineStatistics(const uint32_t frameIndex) const
@@ -36,6 +34,10 @@ namespace Eppo
 
         void ResetCommandBuffer(uint32_t frameIndex) const;
         [[nodiscard]] VkCommandBuffer GetCurrentCommandBuffer() const;
+
+    private:
+        uint32_t RT_BeginTimestampQuery();
+        void RT_EndTimestampQuery(uint32_t queryIndex) const;
 
     private:
         VkCommandPool m_CommandPool;

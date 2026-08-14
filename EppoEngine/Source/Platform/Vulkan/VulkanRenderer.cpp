@@ -60,6 +60,9 @@ namespace Eppo
         {
             std::static_pointer_cast<VulkanShader>(m_ShaderLibrary.Get(std::filesystem::path(path).stem().string()))->Reflect();
         });
+        
+        // Create debug renderer
+        m_DebugRenderer = DebugRenderer::Create();
     }
 
     void VulkanRenderer::Shutdown()
@@ -83,13 +86,17 @@ namespace Eppo
         m_CommandQueue.AddCommand(std::move(command));
     }
 
-    void VulkanRenderer::BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline)
+    void VulkanRenderer::BeginRenderPass(const Ref<CommandBuffer>& commandBuffer, const Ref<Pipeline>& pipeline, bool bindPipeline,
+                                         bool debugLabel)
     {
         EPPO_PROFILE_FUNCTION("VulkanRenderer::BeginRenderPass");
 
         const Ref<VulkanContext> context = VulkanContext::Get();
         const Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
         const Ref<VulkanPipeline> vkPipeline = std::static_pointer_cast<VulkanPipeline>(pipeline);
+
+        if (debugLabel)
+            m_DebugRenderer->StartDebugLabel(commandBuffer, pipeline->GetSpecification().Shader->GetName());
 
         // Setup render attachments
         const auto& spec = pipeline->GetSpecification();
@@ -157,7 +164,7 @@ namespace Eppo
         }
 
         // Begin dynamic rendering
-        const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+        const auto cmd = std::static_pointer_cast<VulkanCmd>(commandBuffer);
         const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
         vkCmdBeginRendering(cb, &renderingInfo);
 
@@ -186,13 +193,16 @@ namespace Eppo
         }
     }
 
-    void VulkanRenderer::EndRenderPass(const Ref<CommandBuffer>& commandBuffer)
+    void VulkanRenderer::EndRenderPass(const Ref<CommandBuffer>& commandBuffer, const bool debugLabel)
     {
         EPPO_PROFILE_FUNCTION("VulkanRenderer::EndRenderPass");
 
-        const auto cmd = std::static_pointer_cast<VulkanCommandBuffer>(commandBuffer);
+        const auto cmd = std::static_pointer_cast<VulkanCmd>(commandBuffer);
         const VkCommandBuffer cb = cmd->GetCurrentCommandBuffer();
         vkCmdEndRendering(cb);
+
+        if (debugLabel)
+            m_DebugRenderer->EndDebugLabel(commandBuffer);
     }
 
     void* VulkanRenderer::AllocateDescriptor(void* layout)

@@ -103,6 +103,8 @@ namespace Eppo
         Ref<VulkanSwapchain> swapchain = context->GetSwapchain();
         VkDevice device = context->GetLogicalDevice()->GetNativeDevice();
 
+        m_CommandBuffers = CreateRef<VulkanCmd>();
+
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
         bindingDescription.stride = m_Specification.Layout.GetStride();
@@ -217,9 +219,12 @@ namespace Eppo
         pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
         pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
         pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(shader->GetPushConstantRanges().size());
-        pipelineLayoutCreateInfo.pPushConstantRanges = !shader->GetPushConstantRanges().empty() ? shader->GetPushConstantRanges().data() : nullptr;
+        pipelineLayoutCreateInfo.pPushConstantRanges = !shader->GetPushConstantRanges().empty()
+            ? shader->GetPushConstantRanges().data()
+            : nullptr;
 
-        VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout), "Failed to create pipeline layout!");
+        VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m_PipelineLayout),
+                 "Failed to create pipeline layout!");
 
         // Create pipeline rendering infos
         const auto& shaderStageInfos = shader->GetPipelineShaderStageInfos();
@@ -238,7 +243,9 @@ namespace Eppo
         renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         renderingInfo.colorAttachmentCount = static_cast<uint32_t>(formats.size());
         renderingInfo.pColorAttachmentFormats = formats.data();
-        renderingInfo.depthAttachmentFormat = m_Specification.TestDepth ? Utils::ImageFormatToVkFormat(ImageFormat::Depth) : VK_FORMAT_UNDEFINED;
+        renderingInfo.depthAttachmentFormat = m_Specification.TestDepth
+            ? Utils::ImageFormatToVkFormat(ImageFormat::Depth)
+            : VK_FORMAT_UNDEFINED;
 
         if (m_Specification.CubeMap)
             renderingInfo.viewMask = 0b111111;

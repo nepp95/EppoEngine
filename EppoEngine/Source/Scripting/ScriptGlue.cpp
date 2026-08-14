@@ -238,7 +238,7 @@ namespace Eppo
         const std::string_view typeName = typeid(T).name();
         const size_t pos = typeName.find_last_of(':');
         std::string_view structName = typeName.substr(pos + 1);
-        std::string managedTypeName = fmt::format("Eppo.{}", structName);
+        std::string managedTypeName = std::format("Eppo.{}", structName);
 
         MonoType* managedType = mono_reflection_type_from_name(managedTypeName.data(), ScriptEngine::GetCoreAssemblyImage());
         if (!managedType)
