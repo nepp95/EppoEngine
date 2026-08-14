@@ -5,14 +5,14 @@
 
 namespace Eppo
 {
-	class SceneHierarchyPanel : public Panel
-	{
-	public:
-		explicit SceneHierarchyPanel(PanelManager& panelManager);
+    class SceneHierarchyPanel : public Panel
+    {
+    public:
+        explicit SceneHierarchyPanel(PanelManager& panelManager);
 
-		void RenderGui() override;
+        void RenderGui() override;
 
-	private:
-		void DrawEntityNode(Entity entity) const;
-	};
+    private:
+        void DrawEntityNode(Entity entity) const;
+    };
 }

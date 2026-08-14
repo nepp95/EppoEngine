@@ -2,17 +2,15 @@
 
 #include "Core/Application.h"
 
-using namespace Eppo;
-
 int main(int argc, char** argv)
 {
-	Log::Init();
+    Eppo::Log::Init();
 
-	const ApplicationCommandLineArgs args(argc, argv);
+    const Eppo::ApplicationCommandLineArgs args(argc, argv);
 
-	Application* app = CreateApplication(args);
-	app->Run();
+    Eppo::Application* app = CreateApplication(args);
+    app->Run();
 
-	delete app;
+    delete app;
     return 0;
 }

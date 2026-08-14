@@ -2,66 +2,66 @@
 
 namespace Eppo
 {
-	SceneHierarchyPanel::SceneHierarchyPanel(PanelManager& panelManager)
-		: Panel(panelManager)
-	{}
+    SceneHierarchyPanel::SceneHierarchyPanel(PanelManager& panelManager)
+        : Panel(panelManager)
+    {}
 
-	void SceneHierarchyPanel::RenderGui()
-	{
-		ScopedBegin scopedBegin("Scene Hierarchy");
+    void SceneHierarchyPanel::RenderGui()
+    {
+        ScopedBegin scopedBegin("Scene Hierarchy");
 
-		GetSceneContext()->m_Registry.each([&](auto entityID)
-		{
-			const Entity entity(entityID, GetSceneContext().get());
-			DrawEntityNode(entity);
-		});
+        for (const auto view = GetSceneContext()->m_Registry.view<IDComponent>(); const auto entity : view)
+        {
+            const Entity e(entity, GetSceneContext().get());
+            DrawEntityNode(e);
+        }
 
-		if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
-			SetSelectedEntity({});
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
+            SetSelectedEntity({});
 
-		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
-		{
-			if (ImGui::MenuItem("Create new entity"))
-				GetSceneContext()->CreateEntity("New entity");
+        if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
+        {
+            if (ImGui::MenuItem("Create new entity"))
+                GetSceneContext()->CreateEntity("New entity");
 
-			ImGui::EndPopup();
-		}
-	}
+            ImGui::EndPopup();
+        }
+    }
 
-	void SceneHierarchyPanel::DrawEntityNode(Entity entity) const
-	{
-		const std::string& tag = entity.GetComponent<TagComponent>().Tag;
+    void SceneHierarchyPanel::DrawEntityNode(Entity entity) const
+    {
+        const std::string& tag = entity.GetComponent<TagComponent>().Tag;
 
-		ImGuiTreeNodeFlags flags = (GetSelectedEntity() == entity ? ImGuiTreeNodeFlags_Selected : 0);
-		flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+        ImGuiTreeNodeFlags flags = (GetSelectedEntity() == entity ? ImGuiTreeNodeFlags_Selected : 0);
+        flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-		ImGui::PushID(reinterpret_cast<void*>(static_cast<uint64_t>(entity.GetUUID())));
-		const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
-		
-		if (ImGui::IsItemClicked())
-			SetSelectedEntity(entity);
+        ImGui::PushID(reinterpret_cast<void*>(static_cast<uint64_t>(entity.GetUUID())));
+        const bool opened = ImGui::TreeNodeEx(tag.c_str(), flags);
 
-		bool entityDeleted = false;
-		if (ImGui::BeginPopupContextItem())
-		{
-			if (ImGui::MenuItem("Duplicate entity"))
-				EPPO_ASSERT(false);
-			if (ImGui::MenuItem("Delete entity"))
-				entityDeleted = true;
+        if (ImGui::IsItemClicked())
+            SetSelectedEntity(entity);
 
-			ImGui::EndPopup();
-		}
-		ImGui::PopID();
+        bool entityDeleted = false;
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem("Duplicate entity"))
+                EPPO_ASSERT(false);
+            if (ImGui::MenuItem("Delete entity"))
+                entityDeleted = true;
 
-		if (opened)
-			ImGui::TreePop();
+            ImGui::EndPopup();
+        }
+        ImGui::PopID();
 
-		if (entityDeleted)
-		{
-			if (GetSelectedEntity() == entity)
-				SetSelectedEntity({});
+        if (opened)
+            ImGui::TreePop();
 
-			GetSceneContext()->DestroyEntity(entity);
-		}
-	}
+        if (entityDeleted)
+        {
+            if (GetSelectedEntity() == entity)
+                SetSelectedEntity({});
+
+            GetSceneContext()->DestroyEntity(entity);
+        }
+    }
 }

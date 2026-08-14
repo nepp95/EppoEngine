@@ -6,14 +6,15 @@
 
 namespace Eppo
 {
-	Ref<Renderer> Renderer::Create()
-	{
-		switch (RendererContext::GetAPI())
-		{
-			case RendererAPI::Vulkan:	return CreateRef<VulkanRenderer>();
-		}
+    Ref<Renderer> Renderer::Create()
+    {
+        switch (RendererContext::GetAPI())
+        {
+            case RendererAPI::Vulkan:
+                return CreateRef<VulkanRenderer>();
+        }
 
-		EPPO_ASSERT(false)
-		return nullptr;
-	}
+        EPPO_ASSERT(false);
+        return nullptr;
+    }
 }

@@ -7,7 +7,7 @@ namespace Test
         // OnCreate is called by the engine when a scene is started containing this entity
         void OnCreate()
         {
-
+            Log.Info("OnCreate was called!");
         }
 
         // OnUpdate is called every frame when a scene is running containing the entity

@@ -6,72 +6,73 @@
 
 namespace Eppo
 {
-	class EditorLayer : public Layer
-	{
-	public:
-		EditorLayer();
-		~EditorLayer() override = default;
-	
-		void OnAttach() override;
-		void OnDetach() override;
-	
-		void Update(float timestep) override;
-		void Render() override;
-		void RenderGui() override;
+    class EditorLayer final : public Layer
+    {
+    public:
+        EditorLayer();
+        ~EditorLayer() override = default;
 
-		void OnEvent(Event& e) override;
+        void OnAttach() override;
+        void OnDetach() override;
 
-	private:
-		bool OnKeyPressed(const KeyPressedEvent& e);
+        void Update(float timestep) override;
+        void Render() override;
+        void RenderGui() override;
 
-		void OnScenePlay();
-		void OnSceneStop();
+        void OnEvent(Event& e) override;
 
-		void CloseProject();
-		void NewProject(const std::string& name);
-		bool OpenProject();
-		void OpenProject(const std::filesystem::path& filepath);
-		void SaveProject();
+    private:
+        bool OnKeyPressed(const KeyPressedEvent& e);
 
-		void NewScene();
-		void OpenScene(AssetHandle handle);
-		void OpenScene(const std::filesystem::path& filepath);
-		void SaveScene();
-		void SaveSceneAs();
+        void OnScenePlay();
+        void OnSceneStop();
 
-		void ImportAsset();
+        void CloseProject();
+        void NewProject(const std::string& name);
+        bool OpenProject();
+        void OpenProject(const std::filesystem::path& filepath);
+        void SaveProject();
 
-		void UI_File_NewProject();
-		void UI_File_Preferences();
-		void UI_Toolbar();
+        void NewScene();
+        void OpenScene(AssetHandle handle);
+        void OpenScene(const std::filesystem::path& filepath);
+        void SaveScene();
+        void SaveSceneAs();
 
-	private:
-		// Scene
-		Ref<SceneRenderer> m_ViewportRenderer;
-		Ref<Scene> m_ActiveScene = CreateRef<Scene>();
-		Ref<Scene> m_EditorScene = CreateRef<Scene>();
-		std::filesystem::path m_ActiveScenePath;
-		
-		// Editor
-		PanelManager& m_PanelManager;
-		EditorCamera m_EditorCamera = EditorCamera(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
+        void ImportAsset();
 
-		// Viewport
-		uint32_t m_ViewportWidth = 0;
-		uint32_t m_ViewportHeight = 0;
-		bool m_ViewportFocused = false;
-		bool m_ViewportHovered = false;
+        void UI_File_NewProject();
+        void UI_File_OpenProject();
+        void UI_File_Preferences();
+        void UI_Toolbar();
 
-		// Scene state
-		enum class SceneState : uint8_t
-		{
-			Edit,
-			Play
-		};
-		SceneState m_SceneState = SceneState::Edit;
+    private:
+        // Scene
+        Ref<SceneRenderer> m_ViewportRenderer;
+        Ref<Scene> m_ActiveScene = CreateRef<Scene>();
+        Ref<Scene> m_EditorScene = CreateRef<Scene>();
+        std::filesystem::path m_ActiveScenePath;
 
-		// Resources
-		Ref<Image> m_IconPlay;
-		Ref<Image> m_IconStop;
-	};
+        // Editor
+        PanelManager& m_PanelManager;
+        EditorCamera m_EditorCamera = EditorCamera(glm::vec3(-10.0f, 1.0f, 0.0f), 0.0f, 0.0f);
+
+        // Viewport
+        uint32_t m_ViewportWidth = 0;
+        uint32_t m_ViewportHeight = 0;
+        bool m_ViewportFocused = false;
+        bool m_ViewportHovered = false;
+
+        // Scene state
+        enum class SceneState : uint8_t
+        {
+            Edit,
+            Play
+        };
+        SceneState m_SceneState = SceneState::Edit;
+
+        // Resources
+        Ref<Image> m_IconPlay;
+        Ref<Image> m_IconStop;
+    };
 }

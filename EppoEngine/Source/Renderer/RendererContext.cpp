@@ -8,21 +8,22 @@
 
 namespace Eppo
 {
-	RendererAPI RendererContext::s_API = RendererAPI::Vulkan;
+    RendererAPI RendererContext::s_API = RendererAPI::Vulkan;
 
-	Ref<RendererContext> RendererContext::Get()
-	{
-		return Application::Get().GetWindow().GetRendererContext();
-	}
+    Ref<RendererContext> RendererContext::Get()
+    {
+        return Application::Get().GetWindow().GetRendererContext();
+    }
 
-	Ref<RendererContext> RendererContext::Create(GLFWwindow* windowHandle)
-	{
-		switch (s_API)
-		{
-			case RendererAPI::Vulkan:	return CreateRef<VulkanContext>(windowHandle);
-		}
+    Ref<RendererContext> RendererContext::Create(GLFWwindow* windowHandle)
+    {
+        switch (s_API)
+        {
+            case RendererAPI::Vulkan:
+                return CreateRef<VulkanContext>(windowHandle);
+        }
 
-		EPPO_ASSERT(false)
-		return nullptr;
-	}
+        EPPO_ASSERT(false);
+        return nullptr;
+    }
 }

@@ -4,27 +4,31 @@
 
 namespace Eppo
 {
-	class VulkanLogicalDevice
-	{
-	public:
-		VulkanLogicalDevice(Ref<VulkanPhysicalDevice> physicalDevice);
-		virtual ~VulkanLogicalDevice() = default;
+    class VulkanLogicalDevice final
+    {
+    public:
+        explicit VulkanLogicalDevice(const Ref<VulkanPhysicalDevice>& physicalDevice);
+        VulkanLogicalDevice(const VulkanLogicalDevice&) = delete;
+        VulkanLogicalDevice(const VulkanLogicalDevice&&) = delete;
+        VulkanLogicalDevice& operator=(const VulkanLogicalDevice&) = delete;
+        VulkanLogicalDevice& operator=(const VulkanLogicalDevice&&) = delete;
+        ~VulkanLogicalDevice() = default;
 
-		VkDevice GetNativeDevice() const { return m_Device; }
+        [[nodiscard]] VkDevice GetNativeDevice() const { return m_Device; }
 
-		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
-		VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
+        [[nodiscard]] Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
+        [[nodiscard]] VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
 
-		VkCommandBuffer GetCommandBuffer(bool begin) const;
-		VkCommandBuffer GetSecondaryCommandBuffer() const;
-		void FlushCommandBuffer(VkCommandBuffer commandBuffer) const;
-		void FreeCommandBuffer(VkCommandBuffer commandBuffer) const;
+        [[nodiscard]] VkCommandBuffer GetCommandBuffer(bool begin) const;
+        [[nodiscard]] VkCommandBuffer GetSecondaryCommandBuffer() const;
+        void FlushCommandBuffer(VkCommandBuffer commandBuffer) const;
+        void FreeCommandBuffer(VkCommandBuffer commandBuffer) const;
 
-	private:
-		Ref<VulkanPhysicalDevice> m_PhysicalDevice;
-		VkDevice m_Device;
+    private:
+        Ref<VulkanPhysicalDevice> m_PhysicalDevice;
+        VkDevice m_Device;
 
-		VkQueue m_GraphicsQueue;
-		VkCommandPool m_CommandPool;
-	};
+        VkQueue m_GraphicsQueue;
+        VkCommandPool m_CommandPool;
+    };
 }

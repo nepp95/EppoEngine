@@ -6,14 +6,15 @@
 
 namespace Eppo
 {
-	Ref<Pipeline> Pipeline::Create(const PipelineSpecification& specification)
-	{
-		switch (RendererContext::GetAPI())
-		{
-			case RendererAPI::Vulkan:	return CreateRef<VulkanPipeline>(specification);
-		}
+    Ref<Pipeline> Pipeline::Create(const PipelineSpecification& specification)
+    {
+        switch (RendererContext::GetAPI())
+        {
+            case RendererAPI::Vulkan:
+                return CreateRef<VulkanPipeline>(specification);
+        }
 
-		EPPO_ASSERT(false)
-		return nullptr;
-	}
+        EPPO_ASSERT(false);
+        return nullptr;
+    }
 }

@@ -5,11 +5,11 @@
 
 namespace Eppo
 {
-	UUID::UUID()
-		: m_UUID(Utility::GenerateRandomUInt64())
-	{}
+    UUID::UUID()
+        : m_UUID(Utility::GenerateRandomUInt64())
+    {}
 
-	UUID::UUID(const uint64_t uuid)
-		: m_UUID(uuid)
-	{}
+    UUID::UUID(const uint64_t uuid)
+        : m_UUID(uuid)
+    {}
 }

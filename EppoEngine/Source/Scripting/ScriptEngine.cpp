@@ -7,7 +7,6 @@
 #include "Scripting/ScriptGlue.h"
 #include "Scripting/ScriptInstance.h"
 
-#include <filewatch.h>
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/mono-debug.h>
@@ -16,455 +15,440 @@
 
 namespace Eppo
 {
-	static std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap {
-		{ "System.Single",		ScriptFieldType::Float },
-		{ "System.Double",		ScriptFieldType::Double },
-		{ "System.Boolean",		ScriptFieldType::Bool },
-		{ "System.Char",			ScriptFieldType::Char },
-		{ "System.Int16",			ScriptFieldType::Int16 },
-		{ "System.Int32",			ScriptFieldType::Int32 },
-		{ "System.Int64",			ScriptFieldType::Int64 },
-		{ "System.Byte",			ScriptFieldType::Byte },
-		{ "System.UInt16",		ScriptFieldType::UInt16 },
-		{ "System.UInt32",		ScriptFieldType::UInt32 },
-		{ "System.UInt64",		ScriptFieldType::UInt64 },
-
-		{ "Eppo.Vector2",			ScriptFieldType::Vector2 },
-		{ "Eppo.Vector3",			ScriptFieldType::Vector3 },
-		{ "Eppo.Vector4",			ScriptFieldType::Vector4 },
-
-		{ "Eppo.Entity",			ScriptFieldType::Entity },
-	};
-
-	namespace Utils
-	{
-		static MonoAssembly* LoadMonoAssembly(const std::filesystem::path& filepath, const bool loadPDB = false)
-		{
-			ScopedBuffer buffer(Filesystem::ReadBytes(filepath));
-
-			MonoImageOpenStatus status;
-			MonoImage* image = mono_image_open_from_data_full(buffer.As<char>(), buffer.Size(), 1, &status, 0);
-
-			if (status != MONO_IMAGE_OK)
-			{
-				const char* error = mono_image_strerror(status);
-				EPPO_ERROR(error);
-				return nullptr;
-			}
-
-			if (loadPDB)
-			{
-				std::filesystem::path pdbPath = filepath;
-				pdbPath.replace_extension(".pdb");
-
-				if (Filesystem::Exists(pdbPath))
-				{
-					ScopedBuffer pdbBuffer(Filesystem::ReadBytes(pdbPath));
-					mono_debug_open_image_from_memory(image, pdbBuffer.As<const mono_byte>(), static_cast<int>(pdbBuffer.Size()));
-					EPPO_INFO("Loaded PDB: {}", pdbPath);
-				}
-			}
-
-			MonoAssembly* assembly = mono_assembly_load_from_full(image, filepath.string().c_str(), &status, 0);
-			mono_image_close(image);
-
-			return assembly;
-		}
-
-		static ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)
-		{
-			const std::string type = mono_type_get_name(monoType);
-
-			if (const auto it = s_ScriptFieldTypeMap.find(type);
-				it != s_ScriptFieldTypeMap.end())
-			{
-				return it->second;
-			}
+    struct ScriptEngineData
+    {
+        MonoDomain* RootDomain = nullptr;
+        MonoDomain* AppDomain = nullptr;
+
+        MonoAssembly* CoreAssembly = nullptr;
+        MonoImage* CoreAssemblyImage = nullptr;
+        std::filesystem::path CoreAssemblyFilepath;
+
+        MonoAssembly* AppAssembly = nullptr;
+        MonoImage* AppAssemblyImage = nullptr;
+        std::filesystem::path AppAssemblyFilepath;
+        bool AppAssemblyReloadPending = false;
+
+        Ref<ScriptClass> EntityClass;
+
+        std::unordered_map<std::string, Ref<ScriptClass>> EntityScriptClasses;
+        std::unordered_map<UUID, Ref<ScriptInstance>> EntityScriptInstances;
+        std::unordered_map<UUID, ScriptFieldMap> EntityScriptFields;
+
+        Ref<Scene> SceneContext;
+
+#if defined(EPPO_DEBUG)
+        bool EnableDebugging = true;
+#else
+        bool EnableDebugging = false;
+#endif
+    };
 
-			return ScriptFieldType::None;
-		}
-	}
+    namespace
+    {
+        std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap{
+            { "System.Single", ScriptFieldType::Float },  { "System.Double", ScriptFieldType::Double },
+            { "System.Boolean", ScriptFieldType::Bool },  { "System.Char", ScriptFieldType::Char },
+            { "System.Int16", ScriptFieldType::Int16 },   { "System.Int32", ScriptFieldType::Int32 },
+            { "System.Int64", ScriptFieldType::Int64 },   { "System.Byte", ScriptFieldType::Byte },
+            { "System.UInt16", ScriptFieldType::UInt16 }, { "System.UInt32", ScriptFieldType::UInt32 },
+            { "System.UInt64", ScriptFieldType::UInt64 },
 
-	struct ScriptEngineData
-	{
-		MonoDomain* RootDomain = nullptr;
-		MonoDomain* AppDomain = nullptr;
-
-		MonoAssembly* CoreAssembly = nullptr;
-		MonoImage* CoreAssemblyImage = nullptr;
-		std::filesystem::path CoreAssemblyFilepath;
-
-		MonoAssembly* AppAssembly = nullptr;
-		MonoImage* AppAssemblyImage = nullptr;
-		std::filesystem::path AppAssemblyFilepath;
-		Scope<filewatch::FileWatch<std::filesystem::path>> AppAssemblyFileWatcher;
-		bool AppAssemblyReloadPending = false;
-
-		Ref<ScriptClass> EntityClass;
-
-		std::unordered_map<std::string, Ref<ScriptClass>> EntityScriptClasses;
-		std::unordered_map<UUID, Ref<ScriptInstance>> EntityScriptInstances;
-		std::unordered_map<UUID, ScriptFieldMap> EntityScriptFields;
-
-		Ref<Scene> SceneContext;
+            { "Eppo.Vector2", ScriptFieldType::Vector2 }, { "Eppo.Vector3", ScriptFieldType::Vector3 },
+            { "Eppo.Vector4", ScriptFieldType::Vector4 },
 
-		#if defined(EPPO_DEBUG)
-			bool EnableDebugging = true;
-		#else
-			bool EnableDebugging = false;
-		#endif
-	};
+            { "Eppo.Entity", ScriptFieldType::Entity },
+        };
 
-	static ScriptEngineData* s_Data;
+        ScriptEngineData* s_Data;
 
-	void ScriptEngine::Init()
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::Init");
+        MonoAssembly* LoadMonoAssembly(const std::filesystem::path& filepath, const bool loadPDB = false)
+        {
+            ScopedBuffer buffer(Filesystem::ReadBytes(filepath));
 
-		s_Data = new ScriptEngineData();
+            MonoImageOpenStatus status;
+            MonoImage* image = mono_image_open_from_data_full(buffer.As<char>(), buffer.Size(), 1, &status, 0);
 
-		InitMono();
+            if (status != MONO_IMAGE_OK)
+            {
+                const char* error = mono_image_strerror(status);
+                EPPO_ERROR(error);
+                return nullptr;
+            }
 
-		if (const bool status = LoadCoreAssembly("Resources/Scripts/EppoScripting.dll");
-			!status)
-		{
-			EPPO_ERROR("Failed to load EppoScripting assembly!");
-		}
+            if (loadPDB)
+            {
+                std::filesystem::path pdbPath = filepath;
+                pdbPath.replace_extension(".pdb");
 
-		LoadAppAssembly("Projects/Assets/Scripts/Binaries/Sandbox.dll");
-	}
+                if (Filesystem::Exists(pdbPath))
+                {
+                    ScopedBuffer pdbBuffer(Filesystem::ReadBytes(pdbPath));
+                    mono_debug_open_image_from_memory(image, pdbBuffer.As<const mono_byte>(), static_cast<int>(pdbBuffer.Size()));
+                    EPPO_INFO("Loaded PDB: {}", pdbPath);
+                }
+            }
 
-	void ScriptEngine::Shutdown()
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::Shutdown");
+            MonoAssembly* assembly = mono_assembly_load_from_full(image, filepath.string().c_str(), &status, 0);
+            mono_image_close(image);
 
-		mono_domain_set(mono_get_root_domain(), false);
+            return assembly;
+        }
 
-		mono_domain_unload(s_Data->AppDomain);
-		s_Data->AppDomain = nullptr;
+        ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)
+        {
+            const std::string type = mono_type_get_name(monoType);
 
-		mono_jit_cleanup(s_Data->RootDomain);
-		s_Data->RootDomain = nullptr;
+            if (const auto it = s_ScriptFieldTypeMap.find(type); it != s_ScriptFieldTypeMap.end())
+            {
+                return it->second;
+            }
 
-		delete s_Data;
-	}
+            return ScriptFieldType::None;
+        }
+    }
 
-	void ScriptEngine::ReloadAssembly()
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::ReloadAssembly");
+    void ScriptEngine::Init()
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::Init");
 
-		EPPO_INFO("Reloading app assembly");
+        s_Data = new ScriptEngineData();
 
-		bool isRunning = false;
+        InitMono();
 
-		if (s_Data->SceneContext && s_Data->SceneContext->IsRunning())
-			isRunning = s_Data->SceneContext->IsRunning();
+        if (const bool status = LoadCoreAssembly("Resources/Scripts/EppoScripting.dll"); !status)
+        {
+            EPPO_ERROR("Failed to load EppoScripting assembly!");
+        }
 
-		if (isRunning)
-			s_Data->SceneContext->OnRuntimeStop();
+        LoadAppAssembly("Projects/Assets/Scripts/Binaries/Sandbox.dll");
+    }
 
-		// We get the active domain away from the one we are trying to reload
-		// App --> Root
-		mono_domain_set(mono_get_root_domain(), false);
+    void ScriptEngine::Shutdown()
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::Shutdown");
 
-		// Unload the app domain which is now free to unload
-		mono_domain_unload(s_Data->AppDomain);
+        mono_domain_set(mono_get_root_domain(), false);
 
-		// Reload the assembly
-		LoadCoreAssembly(s_Data->CoreAssemblyFilepath);
-		LoadAppAssembly(s_Data->AppAssemblyFilepath);
+        mono_domain_unload(s_Data->AppDomain);
+        s_Data->AppDomain = nullptr;
 
-		EPPO_INFO("Reloaded app assembly");
+        mono_jit_cleanup(s_Data->RootDomain);
+        s_Data->RootDomain = nullptr;
 
-		if (isRunning)
-			s_Data->SceneContext->OnRuntimeStart();
-	}
+        delete s_Data;
+    }
 
-	bool ScriptEngine::LoadAppAssembly(const std::filesystem::path& filepath)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadAppAssembly");
+    void ScriptEngine::ReloadAssembly()
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::ReloadAssembly");
 
-		// Load assembly
-		s_Data->AppAssemblyFilepath = filepath;
-		s_Data->AppAssembly = Utils::LoadMonoAssembly(filepath, s_Data->EnableDebugging);
-		if (s_Data->AppAssembly == nullptr)
-			return false;
+        EPPO_INFO("Reloading app assembly");
 
-		s_Data->AppAssemblyImage = mono_assembly_get_image(s_Data->AppAssembly);
-		s_Data->AppAssemblyFileWatcher = CreateScope<filewatch::FileWatch<std::filesystem::path>>(filepath, OnAppAssemblyFileSystemEvent);
-		s_Data->AppAssemblyReloadPending = false;
+        bool isRunning = false;
 
-		// Register internal calls
-		ScriptGlue::RegisterFunctions();
-		ScriptGlue::RegisterComponents();
+        if (s_Data->SceneContext && s_Data->SceneContext->IsRunning())
+            isRunning = s_Data->SceneContext->IsRunning();
 
-		// Load assembly classes
-		LoadAssemblyClasses();
+        if (isRunning)
+            s_Data->SceneContext->OnRuntimeStop();
 
-		// Create base entity class
-		s_Data->EntityClass = CreateRef<ScriptClass>("Eppo", "Entity", true);
+        // We get the active domain away from the one we are trying to reload
+        // App --> Root
+        mono_domain_set(mono_get_root_domain(), false);
 
-		return true;
-	}
+        // Unload the app domain which is now free to unload
+        mono_domain_unload(s_Data->AppDomain);
 
-	void ScriptEngine::OnRuntimeStart()
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStart");
+        // Reload the assembly
+        LoadCoreAssembly(s_Data->CoreAssemblyFilepath);
+        LoadAppAssembly(s_Data->AppAssemblyFilepath);
 
-		EPPO_ASSERT(s_Data->SceneContext)
-	}
+        EPPO_INFO("Reloaded app assembly");
 
-	void ScriptEngine::OnRuntimeStop()
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStop");
+        if (isRunning)
+            s_Data->SceneContext->OnRuntimeStart();
+    }
 
-		s_Data->SceneContext = nullptr;
-		s_Data->EntityScriptInstances.clear();
-	}
+    bool ScriptEngine::LoadAppAssembly(const std::filesystem::path& filepath)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::LoadAppAssembly");
 
-	void ScriptEngine::OnCreateEntity(Entity entity)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::OnCreateEntity");
+        // Load assembly
+        s_Data->AppAssemblyFilepath = filepath;
+        s_Data->AppAssembly = LoadMonoAssembly(filepath, s_Data->EnableDebugging);
+        if (s_Data->AppAssembly == nullptr)
+            return false;
 
-		if (const auto& [className] = entity.GetComponent<ScriptComponent>();
-			EntityClassExists(className))
-		{
-			const UUID uuid = entity.GetUUID();
-			const auto instance = CreateRef<ScriptInstance>(s_Data->EntityScriptClasses.at(className), entity);
-			s_Data->EntityScriptInstances[uuid] = instance;
+        s_Data->AppAssemblyImage = mono_assembly_get_image(s_Data->AppAssembly);
+        s_Data->AppAssemblyReloadPending = false;
 
-			if (const auto it = s_Data->EntityScriptFields.find(uuid);
-				it != s_Data->EntityScriptFields.end())
-			{
-				const ScriptFieldMap& fieldMap = it->second;
-				for (const auto& [name, fieldInstance] : fieldMap)
-				{
-					instance->SetFieldValue(name, fieldInstance.m_Buffer);
-				}
-			}
+        Filesystem::WatchFile(filepath, OnAppAssemblyFileSystemEvent);
 
-			instance->InvokeOnCreate();
-		}
-	}
+        // Register internal calls
+        ScriptGlue::RegisterFunctions();
+        ScriptGlue::RegisterComponents();
 
-	void ScriptEngine::OnUpdateEntity(Entity entity, const float timestep)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::OnUpdateEntity");
+        // Load assembly classes
+        LoadAssemblyClasses();
 
-		const UUID uuid = entity.GetUUID();
-		EPPO_ASSERT(s_Data->EntityScriptInstances.find(uuid) != s_Data->EntityScriptInstances.end())
+        // Create base entity class
+        s_Data->EntityClass = CreateRef<ScriptClass>("Eppo", "Entity", true);
 
-		const auto instance = s_Data->EntityScriptInstances.at(uuid);
-		instance->InvokeOnUpdate(timestep);
-	}
+        return true;
+    }
 
-	MonoObject* ScriptEngine::InstantiateClass(MonoClass* monoClass)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::InstantiateClass");
+    void ScriptEngine::OnRuntimeStart()
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStart");
 
-		MonoObject* instance = mono_object_new(s_Data->AppDomain, monoClass);
-		mono_runtime_object_init(instance);
+        EPPO_ASSERT(s_Data->SceneContext);
+    }
 
-		return instance;
-	}
+    void ScriptEngine::OnRuntimeStop()
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::OnRuntimeStop");
 
-	bool ScriptEngine::EntityClassExists(const std::string& fullName)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::EntityClassExists");
+        s_Data->SceneContext = nullptr;
+        s_Data->EntityScriptInstances.clear();
+    }
 
-		return s_Data->EntityScriptClasses.find(fullName) != s_Data->EntityScriptClasses.end();
-	}
+    void ScriptEngine::OnCreateEntity(Entity entity)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::OnCreateEntity");
 
-	MonoDomain* ScriptEngine::GetAppDomain()
-	{
-		return s_Data->AppDomain;
-	}
+        if (const auto& [className] = entity.GetComponent<ScriptComponent>(); EntityClassExists(className))
+        {
+            const UUID uuid = entity.GetUUID();
+            const auto instance = CreateRef<ScriptInstance>(s_Data->EntityScriptClasses.at(className), entity);
+            s_Data->EntityScriptInstances[uuid] = instance;
 
-	MonoImage* ScriptEngine::GetCoreAssemblyImage()
-	{
-		return s_Data->CoreAssemblyImage;
-	}
+            if (const auto it = s_Data->EntityScriptFields.find(uuid); it != s_Data->EntityScriptFields.end())
+            {
+                const ScriptFieldMap& fieldMap = it->second;
+                for (const auto& [name, fieldInstance] : fieldMap)
+                {
+                    instance->SetFieldValue(name, fieldInstance.m_Buffer);
+                }
+            }
 
-	MonoImage* ScriptEngine::GetAppAssemblyImage()
-	{
-		return s_Data->AppAssemblyImage;
-	}
+            instance->InvokeOnCreate();
+        }
+    }
 
-	void ScriptEngine::SetSceneContext(const Ref<Scene>& scene)
-	{
-		s_Data->SceneContext = scene;
-	}
+    void ScriptEngine::OnUpdateEntity(Entity entity, const float timestep)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::OnUpdateEntity");
 
-	Ref<Scene> ScriptEngine::GetSceneContext()
-	{
-		return s_Data->SceneContext;
-	}
+        const UUID uuid = entity.GetUUID();
+        EPPO_ASSERT(s_Data->EntityScriptInstances.find(uuid) != s_Data->EntityScriptInstances.end());
 
-	Ref<ScriptClass> ScriptEngine::GetEntityClass()
-	{
-		return s_Data->EntityClass;
-	}
+        const auto instance = s_Data->EntityScriptInstances.at(uuid);
+        instance->InvokeOnUpdate(timestep);
+    }
 
-	Ref<ScriptClass> ScriptEngine::GetEntityClass(const std::string& name)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::GetEntityClass");
+    MonoObject* ScriptEngine::InstantiateClass(MonoClass* monoClass)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::InstantiateClass");
 
-		const auto it = s_Data->EntityScriptClasses.find(name);
-		if (it == s_Data->EntityScriptClasses.end())
-			return nullptr;
+        MonoObject* instance = mono_object_new(s_Data->AppDomain, monoClass);
+        mono_runtime_object_init(instance);
 
-		return it->second;
-	}
+        return instance;
+    }
 
-	Ref<ScriptInstance> ScriptEngine::GetEntityInstance(const UUID uuid)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::GetEntityInstance");
+    bool ScriptEngine::EntityClassExists(const std::string& fullName)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::EntityClassExists");
 
-		const auto it = s_Data->EntityScriptInstances.find(uuid);
-		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end())
+        return s_Data->EntityScriptClasses.find(fullName) != s_Data->EntityScriptClasses.end();
+    }
 
-		return it->second;
-	}
+    MonoDomain* ScriptEngine::GetAppDomain()
+    {
+        return s_Data->AppDomain;
+    }
 
-	ScriptFieldMap& ScriptEngine::GetScriptFieldMap(const UUID uuid)
-	{
-		return s_Data->EntityScriptFields[uuid];
-	}
+    MonoImage* ScriptEngine::GetCoreAssemblyImage()
+    {
+        return s_Data->CoreAssemblyImage;
+    }
 
-	std::unordered_map<std::string, Ref<ScriptClass>>& ScriptEngine::GetEntityClasses()
-	{
-		return s_Data->EntityScriptClasses;
-	}
+    MonoImage* ScriptEngine::GetAppAssemblyImage()
+    {
+        return s_Data->AppAssemblyImage;
+    }
 
-	MonoObject* ScriptEngine::GetManagedInstance(const UUID uuid)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::GetManagedInstance");
+    void ScriptEngine::SetSceneContext(const Ref<Scene>& scene)
+    {
+        s_Data->SceneContext = scene;
+    }
 
-		const auto it = s_Data->EntityScriptInstances.find(uuid);
-		EPPO_ASSERT(it != s_Data->EntityScriptInstances.end())
+    Ref<Scene> ScriptEngine::GetSceneContext()
+    {
+        return s_Data->SceneContext;
+    }
 
-		return it->second->GetManagedObject();
-	}
+    Ref<ScriptClass> ScriptEngine::GetEntityClass()
+    {
+        return s_Data->EntityClass;
+    }
 
-	void ScriptEngine::InitMono()
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::InitMono");
+    Ref<ScriptClass> ScriptEngine::GetEntityClass(const std::string& name)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::GetEntityClass");
 
-		mono_set_assemblies_path("Mono/lib");
+        const auto it = s_Data->EntityScriptClasses.find(name);
+        if (it == s_Data->EntityScriptClasses.end())
+            return nullptr;
 
-		s_Data->RootDomain = mono_jit_init("EppoJITRuntime");
-		EPPO_ASSERT(s_Data->RootDomain)
+        return it->second;
+    }
 
-		if (s_Data->EnableDebugging)
-			mono_debug_domain_create(s_Data->RootDomain);
+    Ref<ScriptInstance> ScriptEngine::GetEntityInstance(const UUID uuid)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::GetEntityInstance");
 
-		mono_thread_set_main(mono_thread_current());
-	}
+        const auto it = s_Data->EntityScriptInstances.find(uuid);
+        EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
 
-	bool ScriptEngine::LoadCoreAssembly(const std::filesystem::path& filepath)
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadCoreAssembly");
+        return it->second;
+    }
 
-		// Setup appdomain
-		s_Data->AppDomain = mono_domain_create_appdomain("EppoScriptRuntime", nullptr);
-		mono_domain_set(s_Data->AppDomain, true);
+    ScriptFieldMap& ScriptEngine::GetScriptFieldMap(const UUID uuid)
+    {
+        return s_Data->EntityScriptFields[uuid];
+    }
 
-		// Setup core assembly
-		s_Data->CoreAssemblyFilepath = filepath;
-		s_Data->CoreAssembly = Utils::LoadMonoAssembly(filepath, s_Data->EnableDebugging);
-		if (s_Data->CoreAssembly == nullptr)
-			return false;
+    std::unordered_map<std::string, Ref<ScriptClass>>& ScriptEngine::GetEntityClasses()
+    {
+        return s_Data->EntityScriptClasses;
+    }
 
-		s_Data->CoreAssemblyImage = mono_assembly_get_image(s_Data->CoreAssembly);
+    MonoObject* ScriptEngine::GetManagedInstance(const UUID uuid)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::GetManagedInstance");
 
-		return true;
-	}
+        const auto it = s_Data->EntityScriptInstances.find(uuid);
+        EPPO_ASSERT(it != s_Data->EntityScriptInstances.end());
 
-	void ScriptEngine::LoadAssemblyClasses()
-	{
-		EPPO_PROFILE_FUNCTION("ScriptEngine::LoadAssemblyClasses");
+        return it->second->GetManagedObject();
+    }
 
-		const MonoTableInfo* typeDefinitionsTable = mono_image_get_table_info(s_Data->AppAssemblyImage, MONO_TABLE_TYPEDEF);
-		const int32_t numTypes = mono_table_info_get_rows(typeDefinitionsTable);
-		MonoClass* entityClass = mono_class_from_name(s_Data->CoreAssemblyImage, "Eppo", "Entity");
+    void ScriptEngine::InitMono()
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::InitMono");
 
-		for (int32_t i = 0; i < numTypes; i++)
-		{
-			// Get namespace and class name from image
-			uint32_t cols[MONO_TYPEDEF_SIZE];
-			mono_metadata_decode_row(typeDefinitionsTable, i, cols, MONO_TYPEDEF_SIZE);
+        mono_set_assemblies_path("Mono/lib");
 
-			const char* nameSpace = mono_metadata_string_heap(s_Data->AppAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
-			const char* name = mono_metadata_string_heap(s_Data->AppAssemblyImage, cols[MONO_TYPEDEF_NAME]);
+        s_Data->RootDomain = mono_jit_init("EppoJITRuntime");
+        EPPO_ASSERT(s_Data->RootDomain);
 
-			std::string fullName;
-			if (strlen(nameSpace) != 0)
-				fullName = fmt::format("{}.{}", nameSpace, name);
-			else
-				fullName = name;
+        if (s_Data->EnableDebugging)
+            mono_debug_domain_create(s_Data->RootDomain);
 
-			// TodO: Filter out module?
+        mono_thread_set_main(mono_thread_current());
+    }
 
-			// Get mono class handle from name
-			MonoClass* monoClass = mono_class_from_name(s_Data->AppAssemblyImage, nameSpace, name);
+    bool ScriptEngine::LoadCoreAssembly(const std::filesystem::path& filepath)
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::LoadCoreAssembly");
 
-			// We're looking for all classes EXCEPT the entity class
-			if (monoClass == entityClass)
-				continue;
+        // Setup appdomain
+        s_Data->AppDomain = mono_domain_create_appdomain(const_cast<char*>("EppoScriptRuntime"), nullptr);
+        mono_domain_set(s_Data->AppDomain, true);
 
-			if (const bool isEntity = mono_class_is_subclass_of(monoClass, entityClass, false);
-				!isEntity)
-			{
-				continue;
-			}
+        // Setup core assembly
+        s_Data->CoreAssemblyFilepath = filepath;
+        s_Data->CoreAssembly = LoadMonoAssembly(filepath, s_Data->EnableDebugging);
+        if (s_Data->CoreAssembly == nullptr)
+            return false;
 
-			// Create a reference to the class and process it's fields
-			Ref<ScriptClass> scriptClass = CreateRef<ScriptClass>(monoClass);
-			s_Data->EntityScriptClasses.insert_or_assign(fullName, scriptClass);
+        s_Data->CoreAssemblyImage = mono_assembly_get_image(s_Data->CoreAssembly);
 
-			uint32_t numFields = mono_class_num_fields(monoClass);
+        return true;
+    }
 
-			void* gPointer = nullptr;
-			uint32_t publicFields = 0;
-			while (MonoClassField* field = mono_class_get_fields(monoClass, &gPointer))
-			{
-				if (const uint32_t flags = mono_field_get_flags(field);
-					flags & FIELD_ATTRIBUTE_PUBLIC)
-				{
-					publicFields++;
+    void ScriptEngine::LoadAssemblyClasses()
+    {
+        EPPO_PROFILE_FUNCTION("ScriptEngine::LoadAssemblyClasses");
 
-					MonoType* fieldType = mono_field_get_type(field);
-					std::string fieldName = mono_field_get_name(field);
+        const MonoTableInfo* typeDefinitionsTable = mono_image_get_table_info(s_Data->AppAssemblyImage, MONO_TABLE_TYPEDEF);
+        const int32_t numTypes = mono_table_info_get_rows(typeDefinitionsTable);
+        MonoClass* entityClass = mono_class_from_name(s_Data->CoreAssemblyImage, "Eppo", "Entity");
 
-					const ScriptFieldType scriptFieldType = Utils::MonoTypeToScriptFieldType(fieldType);
-					if (scriptFieldType == ScriptFieldType::None)
-						continue;
+        for (int32_t i = 0; i < numTypes; i++)
+        {
+            // Get namespace and class name from image
+            uint32_t cols[MONO_TYPEDEF_SIZE];
+            mono_metadata_decode_row(typeDefinitionsTable, i, cols, MONO_TYPEDEF_SIZE);
 
-					ScriptField scriptField;
-					scriptField.Type = scriptFieldType;
-					scriptField.Name = fieldName;
-					scriptField.ClassField = field;
+            const char* nameSpace = mono_metadata_string_heap(s_Data->AppAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
+            const char* name = mono_metadata_string_heap(s_Data->AppAssemblyImage, cols[MONO_TYPEDEF_NAME]);
 
-					EPPO_TRACE("{}::{}", Utils::ScriptFieldTypeToString(scriptField.Type), scriptField.Name);
+            std::string fullName;
+            if (strlen(nameSpace) != 0)
+                fullName = std::format("{}.{}", nameSpace, name);
+            else
+                fullName = name;
 
-					scriptClass->m_Fields.insert_or_assign(fieldName, scriptField);
-				}
-			}
+            // TodO: Filter out module?
 
-			EPPO_TRACE("{} has {} fields of which {} are public: ", fullName, numFields, publicFields);
-		}
-	}
+            // Get mono class handle from name
+            MonoClass* monoClass = mono_class_from_name(s_Data->AppAssemblyImage, nameSpace, name);
 
-	void ScriptEngine::OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath, const filewatch::Event changeType)
-	{
-		if (!s_Data->AppAssemblyReloadPending && changeType == filewatch::Event::added)
-		{
-			s_Data->AppAssemblyReloadPending = true;
+            // We're looking for all classes EXCEPT the entity class
+            if (monoClass == entityClass)
+                continue;
 
-			Application::Get().SubmitToMainThread([]()
-			{
-				ReloadAssembly();
-			});
-		}
-	}
+            if (const bool isEntity = mono_class_is_subclass_of(monoClass, entityClass, false); !isEntity)
+            {
+                continue;
+            }
+
+            // Create a reference to the class and process it's fields
+            Ref<ScriptClass> scriptClass = CreateRef<ScriptClass>(monoClass);
+            s_Data->EntityScriptClasses.insert_or_assign(fullName, scriptClass);
+
+            uint32_t numFields = mono_class_num_fields(monoClass);
+
+            void* gPointer = nullptr;
+            uint32_t publicFields = 0;
+            while (MonoClassField* field = mono_class_get_fields(monoClass, &gPointer))
+            {
+                if (const uint32_t flags = mono_field_get_flags(field); flags & FIELD_ATTRIBUTE_PUBLIC)
+                {
+                    publicFields++;
+
+                    MonoType* fieldType = mono_field_get_type(field);
+                    std::string fieldName = mono_field_get_name(field);
+
+                    const ScriptFieldType scriptFieldType = MonoTypeToScriptFieldType(fieldType);
+                    if (scriptFieldType == ScriptFieldType::None)
+                        continue;
+
+                    ScriptField scriptField;
+                    scriptField.Type = scriptFieldType;
+                    scriptField.Name = fieldName;
+                    scriptField.ClassField = field;
+
+                    EPPO_TRACE("{}::{}", Utils::ScriptFieldTypeToString(scriptField.Type), scriptField.Name);
+
+                    scriptClass->m_Fields.insert_or_assign(fieldName, scriptField);
+                }
+            }
+
+            EPPO_TRACE("{} has {} fields of which {} are public: ", fullName, numFields, publicFields);
+        }
+    }
+
+    void ScriptEngine::OnAppAssemblyFileSystemEvent(const std::filesystem::path& filepath)
+    {
+        if (!s_Data->AppAssemblyReloadPending)
+        {
+            s_Data->AppAssemblyReloadPending = true;
+
+            Application::Get().SubmitToMainThread([]() { ReloadAssembly(); });
+        }
+    }
 }

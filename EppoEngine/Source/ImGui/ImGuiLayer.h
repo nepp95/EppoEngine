@@ -5,23 +5,26 @@
 
 namespace Eppo
 {
-	class ImGuiLayer : public Layer
-	{
-	public:
-		ImGuiLayer();
-		~ImGuiLayer() override = default;
+    class ImGuiLayer : public Layer
+    {
+    public:
+        ImGuiLayer();
+        ~ImGuiLayer() override = default;
 
-		void OnAttach() override;
-		void OnDetach() override;
+        void OnAttach() override;
+        void OnDetach() override;
 
-		void OnEvent(Event& e) override;
+        void OnEvent(Event& e) override;
 
-		void BlockEvents(const bool block) { m_BlockEvents = block; }
+        void BlockEvents(const bool block)
+        {
+            m_BlockEvents = block;
+        }
 
-	private:
-		void SetupStyle() const;
+    private:
+        void SetupStyle() const;
 
-	private:
-		bool m_BlockEvents = true;
-	};
+    private:
+        bool m_BlockEvents = true;
+    };
 }

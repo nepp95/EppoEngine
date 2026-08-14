@@ -5,674 +5,778 @@
 #include "Panel/PropertyPanel.h"
 #include "Panel/SceneHierarchyPanel.h"
 
-#include <imgui/imgui.h>
-
 #include <fstream>
 
 namespace Eppo
 {
-	static const std::string CONTENT_BROWSER_PANEL = "ContentBrowserPanel";
-	static const std::string PROPERTY_PANEL = "PropertyPanel";
-	static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
+    static const std::string CONTENT_BROWSER_PANEL = "ContentBrowserPanel";
+    static const std::string PROPERTY_PANEL = "PropertyPanel";
+    static const std::string SCENE_HIERARCHY_PANEL = "SceneHierarchyPanel";
 
-	static bool s_NewProjectPopup = false;
-	static bool s_PreferencesPopup = false;
+    namespace
+    {
+        bool s_NewProjectPopup = false;
+        bool s_OpenProjectPopup = false;
+        bool s_PreferencesPopup = false;
 
-	EditorLayer::EditorLayer()
-		: Layer("EditorLayer"), m_PanelManager(PanelManager::Get())
-	{}
+        void ReplaceToken(std::string& input, const char* token, const std::string& value)
+        {
+            size_t pos = 0;
+            while ((pos = input.find(token, pos)) != std::string::npos)
+            {
+                input.replace(pos, strlen(token), value);
+                pos += strlen(token);
+            }
+        }
+    }
 
-	void EditorLayer::OnAttach()
-	{
-		// Load resources
-		m_IconPlay = Image::Create(ImageSpecification("Resources/Textures/Icons/PlayButton.png"));
-		m_IconStop = Image::Create(ImageSpecification("Resources/Textures/Icons/StopButton.png"));
+    EditorLayer::EditorLayer()
+        : Layer("EditorLayer"), m_PanelManager(PanelManager::Get())
+    {}
 
-		// Setup UI panels
-		m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
-		m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
+    void EditorLayer::OnAttach()
+    {
+        // Load resources
+        m_IconPlay = Image::Create(ImageSpecification("Resources/Textures/Icons/PlayButton.png"));
+        m_IconStop = Image::Create(ImageSpecification("Resources/Textures/Icons/StopButton.png"));
 
-		m_PanelManager.SetSceneContext(m_EditorScene);
+        // Setup UI panels
+        m_PanelManager.AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true, m_PanelManager);
+        m_PanelManager.AddPanel<PropertyPanel>(PROPERTY_PANEL, true, m_PanelManager);
 
-		// Open scene
-		OpenProject();
+        m_PanelManager.SetSceneContext(m_EditorScene);
 
-		RenderSpecification renderSpec;
-		renderSpec.Width = 1600;
-		renderSpec.Height = 900;
+        // Open scene
+        OpenProject("Projects/Test/Test.json");
+
+        RenderSpecification renderSpec;
+        renderSpec.Width = 1600;
+        renderSpec.Height = 900;
 #ifdef EPPO_DEBUG
-		renderSpec.DebugRendering = true;
+        renderSpec.DebugRendering = true;
 #endif
 
-		m_ViewportRenderer = SceneRenderer::Create(m_EditorScene, renderSpec);
-	}
-	
-	void EditorLayer::OnDetach()
-	{
-		CloseProject();
-
-		m_PanelManager.Shutdown();
-
-		m_IconPlay = nullptr;
-		m_IconStop = nullptr;
-
-		m_ViewportRenderer = nullptr;
-	}
-	
-	void EditorLayer::Update(float timestep)
-	{
-		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
-		{
-			m_EditorCamera.SetViewportSize(glm::vec2(m_ViewportWidth, m_ViewportHeight));
-			m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
-			m_EditorScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
-			m_ActiveScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
-		}
-
-		switch (m_SceneState)
-		{
-			case SceneState::Edit:
-			{
-				if (m_ViewportFocused)
-					m_EditorCamera.OnUpdate(timestep);
-				break;
-			}
-
-			case SceneState::Play:
-			{
-				m_ActiveScene->OnUpdateRuntime(timestep);
-				break;
-			}
-		}
-	}
-	
-	void EditorLayer::Render()
-	{
-		if (!Project::GetActive())
-			return;
-
-		switch (m_SceneState)
-		{
-			case SceneState::Edit:
-			{
-				m_ActiveScene->OnRenderEditor(m_ViewportRenderer, m_EditorCamera);
-				break;
-			}
-
-			case SceneState::Play:
-			{
-				m_ActiveScene->OnRenderRuntime(m_ViewportRenderer);
-				break;
-			}
-		}
-	}
-
-	void EditorLayer::RenderGui()
-	{
-		// ImGui docking example
-		static bool dockspaceOpen = true;
-		static bool optFullscreenPersistence = true;
-		const bool optFullscreen = optFullscreenPersistence;
-		static ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
-
-		// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-		// because it would be confusing to have two docking targets within each others.
-		ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-		if (optFullscreen)
-		{
-			const ImGuiViewport* viewport = ImGui::GetMainViewport();
-			ImGui::SetNextWindowPos(viewport->Pos);
-			ImGui::SetNextWindowSize(viewport->Size);
-			ImGui::SetNextWindowViewport(viewport->ID);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-			window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-			window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-		}
-
-		// When using ImGuiDockNodeFlags_PassthruCentralNode, DockSpace() will render our background
-		// and handle the pass-thru hole, so we ask Begin() to not render a background.
-		if (dockspaceFlags & ImGuiDockNodeFlags_PassthruCentralNode)
-			window_flags |= ImGuiWindowFlags_NoBackground;
-
-		// Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-		// This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
-		// all active windows docked into it will lose their parent and become undocked.
-		// We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
-		// any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("DockSpace", &dockspaceOpen, window_flags);
-		ImGui::PopStyleVar(); // ImGuiStyleVar_WindowPadding
-
-		if (optFullscreen)
-			ImGui::PopStyleVar(2); // ImGuiStyleVar_WindowBorderSize, ImGuiStyleVar_WindowRounding
-
-		// Submit the DockSpace
-		const ImGuiIO& io = ImGui::GetIO();
-		ImGuiStyle& style = ImGui::GetStyle();
-		const float minWinSizeX = style.WindowMinSize.x;
-		style.WindowMinSize.x = 370.0f;
-		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-		{
-			const ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
-			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspaceFlags);
-		}
-
-		style.WindowMinSize.x = minWinSizeX;
-
-		// Menubar
-		if (ImGui::BeginMenuBar())
-		{
-			if (ImGui::BeginMenu("File"))
-			{
-				if (ImGui::MenuItem("New Project"))
-					s_NewProjectPopup = true;
-
-				if (ImGui::MenuItem("Save Project", "CTRL+S"))
-					SaveProject();
-
-				if (ImGui::MenuItem("Open Project", "CTRL+O"))
-					OpenProject();
-
-				if (ImGui::MenuItem("New Scene"))
-					NewScene();
-
-				ImGui::Separator();
-
-				if (ImGui::MenuItem("Import asset"))
-					ImportAsset();
-
-				if (ImGui::MenuItem("Project settings"))
-					s_PreferencesPopup = true;
-
-				if (ImGui::MenuItem("Exit"))
-					Application::Get().Close();
-
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Testing"))
-			{
-				if (ImGui::MenuItem("Serialize asset registry"))
-					Project::GetActive()->GetAssetManagerEditor()->SerializeAssetRegistry();
-
-				ImGui::EndMenu();
-			}
-
-			ImGui::EndMenuBar();
-		}
-
-		// Popups
-		if (s_NewProjectPopup)
-		{
-			constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
-			ImGui::OpenPopup("New Project", flags);
-			s_NewProjectPopup = false;
-		}
-
-		if (s_PreferencesPopup)
-		{
-			constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
-			ImGui::OpenPopup("Project settings", flags);
-			s_PreferencesPopup = false;
-		}
-
-		// Viewport
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0 ));
-		ImGui::Begin("Viewport");
-
-		m_ViewportFocused = ImGui::IsWindowFocused();
-		m_ViewportHovered = ImGui::IsWindowHovered();
-		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
-
-		const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-		m_ViewportWidth = static_cast<uint32_t>(viewportSize.x);
-		m_ViewportHeight = static_cast<uint32_t>(viewportSize.y);
-
-		UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
-		if (ImGui::BeginDragDropTarget())
-		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_ASSET"))
-			{
-				const auto handle = payload->Data;
-				OpenScene(*static_cast<AssetHandle*>(handle));
-			}
-			ImGui::EndDragDropTarget();
-		}
-
-		ImGui::End(); // Viewport
-		ImGui::PopStyleVar();
-
-		// Panels
-		m_PanelManager.RenderGui();
-
-		// Performance
-		m_ViewportRenderer->RenderGui();
-
-		UI_File_NewProject();
-		UI_File_Preferences();
-		UI_Toolbar();
-	
-		ImGui::End(); // DockSpace
-	}
-
-	void EditorLayer::OnEvent(Event& e)
-	{
-		if (m_SceneState == SceneState::Edit)
-			m_EditorCamera.OnEvent(e);
-
-		EventDispatcher dispatcher(e);
-
-		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
-	}
-
-	bool EditorLayer::OnKeyPressed(const KeyPressedEvent& e)
-	{
-		if (e.IsRepeat())
-			return false;
-
-		const bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
-		const bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
-		const bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
-
-		switch (e.GetKeyCode())
-		{
-			case Key::O:
-			{
-				if (control)
-					OpenProject();
-				break;
-			}
-
-			case Key::S:
-			{
-				if (control)
-					SaveProject();
-				break;
-			}
-		}
-
-		return false;
-	}
-
-	void EditorLayer::OnScenePlay()
-	{
-		if (!m_EditorScene)
-			return;
-
-		m_SceneState = SceneState::Play;
-		m_ActiveScene = Scene::Copy(m_EditorScene);
-
-		ScriptEngine::SetSceneContext(m_ActiveScene);
-		m_PanelManager.SetSceneContext(m_ActiveScene);
-		
-		m_ActiveScene->OnRuntimeStart();
-	}
-
-	void EditorLayer::OnSceneStop()
-	{
-		if (!m_ActiveScene)
-			return;
-
-		m_SceneState = SceneState::Edit;
-
-		m_ActiveScene->OnRuntimeStop();
-		m_ActiveScene = m_EditorScene;
-
-		ScriptEngine::SetSceneContext(m_EditorScene);
-		m_PanelManager.SetSceneContext(m_ActiveScene);
-	}
-
-	void EditorLayer::CloseProject()
-	{
-		SaveProject();
-
-		m_PanelManager.SetSceneContext(nullptr);
-		ScriptEngine::SetSceneContext(nullptr);
-
-		if (Project::GetActive())
-			Project::SetActive(nullptr);
-
-		m_EditorScene = nullptr;
-		m_ActiveScene = nullptr;
-	}
-
-	static void ReplaceToken(std::string& input, const char* token, const std::string& value)
-	{
-		size_t pos = 0;
-		while ((pos = input.find(token, pos)) != std::string::npos)
-		{
-			input.replace(pos, strlen(token), value);
-			pos += strlen(token);
-		}
-	}
-
-	void EditorLayer::NewProject(const std::string& name)
-	{
-		// Create project directory
-		std::filesystem::path projectPath = Filesystem::GetAppRootDirectory() / "Projects" / name;
-		Filesystem::CreateDirectory(projectPath);
-
-		// Copy new project template
-		Filesystem::Copy("Resources/Templates/NewProject", projectPath);
-
-		// Create directories
-		Filesystem::CreateDirectory(projectPath / "Assets" / "Scripts" / "Source");
-		Filesystem::CreateDirectory(projectPath / "Assets" / "Meshes");
-		Filesystem::CreateDirectory(projectPath / "Assets" / "Scenes");
-		Filesystem::CreateDirectory(projectPath / "Assets" / "Textures");
-
-		{
-			std::ifstream in(projectPath / "project.epproj");
-			std::stringstream ss;
-			ss << in.rdbuf();
-			in.close();
-
-			std::string inputStr = ss.str();
-			ReplaceToken(inputStr, "$PROJECT_NAME$", name);
-
-			std::ofstream out(projectPath / "project.epproj");
-			out << inputStr;
-			out.close();
-
-			Filesystem::Rename(projectPath, "project.epproj", name + ".epproj");
-		}
-
-		{
-			Filesystem::Move(projectPath / "premake5.lua", projectPath / "Assets" / "Scripts" / "premake5.lua");
-
-			std::ifstream in(projectPath / "Assets" / "Scripts" / "premake5.lua");
-			std::stringstream ss;
-			ss << in.rdbuf();
-			in.close();
-
-			std::string inputStr = ss.str();
-			ReplaceToken(inputStr, "$PROJECT_NAME$", name);
-
-			std::ofstream out(projectPath / "Assets" / "Scripts" / "premake5.lua");
-			out << inputStr;
-			out.close();
-		}
-
-		Filesystem::Move(projectPath / "Win-GenerateProjects.bat", projectPath / "Assets" / "Scripts" / "Win-GenerateProjects.bat");
-
-		// Create hello world script
-		Filesystem::Copy("Resources/Templates/Scripts/Main.cs", projectPath / "Assets" / "Scripts" / "Source");
-
-		{
-			std::ifstream in(projectPath / "Assets" / "Scripts" / "Source" / "Main.cs");
-			std::stringstream ss;
-			ss << in.rdbuf();
-			in.close();
-
-			std::string inputStr = ss.str();
-			ReplaceToken(inputStr, "$PROJECT_NAME$", name);
-
-			std::ofstream out(projectPath / "Assets" / "Scripts" / "Source" / "Main.cs");
-			out << inputStr;
-			out.close();
-		}
-
-		// Run premake
-		std::filesystem::path batchFile = projectPath / "Assets" / "Scripts" / "Win-GenerateProjects.bat";
-		
-		// todo: not working
-		// system(batchFile.string().c_str());
-
-		// Open project
-		OpenProject(projectPath / std::filesystem::path(name + ".epproj"));
-	}
-
-	bool EditorLayer::OpenProject()
-	{
-		const std::filesystem::path filePath = FileDialog::OpenFile("EppoEngine Project (*.epproj)\0*.epproj\0", Project::GetProjectsDirectory());
-
-		if (filePath.empty())
-		{
-			if (Project::GetActive())
-				return false;
-			else
-			{
-				s_NewProjectPopup = true;
-				return true;
-			}
-		}
-
-		OpenProject(filePath);
-
-		return true;
-	}
-
-	void EditorLayer::OpenProject(const std::filesystem::path& filepath)
-	{
-		if (filepath.extension().string() != ".epproj")
-		{
-			EPPO_ERROR("Could not load '{}' because it is not a project file!", filepath.string());
-			return;
-		}
-
-		if (Project::GetActive())
-			CloseProject();
-
-		if (Project::Open(filepath))
-		{
-			const auto& projSpec = Project::GetActive()->GetSpecification();
-
-			const std::filesystem::path scriptPath = Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
-			ScriptEngine::LoadAppAssembly(scriptPath);
-
-			if (!projSpec.StartScene)
-				NewScene();
-			else
-				OpenScene(projSpec.StartScene);
-
-			m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
-			Application::Get().GetWindow().SetWindowTitle("EppoEngine Editor - " + projSpec.Name);
-		}
-	}
-
-	void EditorLayer::SaveProject()
-	{
-		EPPO_ASSERT(Project::GetActive())
-
-		SaveScene();
-
-		Project::SaveActive();
-	}
-
-	void EditorLayer::NewScene()
-	{
-		// TODO: Check for changes. Maybe using a list of changes considering a undo feature
-		m_EditorScene = CreateRef<Scene>();
-		m_ActiveScene = m_EditorScene;
-		m_ActiveScenePath = std::filesystem::path();
-
-		m_PanelManager.SetSceneContext(m_ActiveScene);
-	}
-
-	void EditorLayer::OpenScene(const std::filesystem::path& filepath)
-	{
-		if (filepath.extension().string() != ".epscene")
-		{
-			EPPO_ERROR("Could not load '{}' because it is not a scene file!", filepath.string());
-			return;
-		}
-
-		const auto newScene = CreateRef<Scene>();
-		if (const SceneSerializer serializer(newScene);
-			serializer.Deserialize(filepath))
-		{
-			m_EditorScene = newScene;
-			m_ActiveScene = m_EditorScene;
-			m_ActiveScenePath = filepath;
-			
-			m_PanelManager.SetSceneContext(m_EditorScene);
-		}
-	}
-
-	void EditorLayer::OpenScene(const AssetHandle handle)
-	{
-		EPPO_ASSERT(handle)
-
-		if (m_SceneState != SceneState::Edit)
-			OnSceneStop();
-
-		m_EditorScene = AssetManager::GetAsset<Scene>(handle);
-		m_ActiveScene = m_EditorScene;
-
-		m_ActiveScenePath = Project::GetActive()->GetAssetManagerEditor()->GetFilepath(handle);
-		
-		m_PanelManager.SetSceneContext(m_ActiveScene);
-	}
-
-	void EditorLayer::SaveScene()
-	{
-		if (m_ActiveScenePath.empty())
-			SaveSceneAs();
-		else
-			AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
-	}
-
-	void EditorLayer::SaveSceneAs()
-	{
-		if (const std::filesystem::path filepath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0");
-			!filepath.empty())
-		{
-			m_ActiveScenePath = filepath;
-			AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
-		}
-	}
-
-	void EditorLayer::ImportAsset()
-	{
-		if (const std::filesystem::path filepath = FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0", Project::GetAssetsDirectory());
-			!filepath.empty())
-		{
-			Project::GetActive()->GetAssetManagerEditor()->ImportAsset(filepath);
-		}
-	}
-
-	void EditorLayer::UI_File_NewProject()
-	{
-		if (constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
-			ImGui::BeginPopupModal("New Project", nullptr, flags))
-		{
-			static char nameBuffer[200]{};
-			static bool projectExists = false;
-
-			ImGui::Text("Project Name");
-			ImGui::InputText("##ProjectName", nameBuffer, 200);
-
-			const auto projectPath = std::string(nameBuffer);
-			const std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
-
-			projectExists = Filesystem::Exists(fullProjectPath);
-
-			if (Filesystem::Exists(fullProjectPath) && !projectPath.empty())
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
-				ImGui::Text("Project name already exists");
-				ImGui::PopStyleColor();
-			}
-			else
-			{
-				ImGui::Text("Project path: \n%s", fullProjectPath.string().c_str());
-			}
-
-			ImGui::Dummy(ImVec2(50, 20));
-
-			if (ImGui::Button("Cancel", ImVec2(100, 30)))
-				ImGui::CloseCurrentPopup();
-
-			ImGui::SameLine();
-
-			if (projectExists)
-				ImGui::BeginDisabled();
-
-			if (ImGui::Button("Create", ImVec2(100, 30)))
-			{
-				NewProject(projectPath);
-				ImGui::CloseCurrentPopup();
-			}
-
-			if (projectExists)
-				ImGui::EndDisabled();
-
-			ImGui::EndPopup();
-		}
-	}
-
-	void EditorLayer::UI_File_Preferences()
-	{
-		if (constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
-			ImGui::BeginPopupModal("Project settings", nullptr, flags))
-		{
-			auto& spec = Project::GetActive()->GetSpecification();
-			
-			static std::string nameBuffer = std::string(200, ' ').replace(0, 200, spec.Name);
-
-			ImGui::Text("Project Name");
-			ImGui::InputText("##ProjectName", nameBuffer.data(), 200);
-
-			ImGui::Text("Project Directory");
-			ImGui::InputText("##ProjectDirectory", spec.ProjectDirectory.string().data(), spec.ProjectDirectory.string().length(), ImGuiInputTextFlags_ReadOnly);
-
-			ImGui::Text("Start Scene");
-
-			const auto assetManager = Project::GetActive()->GetAssetManagerEditor();
-			const auto& assetRegistry = assetManager->GetAssetRegistry();
-
-			const AssetHandle startScene = spec.StartScene;
-
-			if (const auto& startSceneMetadata = assetRegistry.at(startScene);
-				ImGui::BeginCombo("##StartScene", startSceneMetadata.GetName().c_str()))
-			{
-				for (const auto& [handle, metadata] : assetRegistry)
-				{
-					if (metadata.Type != AssetType::Scene)
-						continue;
-
-					const bool isSelected = startSceneMetadata.GetName() == metadata.GetName();
-
-					if (ImGui::Selectable(metadata.GetName().c_str(), isSelected))
-						spec.StartScene = metadata.Handle;
-
-					if (isSelected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
-
-			if (ImGui::Button("OK", ImVec2(100, 30)))
-				ImGui::CloseCurrentPopup();
-
-			ImGui::EndPopup();
-		}
-	}
-
-	void EditorLayer::UI_Toolbar()
-	{
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
-		ImGui::Begin("Scene Control", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-
-		const float buttonSize = ImGui::GetWindowHeight() - 4.0f;
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-		ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (buttonSize * 0.5f));
-
-		if (m_SceneState == SceneState::Edit)
-		{
-			if (UI::ImageButton("##Play", m_IconPlay, ImVec2(buttonSize, buttonSize)))
-				OnScenePlay();
-		}
-		else if (m_SceneState == SceneState::Play)
-		{
-			if (UI::ImageButton("##Stop", m_IconStop, ImVec2(buttonSize, buttonSize)))
-				OnSceneStop();
-		}
-
-		ImGui::PopStyleVar(3);
-		ImGui::End();
-	}
+        m_ViewportRenderer = SceneRenderer::Create(m_EditorScene, renderSpec);
+    }
+
+    void EditorLayer::OnDetach()
+    {
+        CloseProject();
+
+        m_PanelManager.Shutdown();
+
+        m_IconPlay = nullptr;
+        m_IconStop = nullptr;
+
+        m_ViewportRenderer = nullptr;
+    }
+
+    void EditorLayer::Update(const float timestep)
+    {
+        if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
+        {
+            m_EditorCamera.SetViewportSize(glm::vec2(m_ViewportWidth, m_ViewportHeight));
+            m_ViewportRenderer->Resize(m_ViewportWidth, m_ViewportHeight);
+            m_EditorScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
+            m_ActiveScene->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
+        }
+
+        switch (m_SceneState)
+        {
+            case SceneState::Edit:
+            {
+                if (m_ViewportFocused)
+                    m_EditorCamera.OnUpdate(timestep);
+                break;
+            }
+
+            case SceneState::Play:
+            {
+                m_ActiveScene->OnUpdateRuntime(timestep);
+                break;
+            }
+        }
+    }
+
+    void EditorLayer::Render()
+    {
+        switch (m_SceneState)
+        {
+            case SceneState::Edit:
+            {
+                m_ActiveScene->OnRenderEditor(m_ViewportRenderer, m_EditorCamera);
+                break;
+            }
+
+            case SceneState::Play:
+            {
+                m_ActiveScene->OnRenderRuntime(m_ViewportRenderer);
+                break;
+            }
+        }
+    }
+
+    void EditorLayer::RenderGui()
+    {
+        // ImGui docking example
+        static bool dockspaceOpen = true;
+        static bool optFullscreenPersistence = true;
+        const bool optFullscreen = optFullscreenPersistence;
+        static ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
+
+        // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
+        // because it would be confusing to have two docking targets within each others.
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+        if (optFullscreen)
+        {
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->Pos);
+            ImGui::SetNextWindowSize(viewport->Size);
+            ImGui::SetNextWindowViewport(viewport->ID);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+        }
+
+        // When using ImGuiDockNodeFlags_PassthruCentralNode, DockSpace() will render our background
+        // and handle the pass-thru hole, so we ask Begin() to not render a background.
+        if (dockspaceFlags & ImGuiDockNodeFlags_PassthruCentralNode)
+            window_flags |= ImGuiWindowFlags_NoBackground;
+
+        // Important: note that we proceed even if Begin() returns false (aka window is collapsed).
+        // This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
+        // all active windows docked into it will lose their parent and become undocked.
+        // We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
+        // any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin("DockSpace", &dockspaceOpen, window_flags);
+        ImGui::PopStyleVar(); // ImGuiStyleVar_WindowPadding
+
+        if (optFullscreen)
+            ImGui::PopStyleVar(2); // ImGuiStyleVar_WindowBorderSize, ImGuiStyleVar_WindowRounding
+
+        // Submit the DockSpace
+        const ImGuiIO& io = ImGui::GetIO();
+        ImGuiStyle& style = ImGui::GetStyle();
+        const float minWinSizeX = style.WindowMinSize.x;
+        style.WindowMinSize.x = 370.0f;
+        if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+        {
+            const ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspaceFlags);
+        }
+
+        style.WindowMinSize.x = minWinSizeX;
+
+        // Menubar
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("New Project"))
+                    s_NewProjectPopup = true;
+
+                if (ImGui::MenuItem("Save Project", "CTRL+S"))
+                    SaveProject();
+
+                if (ImGui::MenuItem("Open Project", "CTRL+O"))
+                    s_OpenProjectPopup = true;
+
+                if (ImGui::MenuItem("New Scene"))
+                    NewScene();
+
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("Import asset"))
+                    ImportAsset();
+
+                if (ImGui::MenuItem("Project settings"))
+                    s_PreferencesPopup = true;
+
+                if (ImGui::MenuItem("Exit"))
+                    Application::Get().Close();
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Testing"))
+            {
+                if (ImGui::MenuItem("Serialize asset registry"))
+                    Project::GetActive()->GetAssetManagerEditor()->SerializeAssetRegistry();
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenuBar();
+        }
+
+        // Popups
+        if (s_NewProjectPopup)
+        {
+            constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+            ImGui::OpenPopup("New Project", flags);
+            s_NewProjectPopup = false;
+        }
+
+        if (s_OpenProjectPopup)
+        {
+            constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+            ImGui::OpenPopup("Open Project", flags);
+            s_OpenProjectPopup = false;
+        }
+
+        if (s_PreferencesPopup)
+        {
+            constexpr ImGuiPopupFlags flags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+            ImGui::OpenPopup("Project settings", flags);
+            s_PreferencesPopup = false;
+        }
+
+        // Viewport
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::Begin("Viewport");
+
+        m_ViewportFocused = ImGui::IsWindowFocused();
+        m_ViewportHovered = ImGui::IsWindowHovered();
+        Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportHovered);
+
+        const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+        m_ViewportWidth = static_cast<uint32_t>(viewportSize.x);
+        m_ViewportHeight = static_cast<uint32_t>(viewportSize.y);
+
+        UI::Image(m_ViewportRenderer->GetFinalImage(), ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight)),
+                  ImVec2(0, 1), ImVec2(1, 0));
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_ASSET"))
+            {
+                const auto handle = payload->Data;
+                OpenScene(*static_cast<AssetHandle*>(handle));
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        ImGui::End(); // Viewport
+        ImGui::PopStyleVar();
+
+        // Panels
+        m_PanelManager.RenderGui();
+
+        // Performance
+        m_ViewportRenderer->RenderGui();
+
+        UI_File_NewProject();
+        UI_File_OpenProject();
+        UI_File_Preferences();
+        UI_Toolbar();
+
+        ImGui::End(); // DockSpace
+    }
+
+    void EditorLayer::OnEvent(Event& e)
+    {
+        if (m_SceneState == SceneState::Edit)
+            m_EditorCamera.OnEvent(e);
+
+        EventDispatcher dispatcher(e);
+
+        dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(EditorLayer::OnKeyPressed));
+    }
+
+    bool EditorLayer::OnKeyPressed(const KeyPressedEvent& e)
+    {
+        if (e.IsRepeat())
+            return false;
+
+        const bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
+        const bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
+        const bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
+
+        switch (e.GetKeyCode())
+        {
+            case Key::O:
+            {
+                if (control)
+                    OpenProject();
+                break;
+            }
+
+            case Key::S:
+            {
+                if (control)
+                    SaveProject();
+                break;
+            }
+        }
+
+        return false;
+    }
+
+    void EditorLayer::OnScenePlay()
+    {
+        if (!m_EditorScene)
+            return;
+
+        m_SceneState = SceneState::Play;
+        m_ActiveScene = Scene::Copy(m_EditorScene);
+
+        ScriptEngine::SetSceneContext(m_ActiveScene);
+        m_PanelManager.SetSceneContext(m_ActiveScene);
+
+        m_ActiveScene->OnRuntimeStart();
+    }
+
+    void EditorLayer::OnSceneStop()
+    {
+        if (!m_ActiveScene)
+            return;
+
+        m_SceneState = SceneState::Edit;
+
+        m_ActiveScene->OnRuntimeStop();
+        m_ActiveScene = m_EditorScene;
+
+        ScriptEngine::SetSceneContext(m_EditorScene);
+        m_PanelManager.SetSceneContext(m_ActiveScene);
+    }
+
+    void EditorLayer::CloseProject()
+    {
+        SaveProject();
+
+        m_PanelManager.SetSceneContext(nullptr);
+        ScriptEngine::SetSceneContext(nullptr);
+
+        if (Project::GetActive())
+            Project::SetActive(nullptr);
+
+        m_EditorScene = nullptr;
+        m_ActiveScene = nullptr;
+    }
+
+    void EditorLayer::NewProject(const std::string& name)
+    {
+        // Create project directory
+        std::filesystem::path projectPath = Filesystem::GetAppRootDirectory() / "Projects" / name;
+        Filesystem::CreateDirectory(projectPath);
+
+        // Copy new project template
+        Filesystem::Copy("Resources/Templates/NewProject", projectPath);
+
+        // Create directories
+        Filesystem::CreateDirectory(projectPath / "Assets" / "Scripts" / "Source");
+        Filesystem::CreateDirectory(projectPath / "Assets" / "Meshes");
+        Filesystem::CreateDirectory(projectPath / "Assets" / "Scenes");
+        Filesystem::CreateDirectory(projectPath / "Assets" / "Textures");
+
+        // Process templates
+        // Project config
+        {
+            std::ifstream in(projectPath / "project.json.template");
+            std::stringstream ss;
+            ss << in.rdbuf();
+            in.close();
+
+            std::string inputStr = ss.str();
+            ReplaceToken(inputStr, "$PROJECT_NAME$", name);
+
+            std::ofstream out(projectPath / "project.json");
+            out << inputStr;
+            out.close();
+
+            Filesystem::Rename(projectPath, "project.json", name + ".json");
+        }
+
+        // VS Solution file
+        {
+            Filesystem::Move(projectPath / "cs.sln.template", projectPath / "Assets" / "Scripts" / "cs.sln.template");
+
+            std::ifstream in(projectPath / "Assets" / "Scripts" / "cs.sln.template");
+            std::stringstream ss;
+            ss << in.rdbuf();
+            in.close();
+
+            std::string inputStr = ss.str();
+            ReplaceToken(inputStr, "$PROJECT_NAME$", name);
+
+            std::ofstream out(projectPath / "Assets" / "Scripts" / "cs.sln.template");
+            out << inputStr;
+            out.close();
+
+            Filesystem::Rename(projectPath / "Assets" / "Scripts", "cs.sln.template", name + ".sln");
+        }
+
+        // VS Project file
+        {
+            Filesystem::Move(projectPath / "cs.csproj.template", projectPath / "Assets" / "Scripts" / "cs.csproj.template");
+
+            std::ifstream in(projectPath / "Assets" / "Scripts" / "cs.csproj.template");
+            std::stringstream ss;
+            ss << in.rdbuf();
+            in.close();
+
+            std::string inputStr = ss.str();
+            ReplaceToken(inputStr, "$PROJECT_NAME$", name);
+
+            std::ofstream out(projectPath / "Assets" / "Scripts" / "cs.csproj.template");
+            out << inputStr;
+            out.close();
+
+            Filesystem::Rename(projectPath / "Assets" / "Scripts", "cs.csproj.template", name + ".csproj");
+        }
+
+        // Create hello world script
+        Filesystem::Copy("Resources/Templates/Scripts/Main.cs", projectPath / "Assets" / "Scripts" / "Source");
+
+        {
+            std::ifstream in(projectPath / "Assets" / "Scripts" / "Source" / "Main.cs");
+            std::stringstream ss;
+            ss << in.rdbuf();
+            in.close();
+
+            std::string inputStr = ss.str();
+            ReplaceToken(inputStr, "$PROJECT_NAME$", name);
+
+            std::ofstream out(projectPath / "Assets" / "Scripts" / "Source" / "Main.cs");
+            out << inputStr;
+            out.close();
+        }
+
+        // Open project
+        OpenProject(projectPath / std::filesystem::path(name + ".json"));
+    }
+
+    bool EditorLayer::OpenProject()
+    {
+        const std::filesystem::path filePath =
+            FileDialog::OpenFile("EppoEngine Project (*.json)\0*.json\0", Project::GetProjectsDirectory());
+
+        if (filePath.empty())
+        {
+            if (Project::GetActive())
+                return false;
+            else
+            {
+                s_NewProjectPopup = true;
+                return true;
+            }
+        }
+
+        OpenProject(filePath);
+
+        return true;
+    }
+
+    void EditorLayer::OpenProject(const std::filesystem::path& filepath)
+    {
+        if (Project::GetActive())
+            CloseProject();
+
+        if (Project::Open(filepath))
+        {
+            const auto& projSpec = Project::GetActive()->GetSpecification();
+
+            const std::filesystem::path scriptPath =
+                Project::GetAssetsDirectory() / "Scripts" / "Binaries" / std::filesystem::path(projSpec.Name + ".dll");
+            ScriptEngine::LoadAppAssembly(scriptPath);
+
+            if (!projSpec.StartScene)
+                NewScene();
+            else
+                OpenScene(projSpec.StartScene);
+
+            m_PanelManager.AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true, m_PanelManager);
+            Application::Get().GetWindow().SetWindowTitle("EppoEngine Editor - " + projSpec.Name);
+        }
+    }
+
+    void EditorLayer::SaveProject()
+    {
+        EPPO_ASSERT(Project::GetActive());
+
+        SaveScene();
+
+        Project::SaveActive();
+    }
+
+    void EditorLayer::NewScene()
+    {
+        // TODO: Check for changes. Maybe using a list of changes considering a undo feature
+        m_EditorScene = CreateRef<Scene>();
+        m_ActiveScene = m_EditorScene;
+        m_ActiveScenePath = std::filesystem::path();
+
+        m_PanelManager.SetSceneContext(m_ActiveScene);
+    }
+
+    void EditorLayer::OpenScene(const std::filesystem::path& filepath)
+    {
+        if (filepath.extension().string() != ".epscene")
+        {
+            EPPO_ERROR("Could not load '{}' because it is not a scene file!", filepath.string());
+            return;
+        }
+
+        const auto newScene = CreateRef<Scene>();
+        if (const SceneSerializer serializer(newScene); serializer.Deserialize(filepath))
+        {
+            m_EditorScene = newScene;
+            m_ActiveScene = m_EditorScene;
+            m_ActiveScenePath = filepath;
+
+            m_PanelManager.SetSceneContext(m_EditorScene);
+        }
+    }
+
+    void EditorLayer::OpenScene(const AssetHandle handle)
+    {
+        EPPO_ASSERT(handle);
+
+        if (m_SceneState != SceneState::Edit)
+            OnSceneStop();
+
+        m_EditorScene = AssetManager::GetAsset<Scene>(handle);
+        m_ActiveScene = m_EditorScene;
+
+        m_ActiveScenePath = Project::GetActive()->GetAssetManagerEditor()->GetFilepath(handle);
+
+        m_PanelManager.SetSceneContext(m_ActiveScene);
+    }
+
+    void EditorLayer::SaveScene()
+    {
+        if (m_ActiveScenePath.empty())
+            SaveSceneAs();
+        else
+            AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
+    }
+
+    void EditorLayer::SaveSceneAs()
+    {
+        if (const std::filesystem::path filepath = FileDialog::SaveFile("EppoEngine Scene (*.epscene)\0*.epscene\0"); !filepath.empty())
+        {
+            m_ActiveScenePath = filepath;
+            AssetImporter::ExportScene(m_ActiveScene, m_ActiveScenePath);
+        }
+    }
+
+    void EditorLayer::ImportAsset()
+    {
+        if (const std::filesystem::path filepath =
+                FileDialog::OpenFile("Asset file (.epscene, .glb, .gltf, .jpeg, .jpg, .png)\0*.epscene;*.glb;*.gltf;*.jpeg;*.jpg;*.png\0\0",
+                                     Project::GetAssetsDirectory());
+            !filepath.empty())
+        {
+            Project::GetActive()->GetAssetManagerEditor()->ImportAsset(filepath);
+        }
+    }
+
+    void EditorLayer::UI_File_NewProject()
+    {
+        if (constexpr ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+            ImGui::BeginPopupModal("New Project", nullptr, flags))
+        {
+            static char nameBuffer[200]{};
+            static bool projectExists = false;
+
+            ImGui::Text("Project Name");
+            ImGui::InputText("##ProjectName", nameBuffer, 200);
+
+            const auto projectPath = std::string(nameBuffer);
+            const std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
+
+            projectExists = Filesystem::Exists(fullProjectPath);
+
+            if (Filesystem::Exists(fullProjectPath) && !projectPath.empty())
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+                ImGui::Text("Project name already exists");
+                ImGui::PopStyleColor();
+            }
+            else
+            {
+                ImGui::Text("Project path: \n%s", fullProjectPath.string().c_str());
+            }
+
+            ImGui::Dummy(ImVec2(50, 20));
+
+            if (ImGui::Button("Cancel", ImVec2(100, 30)))
+                ImGui::CloseCurrentPopup();
+
+            ImGui::SameLine();
+
+            if (projectExists)
+                ImGui::BeginDisabled();
+
+            if (ImGui::Button("Create", ImVec2(100, 30)))
+            {
+                NewProject(projectPath);
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (projectExists)
+                ImGui::EndDisabled();
+
+            ImGui::EndPopup();
+        }
+    }
+    void EditorLayer::UI_File_OpenProject()
+    {
+        if (constexpr ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+            ImGui::BeginPopupModal("Open Project", nullptr, flags))
+        {
+            static std::array<bool, 250> selected{ false };
+
+            uint32_t index = 0;
+            for (const auto& path : std::filesystem::recursive_directory_iterator(Filesystem::GetAppRootDirectory() / "Projects"))
+            {
+                if (path.is_directory() && path.path().parent_path().filename() == "Projects")
+                {
+                    if (const auto p = path.path(); ImGui::BeginTable(p.string().c_str(), 3))
+                    {
+                        const auto name = p.filename().string();
+
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Selectable(name.c_str(), &selected[index], ImGuiSelectableFlags_SpanAllColumns);
+                        ImGui::Dummy(ImVec2(50, 50));
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(350.0f);
+                        ImGui::Text("0 Assets");
+                        ImGui::Text("15 Somethings");
+                        ImGui::TableNextColumn();
+                        ImGui::Button("Open");
+                        ImGui::EndTable();
+                    }
+                    index++;
+                }
+            }
+
+
+            ImGui::Selectable("Something", false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(100, 50));
+            ImGui::Selectable("Something", false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(100, 50));
+            ImGui::Selectable("Something", false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(100, 50));
+
+            /*if (ImGui::IsMouseDoubleClicked(0))
+                selection[3] = !selection[3];*/
+
+
+            /*const auto projectPath = std::string(nameBuffer);
+            const std::filesystem::path fullProjectPath = Filesystem::GetAppRootDirectory() / "Projects" / projectPath;
+
+            projectExists = Filesystem::Exists(fullProjectPath);
+
+            if (Filesystem::Exists(fullProjectPath) && !projectPath.empty())
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+                ImGui::Text("Project name already exists");
+                ImGui::PopStyleColor();
+            }
+            else
+            {
+                ImGui::Text("Project path: \n%s", fullProjectPath.string().c_str());
+            }
+
+            ImGui::Dummy(ImVec2(50, 20));
+
+            if (ImGui::Button("Cancel", ImVec2(100, 30)))
+                ImGui::CloseCurrentPopup();
+
+            ImGui::SameLine();
+
+            if (projectExists)
+                ImGui::BeginDisabled();
+
+            if (ImGui::Button("Create", ImVec2(100, 30)))
+            {
+                NewProject(projectPath);
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (projectExists)
+                ImGui::EndDisabled();*/
+
+            ImGui::EndPopup();
+        }
+    }
+
+    void EditorLayer::UI_File_Preferences()
+    {
+        if (constexpr ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+            ImGui::BeginPopupModal("Project settings", nullptr, flags))
+        {
+            auto& spec = Project::GetActive()->GetSpecification();
+
+            static std::string nameBuffer = std::string(200, ' ').replace(0, 200, spec.Name);
+
+            ImGui::Text("Project Name");
+            ImGui::InputText("##ProjectName", nameBuffer.data(), 200);
+
+            ImGui::Text("Project Directory");
+            ImGui::InputText("##ProjectDirectory", spec.ProjectDirectory.string().data(), spec.ProjectDirectory.string().length(),
+                             ImGuiInputTextFlags_ReadOnly);
+
+            ImGui::Text("Start Scene");
+
+            const auto assetManager = Project::GetActive()->GetAssetManagerEditor();
+            const auto& assetRegistry = assetManager->GetAssetRegistry();
+
+            const AssetHandle startScene = spec.StartScene;
+
+            if (const auto& startSceneMetadata = assetRegistry.at(startScene);
+                ImGui::BeginCombo("##StartScene", startSceneMetadata.GetName().c_str()))
+            {
+                for (const auto& metadata : assetRegistry | std::views::values)
+                {
+                    if (metadata.Type != AssetType::Scene)
+                        continue;
+
+                    const bool isSelected = startSceneMetadata.GetName() == metadata.GetName();
+
+                    if (ImGui::Selectable(metadata.GetName().c_str(), isSelected))
+                        spec.StartScene = metadata.Handle;
+
+                    if (isSelected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+
+            if (ImGui::Button("OK", ImVec2(100, 30)))
+                ImGui::CloseCurrentPopup();
+
+            ImGui::EndPopup();
+        }
+    }
+
+    void EditorLayer::UI_Toolbar()
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+        ImGui::Begin("Scene Control", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        const float buttonSize = ImGui::GetWindowHeight() - 4.0f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+        ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (buttonSize * 0.5f));
+
+        if (m_SceneState == SceneState::Edit)
+        {
+            if (UI::ImageButton("##Play", m_IconPlay, ImVec2(buttonSize, buttonSize)))
+                OnScenePlay();
+        }
+        else if (m_SceneState == SceneState::Play)
+        {
+            if (UI::ImageButton("##Stop", m_IconStop, ImVec2(buttonSize, buttonSize)))
+                OnSceneStop();
+        }
+
+        ImGui::PopStyleVar(3);
+        ImGui::End();
+    }
 }

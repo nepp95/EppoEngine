@@ -2,14 +2,14 @@
 
 namespace Eppo
 {
-	class ScriptGlue
-	{
-	public:
-		static void RegisterFunctions();
-		static void RegisterComponents();
+    class ScriptGlue
+    {
+    public:
+        static void RegisterFunctions();
+        static void RegisterComponents();
 
-	private:
-		template<typename T>
-		static void RegisterComponent();
-	};
+    private:
+        template<typename T>
+        static void RegisterComponent();
+    };
 }

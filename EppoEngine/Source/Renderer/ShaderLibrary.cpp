@@ -3,26 +3,26 @@
 
 namespace Eppo
 {
-	void ShaderLibrary::Load(const std::string_view path)
-	{
-		EPPO_PROFILE_FUNCTION("ShaderLibrary::Load");
+    void ShaderLibrary::Load(const std::string_view path)
+    {
+        EPPO_PROFILE_FUNCTION("ShaderLibrary::Load");
 
-		ShaderSpecification spec;
-		spec.Filepath = path;
+        ShaderSpecification spec;
+        spec.Filepath = path;
 
-		const Ref<Shader> shader = Shader::Create(spec);
-		const std::string& name = shader->GetName();
+        const Ref<Shader> shader = Shader::Create(spec);
+        const std::string& name = shader->GetName();
 
-		std::scoped_lock lock(m_Mutex);
+        std::scoped_lock lock(m_Mutex);
 
-		m_Shaders[name] = shader;
-	}
+        m_Shaders[name] = shader;
+    }
 
-	const Ref<Shader>& ShaderLibrary::Get(const std::string& name)
-	{
-		EPPO_PROFILE_FUNCTION("ShaderLibrary::Get");
+    const Ref<Shader>& ShaderLibrary::Get(const std::string& name)
+    {
+        EPPO_PROFILE_FUNCTION("ShaderLibrary::Get");
 
-		EPPO_ASSERT(m_Shaders.find(name) != m_Shaders.end())
-		return m_Shaders.at(name);
-	}
+        EPPO_ASSERT(m_Shaders.contains(name));
+        return m_Shaders.at(name);
+    }
 }

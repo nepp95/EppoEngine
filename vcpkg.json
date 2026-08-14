@@ -1,0 +1,58 @@
+{
+  "name": "eppoengine",
+  "version-string": "1.0.0",
+  "builtin-baseline": "bf1a3841b259bc4a14937e4c2f618914018e53a8",
+  "dependencies": [
+    {
+      "name": "efsw",
+      "version>=": "1.4.1"
+    },
+    {
+      "name": "entt",
+      "version>=": "3.15.0"
+    },
+    {
+      "name": "fmt",
+      "version>=": "11.0.2#1"
+    },
+    {
+      "name": "glfw3",
+      "version>=": "3.4#1"
+    },
+    {
+      "name": "glm",
+      "version>=": "1.0.1#3"
+    },
+    {
+      "name": "gtest",
+      "version>=": "1.16.0",
+      "features": [
+        "cxx17"
+      ]
+    },
+    {
+      "name": "joltphysics",
+      "version>=": "5.3.0"
+    },
+    {
+      "name": "nlohmann-json",
+      "version>=": "3.11.3#1"
+    },
+    {
+      "name": "spdlog",
+      "version>=": "1.15.2"
+    },
+    {
+      "name": "tracy",
+      "version>=": "0.11.1#2"
+    },
+    {
+      "name": "vcpkg-cmake",
+      "version>=": "2024-04-23"
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "version>=": "2024-05-23"
+    }
+  ]
+}

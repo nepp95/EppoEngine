@@ -1,0 +1,12 @@
+[
+    {
+        "AssetHandle": 2502917179482176098,
+        "Filepath": "Scenes/Test.json",
+        "Type": "Scene"
+    },
+    {
+        "AssetHandle": 17362452449132321929,
+        "Filepath": "Meshes/Sponza.glb",
+        "Type": "Mesh"
+    }
+]

@@ -1,9 +1,12 @@
 # IDE
+.idea
 .vs
 .vscode
+cmake-build-debug
+cmake-build-release
+build
 
 *.vcxproj*
-*.csproj*
 *.sln
 
 Makefile
@@ -21,3 +24,4 @@ Makefile
 /EppoEditor/Resources/Shaders/Cache
 __pycache__
 
+CMakeSettings.json
