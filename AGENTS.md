@@ -148,4 +148,4 @@ Seven domain skills live in `.agents/skills/` (each `SKILL.md` + `references/arc
 
 ## CI
 
-GitLab CI (`.gitlab-ci.yml`): runs on MRs, `master`, `develop`, `feature/*`, `test/*`. On Linux it generates Ninja with Premake beta8, builds only `EppoEngineTesting_Debug_x64`, runs `ctest --label-exclude graphical`, and publishes JUnit. The toolchain is baked into `.gitlab/ci/Dockerfile`; the vcpkg binary cache is keyed on `vcpkg.json` + `vcpkg-configuration.json`. Use `glab` CLI for MR operations.
+GitHub Actions (`.github/workflows/ci.yml`) runs the `EppoEngineTesting` Debug, Release and Dist configurations on Linux and Windows for pull requests and pushes to `master` or `develop`, plus manual dispatches. Every job runs `ctest --label-exclude graphical` and retains its JUnit report for 30 days. The pinned Vulkan SDK, Premake and vcpkg tools are cached per host under `.eppo/tools`; vcpkg binary packages are restored from GitHub Packages through its NuGet provider. Pull requests read the package cache, while trusted pushes and manual runs can update it.

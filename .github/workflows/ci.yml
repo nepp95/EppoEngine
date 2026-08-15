@@ -1,0 +1,282 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master, develop]
+  push:
+    branches: [master, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  VULKAN_SDK_VERSION: 1.4.309.0
+  VCPKG_COMMIT: 8779f47d2db0785ee034b47fdfdcdb0e88b7010e
+  VCPKG_ROOT: ${{ github.workspace }}/.eppo/tools/vcpkg/8779f47d2db0785ee034b47fdfdcdb0e88b7010e
+  VCPKG_DISABLE_METRICS: "1"
+  VCPKG_DOWNLOADS: ${{ github.workspace }}/build/vcpkg-downloads
+  VCPKG_NUGET_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+  VCPKG_BINARY_SOURCES: clear;nuget,GitHubPackages,${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'readwrite' || 'read' }}
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  build-test:
+    name: ${{ matrix.system }} / ${{ matrix.configuration }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: linux
+            configuration: Debug
+          - runner: ubuntu-24.04
+            system: linux
+            configuration: Release
+          - runner: ubuntu-24.04
+            system: linux
+            configuration: Dist
+          - runner: windows-2025-vs2026
+            system: windows
+            configuration: Debug
+          - runner: windows-2025-vs2026
+            system: windows
+            configuration: Release
+          - runner: windows-2025-vs2026
+            system: windows
+            configuration: Dist
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Restore build tools
+        id: build-tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .eppo/tools
+          key: eppo-tools-${{ runner.os }}-vulkan-1.4.309.0-premake-5.0.0-beta8-vcpkg-8779f47d${{ runner.os == 'Windows' && '-debug-libraries' || '' }}
+
+      - name: Install Linux prerequisites
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake autoconf-archive bison flex libtool libltdl-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libxext-dev libwayland-dev libxkbcommon-dev wayland-protocols \
+            libgl1-mesa-dev libglu1-mesa-dev mono-complete pkg-config uuid-dev
+
+      - name: Install Vulkan SDK on Linux
+        if: runner.os == 'Linux' && steps.build-tools.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/vulkansdk.tar.xz"
+          curl -fsSL "https://sdk.lunarg.com/sdk/download/$VULKAN_SDK_VERSION/linux/vulkansdk-linux-x86_64-$VULKAN_SDK_VERSION.tar.xz" -o "$archive"
+          echo "616a25a9d8b33336e83957f97ca273b8e95461649723354300d02c26ae52a1f6  $archive" | sha256sum --check
+          mkdir -p .eppo/tools/vulkan
+          tar -xf "$archive" -C .eppo/tools/vulkan
+
+      - name: Install Vulkan SDK on Windows
+        if: runner.os == 'Windows' && steps.build-tools.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP "VulkanSDK-Installer.exe"
+          $destination = Join-Path $env:GITHUB_WORKSPACE ".eppo/tools/vulkan/$env:VULKAN_SDK_VERSION"
+          curl.exe --fail --location "https://sdk.lunarg.com/sdk/download/$env:VULKAN_SDK_VERSION/windows/VulkanSDK-$env:VULKAN_SDK_VERSION-Installer.exe" --output $installer
+          if ((Get-FileHash -Algorithm SHA256 $installer).Hash -ne "48B132169B64FE65CDB0F20970195335A65354E73F1EA5373032C2A8BBAD4297") {
+              throw "The Vulkan SDK installer checksum does not match."
+          }
+          $process = Start-Process -FilePath $installer -ArgumentList @(
+              "--root", $destination,
+              "--accept-licenses", "--default-answer", "--confirm-command", "install",
+              "com.lunarg.vulkan", "com.lunarg.vulkan.debug", "copy_only=1"
+          ) -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+              throw "The Vulkan SDK installer failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Configure Vulkan SDK on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          vulkan_root="$GITHUB_WORKSPACE/.eppo/tools/vulkan/$VULKAN_SDK_VERSION/x86_64"
+          test -x "$vulkan_root/bin/dxc"
+          test -f "$vulkan_root/lib/libdxcompiler.so"
+          echo "VULKAN_SDK=$vulkan_root" >> "$GITHUB_ENV"
+          echo "$vulkan_root/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$vulkan_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
+      - name: Configure Vulkan SDK on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vulkanRoot = Join-Path $env:GITHUB_WORKSPACE ".eppo/tools/vulkan/$env:VULKAN_SDK_VERSION"
+          if (!(Test-Path (Join-Path $vulkanRoot "Bin/dxc.exe")) -or !(Test-Path (Join-Path $vulkanRoot "Bin/dxcompiler.dll"))) {
+              throw "The cached Vulkan SDK is incomplete."
+          }
+          "VULKAN_SDK=$vulkanRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $vulkanRoot "Bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up MSBuild
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3
+        with:
+          vs-version: "[18.0,19.0)"
+
+      - name: Provision pinned vcpkg on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p "$VCPKG_DOWNLOADS"
+          if [[ ! -x "$VCPKG_ROOT/vcpkg" ]]; then
+            mkdir -p "$(dirname "$VCPKG_ROOT")"
+            git init "$VCPKG_ROOT"
+            git -C "$VCPKG_ROOT" remote add origin https://github.com/microsoft/vcpkg.git
+            git -C "$VCPKG_ROOT" fetch --depth 1 origin "$VCPKG_COMMIT"
+            git -C "$VCPKG_ROOT" checkout --detach FETCH_HEAD
+            "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          fi
+          test "$(git -C "$VCPKG_ROOT" rev-parse HEAD)" = "$VCPKG_COMMIT"
+
+      - name: Provision pinned vcpkg on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (!(Test-Path (Join-Path $env:VCPKG_ROOT "vcpkg.exe"))) {
+              New-Item -ItemType Directory -Force (Split-Path $env:VCPKG_ROOT) | Out-Null
+              git init $env:VCPKG_ROOT
+              git -C $env:VCPKG_ROOT remote add origin https://github.com/microsoft/vcpkg.git
+              git -C $env:VCPKG_ROOT fetch --depth 1 origin $env:VCPKG_COMMIT
+              git -C $env:VCPKG_ROOT checkout --detach FETCH_HEAD
+              & (Join-Path $env:VCPKG_ROOT "bootstrap-vcpkg.bat") -disableMetrics
+              if ($LASTEXITCODE -ne 0) {
+                  exit $LASTEXITCODE
+              }
+          }
+          if ((git -C $env:VCPKG_ROOT rev-parse HEAD) -ne $env:VCPKG_COMMIT) {
+              throw "The cached vcpkg checkout is not the pinned commit."
+          }
+
+      - name: Provision pinned build tools on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: python3 Scripts/Setup.py --action ninja --compiler clang --yes --skip-dependencies --no-generate
+
+      - name: Provision pinned build tools on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & .\Scripts\Setup.bat --action vs2026 --compiler msc --yes --skip-dependencies --no-generate
+          if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+          }
+
+      - name: Configure GitHub Packages for vcpkg on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          nuget=$("$VCPKG_ROOT/vcpkg" fetch nuget | tail -n 1)
+          mono "$nuget" sources add \
+            -Source "https://nuget.pkg.github.com/$GITHUB_REPOSITORY_OWNER/index.json" \
+            -StorePasswordInClearText \
+            -Name GitHubPackages \
+            -UserName "$GITHUB_REPOSITORY_OWNER" \
+            -Password "$GITHUB_TOKEN" \
+            -NonInteractive
+          mono "$nuget" setapikey "$GITHUB_TOKEN" \
+            -Source "https://nuget.pkg.github.com/$GITHUB_REPOSITORY_OWNER/index.json" \
+            -NonInteractive
+
+      - name: Configure GitHub Packages for vcpkg on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $vcpkg = Join-Path $env:VCPKG_ROOT "vcpkg.exe"
+          $nuget = (& $vcpkg fetch nuget | Select-Object -Last 1).Trim()
+          & $nuget sources add `
+              -Source "https://nuget.pkg.github.com/$env:GITHUB_REPOSITORY_OWNER/index.json" `
+              -StorePasswordInClearText `
+              -Name GitHubPackages `
+              -UserName $env:GITHUB_REPOSITORY_OWNER `
+              -Password $env:GITHUB_TOKEN `
+              -NonInteractive
+          if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+          }
+          & $nuget setapikey $env:GITHUB_TOKEN `
+              -Source "https://nuget.pkg.github.com/$env:GITHUB_REPOSITORY_OWNER/index.json" `
+              -NonInteractive
+          if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+          }
+
+      - name: Generate build files on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: python3 Scripts/Setup.py --action ninja --compiler clang --yes
+
+      - name: Generate build files on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & .\Scripts\Setup.bat --action vs2026 --compiler msc --yes
+          if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+          }
+
+      - name: Build tests on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ninja EppoEngineTesting_${{ matrix.configuration }}_x64
+
+      - name: Build tests on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: msbuild EppoEngine.slnx /restore /t:EppoEngineTesting /p:Configuration=${{ matrix.configuration }} /p:Platform=x64 /v:minimal
+
+      - name: Run tests
+        run: >-
+          ctest
+          --test-dir build/bin/${{ matrix.configuration }}-${{ matrix.system }}-x86_64
+          --label-exclude graphical
+          --output-on-failure
+          --output-junit build/bin/${{ matrix.configuration }}-${{ matrix.system }}-x86_64/report.xml
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-report-${{ matrix.system }}-${{ matrix.configuration }}
+          path: build/bin/${{ matrix.configuration }}-${{ matrix.system }}-x86_64/report.xml
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Remove transient vcpkg files from the build-tools cache
+        if: always()
+        shell: pwsh
+        run: |
+          $vcpkgRoot = $env:VCPKG_ROOT
+          foreach ($directory in @("buildtrees", "downloads", "packages")) {
+              $path = Join-Path $vcpkgRoot $directory
+              if (Test-Path $path) {
+                  Remove-Item -LiteralPath $path -Recurse -Force
+              }
+          }
