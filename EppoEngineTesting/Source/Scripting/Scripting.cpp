@@ -1831,6 +1831,34 @@ TEST(Scripting, RigidBodyComponent_AngularDamping_RoundTripsSceneValue)
     engine.OnDestroyEntity(entity);
 }
 
+TEST(Scripting, RigidBodyComponent_MotionLockGetters_FalseValuesMarshalAcrossNativeBoundary)
+{
+    EP_REQUIRE(EnsureRuntime());
+
+    const Ref<Scene> scene = CreateRef<Scene>();
+    auto& engine = ScriptEngine::Get();
+    Entity entity = MakeContextEntity(scene);
+    entity.AddComponent<RigidBodyComponent>();
+
+    const ScriptClass* c = FindClass(kUserClass);
+    EP_REQUIRE(c != nullptr);
+
+    const char* getters[] = {
+        "RigidBodyComponent_GetLockLinearX",  "RigidBodyComponent_GetLockLinearY",  "RigidBodyComponent_GetLockLinearZ",
+        "RigidBodyComponent_GetLockAngularX", "RigidBodyComponent_GetLockAngularY", "RigidBodyComponent_GetLockAngularZ",
+    };
+    for (const char* name : getters)
+    {
+        const ScriptMethod* getter = c->GetMethod(name);
+        EP_REQUIRE(getter != nullptr);
+        bool got = true;
+        c->InvokeMethod(entity, *getter, nullptr, &got);
+        EXPECT_FALSE(got);
+    }
+
+    engine.OnDestroyEntity(entity);
+}
+
 TEST(Scripting, RigidBodyComponent_MotionLocks_RoundTripSceneValues)
 {
     EP_REQUIRE(EnsureRuntime());
