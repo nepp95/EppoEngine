@@ -82,12 +82,12 @@ namespace Eppo
         }
 
 #pragma region Core
-        auto Input_IsKeyPressed(const uint16_t keyCode) -> bool
+        auto Input_IsKeyPressed(const uint16_t keyCode) -> uint8_t
         {
             return Input::IsKeyPressed(keyCode);
         }
 
-        auto Input_IsMouseButtonPressed(const uint16_t button) -> bool
+        auto Input_IsMouseButtonPressed(const uint16_t button) -> uint8_t
         {
             return Input::IsMouseButtonPressed(button);
         }
@@ -175,7 +175,7 @@ namespace Eppo
             outHit->EntityId = static_cast<uint64_t>(hit.EntityId);
         }
 
-        auto Physics_OverlapsSphere(const uint64_t id, const glm::vec3* center, const float radius) -> bool
+        auto Physics_OverlapsSphere(const uint64_t id, const glm::vec3* center, const float radius) -> uint8_t
         {
             const auto world = ScriptEngine::Get().GetActivePhysicsWorld();
             if (!world)
@@ -186,7 +186,7 @@ namespace Eppo
 #pragma endregion
 
 #pragma region Scene
-        auto Entity_HasComponent(const uint64_t id, const char* typeName) -> bool
+        auto Entity_HasComponent(const uint64_t id, const char* typeName) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity)
@@ -254,7 +254,7 @@ namespace Eppo
                 entity.TryAddComponent<CylinderColliderComponent>();
         }
 
-        auto Entity_RemoveComponent(const uint64_t id, const char* typeName) -> bool
+        auto Entity_RemoveComponent(const uint64_t id, const char* typeName) -> uint8_t
         {
             Entity entity = GetEntity(id);
             if (!entity)
@@ -446,7 +446,7 @@ namespace Eppo
             entity.GetComponent<MeshComponent>().MeshHandle = handle;
         }
 
-        auto CameraComponent_GetPrimary(const uint64_t id) -> bool
+        auto CameraComponent_GetPrimary(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<CameraComponent>())
@@ -455,13 +455,13 @@ namespace Eppo
             return entity.GetComponent<CameraComponent>().Primary;
         }
 
-        auto CameraComponent_SetPrimary(const uint64_t id, const bool primary) -> void
+        auto CameraComponent_SetPrimary(const uint64_t id, const uint8_t primary) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<CameraComponent>())
                 return;
 
-            entity.GetComponent<CameraComponent>().Primary = primary;
+            entity.GetComponent<CameraComponent>().Primary = primary != 0;
         }
 
         auto CameraComponent_GetVerticalFov(const uint64_t id) -> float
@@ -706,7 +706,7 @@ namespace Eppo
             entity.GetComponent<RigidBodyComponent>().AngularDamping = angularDamping;
         }
 
-        auto RigidBodyComponent_GetLockLinearX(const uint64_t id) -> bool
+        auto RigidBodyComponent_GetLockLinearX(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
@@ -715,16 +715,16 @@ namespace Eppo
             return entity.GetComponent<RigidBodyComponent>().LockLinearX;
         }
 
-        auto RigidBodyComponent_SetLockLinearX(const uint64_t id, const bool locked) -> void
+        auto RigidBodyComponent_SetLockLinearX(const uint64_t id, const uint8_t locked) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
                 return;
 
-            entity.GetComponent<RigidBodyComponent>().LockLinearX = locked;
+            entity.GetComponent<RigidBodyComponent>().LockLinearX = locked != 0;
         }
 
-        auto RigidBodyComponent_GetLockLinearY(const uint64_t id) -> bool
+        auto RigidBodyComponent_GetLockLinearY(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
@@ -733,16 +733,16 @@ namespace Eppo
             return entity.GetComponent<RigidBodyComponent>().LockLinearY;
         }
 
-        auto RigidBodyComponent_SetLockLinearY(const uint64_t id, const bool locked) -> void
+        auto RigidBodyComponent_SetLockLinearY(const uint64_t id, const uint8_t locked) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
                 return;
 
-            entity.GetComponent<RigidBodyComponent>().LockLinearY = locked;
+            entity.GetComponent<RigidBodyComponent>().LockLinearY = locked != 0;
         }
 
-        auto RigidBodyComponent_GetLockLinearZ(const uint64_t id) -> bool
+        auto RigidBodyComponent_GetLockLinearZ(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
@@ -751,16 +751,16 @@ namespace Eppo
             return entity.GetComponent<RigidBodyComponent>().LockLinearZ;
         }
 
-        auto RigidBodyComponent_SetLockLinearZ(const uint64_t id, const bool locked) -> void
+        auto RigidBodyComponent_SetLockLinearZ(const uint64_t id, const uint8_t locked) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
                 return;
 
-            entity.GetComponent<RigidBodyComponent>().LockLinearZ = locked;
+            entity.GetComponent<RigidBodyComponent>().LockLinearZ = locked != 0;
         }
 
-        auto RigidBodyComponent_GetLockAngularX(const uint64_t id) -> bool
+        auto RigidBodyComponent_GetLockAngularX(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
@@ -769,16 +769,16 @@ namespace Eppo
             return entity.GetComponent<RigidBodyComponent>().LockAngularX;
         }
 
-        auto RigidBodyComponent_SetLockAngularX(const uint64_t id, const bool locked) -> void
+        auto RigidBodyComponent_SetLockAngularX(const uint64_t id, const uint8_t locked) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
                 return;
 
-            entity.GetComponent<RigidBodyComponent>().LockAngularX = locked;
+            entity.GetComponent<RigidBodyComponent>().LockAngularX = locked != 0;
         }
 
-        auto RigidBodyComponent_GetLockAngularY(const uint64_t id) -> bool
+        auto RigidBodyComponent_GetLockAngularY(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
@@ -787,16 +787,16 @@ namespace Eppo
             return entity.GetComponent<RigidBodyComponent>().LockAngularY;
         }
 
-        auto RigidBodyComponent_SetLockAngularY(const uint64_t id, const bool locked) -> void
+        auto RigidBodyComponent_SetLockAngularY(const uint64_t id, const uint8_t locked) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
                 return;
 
-            entity.GetComponent<RigidBodyComponent>().LockAngularY = locked;
+            entity.GetComponent<RigidBodyComponent>().LockAngularY = locked != 0;
         }
 
-        auto RigidBodyComponent_GetLockAngularZ(const uint64_t id) -> bool
+        auto RigidBodyComponent_GetLockAngularZ(const uint64_t id) -> uint8_t
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
@@ -805,13 +805,13 @@ namespace Eppo
             return entity.GetComponent<RigidBodyComponent>().LockAngularZ;
         }
 
-        auto RigidBodyComponent_SetLockAngularZ(const uint64_t id, const bool locked) -> void
+        auto RigidBodyComponent_SetLockAngularZ(const uint64_t id, const uint8_t locked) -> void
         {
             const Entity entity = GetEntity(id);
             if (!entity || !entity.HasComponent<RigidBodyComponent>())
                 return;
 
-            entity.GetComponent<RigidBodyComponent>().LockAngularZ = locked;
+            entity.GetComponent<RigidBodyComponent>().LockAngularZ = locked != 0;
         }
 
         auto BoxColliderComponent_GetHalfSize(const uint64_t id, glm::vec3* outHalfSize) -> void

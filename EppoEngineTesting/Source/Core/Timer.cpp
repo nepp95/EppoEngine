@@ -8,6 +8,7 @@ TEST(Core, Timer_StartsOnConstruction)
     using namespace std::chrono;
 
     Timer timer;
+    std::this_thread::sleep_for(2ms);
     EXPECT_LT(0, timer.GetElapsedMilliseconds());
 
     auto elapsed = timer.GetElapsedMilliseconds();
