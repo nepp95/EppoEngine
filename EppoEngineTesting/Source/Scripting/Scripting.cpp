@@ -631,7 +631,7 @@ TEST(Scripting, ScriptEngine_ReloadProjectAssembly_WithoutAnActiveProject_Fails)
 // Editor-managed projects live under the root directory, so a script build that
 // writes above them compiles an empty assembly: the .NET SDK excludes everything
 // under OutputPath from the default compile glob, and reports success anyway.
-TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ForProjectUnderTheProjectsDirectory_DiscoversScriptClasses)
+TEST(ScriptReloadGraphical, ScriptEngine_ReloadProjectAssembly_ForProjectUnderTheProjectsDirectory_DiscoversScriptClasses)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -696,7 +696,7 @@ public class ProbeScript : Entity
     EXPECT_EQ(true, discovered);
 }
 
-TEST(Scripting, ScriptEngine_ReloadProjectAssembly_WithBrokenScript_LeavesPreviousAssemblyLoadedButInvalid)
+TEST(ScriptReloadGraphical, ScriptEngine_ReloadProjectAssembly_WithBrokenScript_LeavesPreviousAssemblyLoadedButInvalid)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -782,7 +782,7 @@ TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ProjectWithoutCsproj_Succeeds
     EXPECT_TRUE(valid);
 }
 
-TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ReplacesOldClassesWithNewOnes)
+TEST(ScriptReloadGraphical, ScriptEngine_ReloadProjectAssembly_ReplacesOldClassesWithNewOnes)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -865,7 +865,7 @@ public class ProbeScriptB : Entity
     EXPECT_TRUE(newPresent);
 }
 
-TEST(Scripting, ScriptEngine_ReloadProjectAssembly_ClearsEntityInstances)
+TEST(ScriptReloadGraphical, ScriptEngine_ReloadProjectAssembly_ClearsEntityInstances)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -935,7 +935,7 @@ public class ProbeScript : Entity
     EXPECT_TRUE(instanceCleared);
 }
 
-TEST(Scripting, ScriptEngine_ReloadProjectAssembly_PreservesFieldStorage)
+TEST(ScriptReloadGraphical, ScriptEngine_ReloadProjectAssembly_PreservesFieldStorage)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -1017,7 +1017,7 @@ public class ProbeScript : Entity
     EXPECT_TRUE(valueSurvived);
 }
 
-TEST(Scripting, ScriptEngine_ReloadProjectAssembly_MultipleReloadsInSequence)
+TEST(ScriptReloadGraphical, ScriptEngine_ReloadProjectAssembly_MultipleReloadsInSequence)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -2644,7 +2644,7 @@ public class ReplacementScript : Entity
     }
 }
 
-TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotBlockMainThread)
+TEST(ScriptReloadGraphical, ScriptEngine_VerifyRuntime_DoesNotBlockMainThread)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -2684,7 +2684,7 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotBlockMainThread)
 
 // After the build completes, a normal application frame must publish the replacement
 // assembly so its script classes become available.
-TEST(Scripting, ScriptEngine_VerifyRuntime_SuccessfulBuildReplacesAssembly)
+TEST(ScriptReloadGraphical, ScriptEngine_VerifyRuntime_SuccessfulBuildReplacesAssembly)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -2718,7 +2718,7 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_SuccessfulBuildReplacesAssembly)
 }
 
 // While a scene context is set (play mode), VerifyRuntime must not trigger a build.
-TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotReloadDuringPlayMode)
+TEST(ScriptReloadGraphical, ScriptEngine_VerifyRuntime_DoesNotReloadDuringPlayMode)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -2756,7 +2756,7 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_DoesNotReloadDuringPlayMode)
     EXPECT_TRUE(replacementClassValid);
 }
 
-TEST(Scripting, ScriptEngine_VerifyRuntime_BuildFailureLeavesPreviousAssemblyLoadedButInvalid)
+TEST(ScriptReloadGraphical, ScriptEngine_VerifyRuntime_BuildFailureLeavesPreviousAssemblyLoadedButInvalid)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
@@ -2798,7 +2798,7 @@ TEST(Scripting, ScriptEngine_VerifyRuntime_BuildFailureLeavesPreviousAssemblyLoa
 }
 
 // Five rapid saves must collapse into a single pending build task, not five.
-TEST(Scripting, ScriptEngine_VerifyRuntime_BurstOfChangesCollapsesIntoOneBuild)
+TEST(ScriptReloadGraphical, ScriptEngine_VerifyRuntime_BurstOfChangesCollapsesIntoOneBuild)
 {
     EP_REQUIRE(EnsureRuntime());
     if (!Testing::AppHarness::IsAvailable())
