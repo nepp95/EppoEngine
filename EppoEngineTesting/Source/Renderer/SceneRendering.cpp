@@ -159,17 +159,15 @@ namespace
         EP_REQUIRE(rowPitch >= packedRowSize);
         for (uint32_t y = 0; y < readback.Height; y++)
             std::memcpy(
-                readback.Pixels.data() + static_cast<size_t>(y) * packedRowSize, mapped + static_cast<size_t>(y) * rowPitch,
-                packedRowSize
+                readback.Pixels.data() + static_cast<size_t>(y) * packedRowSize, mapped + static_cast<size_t>(y) * rowPitch, packedRowSize
             );
 
         device->unmapStagingTexture(stagingTexture);
         return readback;
     }
 
-    [[nodiscard]] auto ProjectToPixel(
-        const EditorCamera& camera, const glm::vec3& worldPosition, const uint32_t width, const uint32_t height
-    ) -> glm::ivec2
+    [[nodiscard]] auto
+    ProjectToPixel(const EditorCamera& camera, const glm::vec3& worldPosition, const uint32_t width, const uint32_t height) -> glm::ivec2
     {
         const glm::vec4 clip = camera.GetViewProjection() * glm::vec4(worldPosition, 1.0f);
         EP_REQUIRE(clip.w > 0.0f);
@@ -245,9 +243,7 @@ namespace
         };
     }
 
-    [[nodiscard]] auto AverageNeighbourLuminanceDelta(
-        const Rgba8Readback& readback, const glm::ivec2 center, const int32_t radius
-    ) -> float
+    [[nodiscard]] auto AverageNeighbourLuminanceDelta(const Rgba8Readback& readback, const glm::ivec2 center, const int32_t radius) -> float
     {
         float delta = 0.0f;
         uint32_t sampleCount = 0;
@@ -315,11 +311,23 @@ TEST(Renderer, SceneRenderer_BloomIntensityRaisesNeighbourLuminance)
     EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     camera.SetViewportSize(width, height);
 
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
     const Rgba8Readback disabled = ReadRgba8(sceneRenderer->GetFinalImage());
 
     bloom.Intensity = 0.55f;
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
     const Rgba8Readback enabled = ReadRgba8(sceneRenderer->GetFinalImage());
 
     const glm::ivec2 neighbour = ProjectToPixel(camera, glm::vec3(0.5f, 0.0f, 0.0f), width, height);
@@ -349,11 +357,23 @@ TEST(Renderer, SceneRenderer_BloomRadiusWidensHalo)
     EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     camera.SetViewportSize(width, height);
 
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
     const Rgba8Readback narrow = ReadRgba8(sceneRenderer->GetFinalImage());
 
     bloom.Radius = 4.0f;
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
     const Rgba8Readback wide = ReadRgba8(sceneRenderer->GetFinalImage());
 
     const glm::ivec2 farNeighbour = ProjectToPixel(camera, glm::vec3(1.1f, 0.0f, 0.0f), width, height);
@@ -380,7 +400,13 @@ TEST(Renderer, SceneRenderer_PointLightAndGradientSky_RendersWithoutError)
     const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
 
     // Render across several real frames to cycle the frames-in-flight indices.
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     EXPECT_TRUE(sceneRenderer->GetFinalImage() != nullptr);
     EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
@@ -393,18 +419,29 @@ TEST(Renderer, SceneRenderer_HdrSceneTonemapsBeforeDepthAwareWireframes)
         return;
 
     const Ref<Scene> scene = ctx.GetScene();
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 64u, .Height = 64u });
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 64u, .Height = 64u });
     Entity overlay = scene->CreateEntity("Depth-aware wireframe");
     overlay.AddComponent<BoxColliderComponent>();
     sceneRenderer->SetDebugRenderingEnabled(true);
     sceneRenderer->SetShowColliders(true);
 
     const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     sceneRenderer->Resize(96u, 48u);
-    ctx.AdvanceFrames(1, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        1,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
     EP_REQUIRE(finalImage != nullptr);
@@ -450,19 +487,30 @@ TEST(Renderer, SceneRenderer_DirectionalShadowDarkensReceiverAndSurvivesResize)
     EditorCamera camera(glm::vec3(0.0f, 5.0f, 16.0f), -32.0f, -90.0f);
     camera.SetViewportSize(initialWidth, initialHeight);
 
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     const Rgba8Readback readback = ReadRgba8(sceneRenderer->GetFinalImage());
     const float shadowed = AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), initialWidth, initialHeight));
-    const float lit =
-        AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight));
+    const float lit = AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight));
     EXPECT_TRUE(lit > shadowed + 0.05f);
 
     constexpr uint32_t resizedWidth = 320u;
     constexpr uint32_t resizedHeight = 180u;
     sceneRenderer->Resize(resizedWidth, resizedHeight);
     camera.SetViewportSize(resizedWidth, resizedHeight);
-    ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
     EP_REQUIRE(finalImage != nullptr);
@@ -489,15 +537,24 @@ TEST(Renderer, SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)
     sun.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f, 0.0f, -3.0f);
 
     constexpr uint32_t size = 256u;
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{
-        .Width = size,
-        .Height = size,
-        .EnableDebugRendering = true,
-    });
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(
+        scene,
+        SceneRendererSpecification{
+            .Width = size,
+            .Height = size,
+            .EnableDebugRendering = true,
+        }
+    );
     EditorCamera camera(glm::vec3(0.0f, 0.0f, 5.0f), 0.0f, -90.0f);
     camera.SetViewportSize(size, size);
 
-    ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
     const Rgba8Readback down = ReadRgba8(sceneRenderer->GetFinalImage());
     const glm::ivec2 sunSample = ProjectToPixel(camera, glm::vec3(0.28f, 0.0f, 0.0f), size, size);
     const glm::ivec2 downSample = ProjectToPixel(camera, glm::vec3(0.0f, -0.75f, 0.0f), size, size);
@@ -507,7 +564,13 @@ TEST(Renderer, SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)
     EXPECT_TRUE(MaxLuminance(down, rightSample) < 0.1f);
 
     sun.GetComponent<TransformComponent>().Rotation.z = glm::half_pi<float>();
-    ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
     const Rgba8Readback right = ReadRgba8(sceneRenderer->GetFinalImage());
     EXPECT_TRUE(MaxLuminance(right, rightSample) > 0.3f);
     EXPECT_TRUE(MaxLuminance(right, downSample) < 0.1f);
@@ -548,14 +611,19 @@ TEST(Renderer, SceneRenderer_SkyboxEnvironment_BakesIblAndRendersCleanly)
     Entity sphere = scene->CreateEntity("Sphere");
     sphere.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Sphere);
 
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 128u, .Height = 128u });
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 128u, .Height = 128u });
     EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     camera.SetViewportSize(128u, 128u);
 
     // The bake fires on the first frame's SubmitEnvironment; rendering several frames sends the
     // baked cubes/LUT through both the geometry and skybox passes under the validation layer.
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
     EP_REQUIRE(finalImage != nullptr);
@@ -594,26 +662,49 @@ TEST(Renderer, SceneRenderer_EquirectangularSkyMapsTopToPositiveY)
     scene->GetBloomSettings().Intensity = 0.0f;
 
     constexpr uint32_t size = 64u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
     EditorCamera upward(glm::vec3(0.0f), 89.0f, 0.0f);
     upward.SetViewportSize(size, size);
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, upward); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, upward);
+        }
+    );
     const glm::vec3 upColor = ReadPixel(ReadRgba8(sceneRenderer->GetFinalImage()), glm::ivec2(size / 2u));
 
     EditorCamera downward(glm::vec3(0.0f), -89.0f, 0.0f);
     downward.SetViewportSize(size, size);
-    ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, downward); });
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, downward);
+        }
+    );
     const glm::vec3 downColor = ReadPixel(ReadRgba8(sceneRenderer->GetFinalImage()), glm::ivec2(size / 2u));
 
     EditorCamera upperSide(glm::vec3(0.0f), 30.0f, 0.0f);
     upperSide.SetViewportSize(size, size);
-    ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, upperSide); });
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, upperSide);
+        }
+    );
     const glm::vec3 upperSideColor = ReadPixel(ReadRgba8(sceneRenderer->GetFinalImage()), glm::ivec2(size / 2u));
 
     EditorCamera lowerSide(glm::vec3(0.0f), -30.0f, 0.0f);
     lowerSide.SetViewportSize(size, size);
-    ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, lowerSide); });
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, lowerSide);
+        }
+    );
     const glm::vec3 lowerSideColor = ReadPixel(ReadRgba8(sceneRenderer->GetFinalImage()), glm::ivec2(size / 2u));
 
     EXPECT_TRUE(upColor.r > upColor.b + 0.25f);
@@ -655,11 +746,16 @@ TEST(Renderer, SceneRenderer_RoughIblSuppressesHighFrequencyFireflies)
     sphere.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Sphere);
 
     constexpr uint32_t size = 128u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
     EditorCamera camera(glm::vec3(4.0f, 0.0f, 0.0f), 0.0f, 180.0f);
     camera.SetViewportSize(size, size);
-    ctx.AdvanceFrames(3, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     const Rgba8Readback readback = ReadRgba8(sceneRenderer->GetFinalImage());
     const float neighbourDelta = AverageNeighbourLuminanceDelta(readback, glm::ivec2(size / 2u), 20);
@@ -667,7 +763,13 @@ TEST(Renderer, SceneRenderer_RoughIblSuppressesHighFrequencyFireflies)
 
     mesh->GetMaterial(0)->Metallic = 1.0f;
     mesh->GetMaterial(0)->Roughness = 0.5f;
-    ctx.AdvanceFrames(2, [&](float) { scene->OnRenderEditor(sceneRenderer, camera); });
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
 
     const Rgba8Readback specularReadback = ReadRgba8(sceneRenderer->GetFinalImage());
     const float specularDelta = AverageNeighbourLuminanceDelta(specularReadback, glm::ivec2(size / 2u), 20);
@@ -709,23 +811,29 @@ TEST(Renderer, Renderer_CompositeToSwapchain_SurvivesImageCyclingAndResize)
     uint32_t renderedFrames = 0;
 
     app->GetImGuiLayer()->SetClearMainSwapchainTarget(false);
-    ctx.AdvanceFrames(imageCount + 2, [&](float)
-    {
-        scene->OnRenderEditor(sceneRenderer, camera);
-        app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
-        renderedFrames++;
-    });
+    ctx.AdvanceFrames(
+        imageCount + 2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+            app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
+            renderedFrames++;
+        }
+    );
 
     glfwSetWindowSize(app->GetWindow()->GetNative(), 960, 540);
-    ctx.AdvanceFrames(imageCount + 2, [&](float)
-    {
-        const auto [width, height] = app->GetWindow()->GetFramebufferSize();
-        if (width > 0 && height > 0)
-            sceneRenderer->Resize(width, height);
-        scene->OnRenderEditor(sceneRenderer, camera);
-        app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
-        renderedFrames++;
-    });
+    ctx.AdvanceFrames(
+        imageCount + 2,
+        [&](float)
+        {
+            const auto [width, height] = app->GetWindow()->GetFramebufferSize();
+            if (width > 0 && height > 0)
+                sceneRenderer->Resize(width, height);
+            scene->OnRenderEditor(sceneRenderer, camera);
+            app->GetDeviceManager()->GetRenderer()->CompositeToSwapchain(sceneRenderer->GetFinalImage());
+            renderedFrames++;
+        }
+    );
 
     EXPECT_EQ((imageCount + 2) * 2, renderedFrames);
     EXPECT_TRUE(app->IsRunning());

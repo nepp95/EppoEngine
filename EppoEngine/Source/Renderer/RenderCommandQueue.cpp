@@ -10,10 +10,11 @@ namespace Eppo
 
     auto RenderCommandQueue::Execute() -> void
     {
-        for (size_t i = 0; i < m_CommandQueue.size(); i++)
-            m_CommandQueue.at(i)();
+        std::vector<RenderCommand> commands;
+        commands.swap(m_CommandQueue);
 
-        m_CommandQueue.clear();
+        for (auto& command : commands)
+            command();
     }
 
     auto RenderCommandQueue::Clear() -> void

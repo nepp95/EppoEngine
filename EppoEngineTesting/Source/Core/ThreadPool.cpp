@@ -8,15 +8,15 @@
 
 using Eppo::TaskFn;
 using Eppo::TaskId;
-using Eppo::TaskStatus;
 using Eppo::TaskResult;
+using Eppo::TaskStatus;
 using Eppo::ThreadPool;
 
 // Every wait here is deadline-bounded. A wedged pool must fail its test, not hang the
 // whole CTest run, so nothing in this file blocks on a condition that may never hold.
 namespace
 {
-    constexpr auto s_WaitTimeout = std::chrono::seconds(5);
+    constexpr auto s_WaitTimeout = std::chrono::seconds(1);
 
     auto WaitUntil(const std::function<bool()>& predicate) -> bool
     {
@@ -55,6 +55,12 @@ namespace
         const auto deadline = std::chrono::steady_clock::now() + s_WaitTimeout;
         while (!gate.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    [[nodiscard]] auto GetThreadPoolWorkerCount() -> uint32_t
+    {
+        const uint32_t hardwareThreadCount = std::thread::hardware_concurrency();
+        return hardwareThreadCount > 2 ? hardwareThreadCount - 2 : 1;
     }
 }
 
@@ -589,7 +595,7 @@ TEST(Core, ThreadPool_QueueTaskWithDependencies_ChainOfThousandTasksCompletesInO
 // guarantees the target is still queued when CancelTask runs.
 TEST(Core, ThreadPool_CancelTask_CancelsPendingTask)
 {
-    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto workerCount = GetThreadPoolWorkerCount();
     const auto taskCount = workerCount + 1;
 
     std::atomic<bool> gate = false;
@@ -705,7 +711,9 @@ TEST(Core, ThreadPool_CancelTask_ReturnsFalseForCompletedTask)
 
     const auto id = pool.QueueTask(
         "Done",
-        []() -> void {},
+        []() -> void
+        {
+        },
         [&invoked](TaskStatus) -> void
         {
             invoked.store(true);
@@ -739,7 +747,7 @@ TEST(Core, ThreadPool_CancelTask_ReturnsFalseForUnknownId)
 // Cancelled increments. The snapshot is the editor's progress UI source of truth.
 TEST(Core, ThreadPool_CancelTask_UpdatesGroupSnapshot)
 {
-    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto workerCount = GetThreadPoolWorkerCount();
     const auto taskCount = workerCount + 2;
 
     std::atomic<bool> gate = false;
@@ -806,7 +814,7 @@ TEST(Core, ThreadPool_CancelTask_UpdatesGroupSnapshot)
 // signal clears when the last task is cancelled, not when a worker picks it up.
 TEST(Core, ThreadPool_CancelTask_DecrementsPendingCount)
 {
-    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto workerCount = GetThreadPoolWorkerCount();
     const auto taskCount = workerCount + 1;
 
     std::atomic<bool> gate = false;
@@ -860,7 +868,7 @@ TEST(Core, ThreadPool_CancelTask_DecrementsPendingCount)
 // Cancelling an already-cancelled task is a no-op, not a double-cancel.
 TEST(Core, ThreadPool_CancelTask_AlreadyCancelledReturnsFalse)
 {
-    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto workerCount = GetThreadPoolWorkerCount();
     const auto taskCount = workerCount + 1;
 
     std::atomic<bool> gate = false;
@@ -948,7 +956,7 @@ TEST(Core, ThreadPool_CancelTask_FailedTaskReturnsFalse)
 // The dependent should run (or be cancellable separately) — it must not deadlock.
 TEST(Core, ThreadPool_CancelTask_DependentStillResolvesAfterDependencyCancelled)
 {
-    const auto workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+    const auto workerCount = GetThreadPoolWorkerCount();
     const auto fillerCount = workerCount;
 
     std::atomic<bool> gate = false;
@@ -982,7 +990,9 @@ TEST(Core, ThreadPool_CancelTask_DependentStillResolvesAfterDependencyCancelled)
     // Queue a dependency that will be cancelled while pending.
     const auto depId = pool.QueueTask(
         "Dependency",
-        []() -> void {},
+        []() -> void
+        {
+        },
         [&dependencyCompletionFired, &dependencyStatus](const TaskStatus status) -> void
         {
             dependencyStatus.store(status);
@@ -1138,8 +1148,8 @@ TEST(Core, ThreadPool_GetTaskGroupSnapshots_RemainsCoherentDuringConcurrentTrans
         {
             const auto snapshot = pool.GetTaskGroupSnapshots().at("CoherentSnapshot");
             const auto accounted = snapshot.Pending.load(std::memory_order_relaxed) + snapshot.Running.load(std::memory_order_relaxed) +
-                                   snapshot.Completed.load(std::memory_order_relaxed) + snapshot.Failed.load(std::memory_order_relaxed) +
-                                   snapshot.Cancelled.load(std::memory_order_relaxed);
+                snapshot.Completed.load(std::memory_order_relaxed) + snapshot.Failed.load(std::memory_order_relaxed) +
+                snapshot.Cancelled.load(std::memory_order_relaxed);
             EXPECT_EQ(snapshot.Total.load(std::memory_order_relaxed), accounted);
             return completions.load(std::memory_order_relaxed) == taskCount;
         }

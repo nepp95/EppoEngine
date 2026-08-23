@@ -3,6 +3,8 @@
 
 #include "Event/KeyEvent.h"
 #include "ImGui/ImGuiLayer.h"
+#include "Renderer/DeviceManager.h"
+#include "Renderer/Renderer.h"
 
 #include <imgui.h>
 
@@ -83,6 +85,65 @@ public:
 
 private:
     Ref<ThreadPoolTeardownState> m_State;
+};
+
+struct RenderCommandTrackingState
+{
+    bool UpdateCompleted = false;
+    bool UICompleted = false;
+    bool CommandExecuted = false;
+    bool ExecutedAfterUpdate = false;
+    bool ExecutedAfterUI = false;
+};
+
+class RenderCommandTrackingLayer : public Layer
+{
+public:
+    explicit RenderCommandTrackingLayer(Ref<RenderCommandTrackingState> state)
+        : m_State(std::move(state))
+    {}
+
+    auto OnUpdate(float) -> void override
+    {
+        m_State->UpdateCompleted = true;
+        Renderer::Submit(
+            [state = m_State]() -> void
+            {
+                state->CommandExecuted = true;
+                state->ExecutedAfterUpdate = state->UpdateCompleted;
+                state->ExecutedAfterUI = state->UICompleted;
+            }
+        );
+    }
+
+    auto OnUIRender() -> void override { m_State->UICompleted = true; }
+
+private:
+    Ref<RenderCommandTrackingState> m_State;
+};
+
+struct FrameIndexTrackingState
+{
+    std::vector<uint32_t> FrameIndices;
+    std::vector<uint32_t> BackBufferIndices;
+};
+
+class FrameIndexTrackingLayer : public Layer
+{
+public:
+    explicit FrameIndexTrackingLayer(Ref<FrameIndexTrackingState> state)
+        : m_State(std::move(state))
+    {}
+
+    auto OnUpdate(float) -> void override
+    {
+        const auto& deviceManager = DeviceManager::Get();
+        m_State->FrameIndices.emplace_back(deviceManager->GetCurrentFrameIndex());
+        m_State->BackBufferIndices.emplace_back(deviceManager->GetCurrentBackBufferIndex());
+    }
+
+private:
+    Ref<FrameIndexTrackingState> m_State;
 };
 
 TEST(App, Application_Boot_ProducesWindowAndDevice)
@@ -236,4 +297,116 @@ TEST(App, Application_ShutdownFlushesTaskCompletionsBeforeDetachingLayers)
     EXPECT_TRUE(state->CompletionCalled);
     EXPECT_TRUE(state->CompletionBeforeDetach);
     EXPECT_TRUE(state->Detached);
+}
+
+TEST(App, Application_StepFrame_ExecutesSubmittedRenderCommandsAfterUI)
+{
+    Testing::AppHarness::Shutdown();
+    Application* app = Testing::AppHarness::Get();
+    EP_REQUIRE(app != nullptr);
+
+    const auto state = CreateRef<RenderCommandTrackingState>();
+    app->PushLayer<RenderCommandTrackingLayer>(state);
+
+    Testing::AppHarness::AdvanceFrames(1);
+
+    EXPECT_TRUE(state->UpdateCompleted);
+    EXPECT_TRUE(state->UICompleted);
+    EXPECT_TRUE(state->CommandExecuted);
+    EXPECT_TRUE(state->ExecutedAfterUpdate);
+    EXPECT_TRUE(state->ExecutedAfterUI);
+}
+
+TEST(App, Application_StepFrame_ExecutesSubmittedRenderCommandsWithoutImGui)
+{
+    Testing::AppHarness::Shutdown();
+    ApplicationParams params{
+        .Args = CommandLineArgs(0, nullptr),
+        .EnableImGui = false,
+    };
+    Application* app = Testing::AppHarness::Get(std::move(params));
+    EP_REQUIRE(app != nullptr);
+
+    const auto state = CreateRef<RenderCommandTrackingState>();
+    app->PushLayer<RenderCommandTrackingLayer>(state);
+
+    Testing::AppHarness::AdvanceFrames(1);
+
+    EXPECT_TRUE(state->UpdateCompleted);
+    EXPECT_FALSE(state->UICompleted);
+    EXPECT_TRUE(state->CommandExecuted);
+    EXPECT_TRUE(state->ExecutedAfterUpdate);
+    EXPECT_FALSE(state->ExecutedAfterUI);
+}
+
+TEST(App, DeviceManager_FrameAndBackBufferCounts_AreValidIndependentRanges)
+{
+    Testing::AppHarness::Shutdown();
+    ApplicationParams params{
+        .Args = CommandLineArgs(0, nullptr),
+        .EnableImGui = false,
+    };
+    Application* app = Testing::AppHarness::Get(std::move(params));
+    EP_REQUIRE(app != nullptr);
+
+    const auto& deviceManager = app->GetDeviceManager();
+    const uint32_t backBufferCount = deviceManager->GetBackBufferCount();
+    const uint32_t expectedFramesInFlight = std::min(deviceManager->GetParams().MaxFramesInFlight, backBufferCount);
+
+    EXPECT_GE(backBufferCount, 2u);
+    EXPECT_EQ(expectedFramesInFlight, deviceManager->GetMaxFramesInFlight());
+    EXPECT_LT(deviceManager->GetCurrentFrameIndex(), deviceManager->GetMaxFramesInFlight());
+    EXPECT_LT(deviceManager->GetCurrentBackBufferIndex(), backBufferCount);
+}
+
+TEST(App, DeviceManager_CurrentFrameIndex_RotatesAcrossFramesInFlight)
+{
+    Testing::AppHarness::Shutdown();
+    ApplicationParams params{
+        .Args = CommandLineArgs(0, nullptr),
+        .EnableImGui = false,
+    };
+    Application* app = Testing::AppHarness::Get(std::move(params));
+    EP_REQUIRE(app != nullptr);
+
+    const auto& deviceManager = app->GetDeviceManager();
+    const uint32_t maxFramesInFlight = deviceManager->GetMaxFramesInFlight();
+    EP_REQUIRE(maxFramesInFlight > 0);
+
+    const auto state = CreateRef<FrameIndexTrackingState>();
+    app->PushLayer<FrameIndexTrackingLayer>(state);
+    Testing::AppHarness::AdvanceFrames(maxFramesInFlight * 2 + 1);
+
+    EP_REQUIRE_EQ(maxFramesInFlight * 2 + 1, state->FrameIndices.size());
+    EXPECT_EQ(state->FrameIndices.size(), state->BackBufferIndices.size());
+
+    const uint32_t firstFrameIndex = state->FrameIndices.front();
+    for (size_t i = 0; i < state->FrameIndices.size(); i++)
+    {
+        EXPECT_EQ((firstFrameIndex + i) % maxFramesInFlight, state->FrameIndices.at(i));
+        EXPECT_LT(state->BackBufferIndices.at(i), deviceManager->GetBackBufferCount());
+    }
+}
+
+TEST(App, Application_Shutdown_ReleasesPendingRenderCommandCaptures)
+{
+    Testing::AppHarness::Shutdown();
+    ApplicationParams params{
+        .Args = CommandLineArgs(0, nullptr),
+        .EnableImGui = false,
+    };
+    Application* app = Testing::AppHarness::Get(std::move(params));
+    EP_REQUIRE(app != nullptr);
+
+    auto capturedState = CreateRef<uint32_t>(42);
+    const WeakRef<uint32_t> weakState = capturedState;
+
+    Renderer::Submit([capturedState]() -> void {});
+    capturedState.reset();
+
+    EXPECT_FALSE(weakState.expired());
+
+    Testing::AppHarness::Shutdown();
+
+    EXPECT_TRUE(weakState.expired());
 }

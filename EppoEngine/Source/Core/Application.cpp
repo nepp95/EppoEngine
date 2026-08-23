@@ -60,7 +60,7 @@ namespace Eppo
         Log::Info("Application shutting down...");
 
         m_ThreadPool->Shutdown(true);
-
+        m_DeviceManager->WaitIdle();
         m_ImGuiLayer.reset();
 
         for (auto it = m_LayerStack.begin(); it != m_LayerStack.end();)
@@ -101,10 +101,11 @@ namespace Eppo
 
         if (!m_IsMinimized && m_DeviceManager->BeginFrame())
         {
-            // Render work
+            // Run layer updates - possibly enqueuing render commands
             for (const auto& layer : m_LayerStack)
                 layer->OnUpdate(timestep);
 
+            // Enqueue imgui render
             if (m_ImGuiLayer)
             {
                 m_ImGuiLayer->PrepareRender();
@@ -114,6 +115,9 @@ namespace Eppo
 
                 m_ImGuiLayer->Render();
             }
+
+            // Execute render commands
+            Renderer::ExecuteRenderCommands();
 
             // Present
             m_DeviceManager->Present();

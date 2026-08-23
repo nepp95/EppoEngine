@@ -23,12 +23,13 @@ namespace Eppo
         VK_CHECK(glfwCreateWindowSurface(m_Instance, m_Window->GetNative(), nullptr, &surface), "Failed to create window surface!");
         EP_ASSERT(surface);
 
-        m_Swapchain = CreateScopedPtr<Swapchain>(surface);
+        m_Swapchain = CreateRef<Swapchain>(surface);
         m_Swapchain->CreateSwapchain();
     }
 
     auto DeviceManagerVK::Shutdown() -> void
     {
+        WaitIdle();
         GpuProfiler::Shutdown();
 
         m_Renderer = nullptr;

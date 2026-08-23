@@ -2,6 +2,7 @@
 
 #include "Renderer/Image.h"
 #include "Renderer/RenderCommandBuffer.h"
+#include "Renderer/RenderCommandQueue.h"
 #include "Renderer/RenderPass.h"
 #include "Renderer/ShaderLibrary.h"
 
@@ -20,6 +21,9 @@ namespace Eppo
         auto LoadShaders(const std::map<std::string, std::string>& packed = {}, const std::map<std::string, std::string>& includes = {})
             -> void;
 
+        static auto Submit(RenderCommand command) -> void;
+        static auto ExecuteRenderCommands() -> void;
+
         static auto BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<RenderPass>& renderPass) -> void;
         static auto EndRenderPass(const Ref<RenderCommandBuffer>& commandBuffer) -> void;
         auto CompositeToSwapchain(const Ref<Image>& image) -> void;
@@ -36,5 +40,7 @@ namespace Eppo
         Ref<Sampler> m_CompositeSampler = nullptr;
         std::vector<Ref<RenderPass>> m_CompositePasses;
         std::vector<nvrhi::FramebufferHandle> m_CompositeFramebuffers;
+
+        RenderCommandQueue m_RenderCommandQueue;
     };
 }
