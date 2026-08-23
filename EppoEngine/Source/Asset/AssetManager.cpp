@@ -61,9 +61,9 @@ namespace Eppo
         return true;
     }
 
-    auto AssetManager::GetOrLoadAsset(AssetHandle handle, bool async) -> Ref<Asset>
+    auto AssetManager::GetOrLoadAsset(AssetHandle handle, const bool async) -> Ref<Asset>
     {
-        EP_PROFILE_FN("AssetManager::LoadAsset");
+        EP_PROFILE_FN("AssetManager::GetOrLoadAsset");
 
         std::scoped_lock lock(m_Mutex);
 
@@ -133,12 +133,14 @@ namespace Eppo
 
     auto AssetManager::HasAssetData(AssetHandle handle) const -> bool
     {
+        std::shared_lock lock(m_Mutex);
         return m_AssetData.contains(handle);
     }
 
     auto AssetManager::IsAssetLoaded(AssetHandle handle) const -> bool
     {
-        return m_AssetData.contains(handle) && m_LoadedAssets.contains(handle);
+        std::shared_lock lock(m_Mutex);
+        return m_LoadedAssets.contains(handle);
     }
 
     auto AssetManager::GetMetadata(AssetHandle handle) -> AssetMetadata&

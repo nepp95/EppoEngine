@@ -1,5 +1,5 @@
 #include "TestSupport/EppoTest.h"
-#include "Core/ThreadPool/ThreadPool.h"
+#include "Core/Threading/ThreadPool.h"
 
 #include <atomic>
 #include <chrono>

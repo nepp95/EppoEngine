@@ -228,6 +228,8 @@ namespace Eppo
         Log::Info("==================================");
 
         CreateBindingLayout();
+
+        m_IsLoaded.store(true, std::memory_order_release);
     }
 
     auto VulkanShader::CompileOrGetCache() -> bool

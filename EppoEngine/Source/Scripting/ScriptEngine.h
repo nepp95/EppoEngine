@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/ThreadPool/ThreadPool.h"
+#include "Core/Threading/ThreadPool.h"
 #include "Scene/Entity.h"
 #include "Scripting/Assembly.h"
 #include "Scripting/ScriptClass.h"

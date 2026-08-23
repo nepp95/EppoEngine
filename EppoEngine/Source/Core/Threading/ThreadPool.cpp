@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Core/ThreadPool/ThreadPool.h"
+#include "Core/Threading/ThreadPool.h"
 
 #include <algorithm>
 
@@ -50,15 +50,16 @@ namespace Eppo
     ThreadPool::ThreadPool()
         : m_OwnerThread(std::this_thread::get_id())
     {
-        const uint32_t threadCount = std::max(1u, std::thread::hardware_concurrency() - 1);
+        const uint32_t hardwareThreadCount = std::thread::hardware_concurrency();
+        const uint32_t threadCount = hardwareThreadCount > 2 ? hardwareThreadCount - 2 : 1;
         m_Threads.reserve(threadCount);
 
         for (uint32_t i = 0; i < threadCount; i++)
         {
             m_Threads.emplace_back(
-                [this]() -> void
+                [this, i]() -> void
                 {
-                    WorkerLoop();
+                    WorkerLoop(i);
                 }
             );
         }
@@ -483,8 +484,11 @@ namespace Eppo
         return m_TasksPending.load(std::memory_order_seq_cst) + m_TasksInFlight.load(std::memory_order_seq_cst);
     }
 
-    auto ThreadPool::WorkerLoop() -> void
+    auto ThreadPool::WorkerLoop(uint32_t index) -> void
     {
+        const auto tag = std::format("Worker {}", index);
+        EP_TAG_THREAD(tag.c_str());
+
         while (true)
         {
             Ref<Task> task;
