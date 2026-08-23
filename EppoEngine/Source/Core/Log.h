@@ -195,6 +195,17 @@ struct fmt::formatter<std::filesystem::path> : formatter<std::string_view>
 };
 
 template<>
+struct fmt::formatter<std::thread::id> : formatter<std::string_view>
+{
+    auto format(const std::thread::id& v, format_context& ctx) const -> format_context::iterator
+    {
+        std::stringstream ss;
+        ss << v;
+        return formatter<std::string_view>::format(ss.str(), ctx);
+    }
+};
+
+template<>
 struct fmt::formatter<Eppo::UUID> : formatter<uint64_t>
 {
     auto format(const Eppo::UUID& v, format_context& ctx) const -> format_context::iterator

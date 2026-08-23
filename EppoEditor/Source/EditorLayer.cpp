@@ -452,7 +452,7 @@ namespace Eppo
             return;
 
         // Backs up the disabled toolbar button.
-        if (!ScriptEngine::IsUserAssemblyCompiling())
+        if (ScriptEngine::IsUserAssemblyCompiling())
         {
             Log::Warn("Cannot enter play mode: the project's scripts are currently compiling.");
             return;
@@ -1186,7 +1186,7 @@ namespace Eppo
         };
 
         // Shown in edit mode too, unlike the notices below.
-        if (!ScriptEngine::IsUserAssemblyCompiling())
+        if (ScriptEngine::IsUserAssemblyCompiling())
             DrawNotice("Scripts are currently compiling. Play is disabled until the build succeeds.");
         else if (!ScriptEngine::IsUserAssemblyValid())
             DrawNotice("Scripts failed to compile - see the log. Play is disabled until the build succeeds.");

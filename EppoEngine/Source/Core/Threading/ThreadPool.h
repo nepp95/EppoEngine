@@ -120,7 +120,7 @@ namespace Eppo
         auto UpdateTaskGroup(const Ref<TaskGroupSnapshot>& group, TaskStatus status) -> void;
         auto FinalizeTask(const Ref<Task>& task, TaskStatus status) -> void;
         auto CompleteTask(const Ref<Task>& task, TaskStatus status) -> void;
-        auto WorkerLoop() -> void;
+        auto WorkerLoop(uint32_t index) -> void;
         [[nodiscard]] auto HasPendingTasks() const -> bool;
         [[nodiscard]] auto GetNextTask() -> Ref<Task>;
 

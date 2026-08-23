@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Layer.h"
-#include "Core/ThreadPool/ThreadPool.h"
+#include "Core/Threading/ThreadPool.h"
 #include "Core/Window.h"
 #include "Event/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
