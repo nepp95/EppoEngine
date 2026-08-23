@@ -19,7 +19,8 @@ namespace Eppo
     struct ImGuiViewportData
     {
         bool WindowOwned = false;
-        ScopedPtr<Swapchain> Swapchain = nullptr;
+        bool FrameAcquired = false;
+        Ref<Swapchain> Swapchain = nullptr;
         ScopedPtr<ImGuiRenderer> Renderer = nullptr;
     };
 
@@ -275,19 +276,33 @@ namespace Eppo
 
     auto ImGuiLayer::ImGuiRenderer_RenderWindow(ImGuiViewport* viewport, void*) -> void
     {
-        EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_RenderWindow")
+        Renderer::Submit(
+            [viewport]()
+            {
+                EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_RenderWindow")
 
-        const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
-        vd->Swapchain->BeginFrame();
-        vd->Renderer->UpdateFontTexture();
-        vd->Renderer->RenderToSwapchain(viewport, vd->Swapchain);
+                auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+                vd->FrameAcquired = vd->Swapchain->BeginFrame();
+                if (!vd->FrameAcquired)
+                    return;
+                vd->Renderer->UpdateFontTexture();
+                vd->Renderer->RenderToSwapchain(viewport, vd->Swapchain);
+            }
+        );
     }
 
     auto ImGuiLayer::ImGuiRenderer_SwapBuffers(ImGuiViewport* viewport, void*) -> void
     {
-        EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_SwapBuffers")
+        Renderer::Submit(
+            [viewport]()
+            {
+                EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_SwapBuffers")
 
-        const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
-        vd->Swapchain->Present();
+                auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+                if (vd->FrameAcquired)
+                    vd->Swapchain->Present();
+                vd->FrameAcquired = false;
+            }
+        );
     }
 }

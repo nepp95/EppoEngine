@@ -34,7 +34,6 @@ namespace Eppo
         : m_Surface(surface)
     {
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
-        VkDevice device = dm->GetLogicalDevice()->GetNative();
 
         // Get swapchain support details
         auto [capabilities, formats, presentModes] = QuerySwapchainSupportDetails();
@@ -42,14 +41,6 @@ namespace Eppo
         m_PresentMode = SelectPresentMode(presentModes, dm->GetParams().VSync);
         m_Format = m_SurfaceFormat.format;
         m_Extent = SelectExtent(capabilities);
-
-        // Create acquire semaphores
-        VkSemaphoreCreateInfo semaphoreInfo{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        };
-
-        for (uint32_t i = 0; i < g_MaxFramesInFlight; i++)
-            VK_CHECK(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_AcquireSemaphores[i]), "Failed to create semaphore!");
     }
 
     Swapchain::~Swapchain()
@@ -62,8 +53,8 @@ namespace Eppo
         for (size_t i = 0; i < m_PresentSemaphores.size(); i++)
             vkDestroySemaphore(device, m_PresentSemaphores.at(i), nullptr);
 
-        for (size_t i = 0; i < m_AcquireSemaphores.size(); i++)
-            vkDestroySemaphore(device, m_AcquireSemaphores.at(i), nullptr);
+        for (auto& frame : m_FrameSyncData)
+            vkDestroySemaphore(device, frame.AcquireSemaphore, nullptr);
 
         vkDestroySwapchainKHR(device, m_Swapchain, nullptr);
         vkDestroySurfaceKHR(dm->GetVulkanInstance(), m_Surface, nullptr);
@@ -71,54 +62,69 @@ namespace Eppo
 
     auto Swapchain::BeginFrame() -> bool
     {
-        EP_PROFILE_FN("Swapchain::BeginFrame")
+        EP_PROFILE_FN("Swapchain::BeginFrame");
+        EP_ASSERT(!m_FrameActive, "BeginFrame was called while a swapchain frame is already active!");
 
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
         VkDevice device = dm->GetLogicalDevice()->GetNative();
-
-        const auto& semaphore = m_AcquireSemaphores.at(m_AcquireIndex);
+        nvrhi::vulkan::IDevice* vkNvrhiDevice = dm->GetDevice()->getNativeObject(nvrhi::ObjectTypes::Nvrhi_VK_Device);
 
         constexpr uint32_t maxAttempts = 3;
         VkResult result;
 
         for (uint32_t attempt = 0; attempt < maxAttempts; attempt++) // switch to ++attempt
         {
-            result = vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, semaphore, nullptr, &m_SwapchainIndex);
+            if (m_ResizePending)
+                Resize();
 
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+            auto& frame = m_FrameSyncData.at(m_CurrentFrameIndex);
+            if (frame.InFlight)
             {
-                // Resize swapchain
-                CreateSwapchain();
+                vkNvrhiDevice->waitEventQuery(frame.CompletionQuery);
+                vkNvrhiDevice->resetEventQuery(frame.CompletionQuery);
+                frame.InFlight = false;
             }
-            else
+
+            result = vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, frame.AcquireSemaphore, nullptr, &m_SwapchainImageIndex);
+
+            if (result == VK_ERROR_OUT_OF_DATE_KHR)
             {
-                break;
+                m_ResizePending = true;
+                continue;
             }
-        }
 
-        m_AcquireIndex = (m_AcquireIndex + 1) % m_AcquireSemaphores.size();
+            if (result == VK_SUBOPTIMAL_KHR)
+                m_ResizePending = true;
+            else if (result != VK_SUCCESS)
+            {
+                Log::Error(LogSource::Vulkan, "Failed to acquire a swapchain image: VkResult {}", static_cast<int32_t>(result));
+                return false;
+            }
 
-        if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
-        {
-            nvrhi::vulkan::IDevice* vkNvrhiDevice(dm->GetDevice()->getNativeObject(nvrhi::ObjectTypes::Nvrhi_VK_Device));
-            vkNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
+            vkNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, frame.AcquireSemaphore, 0);
+            m_FrameActive = true;
             return true;
         }
 
+        Log::Error(LogSource::Vulkan, "Failed to acquire a swapchain image!");
         return false;
     }
 
     auto Swapchain::Present() -> bool
     {
-        EP_PROFILE_FN("Swapchain::Present")
+        EP_PROFILE_FN("Swapchain::Present");
+        EP_ASSERT(m_FrameActive, "Present was called without an active swapchain frame!");
 
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
         nvrhi::vulkan::IDevice* vkNvrhiDevice(dm->GetDevice()->getNativeObject(nvrhi::ObjectTypes::Nvrhi_VK_Device));
 
-        const auto& semaphore = m_PresentSemaphores.at(m_SwapchainIndex);
+        auto& frame = m_FrameSyncData.at(m_CurrentFrameIndex);
+        const auto& semaphore = m_PresentSemaphores.at(m_SwapchainImageIndex);
 
         vkNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
         vkNvrhiDevice->executeCommandLists(nullptr, 0);
+        vkNvrhiDevice->setEventQuery(frame.CompletionQuery, nvrhi::CommandQueue::Graphics);
+        frame.InFlight = true;
 
         VkPresentInfoKHR presentInfo{
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -126,47 +132,39 @@ namespace Eppo
             .pWaitSemaphores = &semaphore,
             .swapchainCount = 1,
             .pSwapchains = &m_Swapchain,
-            .pImageIndices = &m_SwapchainIndex,
+            .pImageIndices = &m_SwapchainImageIndex,
         };
 
         VkResult result = vkQueuePresentKHR(dm->GetLogicalDevice()->GetPresentQueue(), &presentInfo);
-        if (!(result == VK_SUCCESS || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR))
-            return false;
+        m_FrameActive = false;
+        m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % m_MaxFramesInFlight;
 
-        // Explicit sync
-        vkQueueWaitIdle(dm->GetLogicalDevice()->GetPresentQueue());
+        if (result == VK_SUCCESS)
+            return true;
 
-        while (m_FramesInFlight.size() >= g_MaxFramesInFlight)
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
         {
-            auto query = m_FramesInFlight.front();
-            m_FramesInFlight.pop();
-
-            vkNvrhiDevice->waitEventQuery(query);
-            m_QueryPool.emplace_back(query);
+            m_ResizePending = true;
+            return true;
         }
 
-        nvrhi::EventQueryHandle query;
-        if (!m_QueryPool.empty())
-        {
-            query = m_QueryPool.back();
-            m_QueryPool.pop_back();
-        }
-        else
-        {
-            query = vkNvrhiDevice->createEventQuery();
-        }
-
-        vkNvrhiDevice->resetEventQuery(query);
-        vkNvrhiDevice->setEventQuery(query, nvrhi::CommandQueue::Graphics);
-        m_FramesInFlight.push(query);
-
-        return true;
+        Log::Error(LogSource::Vulkan, "Failed to present a swapchain image: VkResult {}", static_cast<int32_t>(result));
+        return false;
     }
 
     auto Swapchain::CreateSwapchain(uint32_t width, uint32_t height) -> void
     {
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
         VkDevice device = dm->GetLogicalDevice()->GetNative();
+
+        if (m_Swapchain)
+        {
+            VK_CHECK(vkDeviceWaitIdle(device), "Failed to wait for vulkan device");
+
+            for (const VkSemaphore semaphore : m_PresentSemaphores)
+                vkDestroySemaphore(device, semaphore, nullptr);
+            m_PresentSemaphores.clear();
+        }
 
         m_Images.clear();
 
@@ -208,6 +206,7 @@ namespace Eppo
         VK_CHECK(vkGetSwapchainImagesKHR(device, m_Swapchain, &swapchainImageCount, nullptr), "Failed to get swapchain images!");
         EP_ASSERT(swapchainImageCount >= 2);
         m_PresentSemaphores.resize(swapchainImageCount);
+        m_MaxFramesInFlight = std::min(DeviceManager::Get()->GetParams().MaxFramesInFlight, swapchainImageCount);
 
         std::vector<VkImage> images(swapchainImageCount);
         VK_CHECK(vkGetSwapchainImagesKHR(device, m_Swapchain, &swapchainImageCount, images.data()), "Failed to get swapchain images!");
@@ -215,6 +214,37 @@ namespace Eppo
         constexpr VkSemaphoreCreateInfo semaphoreInfo{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         };
+
+        if (m_FrameSyncData.size() != m_MaxFramesInFlight)
+        {
+            for (const auto& frame : m_FrameSyncData)
+                vkDestroySemaphore(device, frame.AcquireSemaphore, nullptr);
+
+            m_FrameSyncData.clear();
+            m_FrameSyncData.resize(m_MaxFramesInFlight);
+
+            for (auto& frame : m_FrameSyncData)
+            {
+                VK_CHECK(
+                    vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.AcquireSemaphore), "Failed to create acquire semaphore!"
+                );
+                frame.CompletionQuery = dm->GetDevice()->createEventQuery();
+                EP_ASSERT(frame.CompletionQuery != nullptr, "Failed to create frame completion query.");
+                frame.InFlight = false;
+            }
+        }
+        else
+        {
+            for (auto& frame : m_FrameSyncData)
+            {
+                if (frame.InFlight)
+                    dm->GetDevice()->resetEventQuery(frame.CompletionQuery);
+                frame.InFlight = false;
+            }
+        }
+
+        m_CurrentFrameIndex = 0;
+        m_FrameActive = false;
 
         for (uint32_t i = 0; i < swapchainImageCount; i++)
         {

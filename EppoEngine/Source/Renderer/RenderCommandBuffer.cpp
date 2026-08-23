@@ -7,15 +7,35 @@ namespace Eppo
 {
     RenderCommandBuffer::RenderCommandBuffer()
     {
-        EnsureBackBufferCapacity(DeviceManager::Get()->GetBackBufferCount());
+        EnsureFrameCapacity(DeviceManager::Get()->GetMaxFramesInFlight());
     }
 
     auto RenderCommandBuffer::Begin(const std::string_view name) -> void
     {
         const auto& dm = DeviceManager::Get();
-        EnsureBackBufferCapacity(dm->GetBackBufferCount());
-        const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
+        EnsureFrameCapacity(dm->GetMaxFramesInFlight());
+
+        const uint32_t frameIndex = dm->GetCurrentFrameIndex();
         EP_ASSERT(frameIndex < m_CommandLists.size());
+        EP_ASSERT(m_ActiveFrameIndex == UINT32_MAX);
+        m_ActiveFrameIndex = frameIndex;
+
+        if (m_FrameSubmitted.at(frameIndex))
+        {
+            const auto device = dm->GetDevice();
+            m_Timestamps.at(frameIndex) = device->getTimerQueryTime(m_TimerQueries.at(frameIndex));
+            device->resetTimerQuery(m_TimerQueries.at(frameIndex));
+
+            for (const auto& timerName : m_SubmittedNamedTimerQueries.at(frameIndex))
+            {
+                const auto& timerQuery = m_NamedTimerQueries.at(frameIndex).at(timerName);
+                m_NamedTimestamps.at(frameIndex)[timerName] = device->getTimerQueryTime(timerQuery);
+                device->resetTimerQuery(timerQuery);
+            }
+
+            m_SubmittedNamedTimerQueries.at(frameIndex).clear();
+            m_FrameSubmitted.at(frameIndex) = false;
+        }
 
         m_ActiveCommandList = m_CommandLists.at(frameIndex);
         EP_ASSERT(m_ActiveCommandList);
@@ -53,46 +73,46 @@ namespace Eppo
 
     auto RenderCommandBuffer::Submit() -> void
     {
-        const auto& dm = DeviceManager::Get();
-        const auto device = dm->GetDevice();
-        const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
+        EP_ASSERT(m_ActiveCommandList);
+        EP_ASSERT(m_ActiveFrameIndex != UINT32_MAX);
+        const uint32_t frameIndex = m_ActiveFrameIndex;
         EP_ASSERT(frameIndex < m_TimerQueries.size());
 
-        EP_ASSERT(m_ActiveCommandList);
+        const auto& dm = DeviceManager::Get();
+        const auto device = dm->GetDevice();
+
         m_ActiveCommandList->close();
         device->executeCommandList(m_ActiveCommandList);
-
-        m_Timestamps.at(frameIndex) = device->getTimerQueryTime(m_TimerQueries.at(frameIndex));
-        device->resetTimerQuery(m_TimerQueries.at(frameIndex));
-
-        for (const auto& [name, timerQuery] : m_NamedTimerQueries.at(frameIndex))
-        {
-            m_NamedTimestamps.at(frameIndex)[name] = device->getTimerQueryTime(timerQuery);
-            device->resetTimerQuery(timerQuery);
-        }
+        m_FrameSubmitted.at(frameIndex) = true;
 
         m_ActiveCommandList = nullptr;
         m_ActiveTimerQuery = nullptr;
+        m_ActiveFrameIndex = UINT32_MAX;
     }
 
     auto RenderCommandBuffer::BeginTimerQuery(const std::string& name) -> void
     {
+        EP_ASSERT(m_ActiveCommandList);
+        EP_ASSERT(m_ActiveFrameIndex != UINT32_MAX);
+        const uint32_t frameIndex = m_ActiveFrameIndex;
+        EP_ASSERT(frameIndex < m_NamedTimerQueries.size());
+
         const auto& dm = DeviceManager::Get();
         const auto device = dm->GetDevice();
-        const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-        EP_ASSERT(frameIndex < m_NamedTimerQueries.size());
 
         auto& timerQuery = m_NamedTimerQueries.at(frameIndex)[name];
         if (!timerQuery)
             timerQuery = device->createTimerQuery();
 
+        m_SubmittedNamedTimerQueries.at(frameIndex).insert(name);
         m_ActiveCommandList->beginTimerQuery(timerQuery);
     }
 
     auto RenderCommandBuffer::EndTimerQuery(const std::string& name) const -> void
     {
-        const auto& dm = DeviceManager::Get();
-        const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
+        EP_ASSERT(m_ActiveCommandList);
+        EP_ASSERT(m_ActiveFrameIndex != UINT32_MAX);
+        const uint32_t frameIndex = m_ActiveFrameIndex;
         EP_ASSERT(frameIndex < m_NamedTimerQueries.size());
 
         const auto it = m_NamedTimerQueries.at(frameIndex).find(name);
@@ -122,20 +142,22 @@ namespace Eppo
         return 0.0f;
     }
 
-    auto RenderCommandBuffer::EnsureBackBufferCapacity(const uint32_t backBufferCount) -> void
+    auto RenderCommandBuffer::EnsureFrameCapacity(const uint32_t frameCount) -> void
     {
-        if (backBufferCount <= m_CommandLists.size())
+        if (frameCount <= m_CommandLists.size())
             return;
 
         const auto device = DeviceManager::Get()->GetDevice();
         const size_t previousCount = m_CommandLists.size();
-        m_CommandLists.resize(backBufferCount);
-        m_TimerQueries.resize(backBufferCount);
-        m_Timestamps.resize(backBufferCount);
-        m_NamedTimerQueries.resize(backBufferCount);
-        m_NamedTimestamps.resize(backBufferCount);
+        m_CommandLists.resize(frameCount);
+        m_TimerQueries.resize(frameCount);
+        m_Timestamps.resize(frameCount);
+        m_NamedTimerQueries.resize(frameCount);
+        m_NamedTimestamps.resize(frameCount);
+        m_FrameSubmitted.resize(frameCount, false);
+        m_SubmittedNamedTimerQueries.resize(frameCount);
 
-        for (size_t i = previousCount; i < backBufferCount; i++)
+        for (size_t i = previousCount; i < frameCount; i++)
         {
             m_CommandLists.at(i) = device->createCommandList();
             m_TimerQueries.at(i) = device->createTimerQuery();
