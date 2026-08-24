@@ -16,8 +16,23 @@
             "Type": "Mesh"
         },
         {
+            "Filepath": "Meshes\\main_sponza\\NewSponza_Main_glTF_003.gltf",
+            "Handle": 13075392022024015801,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\sponza_curtains\\NewSponza_Curtains_glTF.gltf",
+            "Handle": 13075392022024015802,
+            "Type": "Mesh"
+        },
+        {
             "Filepath": "Scenes\\Def.epscene",
             "Handle": 18159251541775323644,
+            "Type": "Scene"
+        },
+        {
+            "Filepath": "Scenes\\Sponza.epscene",
+            "Handle": 13075392022024015803,
             "Type": "Scene"
         }
     ]

@@ -1,0 +1,153 @@
+{
+    "Scene": {
+        "Bloom": {
+            "Intensity": 0.35,
+            "Knee": 0.25,
+            "Radius": 1.0,
+            "Threshold": 1.0
+        },
+        "Entities": [
+            {
+                "IDComponent": {
+                    "ID": 13075392022024015804
+                },
+                "MeshComponent": {
+                    "MeshHandle": 13075392022024015801
+                },
+                "TagComponent": {
+                    "Tag": "Sponza"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 13075392022024015805
+                },
+                "MeshComponent": {
+                    "MeshHandle": 13075392022024015802
+                },
+                "TagComponent": {
+                    "Tag": "Sponza Curtains"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "CameraComponent": {
+                    "FarClip": 1000.0,
+                    "NearClip": 0.1,
+                    "Primary": true,
+                    "VerticalFov": 60.0
+                },
+                "IDComponent": {
+                    "ID": 13075392022024015806
+                },
+                "TagComponent": {
+                    "Tag": "Sponza Camera"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        3.0,
+                        1.5
+                    ]
+                }
+            },
+            {
+                "DirectionalLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.95686274766922,
+                        0.8392156958580017
+                    ],
+                    "Intensity": 3.0
+                },
+                "IDComponent": {
+                    "ID": 13075392022024015807
+                },
+                "TagComponent": {
+                    "Tag": "Sun"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        -0.65,
+                        0.0,
+                        0.5
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        15.0,
+                        0.0
+                    ]
+                }
+            }
+        ],
+        "Environment": {
+            "AmbientIntensity": 0.35,
+            "GroundColor": [
+                0.2,
+                0.17,
+                0.13
+            ],
+            "HorizonColor": [
+                0.65,
+                0.66,
+                0.67
+            ],
+            "SkyboxHandle": 9446329736917411582,
+            "ZenithColor": [
+                0.35,
+                0.45,
+                0.55
+            ]
+        },
+        "Handle": 13075392022024015803,
+        "Name": "Sponza"
+    }
+}
