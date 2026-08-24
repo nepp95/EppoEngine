@@ -12,6 +12,7 @@
 #include "Core/Buffer/BufferWriter.h"
 #include "Core/Buffer/FileStreamReader.h"
 #include "Core/Buffer/FileStreamWriter.h"
+#include "Core/Threading/ThreadPool.h"
 #include "Core/Input.h"
 #include "Core/KeyCodes.h"
 #include "Core/Layer.h"

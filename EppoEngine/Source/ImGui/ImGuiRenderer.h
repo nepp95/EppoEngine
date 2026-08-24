@@ -20,7 +20,7 @@ namespace Eppo
 
         auto Resize() -> void;
         auto UpdateFontTexture() -> void;
-        auto RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain, bool clearSwapchainTarget = true) -> void;
+        auto RenderToSwapchain(ImGuiViewport* viewport, const Ref<Swapchain>& swapchain, bool clearSwapchainTarget = true) -> void;
         auto Render(ImGuiViewport* viewport, const Ref<RenderPass>& renderPass, bool clearTarget = true) -> void;
 
         [[nodiscard]] auto GetGPUTime(uint32_t frameIndex) const -> float;
@@ -31,7 +31,7 @@ namespace Eppo
     private:
         auto UpdateGeometry(ImDrawData* drawData) -> void;
         auto ReallocateBuffer(uint64_t size, bool indexBuffer) -> nvrhi::BufferHandle;
-        auto GetOrCreateRenderPass(const ScopedPtr<Swapchain>& swapchain) -> const Ref<RenderPass>&;
+        auto GetOrCreateRenderPass(const Ref<Swapchain>& swapchain) -> const Ref<RenderPass>&;
         auto GetOrCreateBindingSet(const nvrhi::TextureHandle& texture) -> nvrhi::BindingSetHandle;
 
     private:
