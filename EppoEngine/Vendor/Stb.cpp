@@ -22,3 +22,6 @@ inline void* StbiReallocTracy(void* p, size_t newsz)
 #define STBI_REALLOC(p, newsz) StbiReallocTracy(p, newsz)
 #define STBI_FREE(p) (TracyFree(p), free(p))
 #include <stb_image.h>
+
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include <stb_image_resize2.h>

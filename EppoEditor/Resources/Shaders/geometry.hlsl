@@ -105,15 +105,21 @@ struct MaterialData
     int RoughMetMapIndex;
     int AOMapIndex;
     int EmissiveMapIndex;
+    uint DiffuseSamplerIndex;
+    uint NormalSamplerIndex;
+    uint RoughMetSamplerIndex;
+    uint AOSamplerIndex;
+    uint EmissiveSamplerIndex;
+    uint2 Padding0;
     float4 BaseColor;
     float3 EmissiveFactor;
     float Metallic;
     float Roughness;
     float NormalScale;
+    uint2 Padding1;
 };
 StructuredBuffer<MaterialData> uMaterialData : register(t2, space0);
 
-SamplerState uMaterialSampler : register(s0, space0);
 Texture2D uSsaoTex : register(t3, space0);
 SamplerState uSsaoSampler : register(s1, space0);
 
@@ -175,7 +181,7 @@ Varyings VSMain(Input input)
     const float4x4 worldTransform = mul(instanceTransform, draw.Transform);
 
     output.WorldPos = mul(worldTransform, float4(input.Position, 1.0)).xyz;
-    output.Normal = mul((float3x3)worldTransform, input.Normal);
+    output.Normal = mul(InverseTranspose3x3((float3x3)worldTransform), input.Normal);
     output.Position = mul(uCamera.Projection, mul(uCamera.View, float4(output.WorldPos, 1.0)));
     output.TexCoord = input.TexCoord;
     output.WorldTangent = float4(mul((float3x3)worldTransform, input.Tangent.xyz), input.Tangent.w);
@@ -193,7 +199,8 @@ float4 PSMain(Varyings input) : SV_Target
     if (material.DiffuseMapIndex > -1)
     {
         Texture2D diffuseMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.DiffuseMapIndex)];
-        baseColor *= diffuseMap.Sample(uMaterialSampler, input.TexCoord);
+        SamplerState diffuseSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.DiffuseSamplerIndex)];
+        baseColor *= diffuseMap.Sample(diffuseSampler, input.TexCoord);
     }
 
     float3 albedo = baseColor.rgb;
@@ -204,17 +211,20 @@ float4 PSMain(Varyings input) : SV_Target
     if (material.RoughMetMapIndex > -1)
     {
         Texture2D roughMetMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.RoughMetMapIndex)];
-        const float3 rm = roughMetMap.Sample(uMaterialSampler, input.TexCoord).rgb;
+        SamplerState roughMetSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.RoughMetSamplerIndex)];
+        const float3 rm = roughMetMap.Sample(roughMetSampler, input.TexCoord).rgb;
         roughness *= rm.g;
         metallic *= rm.b;
     }
 
     // Normal map
-    float3 N = normalize(input.Normal);
+    const float3 geometricN = normalize(input.Normal);
+    float3 N = geometricN;
     if (material.NormalMapIndex > -1)
     {
         Texture2D normalMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.NormalMapIndex)];
-        float3 tangentNormal = normalMap.Sample(uMaterialSampler, input.TexCoord).rgb * 2.0 - 1.0;
+        SamplerState normalSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.NormalSamplerIndex)];
+        float3 tangentNormal = normalMap.Sample(normalSampler, input.TexCoord).rgb * 2.0 - 1.0;
         tangentNormal.xy *= material.NormalScale;
         tangentNormal = normalize(tangentNormal);
 
@@ -229,7 +239,8 @@ float4 PSMain(Varyings input) : SV_Target
     if (material.AOMapIndex > -1)
     {
         Texture2D aoMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.AOMapIndex)];
-        materialAO = aoMap.Sample(uMaterialSampler, input.TexCoord).r;
+        SamplerState aoSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.AOSamplerIndex)];
+        materialAO = aoMap.Sample(aoSampler, input.TexCoord).r;
     }
 
     // Emissive
@@ -237,7 +248,8 @@ float4 PSMain(Varyings input) : SV_Target
     if (material.EmissiveMapIndex > -1)
     {
         Texture2D emissiveMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.EmissiveMapIndex)];
-        emissive *= emissiveMap.Sample(uMaterialSampler, input.TexCoord).rgb;
+        SamplerState emissiveSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.EmissiveSamplerIndex)];
+        emissive *= emissiveMap.Sample(emissiveSampler, input.TexCoord).rgb;
     }
 
     const float3 V = normalize(uCamera.Position.xyz - input.WorldPos);
@@ -249,7 +261,7 @@ float4 PSMain(Varyings input) : SV_Target
     {
         const float3 L = normalize(-uLights.DirLight.Direction.xyz);
         const float3 radiance = uLights.DirLight.Color.rgb * uLights.DirLight.Color.a;
-        Lo += CalcShadowFactor(input.WorldPos, N) * BRDF(albedo, L, V, N, metallic, roughness, radiance);
+        Lo += CalcShadowFactor(input.WorldPos, geometricN) * BRDF(albedo, L, V, N, metallic, roughness, radiance);
     }
 
     // Point lights
