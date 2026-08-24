@@ -4,6 +4,11 @@
 
 #include <tracy/Tracy.hpp>
 
+#if defined(EP_DIST)
+    #undef TracyFree
+    #define TracyFree(ptr) ((void)0)
+#endif
+
 #include <csignal>
 #include <memory>
 
