@@ -4,6 +4,7 @@
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/Image.h"
 #include "Renderer/IndexBuffer.h"
+#include "Renderer/Sampler.h"
 #include "Renderer/VertexBuffer.h"
 
 #include <glm/glm.hpp>
@@ -50,6 +51,11 @@ namespace Eppo
         Ref<BindlessHandle> RoughMetMap = nullptr;
         Ref<BindlessHandle> AOMap = nullptr;
         Ref<BindlessHandle> EmissiveMap = nullptr;
+        Ref<Sampler> DiffuseSampler = nullptr;
+        Ref<Sampler> NormalSampler = nullptr;
+        Ref<Sampler> RoughMetSampler = nullptr;
+        Ref<Sampler> AOSampler = nullptr;
+        Ref<Sampler> EmissiveSampler = nullptr;
         glm::vec3 EmissiveFactor = glm::vec3(0.0f);
         glm::vec4 BaseColor = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
         float Roughness = 1.0f;

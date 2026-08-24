@@ -12,9 +12,18 @@ namespace Eppo
     struct BindlessHandle;
     using ImageSource = std::variant<std::filesystem::path, Buffer>;
 
+    enum class MipGenerationMode
+    {
+        None = 0,
+        ColorSRGB,
+        Linear,
+        NormalMap,
+    };
+
     struct ImageSpecification
     {
         nvrhi::Format ImageFormat = nvrhi::Format::UNKNOWN;
+        MipGenerationMode MipMode = MipGenerationMode::None;
         uint32_t Width = 0;
         uint32_t Height = 0;
         uint32_t MipLevels = 1;
@@ -28,11 +37,17 @@ namespace Eppo
         std::string DebugName = "Image";
     };
 
-    struct ImageTaskResult
+    struct ImageMipData
     {
         ScopedBuffer Pixels;
         uint32_t Width = 0;
         uint32_t Height = 0;
+        uint32_t RowPitch = 0;
+    };
+
+    struct ImageTaskResult
+    {
+        std::vector<ImageMipData> Mips;
         uint32_t Channels = 0;
         bool IsHdr = false;
     };
@@ -79,7 +94,7 @@ namespace Eppo
         explicit Image(const ImageSpecification& spec);
         explicit Image(const ImageSpecification& spec, void* ExistingImage);
 
-        static auto DecodeImageData(const ImageSource& source, ImageTaskResult& result) -> void;
+        static auto DecodeImageData(const ImageSource& source, MipGenerationMode mipMode, ImageTaskResult& result) -> void;
         auto SelectFormat(uint32_t channels, bool isHdr = false) -> nvrhi::Format;
         [[nodiscard]] constexpr auto GetStride(nvrhi::Format format) const -> uint32_t;
 

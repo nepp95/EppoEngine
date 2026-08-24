@@ -123,11 +123,6 @@ namespace Eppo
         Ref<Mesh> m_CapsuleColliderMesh = nullptr;
         Ref<Mesh> m_CylinderColliderMesh = nullptr;
 
-        Ref<Sampler> m_ClampAllFiltersFalseSampler = nullptr;
-        Ref<Sampler> m_ClampAllFiltersTrueSampler = nullptr;
-        Ref<Sampler> m_WrapAllFiltersTrueSampler = nullptr;
-        Ref<Sampler> m_EquirectSampler = nullptr;
-
         // Uniforms
         static constexpr uint32_t s_ShadowCascadeCount = 4;
         struct Cascade
@@ -250,13 +245,18 @@ namespace Eppo
             int32_t RoughMetMapIndex; // 8-11
             int32_t AOMapIndex; // 12-15
             int32_t EmissiveMapIndex; // 16-19
-            uint32_t Padding0[3]; // 20-31
-            glm::vec4 BaseColor; // 32-47
-            glm::vec3 EmissiveFactor; // 48-59
-            float Metallic; // 60-63
-            float Roughness; // 64-67
-            float NormalScale; // 68-71
-            uint32_t Padding1[2]; // 72-79
+            uint32_t DiffuseSamplerIndex; // 20-23
+            uint32_t NormalSamplerIndex; // 24-27
+            uint32_t RoughMetSamplerIndex; // 28-31
+            uint32_t AOSamplerIndex; // 32-35
+            uint32_t EmissiveSamplerIndex; // 36-39
+            uint32_t Padding0[2]; // 40-47
+            glm::vec4 BaseColor; // 48-63
+            glm::vec3 EmissiveFactor; // 64-75
+            float Metallic; // 76-79
+            float Roughness; // 80-83
+            float NormalScale; // 84-87
+            uint32_t Padding1[2]; // 88-95
         };
         std::vector<MaterialData> m_MaterialData;
         Ref<StorageBuffer> m_MaterialDataSB = nullptr;
