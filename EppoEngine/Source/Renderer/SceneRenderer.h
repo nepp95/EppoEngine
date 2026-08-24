@@ -255,7 +255,8 @@ namespace Eppo
             glm::vec3 EmissiveFactor; // 48-59
             float Metallic; // 60-63
             float Roughness; // 64-67
-            uint32_t Padding1[3]; // 68-79
+            float NormalScale; // 68-71
+            uint32_t Padding1[2]; // 72-79
         };
         std::vector<MaterialData> m_MaterialData;
         Ref<StorageBuffer> m_MaterialDataSB = nullptr;

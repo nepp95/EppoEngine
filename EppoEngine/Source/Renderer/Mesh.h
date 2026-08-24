@@ -54,6 +54,7 @@ namespace Eppo
         glm::vec4 BaseColor = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
         float Roughness = 1.0f;
         float Metallic = 0.0f;
+        float NormalScale = 1.0f;
 
         // NOTE: This converts a uint32 to a int32 which loses half the range.
         //       Currently this is no issue since our handles won't ever reach that far,

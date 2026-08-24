@@ -427,6 +427,7 @@ namespace Eppo
             newMat->BaseColor = glm::make_vec4(material.pbr_metallic_roughness.base_color_factor);
             newMat->Roughness = static_cast<float>(material.pbr_metallic_roughness.roughness_factor);
             newMat->Metallic = static_cast<float>(material.pbr_metallic_roughness.metallic_factor);
+            newMat->NormalScale = static_cast<float>(material.normal_texture.scale);
             newMat->EmissiveFactor = glm::make_vec3(material.emissive_factor) * GetEmissiveStrength(material);
 
             m_Materials[i] = newMat;

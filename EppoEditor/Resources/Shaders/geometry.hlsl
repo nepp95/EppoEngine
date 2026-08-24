@@ -109,6 +109,7 @@ struct MaterialData
     float3 EmissiveFactor;
     float Metallic;
     float Roughness;
+    float NormalScale;
 };
 StructuredBuffer<MaterialData> uMaterialData : register(t2, space0);
 
@@ -213,7 +214,9 @@ float4 PSMain(Varyings input) : SV_Target
     if (material.NormalMapIndex > -1)
     {
         Texture2D normalMap = ResourceDescriptorHeap[NonUniformResourceIndex(material.NormalMapIndex)];
-        const float3 tangentNormal = normalMap.Sample(uMaterialSampler, input.TexCoord).rgb * 2.0 - 1.0;
+        float3 tangentNormal = normalMap.Sample(uMaterialSampler, input.TexCoord).rgb * 2.0 - 1.0;
+        tangentNormal.xy *= material.NormalScale;
+        tangentNormal = normalize(tangentNormal);
 
         float3 T = normalize(input.WorldTangent).xyz;
         T = normalize(T - N * dot(N, T));
@@ -284,7 +287,7 @@ float4 PSMain(Varyings input) : SV_Target
         const float maxLod = 4.0; // prefilter mip count - 1
         const float3 prefiltered = prefilterMap.SampleLevel(iblSamp, R, roughness * maxLod).rgb;
         const float2 brdf = brdfLut.SampleLevel(iblSamp, float2(dotNV, roughness), 0).rg;
-        const float3 specular = prefiltered * (F * brdf.x + brdf.y);
+        const float3 specular = prefiltered * (F0 * brdf.x + brdf.y);
 
         ambient = (kD * diffuse + specular) * uEnvironment.Params.x;
     }
