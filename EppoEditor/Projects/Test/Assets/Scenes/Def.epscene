@@ -554,34 +554,6 @@
             },
             {
                 "IDComponent": {
-                    "ID": 16319850260215055170
-                },
-                "MeshComponent": {
-                    "MeshHandle": 16319850260215055169
-                },
-                "TagComponent": {
-                    "Tag": "AO + Emissive Showcase"
-                },
-                "TransformComponent": {
-                    "Rotation": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    "Scale": [
-                        0.3499999940395355,
-                        0.3499999940395355,
-                        0.3499999940395355
-                    ],
-                    "Translation": [
-                        -0.8999999761581421,
-                        1.350000023841858,
-                        5.0
-                    ]
-                }
-            },
-            {
-                "IDComponent": {
                     "ID": 1013
                 },
                 "PointLightComponent": {
@@ -769,6 +741,34 @@
                         0.0
                     ]
                 }
+            },
+            {
+                "IDComponent": {
+                    "ID": 16319850260215055170
+                },
+                "MeshComponent": {
+                    "MeshHandle": 16319850260215055169
+                },
+                "TagComponent": {
+                    "Tag": "AO + Emissive Showcase"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        0.3499999940395355,
+                        0.3499999940395355,
+                        0.3499999940395355
+                    ],
+                    "Translation": [
+                        -0.8999999761581421,
+                        1.350000023841858,
+                        5.0
+                    ]
+                }
             }
         ],
         "Environment": {
@@ -791,6 +791,12 @@
             ]
         },
         "Handle": 18159251541775323644,
-        "Name": "Def"
+        "Name": "Def",
+        "Ssao": {
+            "Bias": 0.02500000037252903,
+            "Intensity": 1.0,
+            "Power": 1.5,
+            "Radius": 0.5
+        }
     }
 }

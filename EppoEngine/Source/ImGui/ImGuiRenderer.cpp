@@ -17,7 +17,8 @@ namespace Eppo
     struct ImGuiViewportData
     {
         bool WindowOwned = false;
-        ScopedPtr<Swapchain> Swapchain = nullptr;
+        bool FrameAcquired = false;
+        Ref<Swapchain> Swapchain = nullptr;
         ScopedPtr<ImGuiRenderer> Renderer = nullptr;
     };
 
@@ -112,12 +113,15 @@ namespace Eppo
         io.Fonts->TexRef = ImTextureRef(m_FontTexture.Get());
     }
 
-    auto ImGuiRenderer::RenderToSwapchain(ImGuiViewport* viewport, const ScopedPtr<Swapchain>& swapchain, const bool clearSwapchainTarget)
-        -> void
+    auto ImGuiRenderer::RenderToSwapchain(ImGuiViewport* viewport, const Ref<Swapchain>& swapchain, const bool clearSwapchainTarget) -> void
     {
-        EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain")
-
-        Render(viewport, GetOrCreateRenderPass(swapchain), clearSwapchainTarget);
+        Renderer::Submit(
+            [this, viewport, swapchain, clearSwapchainTarget]()
+            {
+                EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain");
+                Render(viewport, GetOrCreateRenderPass(swapchain), clearSwapchainTarget);
+            }
+        );
     }
 
     auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<RenderPass>& renderPass, const bool clearTarget) -> void
@@ -345,7 +349,7 @@ namespace Eppo
         return device->createBuffer(bufferDesc);
     }
 
-    auto ImGuiRenderer::GetOrCreateRenderPass(const ScopedPtr<Swapchain>& swapchain) -> const Ref<RenderPass>&
+    auto ImGuiRenderer::GetOrCreateRenderPass(const Ref<Swapchain>& swapchain) -> const Ref<RenderPass>&
     {
         EP_PROFILE_FN("ImGuiRenderer::GetOrCreateRenderPass")
 

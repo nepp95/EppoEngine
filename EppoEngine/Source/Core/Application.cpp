@@ -41,6 +41,9 @@ namespace Eppo
 
         m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
         m_DeviceManager->Init();
+
+        m_ThreadPool = CreateRef<ThreadPool>();
+
         m_DeviceManager->InitRenderer();
 
         // A deployed runtime hands over the shaders it read from its game package; the editor and tests
@@ -56,6 +59,8 @@ namespace Eppo
     {
         Log::Info("Application shutting down...");
 
+        m_ThreadPool->Shutdown(true);
+        m_DeviceManager->WaitIdle();
         m_ImGuiLayer.reset();
 
         for (auto it = m_LayerStack.begin(); it != m_LayerStack.end();)
@@ -92,13 +97,15 @@ namespace Eppo
         EP_PROFILE_FN("Application::StepFrame")
 
         m_Window->ProcessEvents();
+        m_ThreadPool->Flush();
 
         if (!m_IsMinimized && m_DeviceManager->BeginFrame())
         {
-            // Render work
+            // Run layer updates - possibly enqueuing render commands
             for (const auto& layer : m_LayerStack)
                 layer->OnUpdate(timestep);
 
+            // Enqueue imgui render
             if (m_ImGuiLayer)
             {
                 m_ImGuiLayer->PrepareRender();
@@ -108,6 +115,9 @@ namespace Eppo
 
                 m_ImGuiLayer->Render();
             }
+
+            // Execute render commands
+            Renderer::ExecuteRenderCommands();
 
             // Present
             m_DeviceManager->Present();

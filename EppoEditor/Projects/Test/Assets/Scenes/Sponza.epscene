@@ -148,6 +148,12 @@
             ]
         },
         "Handle": 13075392022024015803,
-        "Name": "Sponza"
+        "Name": "Sponza",
+        "Ssao": {
+            "Bias": 0.02500000037252903,
+            "Intensity": 1.0,
+            "Power": 1.5,
+            "Radius": 0.5
+        }
     }
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Layer.h"
+#include "Core/Threading/ThreadPool.h"
 #include "Core/Window.h"
 #include "Event/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
@@ -81,6 +82,7 @@ namespace Eppo
         [[nodiscard]] constexpr auto GetParams() const -> const ApplicationParams& { return m_Params; }
         [[nodiscard]] constexpr auto GetWindow() const -> const Ref<Window>& { return m_Window; }
         [[nodiscard]] constexpr auto GetDeviceManager() const -> const Ref<DeviceManager>& { return m_DeviceManager; }
+        [[nodiscard]] constexpr auto GetThreadPool() const -> const Ref<ThreadPool>& { return m_ThreadPool; }
         [[nodiscard]] constexpr auto GetImGuiLayer() const -> const Ref<ImGuiLayer>& { return m_ImGuiLayer; }
 
         static auto Get() -> Application& { return *s_Instance; }
@@ -95,6 +97,7 @@ namespace Eppo
     private:
         Ref<Window> m_Window = nullptr;
         Ref<DeviceManager> m_DeviceManager = nullptr;
+        Ref<ThreadPool> m_ThreadPool = nullptr;
 
         std::vector<Ref<Layer>> m_LayerStack;
         Ref<ImGuiLayer> m_ImGuiLayer = nullptr;

@@ -509,14 +509,14 @@ namespace Eppo
 
     auto SceneRenderer::RenderGui() const -> void
     {
-        EP_PROFILE_FN("SceneRenderer::RenderGui")
+        EP_PROFILE_FN("SceneRenderer::RenderGui");
 
         const auto& app = Application::Get();
         if (!app.GetImGuiLayer())
             return;
         const auto& dm = DeviceManager::Get();
-        const uint32_t frameIndex = dm->GetCurrentBackBufferIndex();
-        EP_ASSERT(frameIndex < dm->GetBackBufferCount());
+        const uint32_t frameIndex = dm->GetCurrentFrameIndex();
+        EP_ASSERT(frameIndex < dm->GetMaxFramesInFlight());
 
         const auto& imguiRenderer = app.GetImGuiLayer()->GetMainImGuiRenderer();
 
@@ -639,6 +639,9 @@ namespace Eppo
         ImGui::Text("Vertices: %u", result.Stats.Vertices + uiStats.Vertices);
         ImGui::Text("Indices: %u", result.Stats.Indices + uiStats.Indices);
 
+        ImGui::SeparatorText("Camera");
+        ImGui::Text("Position: x: %.2f, y: %.2f, z: %.2f", m_CameraData.Position.x, m_CameraData.Position.y, m_CameraData.Position.z);
+
         ImGui::End();
     }
 
@@ -676,10 +679,16 @@ namespace Eppo
 
         EnsureColliderMeshes();
         GatherWireframes();
+        PrepareRenderData();
 
-        m_RenderCommandBuffer->Begin();
-        PrepareRender();
+        Renderer::Submit(
+            [this]()
+            {
+                m_RenderCommandBuffer->Begin();
+            }
+        );
 
+        UploadRenderData();
         ShadowDepthPass();
         SsaoPass();
         GeometryPass();
@@ -688,11 +697,14 @@ namespace Eppo
         TonemapPass();
         WireframePass();
 
-        // Collect resolves query results, which is illegal inside a render pass; every pass above closes its own.
-        EP_GPU_COLLECT(m_RenderCommandBuffer);
-
-        m_RenderCommandBuffer->End();
-        m_RenderCommandBuffer->Submit();
+        Renderer::Submit(
+            [this]()
+            {
+                EP_GPU_COLLECT(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->End();
+                m_RenderCommandBuffer->Submit();
+            }
+        );
     }
 
     auto SceneRenderer::GetFinalImage() const -> const Ref<Image>&
@@ -834,20 +846,25 @@ namespace Eppo
 
     auto SceneRenderer::BeginSceneInternal() -> void
     {
-        EP_PROFILE_FN("SceneRenderer::BeginSceneInternal")
+        EP_PROFILE_FN("SceneRenderer::BeginSceneInternal");
 
-        std::memset(&m_ShadowDepthPass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_SsaoPrePass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_SsaoEvaluationPass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_SsaoBlurHorizontalPass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_SsaoBlurVerticalPass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_GeometryPass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_SkyPass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_BloomDownSamplePass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_BloomUpSamplePass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_BloomCompositePass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_WireframePass->GetStatistics(), 0, sizeof(PassStatistics));
-        std::memset(&m_TonemapPass->GetStatistics(), 0, sizeof(PassStatistics));
+        Renderer::Submit(
+            [this]()
+            {
+                std::memset(&m_ShadowDepthPass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_SsaoPrePass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_SsaoEvaluationPass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_SsaoBlurHorizontalPass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_SsaoBlurVerticalPass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_GeometryPass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_SkyPass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_BloomDownSamplePass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_BloomUpSamplePass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_BloomCompositePass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_WireframePass->GetStatistics(), 0, sizeof(PassStatistics));
+                std::memset(&m_TonemapPass->GetStatistics(), 0, sizeof(PassStatistics));
+            }
+        );
 
         m_DrawCommands.clear();
         m_LightData.NumLights = 0;
@@ -920,8 +937,8 @@ namespace Eppo
                         return;
 
                     const glm::mat4 worldTransform = m_Scene->GetWorldTransform(entity);
-                    const glm::mat4 lightTransform = glm::translate(glm::mat4(1.0f), glm::vec3(worldTransform[3])) *
-                        glm::mat4_cast(m_Scene->GetWorldRotation(entity));
+                    const glm::mat4 lightTransform =
+                        glm::translate(glm::mat4(1.0f), glm::vec3(worldTransform[3])) * glm::mat4_cast(m_Scene->GetWorldRotation(entity));
                     markerDraw.Transforms.emplace_back(lightTransform * glm::scale(glm::mat4(1.0f), glm::vec3(0.3f)));
                     shaftDraw.Transforms.emplace_back(
                         lightTransform * glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.6f, 0.0f)) *
@@ -1042,46 +1059,31 @@ namespace Eppo
         }
     }
 
-    auto SceneRenderer::PrepareRender() -> void
+    auto SceneRenderer::PrepareRenderData() -> void
     {
-        EP_PROFILE_FN("SceneRenderer::PrepareRender")
-
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+        EP_PROFILE_FN("SceneRenderer::PrepareRenderData")
 
         // Shadow depth
         FillShadowData();
-        m_ShadowDepthUB->SetData(cmdList, &m_ShadowDepthData, sizeof(m_ShadowDepthData));
 
         // Ssao data
         m_SsaoData.Params = glm::vec4(m_SsaoSettings.Radius, m_SsaoSettings.Bias, m_SsaoSettings.Power, m_SsaoSettings.Intensity);
         m_SsaoData.InvSize = glm::vec4(1.0f / m_Width, 1.0f / m_Height, 0.0f, 0.0f);
-        m_SsaoUB->SetData(cmdList, &m_SsaoData, sizeof(m_SsaoData));
-
-        // Camera, light and environment uniforms
-        m_CameraUB->SetData(cmdList, &m_CameraData, sizeof(CameraData));
-        m_LightsUB->SetData(cmdList, &m_LightData, sizeof(LightData));
-        m_EnvironmentUB->SetData(cmdList, &m_EnvironmentData, sizeof(EnvironmentData));
 
         // Instance storage buffer
-        std::vector<glm::mat4> instanceTransforms;
+        m_InstanceTransforms.clear();
         for (auto& drawCmd : m_DrawCommands | std::views::values)
         {
-            drawCmd.InstanceOffset = static_cast<uint32_t>(instanceTransforms.size());
-            instanceTransforms.insert(instanceTransforms.end(), drawCmd.Transforms.begin(), drawCmd.Transforms.end());
+            drawCmd.InstanceOffset = static_cast<uint32_t>(m_InstanceTransforms.size());
+            m_InstanceTransforms.insert(m_InstanceTransforms.end(), drawCmd.Transforms.begin(), drawCmd.Transforms.end());
         }
 
-        const uint64_t requiredSize = instanceTransforms.size() * sizeof(glm::mat4);
-        m_InstanceTransformsSB->SetData(cmdList, instanceTransforms.data(), requiredSize);
-
-        std::vector<glm::mat4> wireframeTransforms;
+        m_WireframeTransforms.clear();
         for (auto& draw : m_WireframeDrawCommands)
         {
-            draw.InstanceOffset = static_cast<uint32_t>(wireframeTransforms.size());
-            wireframeTransforms.insert(wireframeTransforms.end(), draw.Transforms.begin(), draw.Transforms.end());
+            draw.InstanceOffset = static_cast<uint32_t>(m_WireframeTransforms.size());
+            m_WireframeTransforms.insert(m_WireframeTransforms.end(), draw.Transforms.begin(), draw.Transforms.end());
         }
-
-        const uint64_t wireframeSize = wireframeTransforms.size() * sizeof(glm::mat4);
-        m_WireframeInstanceSB->SetData(cmdList, wireframeTransforms.data(), wireframeSize);
 
         // Prepare draw/material storage buffers
         m_DrawData.clear();
@@ -1123,44 +1125,72 @@ namespace Eppo
                 }
             }
         }
+    }
 
-        m_DrawDataSB->SetData(cmdList, m_DrawData.data(), m_DrawData.size() * sizeof(DrawData));
-        m_MaterialDataSB->SetData(cmdList, m_MaterialData.data(), m_MaterialData.size() * sizeof(MaterialData));
+    auto SceneRenderer::UploadRenderData() -> void
+    {
+        Renderer::Submit(
+            [this]()
+            {
+                EP_PROFILE_FN("SceneRenderer::UploadRenderData");
 
-        // Framebuffer attachments are recreated on resize.
-        const auto& prepassDepth = m_SsaoPrePass->GetFramebuffer()->GetDepthImage();
-        const auto& prepassNormal = m_SsaoPrePass->GetFramebuffer()->GetFinalImage();
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
-        m_SsaoEvaluationPass->SetInput(0, 0, prepassDepth);
-        m_SsaoEvaluationPass->SetInput(0, 1, prepassNormal);
-        m_SsaoBlurHorizontalPass->SetInput(0, 0, m_SsaoEvaluationPass->GetFramebuffer()->GetFinalImage());
-        m_SsaoBlurHorizontalPass->SetInput(0, 1, prepassDepth);
-        m_SsaoBlurVerticalPass->SetInput(0, 0, m_SsaoBlurHorizontalPass->GetFramebuffer()->GetFinalImage());
-        m_SsaoBlurVerticalPass->SetInput(0, 1, prepassDepth);
-        m_GeometryPass->SetInput(0, 3, m_SsaoBlurVerticalPass->GetFramebuffer()->GetFinalImage());
-        m_TonemapPass->SetInput(0, 0, m_BloomCompositePass->GetFramebuffer()->GetFinalImage());
-        m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
+                // Uniform buffers
+                m_ShadowDepthUB->SetData(cmdList, &m_ShadowDepthData, sizeof(ShadowDepthData));
+                m_SsaoUB->SetData(cmdList, &m_SsaoData, sizeof(SsaoData));
+                m_CameraUB->SetData(cmdList, &m_CameraData, sizeof(CameraData));
+                m_LightsUB->SetData(cmdList, &m_LightData, sizeof(LightData));
+                m_EnvironmentUB->SetData(cmdList, &m_EnvironmentData, sizeof(EnvironmentData));
 
-        // Rebuild binding sets for any pass whose resource handles changed.
-        m_ShadowDepthPass->Bake();
-        m_SsaoPrePass->Bake();
-        m_SsaoEvaluationPass->Bake();
-        m_SsaoBlurHorizontalPass->Bake();
-        m_SsaoBlurVerticalPass->Bake();
-        m_GeometryPass->Bake();
-        m_SkyPass->Bake();
-        m_BloomDownSamplePass->Bake();
-        m_BloomUpSamplePass->Bake();
-        m_BloomCompositePass->Bake();
-        m_TonemapPass->Bake();
-        m_WireframePass->Bake();
+                // Storage buffers
+                const uint64_t requiredSize = m_InstanceTransforms.size() * sizeof(glm::mat4);
+                m_InstanceTransformsSB->SetData(cmdList, m_InstanceTransforms.data(), requiredSize);
+                const uint64_t wireframeSize = m_WireframeTransforms.size() * sizeof(glm::mat4);
+                m_WireframeInstanceSB->SetData(cmdList, m_WireframeTransforms.data(), wireframeSize);
+                m_DrawDataSB->SetData(cmdList, m_DrawData.data(), m_DrawData.size() * sizeof(DrawData));
+                m_MaterialDataSB->SetData(cmdList, m_MaterialData.data(), m_MaterialData.size() * sizeof(MaterialData));
 
-        // Pre-register the subresources bloom samples bindlessly: GetBindlessIndex lazily writes the bindless
-        // table on first use, which is illegal once an earlier pass has bound it, so warm the cache here first.
-        static_cast<void>(m_GeometryPass->GetFramebuffer()->GetFinalImage()->GetBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, 1)));
-        const auto& bloomPyramid = m_BloomPyramidFramebuffer->GetFinalImage();
-        for (uint32_t mip = 0; mip < m_BloomMipLevels; mip++)
-            static_cast<void>(bloomPyramid->GetBindlessIndex(nvrhi::TextureSubresourceSet(mip, 1, 0, 1)));
+                // Descriptors
+                const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
+                m_ShadowDepthData.ShadowMapIndex = shadowMap->GetBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, s_ShadowCascadeCount));
+                m_ShadowDepthData.ShadowSamplerIndex = m_ClampAllFiltersFalseSampler->GetBindlessIndex();
+
+                m_GeometryPass->GetFramebuffer()->GetFinalImage()->RegisterBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, 1));
+
+                const auto& bloomPyramid = m_BloomPyramidFramebuffer->GetFinalImage();
+                for (uint32_t mip = 0; mip < m_BloomMipLevels; mip++)
+                    bloomPyramid->RegisterBindlessIndex(nvrhi::TextureSubresourceSet(mip, 1, 0, 1));
+
+                // Framebuffer attachments are recreated on resize.
+                const auto& prepassDepth = m_SsaoPrePass->GetFramebuffer()->GetDepthImage();
+                const auto& prepassNormal = m_SsaoPrePass->GetFramebuffer()->GetFinalImage();
+
+                m_SsaoEvaluationPass->SetInput(0, 0, prepassDepth);
+                m_SsaoEvaluationPass->SetInput(0, 1, prepassNormal);
+                m_SsaoBlurHorizontalPass->SetInput(0, 0, m_SsaoEvaluationPass->GetFramebuffer()->GetFinalImage());
+                m_SsaoBlurHorizontalPass->SetInput(0, 1, prepassDepth);
+                m_SsaoBlurVerticalPass->SetInput(0, 0, m_SsaoBlurHorizontalPass->GetFramebuffer()->GetFinalImage());
+                m_SsaoBlurVerticalPass->SetInput(0, 1, prepassDepth);
+                m_GeometryPass->SetInput(0, 3, m_SsaoBlurVerticalPass->GetFramebuffer()->GetFinalImage());
+                m_TonemapPass->SetInput(0, 0, m_BloomCompositePass->GetFramebuffer()->GetFinalImage());
+                m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
+
+                // Rebuild binding sets for any pass whose resource handles changed.
+                m_ShadowDepthPass->Bake();
+                m_SsaoPrePass->Bake();
+                m_SsaoEvaluationPass->Bake();
+                m_SsaoBlurHorizontalPass->Bake();
+                m_SsaoBlurVerticalPass->Bake();
+                m_GeometryPass->Bake();
+                m_SkyPass->Bake();
+                m_BloomDownSamplePass->Bake();
+                m_BloomUpSamplePass->Bake();
+                m_BloomCompositePass->Bake();
+                m_TonemapPass->Bake();
+                m_WireframePass->Bake();
+            }
+        );
     }
 
     auto SceneRenderer::FillShadowData() -> void
@@ -1207,8 +1237,9 @@ namespace Eppo
             for (uint32_t y = 0; y < 2; y++)
                 for (uint32_t x = 0; x < 2; x++)
                 {
-                    const glm::vec4 ndc(static_cast<float>(x) * 2.0f - 1.0f, static_cast<float>(y) * 2.0f - 1.0f,
-                        static_cast<float>(z), 1.0f);
+                    const glm::vec4 ndc(
+                        static_cast<float>(x) * 2.0f - 1.0f, static_cast<float>(y) * 2.0f - 1.0f, static_cast<float>(z), 1.0f
+                    );
                     const glm::vec4 world = m_CameraData.InverseViewProjection * ndc;
                     frustumCorners[cornerIndex++] = glm::vec3(world) / world.w;
                 }
@@ -1261,591 +1292,623 @@ namespace Eppo
 
             cascadeNear = cascadeFar;
         }
-
-        const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
-        m_ShadowDepthData.ShadowMapIndex = shadowMap->GetBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, s_ShadowCascadeCount));
-        m_ShadowDepthData.ShadowSamplerIndex = m_ClampAllFiltersFalseSampler->GetBindlessIndex();
     }
 
     auto SceneRenderer::ShadowDepthPass() -> void
     {
-        EP_PROFILE_FN("SceneRenderer::ShadowDepthPass")
-        EP_GPU_ZONE(m_RenderCommandBuffer, "ShadowDepthPass")
-
-        struct PC
-        {
-            glm::mat4 Transform;
-            uint32_t InstanceOffset;
-        } pushConstants{};
-
-        auto& statistics = m_ShadowDepthPass->GetStatistics();
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
-
-        m_RenderCommandBuffer->BeginTimerQuery(m_ShadowDepthPass->GetName());
-        m_RenderCommandBuffer->BeginMarker(m_ShadowDepthPass->GetName());
-        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_ShadowDepthPass);
-
-        auto& state = m_RenderCommandBuffer->GetGraphicsState();
-
-        for (const auto& drawCmd : m_DrawCommands | std::views::values)
-        {
-            const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
-            if (instanceCount == 0)
-                continue;
-
-            // Each object instance is drawn once per cascade; the vertex shader derives the cascade
-            // and object index from SV_InstanceID and writes SV_RenderTargetArrayIndex.
-            const uint32_t layeredInstanceCount = instanceCount * s_ShadowCascadeCount;
-
-            for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+        Renderer::Submit(
+            [this]()
             {
-                const nvrhi::VertexBufferBinding vtxBufBinding{
-                    .buffer = submesh.VertexBuffer->GetBuffer(),
-                    .slot = 0,
-                    .offset = 0,
-                };
+                EP_PROFILE_FN("SceneRenderer::ShadowDepthPass")
+                EP_GPU_ZONE(m_RenderCommandBuffer, "ShadowDepthPass")
 
-                state.vertexBuffers.resize(1);
-                state.vertexBuffers[0] = vtxBufBinding;
-                state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
-                state.indexBuffer.format = nvrhi::Format::R32_UINT;
-                state.indexBuffer.offset = 0;
-                m_RenderCommandBuffer->CommitGraphicsState();
-
-                pushConstants.Transform = submesh.LocalTransform;
-                pushConstants.InstanceOffset = drawCmd.InstanceOffset;
-
-                for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                struct PC
                 {
-                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                    glm::mat4 Transform;
+                    uint32_t InstanceOffset;
+                } pushConstants{};
 
-                    nvrhi::DrawArguments drawArgs{
-                        .vertexCount = static_cast<uint32_t>(indexCount),
-                        .instanceCount = layeredInstanceCount,
-                        .startIndexLocation = firstIndex,
-                        .startVertexLocation = firstVertex,
-                    };
+                auto& statistics = m_ShadowDepthPass->GetStatistics();
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
-                    cmdList->drawIndexed(drawArgs);
+                m_RenderCommandBuffer->BeginTimerQuery(m_ShadowDepthPass->GetName());
+                m_RenderCommandBuffer->BeginMarker(m_ShadowDepthPass->GetName());
+                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_ShadowDepthPass);
 
-                    statistics.DrawCalls++;
-                    statistics.Vertices += static_cast<uint32_t>(vertexCount) * layeredInstanceCount;
-                    statistics.Indices += static_cast<uint32_t>(indexCount) * layeredInstanceCount;
+                auto& state = m_RenderCommandBuffer->GetGraphicsState();
+
+                for (const auto& drawCmd : m_DrawCommands | std::views::values)
+                {
+                    const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+                    if (instanceCount == 0)
+                        continue;
+
+                    // Each object instance is drawn once per cascade; the vertex shader derives the cascade
+                    // and object index from SV_InstanceID and writes SV_RenderTargetArrayIndex.
+                    const uint32_t layeredInstanceCount = instanceCount * s_ShadowCascadeCount;
+
+                    for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+                    {
+                        const nvrhi::VertexBufferBinding vtxBufBinding{
+                            .buffer = submesh.VertexBuffer->GetBuffer(),
+                            .slot = 0,
+                            .offset = 0,
+                        };
+
+                        state.vertexBuffers.resize(1);
+                        state.vertexBuffers[0] = vtxBufBinding;
+                        state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+                        state.indexBuffer.format = nvrhi::Format::R32_UINT;
+                        state.indexBuffer.offset = 0;
+                        m_RenderCommandBuffer->CommitGraphicsState();
+
+                        pushConstants.Transform = submesh.LocalTransform;
+                        pushConstants.InstanceOffset = drawCmd.InstanceOffset;
+
+                        for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                        {
+                            cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+                            nvrhi::DrawArguments drawArgs{
+                                .vertexCount = static_cast<uint32_t>(indexCount),
+                                .instanceCount = layeredInstanceCount,
+                                .startIndexLocation = firstIndex,
+                                .startVertexLocation = firstVertex,
+                            };
+
+                            cmdList->drawIndexed(drawArgs);
+
+                            statistics.DrawCalls++;
+                            statistics.Vertices += static_cast<uint32_t>(vertexCount) * layeredInstanceCount;
+                            statistics.Indices += static_cast<uint32_t>(indexCount) * layeredInstanceCount;
+                        }
+                        statistics.Submeshes++;
+                    }
+                    statistics.Instances += layeredInstanceCount;
+                    statistics.Meshes++;
                 }
-                statistics.Submeshes++;
-            }
-            statistics.Instances += layeredInstanceCount;
-            statistics.Meshes++;
-        }
 
-        Renderer::EndRenderPass(m_RenderCommandBuffer);
-        m_RenderCommandBuffer->EndMarker();
-        m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
+                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->EndMarker();
+                m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
+            }
+        );
     }
 
     auto SceneRenderer::SsaoPass() -> void
     {
-        EP_PROFILE_FN("SceneRenderer::SsaoPass")
-        EP_GPU_ZONE(m_RenderCommandBuffer, "SsaoPass")
-
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
-        m_RenderCommandBuffer->BeginMarker("SSAO");
-
-        // Prepass
-        {
-            struct PC
+        Renderer::Submit(
+            [this]()
             {
-                uint32_t DrawIndex;
-            } pushConstants{};
+                EP_PROFILE_FN("SceneRenderer::SsaoPass")
+                EP_GPU_ZONE(m_RenderCommandBuffer, "SsaoPass")
 
-            auto& statistics = m_SsaoPrePass->GetStatistics();
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+                m_RenderCommandBuffer->BeginMarker("SSAO");
 
-            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoPrePass->GetName());
-            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoPrePass);
-
-            auto& state = m_RenderCommandBuffer->GetGraphicsState();
-
-            uint32_t drawIndex = 0;
-            for (const auto& drawCmd : m_DrawCommands | std::views::values)
-            {
-                const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
-                if (instanceCount == 0)
-                    continue;
-
-                for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+                // Prepass
                 {
-                    const nvrhi::VertexBufferBinding vtxBufBinding{
-                        .buffer = submesh.VertexBuffer->GetBuffer(),
-                        .slot = 0,
-                        .offset = 0,
-                    };
-
-                    state.vertexBuffers.resize(1);
-                    state.vertexBuffers[0] = vtxBufBinding;
-                    state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
-                    state.indexBuffer.format = nvrhi::Format::R32_UINT;
-                    state.indexBuffer.offset = 0;
-                    m_RenderCommandBuffer->CommitGraphicsState();
-
-                    for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                    struct PC
                     {
-                        pushConstants.DrawIndex = drawIndex++;
-                        cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                        uint32_t DrawIndex;
+                    } pushConstants{};
 
-                        nvrhi::DrawArguments drawArgs{
-                            .vertexCount = static_cast<uint32_t>(indexCount),
-                            .instanceCount = instanceCount,
-                            .startIndexLocation = firstIndex,
-                            .startVertexLocation = firstVertex,
-                        };
+                    auto& statistics = m_SsaoPrePass->GetStatistics();
 
-                        cmdList->drawIndexed(drawArgs);
+                    m_RenderCommandBuffer->BeginTimerQuery(m_SsaoPrePass->GetName());
+                    Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoPrePass);
 
-                        statistics.DrawCalls++;
-                        statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
-                        statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                    auto& state = m_RenderCommandBuffer->GetGraphicsState();
+
+                    uint32_t drawIndex = 0;
+                    for (const auto& drawCmd : m_DrawCommands | std::views::values)
+                    {
+                        const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+                        if (instanceCount == 0)
+                            continue;
+
+                        for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+                        {
+                            const nvrhi::VertexBufferBinding vtxBufBinding{
+                                .buffer = submesh.VertexBuffer->GetBuffer(),
+                                .slot = 0,
+                                .offset = 0,
+                            };
+
+                            state.vertexBuffers.resize(1);
+                            state.vertexBuffers[0] = vtxBufBinding;
+                            state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+                            state.indexBuffer.format = nvrhi::Format::R32_UINT;
+                            state.indexBuffer.offset = 0;
+                            m_RenderCommandBuffer->CommitGraphicsState();
+
+                            for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                            {
+                                pushConstants.DrawIndex = drawIndex++;
+                                cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+                                nvrhi::DrawArguments drawArgs{
+                                    .vertexCount = static_cast<uint32_t>(indexCount),
+                                    .instanceCount = instanceCount,
+                                    .startIndexLocation = firstIndex,
+                                    .startVertexLocation = firstVertex,
+                                };
+
+                                cmdList->drawIndexed(drawArgs);
+
+                                statistics.DrawCalls++;
+                                statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
+                                statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                            }
+                            statistics.Submeshes++;
+                        }
+                        statistics.Instances += instanceCount;
+                        statistics.Meshes++;
                     }
-                    statistics.Submeshes++;
+
+                    EP_ASSERT(drawIndex == m_DrawData.size());
+
+                    Renderer::EndRenderPass(m_RenderCommandBuffer);
+                    m_RenderCommandBuffer->EndTimerQuery(m_SsaoPrePass->GetName());
                 }
-                statistics.Instances += instanceCount;
-                statistics.Meshes++;
+
+                // Explicit transition
+                const auto& prepassDepth = m_SsaoPrePass->GetFramebuffer()->GetDepthImage();
+                const auto& prepassNormal = m_SsaoPrePass->GetFramebuffer()->GetFinalImage();
+                cmdList->setTextureState(prepassDepth->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+                cmdList->setTextureState(prepassNormal->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+
+                // Evaluation
+                {
+                    m_RenderCommandBuffer->BeginTimerQuery(m_SsaoEvaluationPass->GetName());
+                    Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoEvaluationPass);
+
+                    constexpr nvrhi::DrawArguments drawArgs{
+                        .vertexCount = 3,
+                        .instanceCount = 1,
+                    };
+                    cmdList->draw(drawArgs);
+
+                    auto& statistics = m_SsaoEvaluationPass->GetStatistics();
+                    statistics.DrawCalls++;
+                    statistics.Vertices += drawArgs.vertexCount;
+
+                    Renderer::EndRenderPass(m_RenderCommandBuffer);
+                    m_RenderCommandBuffer->EndTimerQuery(m_SsaoEvaluationPass->GetName());
+                }
+
+                const auto& evaluationImage = m_SsaoEvaluationPass->GetFramebuffer()->GetFinalImage();
+                cmdList->setTextureState(evaluationImage->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+
+                // Horizontal blur
+                {
+                    struct PC
+                    {
+                        glm::vec2 Direction = glm::vec2(1.0f, 0.0f);
+                        glm::vec2 InvSize;
+                    } pushConstants{};
+                    pushConstants.InvSize = glm::vec2(1.0f / m_Width, 1.0f / m_Height);
+
+                    m_RenderCommandBuffer->BeginTimerQuery(m_SsaoBlurHorizontalPass->GetName());
+                    Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoBlurHorizontalPass);
+
+                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+                    constexpr nvrhi::DrawArguments drawArgs{
+                        .vertexCount = 3,
+                        .instanceCount = 1,
+                    };
+                    cmdList->draw(drawArgs);
+
+                    auto& statistics = m_SsaoBlurHorizontalPass->GetStatistics();
+                    statistics.DrawCalls++;
+                    statistics.Vertices += drawArgs.vertexCount;
+
+                    Renderer::EndRenderPass(m_RenderCommandBuffer);
+                    m_RenderCommandBuffer->EndTimerQuery(m_SsaoBlurHorizontalPass->GetName());
+                }
+
+                // Vertical blur
+                {
+                    struct PC
+                    {
+                        glm::vec2 Direction = glm::vec2(0.0f, 1.0f);
+                        glm::vec2 InvSize;
+                    } pushConstants{};
+                    pushConstants.InvSize = glm::vec2(1.0f / m_Width, 1.0f / m_Height);
+
+                    m_RenderCommandBuffer->BeginTimerQuery(m_SsaoBlurVerticalPass->GetName());
+                    Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoBlurVerticalPass);
+
+                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+                    constexpr nvrhi::DrawArguments drawArgs{
+                        .vertexCount = 3,
+                        .instanceCount = 1,
+                    };
+                    cmdList->draw(drawArgs);
+
+                    auto& statistics = m_SsaoBlurVerticalPass->GetStatistics();
+                    statistics.DrawCalls++;
+                    statistics.Vertices += drawArgs.vertexCount;
+
+                    Renderer::EndRenderPass(m_RenderCommandBuffer);
+                    m_RenderCommandBuffer->EndTimerQuery(m_SsaoBlurVerticalPass->GetName());
+                }
+
+                m_RenderCommandBuffer->EndMarker();
             }
-
-            EP_ASSERT(drawIndex == m_DrawData.size());
-
-            Renderer::EndRenderPass(m_RenderCommandBuffer);
-            m_RenderCommandBuffer->EndTimerQuery(m_SsaoPrePass->GetName());
-        }
-
-        // Explicit transition
-        const auto& prepassDepth = m_SsaoPrePass->GetFramebuffer()->GetDepthImage();
-        const auto& prepassNormal = m_SsaoPrePass->GetFramebuffer()->GetFinalImage();
-        cmdList->setTextureState(prepassDepth->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
-        cmdList->setTextureState(prepassNormal->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
-
-        // Evaluation
-        {
-            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoEvaluationPass->GetName());
-            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoEvaluationPass);
-
-            constexpr nvrhi::DrawArguments drawArgs{
-                .vertexCount = 3,
-                .instanceCount = 1,
-            };
-            cmdList->draw(drawArgs);
-
-            auto& statistics = m_SsaoEvaluationPass->GetStatistics();
-            statistics.DrawCalls++;
-            statistics.Vertices += drawArgs.vertexCount;
-
-            Renderer::EndRenderPass(m_RenderCommandBuffer);
-            m_RenderCommandBuffer->EndTimerQuery(m_SsaoEvaluationPass->GetName());
-        }
-
-        const auto& evaluationImage = m_SsaoEvaluationPass->GetFramebuffer()->GetFinalImage();
-        cmdList->setTextureState(evaluationImage->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
-
-        // Horizontal blur
-        {
-            struct PC
-            {
-                glm::vec2 Direction = glm::vec2(1.0f, 0.0f);
-                glm::vec2 InvSize;
-            } pushConstants{};
-            pushConstants.InvSize = glm::vec2(1.0f / m_Width, 1.0f / m_Height);
-
-            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoBlurHorizontalPass->GetName());
-            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoBlurHorizontalPass);
-
-            cmdList->setPushConstants(&pushConstants, sizeof(PC));
-
-            constexpr nvrhi::DrawArguments drawArgs{
-                .vertexCount = 3,
-                .instanceCount = 1,
-            };
-            cmdList->draw(drawArgs);
-
-            auto& statistics = m_SsaoBlurHorizontalPass->GetStatistics();
-            statistics.DrawCalls++;
-            statistics.Vertices += drawArgs.vertexCount;
-
-            Renderer::EndRenderPass(m_RenderCommandBuffer);
-            m_RenderCommandBuffer->EndTimerQuery(m_SsaoBlurHorizontalPass->GetName());
-        }
-
-        // Vertical blur
-        {
-            struct PC
-            {
-                glm::vec2 Direction = glm::vec2(0.0f, 1.0f);
-                glm::vec2 InvSize;
-            } pushConstants{};
-            pushConstants.InvSize = glm::vec2(1.0f / m_Width, 1.0f / m_Height);
-
-            m_RenderCommandBuffer->BeginTimerQuery(m_SsaoBlurVerticalPass->GetName());
-            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SsaoBlurVerticalPass);
-
-            cmdList->setPushConstants(&pushConstants, sizeof(PC));
-
-            constexpr nvrhi::DrawArguments drawArgs{
-                .vertexCount = 3,
-                .instanceCount = 1,
-            };
-            cmdList->draw(drawArgs);
-
-            auto& statistics = m_SsaoBlurVerticalPass->GetStatistics();
-            statistics.DrawCalls++;
-            statistics.Vertices += drawArgs.vertexCount;
-
-            Renderer::EndRenderPass(m_RenderCommandBuffer);
-            m_RenderCommandBuffer->EndTimerQuery(m_SsaoBlurVerticalPass->GetName());
-        }
-
-        m_RenderCommandBuffer->EndMarker();
+        );
     }
 
     auto SceneRenderer::GeometryPass() -> void
     {
-        EP_PROFILE_FN("SceneRenderer::GeometryPass")
-        EP_GPU_ZONE(m_RenderCommandBuffer, "GeometryPass")
-
-        struct PC
-        {
-            uint32_t DrawIndex;
-        } pushConstants{};
-
-        auto& statistics = m_GeometryPass->GetStatistics();
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
-
-        m_RenderCommandBuffer->BeginTimerQuery(m_GeometryPass->GetName());
-
-        const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
-        cmdList->setTextureState(shadowMap->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
-
-        m_RenderCommandBuffer->BeginMarker(m_GeometryPass->GetName());
-        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
-
-        auto& state = m_RenderCommandBuffer->GetGraphicsState();
-
-        uint32_t drawIndex = 0;
-        for (const auto& drawCmd : m_DrawCommands | std::views::values)
-        {
-            const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
-            if (instanceCount == 0)
-                continue;
-
-            for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+        Renderer::Submit(
+            [this]()
             {
-                const nvrhi::VertexBufferBinding vtxBufBinding{
-                    .buffer = submesh.VertexBuffer->GetBuffer(),
-                    .slot = 0,
-                    .offset = 0,
-                };
+                EP_PROFILE_FN("SceneRenderer::GeometryPass")
+                EP_GPU_ZONE(m_RenderCommandBuffer, "GeometryPass")
 
-                state.vertexBuffers.resize(1);
-                state.vertexBuffers[0] = vtxBufBinding;
-                state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
-                state.indexBuffer.format = nvrhi::Format::R32_UINT;
-                state.indexBuffer.offset = 0;
-                m_RenderCommandBuffer->CommitGraphicsState();
-
-                for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                struct PC
                 {
-                    pushConstants.DrawIndex = drawIndex++;
-                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                    uint32_t DrawIndex;
+                } pushConstants{};
 
-                    nvrhi::DrawArguments drawArgs{
-                        .vertexCount = static_cast<uint32_t>(indexCount),
-                        .instanceCount = instanceCount,
-                        .startIndexLocation = firstIndex,
-                        .startVertexLocation = firstVertex,
-                    };
+                auto& statistics = m_GeometryPass->GetStatistics();
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
-                    cmdList->drawIndexed(drawArgs);
+                m_RenderCommandBuffer->BeginTimerQuery(m_GeometryPass->GetName());
 
-                    statistics.DrawCalls++;
-                    statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
-                    statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
+                cmdList->setTextureState(shadowMap->GetTexture(), nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+
+                m_RenderCommandBuffer->BeginMarker(m_GeometryPass->GetName());
+                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_GeometryPass);
+
+                auto& state = m_RenderCommandBuffer->GetGraphicsState();
+
+                uint32_t drawIndex = 0;
+                for (const auto& drawCmd : m_DrawCommands | std::views::values)
+                {
+                    const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+                    if (instanceCount == 0)
+                        continue;
+
+                    for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+                    {
+                        const nvrhi::VertexBufferBinding vtxBufBinding{
+                            .buffer = submesh.VertexBuffer->GetBuffer(),
+                            .slot = 0,
+                            .offset = 0,
+                        };
+
+                        state.vertexBuffers.resize(1);
+                        state.vertexBuffers[0] = vtxBufBinding;
+                        state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+                        state.indexBuffer.format = nvrhi::Format::R32_UINT;
+                        state.indexBuffer.offset = 0;
+                        m_RenderCommandBuffer->CommitGraphicsState();
+
+                        for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                        {
+                            pushConstants.DrawIndex = drawIndex++;
+                            cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+                            nvrhi::DrawArguments drawArgs{
+                                .vertexCount = static_cast<uint32_t>(indexCount),
+                                .instanceCount = instanceCount,
+                                .startIndexLocation = firstIndex,
+                                .startVertexLocation = firstVertex,
+                            };
+
+                            cmdList->drawIndexed(drawArgs);
+
+                            statistics.DrawCalls++;
+                            statistics.Vertices += static_cast<uint32_t>(vertexCount) * instanceCount;
+                            statistics.Indices += static_cast<uint32_t>(indexCount) * instanceCount;
+                        }
+                        statistics.Submeshes++;
+                    }
+                    statistics.Instances += instanceCount;
+                    statistics.Meshes++;
                 }
-                statistics.Submeshes++;
+
+                EP_ASSERT(drawIndex == m_DrawData.size());
+
+                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->EndMarker();
+                m_RenderCommandBuffer->EndTimerQuery(m_GeometryPass->GetName());
             }
-            statistics.Instances += instanceCount;
-            statistics.Meshes++;
-        }
-
-        EP_ASSERT(drawIndex == m_DrawData.size());
-
-        Renderer::EndRenderPass(m_RenderCommandBuffer);
-        m_RenderCommandBuffer->EndMarker();
-        m_RenderCommandBuffer->EndTimerQuery(m_GeometryPass->GetName());
+        );
     }
 
     auto SceneRenderer::SkyPass() const -> void
     {
-        EP_PROFILE_FN("SceneRenderer::SkyPass")
-        EP_GPU_ZONE(m_RenderCommandBuffer, "SkyPass")
+        Renderer::Submit(
+            [this]()
+            {
+                EP_PROFILE_FN("SceneRenderer::SkyPass")
+                EP_GPU_ZONE(m_RenderCommandBuffer, "SkyPass")
 
-        auto& statistics = m_SkyPass->GetStatistics();
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+                auto& statistics = m_SkyPass->GetStatistics();
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
-        m_RenderCommandBuffer->BeginTimerQuery(m_SkyPass->GetName());
-        m_RenderCommandBuffer->BeginMarker(m_SkyPass->GetName());
-        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SkyPass);
+                m_RenderCommandBuffer->BeginTimerQuery(m_SkyPass->GetName());
+                m_RenderCommandBuffer->BeginMarker(m_SkyPass->GetName());
+                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_SkyPass);
 
-        constexpr nvrhi::DrawArguments drawArgs{
-            .vertexCount = 3,
-            .instanceCount = 1,
-        };
-        cmdList->draw(drawArgs);
+                constexpr nvrhi::DrawArguments drawArgs{
+                    .vertexCount = 3,
+                    .instanceCount = 1,
+                };
+                cmdList->draw(drawArgs);
 
-        statistics.DrawCalls++;
-        statistics.Vertices += drawArgs.vertexCount;
+                statistics.DrawCalls++;
+                statistics.Vertices += drawArgs.vertexCount;
 
-        Renderer::EndRenderPass(m_RenderCommandBuffer);
-        m_RenderCommandBuffer->EndMarker();
-        m_RenderCommandBuffer->EndTimerQuery(m_SkyPass->GetName());
+                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->EndMarker();
+                m_RenderCommandBuffer->EndTimerQuery(m_SkyPass->GetName());
+            }
+        );
     }
 
     auto SceneRenderer::BloomPass() -> void
     {
-        EP_PROFILE_FN("SceneRenderer::BloomPass")
-        EP_GPU_ZONE(m_RenderCommandBuffer, "BloomPass")
-
-        struct PC
-        {
-            glm::vec4 Params;
-            glm::uvec4 Indices;
-        } pushConstants{};
-
-        constexpr nvrhi::DrawArguments drawArgs{
-            .vertexCount = 3,
-            .instanceCount = 1,
-        };
-
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
-        const auto& sceneImage = m_GeometryPass->GetFramebuffer()->GetFinalImage();
-        const auto& pyramid = m_BloomPyramidFramebuffer->GetFinalImage();
-        const uint32_t samplerIndex = m_ClampAllFiltersTrueSampler->GetBindlessIndex();
-
-        m_RenderCommandBuffer->BeginMarker("Bloom");
-
-        // Downsample
-        {
-            // Push constants:
-            // Params: inverse source size xy, threshold, knee
-            // Indices: source image, sampler, apply threshold, unused
-            m_RenderCommandBuffer->BeginTimerQuery(m_BloomDownSamplePass->GetName());
-            for (uint32_t dest = 0; dest < m_BloomMipLevels; dest++)
+        Renderer::Submit(
+            [this]()
             {
-                const bool base = dest == 0;
-                const Ref<Image>& source = base ? sceneImage : pyramid;
-                const uint32_t sourceMip = base ? 0u : dest - 1u;
-                const nvrhi::TextureSubresourceSet sourceSub(sourceMip, 1, 0, 1);
+                EP_PROFILE_FN("SceneRenderer::BloomPass")
+                EP_GPU_ZONE(m_RenderCommandBuffer, "BloomPass")
 
-                cmdList->setTextureState(source->GetTexture(), sourceSub, nvrhi::ResourceStates::ShaderResource);
-                m_BloomDownSamplePass->SetSubresources(nvrhi::TextureSubresourceSet(dest, 1, 0, 1));
+                struct PC
+                {
+                    glm::vec4 Params;
+                    glm::uvec4 Indices;
+                } pushConstants{};
 
-                m_RenderCommandBuffer->BeginMarker(m_BloomDownSamplePass->GetName());
-                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomDownSamplePass);
+                constexpr nvrhi::DrawArguments drawArgs{
+                    .vertexCount = 3,
+                    .instanceCount = 1,
+                };
 
-                pushConstants.Params = glm::vec4(
-                    1.0f / source->GetMipWidth(sourceMip), 1.0f / source->GetMipHeight(sourceMip), m_BloomSettings.Threshold,
-                    m_BloomSettings.Knee
-                );
-                pushConstants.Indices = glm::uvec4(source->GetBindlessIndex(sourceSub), samplerIndex, base ? 1u : 0u, 0u);
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+                const auto& sceneImage = m_GeometryPass->GetFramebuffer()->GetFinalImage();
+                const auto& pyramid = m_BloomPyramidFramebuffer->GetFinalImage();
+                const uint32_t samplerIndex = m_ClampAllFiltersTrueSampler->GetBindlessIndex();
 
-                cmdList->setPushConstants(&pushConstants, sizeof(PC));
-                cmdList->draw(drawArgs);
+                m_RenderCommandBuffer->BeginMarker("Bloom");
 
-                auto& statistics = m_BloomDownSamplePass->GetStatistics();
-                statistics.DrawCalls++;
-                statistics.Vertices += drawArgs.vertexCount;
+                // Downsample
+                {
+                    // Push constants:
+                    // Params: inverse source size xy, threshold, knee
+                    // Indices: source image, sampler, apply threshold, unused
+                    m_RenderCommandBuffer->BeginTimerQuery(m_BloomDownSamplePass->GetName());
+                    for (uint32_t dest = 0; dest < m_BloomMipLevels; dest++)
+                    {
+                        const bool base = dest == 0;
+                        const Ref<Image>& source = base ? sceneImage : pyramid;
+                        const uint32_t sourceMip = base ? 0u : dest - 1u;
+                        const nvrhi::TextureSubresourceSet sourceSub(sourceMip, 1, 0, 1);
 
-                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                        cmdList->setTextureState(source->GetTexture(), sourceSub, nvrhi::ResourceStates::ShaderResource);
+                        m_BloomDownSamplePass->SetSubresources(nvrhi::TextureSubresourceSet(dest, 1, 0, 1));
+
+                        m_RenderCommandBuffer->BeginMarker(m_BloomDownSamplePass->GetName());
+                        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomDownSamplePass);
+
+                        pushConstants.Params = glm::vec4(
+                            1.0f / source->GetMipWidth(sourceMip), 1.0f / source->GetMipHeight(sourceMip), m_BloomSettings.Threshold,
+                            m_BloomSettings.Knee
+                        );
+                        pushConstants.Indices = glm::uvec4(source->GetBindlessIndex(sourceSub), samplerIndex, base ? 1u : 0u, 0u);
+
+                        cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                        cmdList->draw(drawArgs);
+
+                        auto& statistics = m_BloomDownSamplePass->GetStatistics();
+                        statistics.DrawCalls++;
+                        statistics.Vertices += drawArgs.vertexCount;
+
+                        Renderer::EndRenderPass(m_RenderCommandBuffer);
+                        m_RenderCommandBuffer->EndMarker();
+                    }
+                    m_RenderCommandBuffer->EndTimerQuery(m_BloomDownSamplePass->GetName());
+                }
+
+                // Upsample
+                {
+                    // Push constants
+                    // Params: inverse source size xy, radius, unused
+                    // Indices: source image, sampler, unused, unused
+                    m_RenderCommandBuffer->BeginTimerQuery(m_BloomUpSamplePass->GetName());
+                    for (uint32_t sourceMip = m_BloomMipLevels - 1; sourceMip > 0; sourceMip--)
+                    {
+                        const uint32_t dest = sourceMip - 1;
+                        const nvrhi::TextureSubresourceSet sourceSub(sourceMip, 1, 0, 1);
+
+                        cmdList->setTextureState(pyramid->GetTexture(), sourceSub, nvrhi::ResourceStates::ShaderResource);
+                        m_BloomUpSamplePass->SetSubresources(nvrhi::TextureSubresourceSet(dest, 1, 0, 1));
+
+                        m_RenderCommandBuffer->BeginMarker(m_BloomUpSamplePass->GetName());
+                        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomUpSamplePass);
+
+                        pushConstants.Params = glm::vec4(
+                            1.0f / pyramid->GetMipWidth(sourceMip), 1.0f / pyramid->GetMipHeight(sourceMip), m_BloomSettings.Radius, 0.0f
+                        );
+                        pushConstants.Indices = glm::uvec4(pyramid->GetBindlessIndex(sourceSub), samplerIndex, 0u, 0u);
+
+                        cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                        cmdList->draw(drawArgs);
+
+                        auto& statistics = m_BloomUpSamplePass->GetStatistics();
+                        statistics.DrawCalls++;
+                        statistics.Vertices += drawArgs.vertexCount;
+
+                        Renderer::EndRenderPass(m_RenderCommandBuffer);
+                        m_RenderCommandBuffer->EndMarker();
+                    }
+                    m_RenderCommandBuffer->EndTimerQuery(m_BloomUpSamplePass->GetName());
+                }
+
+                // Composite
+                {
+                    // Push constants
+                    // Params: intensity, unused, unused, unused
+                    // Indices: scene image, bloom image, sampler, unused
+                    const nvrhi::TextureSubresourceSet mipZero(0, 1, 0, 1);
+
+                    m_RenderCommandBuffer->BeginTimerQuery(m_BloomCompositePass->GetName());
+
+                    cmdList->setTextureState(sceneImage->GetTexture(), mipZero, nvrhi::ResourceStates::ShaderResource);
+                    cmdList->setTextureState(pyramid->GetTexture(), mipZero, nvrhi::ResourceStates::ShaderResource);
+
+                    m_RenderCommandBuffer->BeginMarker(m_BloomCompositePass->GetName());
+                    Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomCompositePass);
+
+                    pushConstants.Params = glm::vec4(m_BloomSettings.Intensity, 0.0f, 0.0f, 0.0f);
+                    pushConstants.Indices =
+                        glm::uvec4(sceneImage->GetBindlessIndex(mipZero), pyramid->GetBindlessIndex(mipZero), samplerIndex, 0u);
+
+                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                    cmdList->draw(drawArgs);
+
+                    auto& statistics = m_BloomCompositePass->GetStatistics();
+                    statistics.DrawCalls++;
+                    statistics.Vertices += drawArgs.vertexCount;
+
+                    Renderer::EndRenderPass(m_RenderCommandBuffer);
+                    m_RenderCommandBuffer->EndMarker();
+                    m_RenderCommandBuffer->EndTimerQuery(m_BloomCompositePass->GetName());
+                }
+
                 m_RenderCommandBuffer->EndMarker();
             }
-            m_RenderCommandBuffer->EndTimerQuery(m_BloomDownSamplePass->GetName());
-        }
-
-        // Upsample
-        {
-            // Push constants
-            // Params: inverse source size xy, radius, unused
-            // Indices: source image, sampler, unused, unused
-            m_RenderCommandBuffer->BeginTimerQuery(m_BloomUpSamplePass->GetName());
-            for (uint32_t sourceMip = m_BloomMipLevels - 1; sourceMip > 0; sourceMip--)
-            {
-                const uint32_t dest = sourceMip - 1;
-                const nvrhi::TextureSubresourceSet sourceSub(sourceMip, 1, 0, 1);
-
-                cmdList->setTextureState(pyramid->GetTexture(), sourceSub, nvrhi::ResourceStates::ShaderResource);
-                m_BloomUpSamplePass->SetSubresources(nvrhi::TextureSubresourceSet(dest, 1, 0, 1));
-
-                m_RenderCommandBuffer->BeginMarker(m_BloomUpSamplePass->GetName());
-                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomUpSamplePass);
-
-                pushConstants.Params = glm::vec4(
-                    1.0f / pyramid->GetMipWidth(sourceMip), 1.0f / pyramid->GetMipHeight(sourceMip), m_BloomSettings.Radius, 0.0f
-                );
-                pushConstants.Indices = glm::uvec4(pyramid->GetBindlessIndex(sourceSub), samplerIndex, 0u, 0u);
-
-                cmdList->setPushConstants(&pushConstants, sizeof(PC));
-                cmdList->draw(drawArgs);
-
-                auto& statistics = m_BloomUpSamplePass->GetStatistics();
-                statistics.DrawCalls++;
-                statistics.Vertices += drawArgs.vertexCount;
-
-                Renderer::EndRenderPass(m_RenderCommandBuffer);
-                m_RenderCommandBuffer->EndMarker();
-            }
-            m_RenderCommandBuffer->EndTimerQuery(m_BloomUpSamplePass->GetName());
-        }
-
-        // Composite
-        {
-            // Push constants
-            // Params: intensity, unused, unused, unused
-            // Indices: scene image, bloom image, sampler, unused
-            const nvrhi::TextureSubresourceSet mipZero(0, 1, 0, 1);
-
-            m_RenderCommandBuffer->BeginTimerQuery(m_BloomCompositePass->GetName());
-
-            cmdList->setTextureState(sceneImage->GetTexture(), mipZero, nvrhi::ResourceStates::ShaderResource);
-            cmdList->setTextureState(pyramid->GetTexture(), mipZero, nvrhi::ResourceStates::ShaderResource);
-
-            m_RenderCommandBuffer->BeginMarker(m_BloomCompositePass->GetName());
-            Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomCompositePass);
-
-            pushConstants.Params = glm::vec4(m_BloomSettings.Intensity, 0.0f, 0.0f, 0.0f);
-            pushConstants.Indices = glm::uvec4(sceneImage->GetBindlessIndex(mipZero), pyramid->GetBindlessIndex(mipZero), samplerIndex, 0u);
-
-            cmdList->setPushConstants(&pushConstants, sizeof(PC));
-            cmdList->draw(drawArgs);
-
-            auto& statistics = m_BloomCompositePass->GetStatistics();
-            statistics.DrawCalls++;
-            statistics.Vertices += drawArgs.vertexCount;
-
-            Renderer::EndRenderPass(m_RenderCommandBuffer);
-            m_RenderCommandBuffer->EndMarker();
-            m_RenderCommandBuffer->EndTimerQuery(m_BloomCompositePass->GetName());
-        }
-
-        m_RenderCommandBuffer->EndMarker();
+        );
     }
 
     auto SceneRenderer::TonemapPass() const -> void
     {
-        EP_PROFILE_FN("SceneRenderer::TonemapPass")
-        EP_GPU_ZONE(m_RenderCommandBuffer, "TonemapPass")
+        Renderer::Submit(
+            [this]()
+            {
+                EP_PROFILE_FN("SceneRenderer::TonemapPass")
+                EP_GPU_ZONE(m_RenderCommandBuffer, "TonemapPass")
 
-        constexpr struct PC
-        {
-            float Exposure = 1.0f;
-        } pushConstants{};
+                constexpr struct PC
+                {
+                    float Exposure = 1.0f;
+                } pushConstants{};
 
-        auto& statistics = m_TonemapPass->GetStatistics();
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+                auto& statistics = m_TonemapPass->GetStatistics();
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
 
-        m_RenderCommandBuffer->BeginTimerQuery(m_TonemapPass->GetName());
-        m_RenderCommandBuffer->BeginMarker(m_TonemapPass->GetName());
-        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_TonemapPass);
-        cmdList->setPushConstants(&pushConstants, sizeof(PC));
+                m_RenderCommandBuffer->BeginTimerQuery(m_TonemapPass->GetName());
+                m_RenderCommandBuffer->BeginMarker(m_TonemapPass->GetName());
+                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_TonemapPass);
+                cmdList->setPushConstants(&pushConstants, sizeof(PC));
 
-        constexpr nvrhi::DrawArguments drawArgs{
-            .vertexCount = 3,
-            .instanceCount = 1,
-        };
-        cmdList->draw(drawArgs);
+                constexpr nvrhi::DrawArguments drawArgs{
+                    .vertexCount = 3,
+                    .instanceCount = 1,
+                };
+                cmdList->draw(drawArgs);
 
-        statistics.DrawCalls++;
-        statistics.Vertices += drawArgs.vertexCount;
+                statistics.DrawCalls++;
+                statistics.Vertices += drawArgs.vertexCount;
 
-        Renderer::EndRenderPass(m_RenderCommandBuffer);
-        m_RenderCommandBuffer->EndMarker();
-        m_RenderCommandBuffer->EndTimerQuery(m_TonemapPass->GetName());
+                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->EndMarker();
+                m_RenderCommandBuffer->EndTimerQuery(m_TonemapPass->GetName());
+            }
+        );
     }
 
     auto SceneRenderer::WireframePass() const -> void
     {
-        EP_PROFILE_FN("SceneRenderer::WireframePass")
-        EP_GPU_ZONE(m_RenderCommandBuffer, "WireframePass")
-
-        if (!m_DebugRenderingEnabled || m_WireframeDrawCommands.empty())
-        {
-            m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
-            m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
-            return;
-        }
-
-        struct PC
-        {
-            glm::mat4 Transform;
-            glm::vec4 Color;
-            uint32_t InstanceOffset;
-        } pushConstants{};
-
-        auto& statistics = m_WireframePass->GetStatistics();
-        const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
-
-        m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
-        m_RenderCommandBuffer->BeginMarker(m_WireframePass->GetName());
-        Renderer::BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
-
-        auto& state = m_RenderCommandBuffer->GetGraphicsState();
-
-        for (const auto& drawCmd : m_WireframeDrawCommands)
-        {
-            const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
-            if (instanceCount == 0)
-                continue;
-
-            for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+        Renderer::Submit(
+            [this]()
             {
-                const nvrhi::VertexBufferBinding vtxBufBinding{
-                    .buffer = submesh.VertexBuffer->GetBuffer(),
-                    .slot = 0,
-                    .offset = 0,
-                };
+                EP_PROFILE_FN("SceneRenderer::WireframePass")
+                EP_GPU_ZONE(m_RenderCommandBuffer, "WireframePass")
 
-                state.vertexBuffers.resize(1);
-                state.vertexBuffers[0] = vtxBufBinding;
-                state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
-                state.indexBuffer.format = nvrhi::Format::R32_UINT;
-                state.indexBuffer.offset = 0;
-                m_RenderCommandBuffer->CommitGraphicsState();
-
-                pushConstants.Transform = submesh.LocalTransform;
-                pushConstants.Color = drawCmd.Color;
-                pushConstants.InstanceOffset = drawCmd.InstanceOffset;
-
-                for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                if (!m_DebugRenderingEnabled || m_WireframeDrawCommands.empty())
                 {
-                    cmdList->setPushConstants(&pushConstants, sizeof(PC));
-
-                    nvrhi::DrawArguments drawArgs{
-                        .vertexCount = static_cast<uint32_t>(indexCount),
-                        .instanceCount = instanceCount,
-                        .startIndexLocation = firstIndex,
-                        .startVertexLocation = firstVertex,
-                    };
-
-                    cmdList->drawIndexed(drawArgs);
-
-                    statistics.DrawCalls++;
-                    statistics.Vertices += static_cast<uint32_t>(vertexCount);
-                    statistics.Indices += static_cast<uint32_t>(indexCount);
+                    m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
+                    m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
+                    return;
                 }
-                statistics.Submeshes++;
-            }
-            statistics.Meshes++;
-            statistics.Instances += instanceCount;
-        }
 
-        Renderer::EndRenderPass(m_RenderCommandBuffer);
-        m_RenderCommandBuffer->EndMarker();
-        m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
+                struct PC
+                {
+                    glm::mat4 Transform;
+                    glm::vec4 Color;
+                    uint32_t InstanceOffset;
+                } pushConstants{};
+
+                auto& statistics = m_WireframePass->GetStatistics();
+                const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
+
+                m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
+                m_RenderCommandBuffer->BeginMarker(m_WireframePass->GetName());
+                Renderer::BeginRenderPass(m_RenderCommandBuffer, m_WireframePass);
+
+                auto& state = m_RenderCommandBuffer->GetGraphicsState();
+
+                for (const auto& drawCmd : m_WireframeDrawCommands)
+                {
+                    const auto instanceCount = static_cast<uint32_t>(drawCmd.Transforms.size());
+                    if (instanceCount == 0)
+                        continue;
+
+                    for (const auto& submesh : drawCmd.Mesh->GetSubmeshes())
+                    {
+                        const nvrhi::VertexBufferBinding vtxBufBinding{
+                            .buffer = submesh.VertexBuffer->GetBuffer(),
+                            .slot = 0,
+                            .offset = 0,
+                        };
+
+                        state.vertexBuffers.resize(1);
+                        state.vertexBuffers[0] = vtxBufBinding;
+                        state.indexBuffer.buffer = submesh.IndexBuffer->GetBuffer();
+                        state.indexBuffer.format = nvrhi::Format::R32_UINT;
+                        state.indexBuffer.offset = 0;
+                        m_RenderCommandBuffer->CommitGraphicsState();
+
+                        pushConstants.Transform = submesh.LocalTransform;
+                        pushConstants.Color = drawCmd.Color;
+                        pushConstants.InstanceOffset = drawCmd.InstanceOffset;
+
+                        for (const auto& [firstVertex, firstIndex, vertexCount, indexCount, material] : submesh.Primitives)
+                        {
+                            cmdList->setPushConstants(&pushConstants, sizeof(PC));
+
+                            nvrhi::DrawArguments drawArgs{
+                                .vertexCount = static_cast<uint32_t>(indexCount),
+                                .instanceCount = instanceCount,
+                                .startIndexLocation = firstIndex,
+                                .startVertexLocation = firstVertex,
+                            };
+
+                            cmdList->drawIndexed(drawArgs);
+
+                            statistics.DrawCalls++;
+                            statistics.Vertices += static_cast<uint32_t>(vertexCount);
+                            statistics.Indices += static_cast<uint32_t>(indexCount);
+                        }
+                        statistics.Submeshes++;
+                    }
+                    statistics.Meshes++;
+                    statistics.Instances += instanceCount;
+                }
+
+                Renderer::EndRenderPass(m_RenderCommandBuffer);
+                m_RenderCommandBuffer->EndMarker();
+                m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
+            }
+        );
     }
 
     auto SceneRenderer::EnsureIblResources() -> void
