@@ -221,7 +221,7 @@ namespace Eppo
 
                 *result = exitCode;
             },
-            [this, result, name, outputDirectory, project](TaskStatus status) -> void
+            [this, result, name, outputDirectory, project](const TaskStatus status) -> void
             {
                 const auto tempDir = outputDirectory / "Temp";
 
