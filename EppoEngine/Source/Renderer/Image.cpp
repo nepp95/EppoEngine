@@ -7,9 +7,106 @@
 #include "Renderer/Renderer.h"
 
 #include <stb_image.h>
+#include <stb_image_resize2.h>
 
 namespace Eppo
 {
+    namespace
+    {
+        auto GenerateNormalMip(const ImageMipData& source, ImageMipData& destination) -> void
+        {
+            const auto* sourcePixels = source.Pixels.Data();
+            auto* destinationPixels = destination.Pixels.Data();
+
+            for (uint32_t y = 0; y < destination.Height; y++)
+            {
+                for (uint32_t x = 0; x < destination.Width; x++)
+                {
+                    glm::vec3 normalSum(0.0f);
+                    uint32_t alphaSum = 0;
+                    uint32_t sampleCount = 0;
+
+                    const uint32_t sourceYEnd = glm::min(source.Height, y * 2 + 2);
+                    const uint32_t sourceXEnd = glm::min(source.Width, x * 2 + 2);
+                    for (uint32_t sourceY = y * 2; sourceY < sourceYEnd; sourceY++)
+                    {
+                        for (uint32_t sourceX = x * 2; sourceX < sourceXEnd; sourceX++)
+                        {
+                            const uint32_t sourceOffset = sourceY * source.RowPitch + sourceX * 4;
+                            normalSum +=
+                                glm::vec3(sourcePixels[sourceOffset], sourcePixels[sourceOffset + 1], sourcePixels[sourceOffset + 2]) /
+                                    127.5f -
+                                1.0f;
+                            alphaSum += sourcePixels[sourceOffset + 3];
+                            sampleCount++;
+                        }
+                    }
+
+                    const glm::vec3 normal = glm::dot(normalSum, normalSum) > std::numeric_limits<float>::epsilon()
+                        ? glm::normalize(normalSum)
+                        : glm::vec3(0.0f, 0.0f, 1.0f);
+                    const glm::vec3 encoded = glm::round(glm::clamp(normal * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f);
+                    const uint32_t destinationOffset = y * destination.RowPitch + x * 4;
+                    destinationPixels[destinationOffset] = static_cast<uint8_t>(encoded.r);
+                    destinationPixels[destinationOffset + 1] = static_cast<uint8_t>(encoded.g);
+                    destinationPixels[destinationOffset + 2] = static_cast<uint8_t>(encoded.b);
+                    destinationPixels[destinationOffset + 3] = static_cast<uint8_t>(alphaSum / sampleCount);
+                }
+            }
+        }
+
+        auto GenerateMipChain(ImageTaskResult& result, const MipGenerationMode mipMode) -> void
+        {
+            if (mipMode == MipGenerationMode::None)
+                return;
+
+            EP_ASSERT(!result.IsHdr, "Runtime mip generation currently supports RGBA8 images only!");
+            EP_ASSERT(!result.Mips.empty());
+
+            while (result.Mips.back().Width > 1 || result.Mips.back().Height > 1)
+            {
+                const ImageMipData& source = result.Mips.back();
+                const uint32_t width = glm::max(1u, source.Width / 2);
+                const uint32_t height = glm::max(1u, source.Height / 2);
+
+                ImageMipData destination{
+                    .Pixels = ScopedBuffer(static_cast<uint64_t>(width) * height * 4),
+                    .Width = width,
+                    .Height = height,
+                    .RowPitch = width * 4,
+                };
+
+                if (mipMode == MipGenerationMode::NormalMap)
+                {
+                    GenerateNormalMip(source, destination);
+                }
+                else
+                {
+                    unsigned char* resizeResult = nullptr;
+                    if (mipMode == MipGenerationMode::ColorSRGB)
+                    {
+                        resizeResult = stbir_resize_uint8_srgb(
+                            source.Pixels.Data(), static_cast<int>(source.Width), static_cast<int>(source.Height),
+                            static_cast<int>(source.RowPitch), destination.Pixels.Data(), static_cast<int>(destination.Width),
+                            static_cast<int>(destination.Height), static_cast<int>(destination.RowPitch), STBIR_RGBA
+                        );
+                    }
+                    else
+                    {
+                        resizeResult = stbir_resize_uint8_linear(
+                            source.Pixels.Data(), static_cast<int>(source.Width), static_cast<int>(source.Height),
+                            static_cast<int>(source.RowPitch), destination.Pixels.Data(), static_cast<int>(destination.Width),
+                            static_cast<int>(destination.Height), static_cast<int>(destination.RowPitch), STBIR_RGBA_NO_AW
+                        );
+                    }
+                    EP_ASSERT(resizeResult != nullptr, "Failed to generate image mip!");
+                }
+
+                result.Mips.emplace_back(std::move(destination));
+            }
+        }
+    }
+
     Image::Image(const ImageSpecification& spec)
         : m_Specification(spec), m_Width(spec.Width), m_Height(spec.Height)
     {
@@ -227,10 +324,10 @@ namespace Eppo
         auto result = CreateRef<TaskResult<ImageTaskResult>>();
 
         image->m_LoadTaskId = threadPool->QueueTask(
-            [result, taskSource]()
+            [result, taskSource, mipMode = spec.MipMode]()
             {
                 ImageTaskResult taskResult;
-                DecodeImageData(taskSource, taskResult);
+                DecodeImageData(taskSource, mipMode, taskResult);
                 result->emplace(std::move(taskResult));
             },
             [image, result, taskSource, cmdList](const TaskStatus status) mutable
@@ -245,10 +342,12 @@ namespace Eppo
                     [image, result, cmdList]()
                     {
                         const auto& taskResult = result->value();
-                        image->m_Width = taskResult.Width;
-                        image->m_Height = taskResult.Height;
-                        image->m_Specification.Width = taskResult.Width;
-                        image->m_Specification.Height = taskResult.Height;
+                        EP_ASSERT(!taskResult.Mips.empty());
+                        image->m_Width = taskResult.Mips.front().Width;
+                        image->m_Height = taskResult.Mips.front().Height;
+                        image->m_Specification.Width = image->m_Width;
+                        image->m_Specification.Height = image->m_Height;
+                        image->m_Specification.MipLevels = static_cast<uint32_t>(taskResult.Mips.size());
                         if (image->m_Specification.ImageFormat == nvrhi::Format::UNKNOWN)
                             image->m_Specification.ImageFormat = image->SelectFormat(taskResult.Channels, taskResult.IsHdr);
 
@@ -256,6 +355,7 @@ namespace Eppo
                         const nvrhi::TextureDesc textureDesc{
                             .width = image->m_Specification.Width,
                             .height = image->m_Specification.Height,
+                            .mipLevels = image->m_Specification.MipLevels,
                             .format = image->m_Specification.ImageFormat,
                             .debugName = image->m_Specification.DebugName,
                             .isRenderTarget = image->m_Specification.IsRenderTarget,
@@ -275,7 +375,11 @@ namespace Eppo
                                                            );
                         commandList->open();
                         commandList->beginTrackingTextureState(image->m_Texture, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
-                        commandList->writeTexture(image->m_Texture, 0, 0, taskResult.Pixels.Data(), image->m_Stride);
+                        for (uint32_t mip = 0; mip < taskResult.Mips.size(); mip++)
+                        {
+                            const auto& mipData = taskResult.Mips[mip];
+                            commandList->writeTexture(image->m_Texture, 0, mip, mipData.Pixels.Data(), mipData.RowPitch);
+                        }
                         commandList->setPermanentTextureState(image->m_Texture, nvrhi::ResourceStates::ShaderResource);
                         commandList->commitBarriers();
                         commandList->close();
@@ -293,7 +397,7 @@ namespace Eppo
         return image;
     }
 
-    auto Image::DecodeImageData(const ImageSource& source, ImageTaskResult& result) -> void
+    auto Image::DecodeImageData(const ImageSource& source, const MipGenerationMode mipMode, ImageTaskResult& result) -> void
     {
         EP_PROFILE_FN("Image::DecodeImageData");
 
@@ -340,11 +444,17 @@ namespace Eppo
         );
         stbi_image_free(decodedData);
 
-        result.Pixels = ScopedBuffer(std::move(pixels));
-        result.Width = static_cast<uint32_t>(width);
-        result.Height = static_cast<uint32_t>(height);
+        result.Mips.emplace_back(
+            ImageMipData{
+                .Pixels = ScopedBuffer(std::move(pixels)),
+                .Width = static_cast<uint32_t>(width),
+                .Height = static_cast<uint32_t>(height),
+                .RowPitch = static_cast<uint32_t>(width) * static_cast<uint32_t>(channels) * static_cast<uint32_t>(pixelSize),
+            }
+        );
         result.Channels = static_cast<uint32_t>(channels);
         result.IsHdr = isHdr;
+        GenerateMipChain(result, mipMode);
     }
 
     auto Image::SelectFormat(const uint32_t channels, const bool isHdr) -> nvrhi::Format

@@ -59,13 +59,15 @@ namespace Eppo
         static_assert(sizeof(DrawData) == 80);
         static_assert(offsetof(DrawData, InstanceOffset) == 64);
         static_assert(offsetof(DrawData, MaterialIndex) == 68);
-        static_assert(sizeof(MaterialData) == 80);
+        static_assert(sizeof(MaterialData) == 96);
         static_assert(offsetof(MaterialData, EmissiveMapIndex) == 16);
-        static_assert(offsetof(MaterialData, BaseColor) == 32);
-        static_assert(offsetof(MaterialData, EmissiveFactor) == 48);
-        static_assert(offsetof(MaterialData, Metallic) == 60);
-        static_assert(offsetof(MaterialData, Roughness) == 64);
-        static_assert(offsetof(MaterialData, NormalScale) == 68);
+        static_assert(offsetof(MaterialData, DiffuseSamplerIndex) == 20);
+        static_assert(offsetof(MaterialData, EmissiveSamplerIndex) == 36);
+        static_assert(offsetof(MaterialData, BaseColor) == 48);
+        static_assert(offsetof(MaterialData, EmissiveFactor) == 64);
+        static_assert(offsetof(MaterialData, Metallic) == 76);
+        static_assert(offsetof(MaterialData, Roughness) == 80);
+        static_assert(offsetof(MaterialData, NormalScale) == 84);
 
         const auto& dm = DeviceManager::Get();
         const auto& renderer = dm->GetRenderer();
@@ -75,52 +77,19 @@ namespace Eppo
 
         m_RenderCommandBuffer = CreateRef<RenderCommandBuffer>();
 
-        // Create samplers
-        m_ClampAllFiltersFalseSampler = Sampler::Create(
-            SamplerSpecification{
-                .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
-                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
-                .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
-                .AllFilters = false,
-            }
-        );
-
-        m_ClampAllFiltersTrueSampler = Sampler::Create(
-            SamplerSpecification{
-                .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
-                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
-                .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
-            }
-        );
-
-        m_WrapAllFiltersTrueSampler = Sampler::Create(
-            SamplerSpecification{
-                .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
-                .AddressModeV = nvrhi::SamplerAddressMode::Wrap,
-                .AddressModeW = nvrhi::SamplerAddressMode::Wrap,
-                .AllFilters = true,
-            }
-        );
-
-        m_EquirectSampler = Sampler::Create(
-            SamplerSpecification{
-                .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
-                .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
-                .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
-            }
-        );
-
         // Create render passes
         // Shadow Depth
         {
-            const auto shadowMap = Image::Create(ImageSpecification{
-                .ImageFormat = nvrhi::Format::D32,
-                .Width = s_ShadowMapSize,
-                .Height = s_ShadowMapSize,
-                .ArraySize = s_ShadowCascadeCount,
-                .IsRenderTarget = true,
-                .DebugName = "Image Shadow Cascades",
-            });
+            const auto shadowMap = Image::Create(
+                ImageSpecification{
+                    .ImageFormat = nvrhi::Format::D32,
+                    .Width = s_ShadowMapSize,
+                    .Height = s_ShadowMapSize,
+                    .ArraySize = s_ShadowCascadeCount,
+                    .IsRenderTarget = true,
+                    .DebugName = "Image Shadow Cascades",
+                }
+            );
 
             const FramebufferSpecification framebufferSpec{
                 .Width = s_ShadowMapSize,
@@ -478,16 +447,51 @@ namespace Eppo
         m_SsaoPrePass->SetInput(0, 0, m_InstanceTransformsSB);
         m_SsaoPrePass->SetInput(0, 1, m_DrawDataSB);
         m_SsaoPrePass->SetInput(0, 1, m_CameraUB);
-        m_SsaoEvaluationPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
+        m_SsaoEvaluationPass->SetInput(
+            0, 0,
+            renderer->GetSampler(
+                SamplerSpecification{
+                    .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                }
+            )
+        );
         m_SsaoEvaluationPass->SetInput(0, 1, m_CameraUB);
         m_SsaoEvaluationPass->SetInput(0, 2, m_SsaoUB);
-        m_SsaoBlurHorizontalPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
+        m_SsaoBlurHorizontalPass->SetInput(
+            0, 0,
+            renderer->GetSampler(
+                SamplerSpecification{
+                    .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                }
+            )
+        );
         m_SsaoBlurHorizontalPass->SetInput(0, 1, m_CameraUB);
-        m_SsaoBlurVerticalPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
+        m_SsaoBlurVerticalPass->SetInput(
+            0, 0,
+            renderer->GetSampler(
+                SamplerSpecification{
+                    .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                }
+            )
+        );
         m_SsaoBlurVerticalPass->SetInput(0, 1, m_CameraUB);
 
-        m_GeometryPass->SetInput(0, 0, m_WrapAllFiltersTrueSampler);
-        m_GeometryPass->SetInput(0, 1, m_ClampAllFiltersTrueSampler);
+        m_GeometryPass->SetInput(
+            0, 1,
+            renderer->GetSampler(
+                SamplerSpecification{
+                    .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                }
+            )
+        );
         m_GeometryPass->SetInput(0, 0, m_InstanceTransformsSB);
         m_GeometryPass->SetInput(0, 1, m_DrawDataSB);
         m_GeometryPass->SetInput(0, 2, m_MaterialDataSB);
@@ -505,7 +509,16 @@ namespace Eppo
         m_WireframePass->SetInput(0, 2, m_GeometryPass->GetFramebuffer()->GetDepthImage());
 
         m_TonemapPass->SetInput(0, 0, m_GeometryPass->GetFramebuffer()->GetFinalImage());
-        m_TonemapPass->SetInput(0, 0, m_ClampAllFiltersTrueSampler);
+        m_TonemapPass->SetInput(
+            0, 0,
+            renderer->GetSampler(
+                SamplerSpecification{
+                    .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                }
+            )
+        );
     }
 
     auto SceneRenderer::RenderGui() const -> void
@@ -805,12 +818,23 @@ namespace Eppo
 
         BakeEnvironmentMap(image);
 
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+
         m_EnvironmentData.Params.y = 1.0f;
         m_EnvironmentData.IBL0 = glm::uvec4(
             m_EnvironmentCube->GetBindlessIndex(), m_IrradianceCube->GetBindlessIndex(), m_PrefilterCube->GetBindlessIndex(),
             m_BrdfLut->GetBindlessIndex()
         );
-        m_EnvironmentData.IBL1 = glm::uvec4(m_ClampAllFiltersTrueSampler->GetBindlessIndex(), 0, 0, 0);
+        m_EnvironmentData.IBL1 = glm::uvec4(
+            renderer
+                ->GetSampler(
+                    SamplerSpecification{ .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                                          .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                                          .AddressModeW = nvrhi::SamplerAddressMode::Clamp }
+                )
+                ->GetBindlessIndex(),
+            0, 0, 0
+        );
     }
 
     auto SceneRenderer::SubmitBloomSettings(const BloomSettings& bloom) -> void
@@ -1119,6 +1143,11 @@ namespace Eppo
                             .RoughMetMapIndex = material->GetRoughMetMapIndex(),
                             .AOMapIndex = material->GetAOMapIndex(),
                             .EmissiveMapIndex = material->GetEmissiveMapIndex(),
+                            .DiffuseSamplerIndex = material->DiffuseSampler ? material->DiffuseSampler->GetBindlessIndex() : 0,
+                            .NormalSamplerIndex = material->NormalSampler ? material->NormalSampler->GetBindlessIndex() : 0,
+                            .RoughMetSamplerIndex = material->RoughMetSampler ? material->RoughMetSampler->GetBindlessIndex() : 0,
+                            .AOSamplerIndex = material->AOSampler ? material->AOSampler->GetBindlessIndex() : 0,
+                            .EmissiveSamplerIndex = material->EmissiveSampler ? material->EmissiveSampler->GetBindlessIndex() : 0,
                             .BaseColor = material->BaseColor,
                             .EmissiveFactor = material->EmissiveFactor,
                             .Metallic = material->Metallic,
@@ -1158,7 +1187,19 @@ namespace Eppo
                 // Descriptors
                 const auto& shadowMap = m_ShadowDepthPass->GetFramebuffer()->GetDepthImage();
                 m_ShadowDepthData.ShadowMapIndex = shadowMap->GetBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, s_ShadowCascadeCount));
-                m_ShadowDepthData.ShadowSamplerIndex = m_ClampAllFiltersFalseSampler->GetBindlessIndex();
+                m_ShadowDepthData.ShadowSamplerIndex = DeviceManager::Get()
+                                                           ->GetRenderer()
+                                                           ->GetSampler(
+                                                               SamplerSpecification{
+                                                                   .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                                                                   .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                                                                   .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                                                                   .MinFilter = false,
+                                                                   .MagFilter = false,
+                                                                   .MipFilter = false,
+                                                               }
+                                                           )
+                                                           ->GetBindlessIndex();
 
                 m_GeometryPass->GetFramebuffer()->GetFinalImage()->RegisterBindlessIndex(nvrhi::TextureSubresourceSet(0, 1, 0, 1));
 
@@ -1679,8 +1720,6 @@ namespace Eppo
                 const auto& cmdList = m_RenderCommandBuffer->GetCommandList();
                 const auto& sceneImage = m_GeometryPass->GetFramebuffer()->GetFinalImage();
                 const auto& pyramid = m_BloomPyramidFramebuffer->GetFinalImage();
-                const uint32_t samplerIndex = m_ClampAllFiltersTrueSampler->GetBindlessIndex();
-
                 m_RenderCommandBuffer->BeginMarker("Bloom");
 
                 // Downsample
@@ -1706,7 +1745,20 @@ namespace Eppo
                             1.0f / source->GetMipWidth(sourceMip), 1.0f / source->GetMipHeight(sourceMip), m_BloomSettings.Threshold,
                             m_BloomSettings.Knee
                         );
-                        pushConstants.Indices = glm::uvec4(source->GetBindlessIndex(sourceSub), samplerIndex, base ? 1u : 0u, 0u);
+                        pushConstants.Indices = glm::uvec4(
+                            source->GetBindlessIndex(sourceSub),
+                            DeviceManager::Get()
+                                ->GetRenderer()
+                                ->GetSampler(
+                                    SamplerSpecification{
+                                        .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                                        .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                                        .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                                    }
+                                )
+                                ->GetBindlessIndex(),
+                            base ? 1u : 0u, 0u
+                        );
 
                         cmdList->setPushConstants(&pushConstants, sizeof(PC));
                         cmdList->draw(drawArgs);
@@ -1741,7 +1793,20 @@ namespace Eppo
                         pushConstants.Params = glm::vec4(
                             1.0f / pyramid->GetMipWidth(sourceMip), 1.0f / pyramid->GetMipHeight(sourceMip), m_BloomSettings.Radius, 0.0f
                         );
-                        pushConstants.Indices = glm::uvec4(pyramid->GetBindlessIndex(sourceSub), samplerIndex, 0u, 0u);
+                        pushConstants.Indices = glm::uvec4(
+                            pyramid->GetBindlessIndex(sourceSub),
+                            DeviceManager::Get()
+                                ->GetRenderer()
+                                ->GetSampler(
+                                    SamplerSpecification{
+                                        .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                                        .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                                        .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                                    }
+                                )
+                                ->GetBindlessIndex(),
+                            0u, 0u
+                        );
 
                         cmdList->setPushConstants(&pushConstants, sizeof(PC));
                         cmdList->draw(drawArgs);
@@ -1772,8 +1837,20 @@ namespace Eppo
                     Renderer::BeginRenderPass(m_RenderCommandBuffer, m_BloomCompositePass);
 
                     pushConstants.Params = glm::vec4(m_BloomSettings.Intensity, 0.0f, 0.0f, 0.0f);
-                    pushConstants.Indices =
-                        glm::uvec4(sceneImage->GetBindlessIndex(mipZero), pyramid->GetBindlessIndex(mipZero), samplerIndex, 0u);
+                    pushConstants.Indices = glm::uvec4(
+                        sceneImage->GetBindlessIndex(mipZero), pyramid->GetBindlessIndex(mipZero),
+                        DeviceManager::Get()
+                            ->GetRenderer()
+                            ->GetSampler(
+                                SamplerSpecification{
+                                    .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                                }
+                            )
+                            ->GetBindlessIndex(),
+                        0u
+                    );
 
                     cmdList->setPushConstants(&pushConstants, sizeof(PC));
                     cmdList->draw(drawArgs);
@@ -1924,42 +2001,50 @@ namespace Eppo
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
 
-        m_EnvironmentCube = Image::Create(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
-            .Width = s_IblEnvironmentSize,
-            .Height = s_IblEnvironmentSize,
-            .MipLevels = Image::CalculateMipLevels(s_IblEnvironmentSize, s_IblEnvironmentSize),
-            .IsCubemap = true,
-            .IsRenderTarget = true,
-            .DebugName = "IBL Environment Cube",
-        });
+        m_EnvironmentCube = Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+                .Width = s_IblEnvironmentSize,
+                .Height = s_IblEnvironmentSize,
+                .MipLevels = Image::CalculateMipLevels(s_IblEnvironmentSize, s_IblEnvironmentSize),
+                .IsCubemap = true,
+                .IsRenderTarget = true,
+                .DebugName = "IBL Environment Cube",
+            }
+        );
 
-        m_IrradianceCube = Image::Create(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
-            .Width = s_IblIrradianceSize,
-            .Height = s_IblIrradianceSize,
-            .IsCubemap = true,
-            .IsRenderTarget = true,
-            .DebugName = "IBL Irradiance Cube",
-        });
+        m_IrradianceCube = Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+                .Width = s_IblIrradianceSize,
+                .Height = s_IblIrradianceSize,
+                .IsCubemap = true,
+                .IsRenderTarget = true,
+                .DebugName = "IBL Irradiance Cube",
+            }
+        );
 
-        m_PrefilterCube = Image::Create(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
-            .Width = s_IblPrefilterSize,
-            .Height = s_IblPrefilterSize,
-            .MipLevels = s_IblPrefilterMipLevels,
-            .IsCubemap = true,
-            .IsRenderTarget = true,
-            .DebugName = "IBL Prefilter Cube",
-        });
+        m_PrefilterCube = Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+                .Width = s_IblPrefilterSize,
+                .Height = s_IblPrefilterSize,
+                .MipLevels = s_IblPrefilterMipLevels,
+                .IsCubemap = true,
+                .IsRenderTarget = true,
+                .DebugName = "IBL Prefilter Cube",
+            }
+        );
 
-        m_BrdfLut = Image::Create(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RG16_FLOAT,
-            .Width = s_IblBrdfLutSize,
-            .Height = s_IblBrdfLutSize,
-            .IsRenderTarget = true,
-            .DebugName = "IBL BRDF LUT",
-        });
+        m_BrdfLut = Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RG16_FLOAT,
+                .Width = s_IblBrdfLutSize,
+                .Height = s_IblBrdfLutSize,
+                .IsRenderTarget = true,
+                .DebugName = "IBL BRDF LUT",
+            }
+        );
 
         // Bake the view-independent BRDF LUT once: a 2D fullscreen pass, no source/faces, so not RecordIblPass.
         const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
@@ -2026,15 +2111,32 @@ namespace Eppo
         facesUB->SetData(cmdBuffer->GetCommandList(), &inverseViewProjection, sizeof(glm::mat4) * 6);
 
         // Equirect -> environment cube. Wrap sampler so the atan2 longitude seam wraps cleanly.
-        RecordIblPass(renderer->GetShader("iblEquirectToCube"), equirect, m_EquirectSampler, m_EnvironmentCube, facesUB, cmdBuffer, 0);
+        RecordIblPass(
+            renderer->GetShader("iblEquirectToCube"), equirect,
+            renderer->GetSampler(
+                SamplerSpecification{
+                    .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
+                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                }
+            ),
+            m_EnvironmentCube, facesUB, cmdBuffer, 0
+        );
 
         for (uint32_t mip = 1; mip < m_EnvironmentCube->GetMipLevels(); mip++)
             RecordEnvironmentMipPass(m_EnvironmentCube, facesUB, cmdBuffer, mip);
 
         // Environment cube -> irradiance. Clamp for the cube convolution.
         RecordIblPass(
-            renderer->GetShader("iblIrradiance"), m_EnvironmentCube, m_ClampAllFiltersTrueSampler, m_IrradianceCube, facesUB, cmdBuffer, 0,
-            0.0f, static_cast<float>(s_IblEnvironmentSize)
+            renderer->GetShader("iblIrradiance"), m_EnvironmentCube,
+            renderer->GetSampler(
+                SamplerSpecification{
+                    .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                    .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                }
+            ),
+            m_IrradianceCube, facesUB, cmdBuffer, 0, 0.0f, static_cast<float>(s_IblEnvironmentSize)
         );
 
         // Environment cube -> prefiltered specular, one mip per roughness. Clamp.
@@ -2042,8 +2144,15 @@ namespace Eppo
         {
             const float roughness = static_cast<float>(mip) / static_cast<float>(s_IblPrefilterMipLevels - 1);
             RecordIblPass(
-                renderer->GetShader("iblPrefilter"), m_EnvironmentCube, m_ClampAllFiltersTrueSampler, m_PrefilterCube, facesUB, cmdBuffer,
-                mip, roughness, static_cast<float>(s_IblEnvironmentSize)
+                renderer->GetShader("iblPrefilter"), m_EnvironmentCube,
+                renderer->GetSampler(
+                    SamplerSpecification{
+                        .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                        .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                        .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                    }
+                ),
+                m_PrefilterCube, facesUB, cmdBuffer, mip, roughness, static_cast<float>(s_IblEnvironmentSize)
             );
         }
 
@@ -2058,7 +2167,8 @@ namespace Eppo
     {
         EP_ASSERT(mipLevel > 0 && mipLevel < target->GetMipLevels());
 
-        const auto shader = DeviceManager::Get()->GetRenderer()->GetShader("iblEnvironmentMip");
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+        const auto shader = renderer->GetShader("iblEnvironmentMip");
 
         const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
             .Width = target->GetWidth(),
@@ -2093,7 +2203,15 @@ namespace Eppo
             uint32_t SamplerIndex;
         } pushConstants{
             .SourceIndex = target->GetBindlessIndex(sourceSubresources),
-            .SamplerIndex = m_ClampAllFiltersTrueSampler->GetBindlessIndex(),
+            .SamplerIndex = renderer
+                                ->GetSampler(
+                                    SamplerSpecification{
+                                        .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
+                                        .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
+                                        .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
+                                    }
+                                )
+                                ->GetBindlessIndex(),
         };
 
         const auto& cmdList = cmdBuffer->GetCommandList();
