@@ -7,7 +7,7 @@ usually means the type quietly vanishes from copy, save, packing, or the
 inspector rather than failing to build.
 
 File paths are stable; line numbers are not — grep for the anchor symbols named
-in each doc. When a change spans a subsystem, read the matching `.claude/skills/`
+in each doc. When a change spans a subsystem, read the matching `.agents/skills/`
 skill too.
 
 - [Adding an asset type](adding-an-asset-type.md)

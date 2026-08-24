@@ -119,6 +119,21 @@ TEST(Renderer, Image_CubemapRenderTargetCreatesSixSlicesAndRequestedMips)
     EXPECT_EQ(128u, desc.height);
 }
 
+TEST(Renderer, Image_FallbackImageUploadsAndRegistersBindlessIndex)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const Ref<Image> image = Image::GenerateFallbackImage();
+
+    EP_REQUIRE(image != nullptr);
+    EP_REQUIRE(image->GetTexture() != nullptr);
+    EXPECT_EQ(16u, image->GetWidth());
+    EXPECT_EQ(16u, image->GetHeight());
+    EXPECT_TRUE(image->GetFormat() == nvrhi::Format::SRGBA8_UNORM);
+    EXPECT_NE(std::numeric_limits<uint32_t>::max(), image->GetBindlessIndex());
+}
+
 TEST(Renderer, DescriptorManager_CubemapRegistersAsResource)
 {
     if (!Testing::AppHarness::IsAvailable())

@@ -28,8 +28,7 @@ namespace Eppo
         m_DescriptorManager = CreateRef<DescriptorManager>();
     }
 
-    auto Renderer::LoadShaders(const std::map<std::string, std::string>& packed, const std::map<std::string, std::string>& includes)
-        -> void
+    auto Renderer::LoadShaders(const std::map<std::string, std::string>& packed, const std::map<std::string, std::string>& includes) -> void
     {
         for (const auto* name : s_EngineShaderNames)
         {
@@ -64,6 +63,20 @@ namespace Eppo
         );
 
         m_CompositeCommandBuffer = CreateRef<RenderCommandBuffer>();
+    }
+
+    auto Renderer::Submit(RenderCommand command) -> void
+    {
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+        EP_ASSERT(renderer != nullptr);
+        renderer->m_RenderCommandQueue.AddCommand(std::move(command));
+    }
+
+    auto Renderer::ExecuteRenderCommands() -> void
+    {
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
+        EP_ASSERT(renderer != nullptr);
+        renderer->m_RenderCommandQueue.Execute();
     }
 
     auto Renderer::BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<RenderPass>& renderPass) -> void
@@ -118,60 +131,64 @@ namespace Eppo
 
     auto Renderer::CompositeToSwapchain(const Ref<Image>& image) -> void
     {
-        EP_PROFILE_FN("Renderer::CompositeToSwapchain")
-
+        EP_PROFILE_FN("Renderer::CompositeToSwapchain");
         EP_ASSERT(image != nullptr, "Cannot composite a null image to the swapchain.");
 
-        const auto& dm = DeviceManager::Get();
-        const uint32_t backBufferCount = dm->GetBackBufferCount();
-        const uint32_t backBufferIndex = dm->GetCurrentBackBufferIndex();
-        EP_ASSERT(backBufferIndex < backBufferCount, "The current swapchain back buffer index is invalid.");
+        Submit(
+            [this, image]()
+            {
+                const auto& dm = DeviceManager::Get();
+                const uint32_t backBufferCount = dm->GetBackBufferCount();
+                const uint32_t backBufferIndex = dm->GetCurrentBackBufferIndex();
+                EP_ASSERT(backBufferIndex < backBufferCount, "The current swapchain back buffer index is invalid.");
 
-        if (m_CompositePasses.size() != backBufferCount)
-        {
-            m_CompositePasses.resize(backBufferCount);
-            m_CompositeFramebuffers.resize(backBufferCount);
-        }
+                if (m_CompositePasses.size() != backBufferCount)
+                {
+                    m_CompositePasses.resize(backBufferCount);
+                    m_CompositeFramebuffers.resize(backBufferCount);
+                }
 
-        const auto& framebuffer = dm->GetCurrentSwapchainImage().Framebuffer;
-        const nvrhi::FramebufferHandle framebufferHandle = framebuffer->GetFramebuffer();
-        Ref<RenderPass>& renderPass = m_CompositePasses.at(backBufferIndex);
+                const auto& framebuffer = dm->GetCurrentSwapchainImage().Framebuffer;
+                const nvrhi::FramebufferHandle framebufferHandle = framebuffer->GetFramebuffer();
+                Ref<RenderPass>& renderPass = m_CompositePasses.at(backBufferIndex);
 
-        // Lazy load pipeline since this is only used in the runtime
-        if (!renderPass || m_CompositeFramebuffers.at(backBufferIndex) != framebufferHandle)
-        {
-            const PipelineSpecification pipelineSpec{
-                .Shader = m_ShaderLibrary.Get("composite"),
-                .CullMode = nvrhi::RasterCullMode::None,
-            };
+                // Lazy load pipeline since this is only used in the runtime
+                if (!renderPass || m_CompositeFramebuffers.at(backBufferIndex) != framebufferHandle)
+                {
+                    const PipelineSpecification pipelineSpec{
+                        .Shader = m_ShaderLibrary.Get("composite"),
+                        .CullMode = nvrhi::RasterCullMode::None,
+                    };
 
-            renderPass = CreateRef<RenderPass>(RenderPassSpecification{
-                .Name = "Composite",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebufferHandle->getFramebufferInfo()),
-                .Framebuffer = framebuffer,
-                .OwnsFramebuffer = false,
-            });
+                    renderPass = CreateRef<RenderPass>(RenderPassSpecification{
+                        .Name = "Composite",
+                        .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebufferHandle->getFramebufferInfo()),
+                        .Framebuffer = framebuffer,
+                        .OwnsFramebuffer = false,
+                    });
 
-            m_CompositeFramebuffers.at(backBufferIndex) = framebufferHandle;
-        }
+                    m_CompositeFramebuffers.at(backBufferIndex) = framebufferHandle;
+                }
 
-        renderPass->SetInput(0, 0, image);
-        renderPass->SetInput(0, 0, m_CompositeSampler);
-        renderPass->Bake();
+                renderPass->SetInput(0, 0, image);
+                renderPass->SetInput(0, 0, m_CompositeSampler);
+                renderPass->Bake();
 
-        m_CompositeCommandBuffer->Begin("Composite");
-        BeginRenderPass(m_CompositeCommandBuffer, renderPass);
+                m_CompositeCommandBuffer->Begin("Composite");
+                BeginRenderPass(m_CompositeCommandBuffer, renderPass);
 
-        m_CompositeCommandBuffer->GetCommandList()->draw(
-            nvrhi::DrawArguments{
-                .vertexCount = 3,
-                .instanceCount = 1,
+                m_CompositeCommandBuffer->GetCommandList()->draw(
+                    nvrhi::DrawArguments{
+                        .vertexCount = 3,
+                        .instanceCount = 1,
+                    }
+                );
+
+                EndRenderPass(m_CompositeCommandBuffer);
+                m_CompositeCommandBuffer->End();
+                m_CompositeCommandBuffer->Submit();
             }
         );
-
-        EndRenderPass(m_CompositeCommandBuffer);
-        m_CompositeCommandBuffer->End();
-        m_CompositeCommandBuffer->Submit();
     }
 
     auto Renderer::GetShader(const std::string& name) const -> Ref<Shader>

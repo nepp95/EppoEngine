@@ -3,6 +3,7 @@
 #include <nvrhi/nvrhi.h>
 
 #include <string_view>
+#include <unordered_set>
 
 namespace Eppo
 {
@@ -44,11 +45,12 @@ namespace Eppo
         }
 
     private:
-        auto EnsureBackBufferCapacity(uint32_t backBufferCount) -> void;
+        auto EnsureFrameCapacity(uint32_t frameCount) -> void;
 
     private:
         std::vector<nvrhi::CommandListHandle> m_CommandLists;
         nvrhi::CommandListHandle m_ActiveCommandList = nullptr;
+        uint32_t m_ActiveFrameIndex = UINT32_MAX;
 
         std::vector<nvrhi::TimerQueryHandle> m_TimerQueries;
         nvrhi::TimerQueryHandle m_ActiveTimerQuery = nullptr;
@@ -56,6 +58,8 @@ namespace Eppo
 
         std::vector<std::unordered_map<std::string, nvrhi::TimerQueryHandle>> m_NamedTimerQueries;
         std::vector<std::unordered_map<std::string, float>> m_NamedTimestamps;
+        std::vector<bool> m_FrameSubmitted;
+        std::vector<std::unordered_set<std::string>> m_SubmittedNamedTimerQueries;
 
         nvrhi::GraphicsState m_GraphicsState{};
         bool m_HasActiveMarker = false;

@@ -2,6 +2,10 @@
 
 #include "Core/UUID.h"
 
+#include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/type_trait.hpp>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -195,10 +199,51 @@ struct fmt::formatter<std::filesystem::path> : formatter<std::string_view>
 };
 
 template<>
+struct fmt::formatter<std::thread::id> : formatter<std::string_view>
+{
+    auto format(const std::thread::id& v, format_context& ctx) const -> format_context::iterator
+    {
+        std::stringstream ss;
+        ss << v;
+        return formatter<std::string_view>::format(ss.str(), ctx);
+    }
+};
+
+template<>
 struct fmt::formatter<Eppo::UUID> : formatter<uint64_t>
 {
     auto format(const Eppo::UUID& v, format_context& ctx) const -> format_context::iterator
     {
         return formatter<uint64_t>::format(static_cast<uint64_t>(v), ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<glm::vec2> : formatter<std::string_view>
+{
+    auto format(const glm::vec2& v, format_context& ctx) const -> format_context::iterator
+    {
+        return formatter<std::string_view>::format(glm::to_string(v), ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<glm::vec3> : formatter<std::string_view>
+{
+    auto format(const glm::vec3& v, format_context& ctx) const -> format_context::iterator
+    {
+        return formatter<std::string_view>::format(glm::to_string(v), ctx);
+    }
+};
+
+template<typename T>
+concept GlmType = glm::type<T>::is_vec || glm::type<T>::is_mat || glm::type<T>::is_quat;
+
+template<GlmType T>
+struct fmt::formatter<T, char> : formatter<std::string_view>
+{
+    auto format(const T& v, format_context& ctx) const -> format_context::iterator
+    {
+        return formatter<std::string_view>::format(glm::to_string(v), ctx);
     }
 };

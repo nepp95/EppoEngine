@@ -13,6 +13,8 @@ namespace Eppo
         virtual ~Asset() = default;
 
         AssetHandle Handle;
+        std::atomic<bool> IsLoaded = false;
+
         static auto GetStaticType() -> AssetType { return AssetType::None; }
 
         virtual auto operator==(const Asset& other) const -> bool { return Handle == other.Handle; }
