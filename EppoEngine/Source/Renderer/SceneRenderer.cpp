@@ -509,7 +509,7 @@ namespace Eppo
 
     auto SceneRenderer::RenderGui() const -> void
     {
-        EP_PROFILE_FN("SceneRenderer::RenderGui")
+        EP_PROFILE_FN("SceneRenderer::RenderGui");
 
         const auto& app = Application::Get();
         if (!app.GetImGuiLayer())
@@ -638,6 +638,9 @@ namespace Eppo
         ImGui::Text("Draw calls: %u", result.Stats.DrawCalls + uiStats.DrawCalls);
         ImGui::Text("Vertices: %u", result.Stats.Vertices + uiStats.Vertices);
         ImGui::Text("Indices: %u", result.Stats.Indices + uiStats.Indices);
+
+        ImGui::SeparatorText("Camera");
+        ImGui::Text("Position: x: %.2f, y: %.2f, z: %.2f", m_CameraData.Position.x, m_CameraData.Position.y, m_CameraData.Position.z);
 
         ImGui::End();
     }

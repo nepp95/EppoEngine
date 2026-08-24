@@ -39,7 +39,7 @@ namespace Eppo
                 }
             );
 
-        m_EditorCamera = EditorCamera(glm::vec3(0.0f, 5.0f, 20.0f), -25.0f, -90.0f);
+        m_EditorCamera = EditorCamera(glm::vec3(-8.0f, 3.0f, 0.0f), 0.0f, 0.0f);
 
         const auto LoadIcon = [](const char* fileName) -> Ref<Image>
         {
