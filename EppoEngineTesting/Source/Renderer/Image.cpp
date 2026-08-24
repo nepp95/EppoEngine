@@ -32,6 +32,30 @@ namespace
         return bytes;
     }
 
+    [[nodiscard]] auto MakeTgaBytes(const uint16_t width, const uint16_t height, const std::vector<uint8_t>& rgba) -> std::vector<char>
+    {
+        EP_REQUIRE(rgba.size() == static_cast<size_t>(width) * height * 4);
+
+        std::vector<char> bytes(18 + rgba.size());
+        bytes[2] = 2;
+        bytes[12] = static_cast<char>(width & 0xff);
+        bytes[13] = static_cast<char>(width >> 8);
+        bytes[14] = static_cast<char>(height & 0xff);
+        bytes[15] = static_cast<char>(height >> 8);
+        bytes[16] = 32;
+        bytes[17] = 0x28;
+
+        for (size_t i = 0; i < rgba.size(); i += 4)
+        {
+            bytes[18 + i] = static_cast<char>(rgba[i + 2]);
+            bytes[18 + i + 1] = static_cast<char>(rgba[i + 1]);
+            bytes[18 + i + 2] = static_cast<char>(rgba[i]);
+            bytes[18 + i + 3] = static_cast<char>(rgba[i + 3]);
+        }
+
+        return bytes;
+    }
+
     auto WriteHdrImage(const Testing::TempDir& tempDir, const std::vector<char>& bytes) -> std::filesystem::path
     {
         const std::filesystem::path path = tempDir.File("Unclamped.hdr");
@@ -61,6 +85,51 @@ namespace
         const std::array pixels{ data[0], data[1], data[2], data[3] };
         device->unmapStagingTexture(stagingTexture);
         return pixels;
+    }
+
+    [[nodiscard]] auto ReadRgba8Pixels(const Ref<Image>& image, const uint32_t mipLevel) -> std::vector<uint8_t>
+    {
+        const auto device = Testing::AppHarness::Get()->GetDeviceManager()->GetDevice();
+        const auto stagingTexture = device->createStagingTexture(image->GetTexture()->getDesc(), nvrhi::CpuAccessMode::Read);
+        const auto commandList = device->createCommandList();
+        const nvrhi::TextureSlice slice = nvrhi::TextureSlice{}.setMipLevel(mipLevel);
+
+        commandList->open();
+        commandList->copyTexture(stagingTexture, slice, image->GetTexture(), slice);
+        commandList->close();
+        device->executeCommandList(commandList);
+        EP_REQUIRE(device->waitForIdle());
+
+        size_t rowPitch = 0;
+        const auto* data = static_cast<const uint8_t*>(
+            device->mapStagingTexture(stagingTexture, slice, nvrhi::CpuAccessMode::Read, &rowPitch)
+        );
+        EP_REQUIRE(data != nullptr);
+
+        const uint32_t width = image->GetMipWidth(mipLevel);
+        const uint32_t height = image->GetMipHeight(mipLevel);
+        std::vector<uint8_t> pixels(static_cast<size_t>(width) * height * 4);
+        for (uint32_t y = 0; y < height; y++)
+            std::memcpy(pixels.data() + static_cast<size_t>(y) * width * 4, data + y * rowPitch, static_cast<size_t>(width) * 4);
+
+        device->unmapStagingTexture(stagingTexture);
+        return pixels;
+    }
+
+    [[nodiscard]] auto CreateMipmappedImage(
+        const uint16_t width, const uint16_t height, const std::vector<uint8_t>& rgba, const MipGenerationMode mipMode
+    ) -> Ref<Image>
+    {
+        std::vector<char> bytes = MakeTgaBytes(width, height, rgba);
+        const Buffer buffer(reinterpret_cast<uint8_t*>(bytes.data()), bytes.size());
+        return Image::Create(
+            ImageSpecification{
+                .ImageFormat = mipMode == MipGenerationMode::ColorSRGB ? nvrhi::Format::SRGBA8_UNORM : nvrhi::Format::RGBA8_UNORM,
+                .MipMode = mipMode,
+                .DebugName = "Image mip generation test",
+            },
+            buffer
+        );
     }
 
     auto CheckUploadedImage(const ImageSource& source) -> void
@@ -135,6 +204,60 @@ TEST(Renderer, Image_MemorySourceIsOwnedUntilWorkerDecodesIt)
     EXPECT_NEAR(1.0f, pixels[1], 0.0001f);
     EXPECT_NEAR(0.5f, pixels[2], 0.0001f);
     EXPECT_NEAR(1.0f, pixels[3], 0.0001f);
+}
+
+TEST(Renderer, Image_LinearMipChainUploadsEveryLevel)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const std::vector<uint8_t> rgba(4 * 2 * 4, 64);
+    const Ref<Image> image = CreateMipmappedImage(4, 2, rgba, MipGenerationMode::Linear);
+
+    EP_REQUIRE(WaitForImage(image));
+    EXPECT_EQ(3u, image->GetMipLevels());
+    EXPECT_EQ(1u, image->GetMipWidth(2));
+    EXPECT_EQ(1u, image->GetMipHeight(2));
+
+    const std::vector<uint8_t> pixels = ReadRgba8Pixels(image, 2);
+    EXPECT_NEAR(64, pixels[0], 1);
+    EXPECT_NEAR(64, pixels[1], 1);
+    EXPECT_NEAR(64, pixels[2], 1);
+}
+
+TEST(Renderer, Image_SrgbMipFilteringUsesLinearLight)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const std::vector<uint8_t> rgba{
+        0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255, 255, 255, 255, 255,
+    };
+    const Ref<Image> image = CreateMipmappedImage(2, 2, rgba, MipGenerationMode::ColorSRGB);
+
+    EP_REQUIRE(WaitForImage(image));
+    const std::vector<uint8_t> pixels = ReadRgba8Pixels(image, 1);
+    EXPECT_NEAR(188, pixels[0], 3);
+    EXPECT_NEAR(188, pixels[1], 3);
+    EXPECT_NEAR(188, pixels[2], 3);
+}
+
+TEST(Renderer, Image_NormalMapMipsRemainNormalized)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const std::vector<uint8_t> rgba{
+        255, 128, 128, 255, 128, 255, 128, 255, 255, 128, 128, 255, 128, 255, 128, 255,
+    };
+    const Ref<Image> image = CreateMipmappedImage(2, 2, rgba, MipGenerationMode::NormalMap);
+
+    EP_REQUIRE(WaitForImage(image));
+    const std::vector<uint8_t> pixels = ReadRgba8Pixels(image, 1);
+    const glm::vec3 normal = glm::vec3(pixels[0], pixels[1], pixels[2]) / 127.5f - 1.0f;
+    EXPECT_NEAR(1.0f, glm::length(normal), 0.02f);
+    EXPECT_GT(normal.x, 0.65f);
+    EXPECT_GT(normal.y, 0.65f);
 }
 
 TEST(Renderer, Image_CubemapRenderTargetCreatesSixSlicesAndRequestedMips)

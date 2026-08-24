@@ -29,7 +29,9 @@ TEST(Renderer, Sampler_CreateAppliesIndependentAddressModes)
             .AddressModeU = nvrhi::SamplerAddressMode::Wrap,
             .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
             .AddressModeW = nvrhi::SamplerAddressMode::Mirror,
-            .AllFilters = false,
+            .MinFilter = false,
+            .MagFilter = false,
+            .MipFilter = false,
         },
         descriptorManager
     );
