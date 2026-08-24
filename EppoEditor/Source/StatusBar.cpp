@@ -153,6 +153,12 @@ namespace Eppo
                             status += ", ";
                         status += std::format("{} cancelled", cancelled);
                     }
+                    if (completed > 0)
+                    {
+                        if (!status.empty())
+                            status += ", ";
+                        status += std::format("{} completed", completed);
+                    }
                     if (!status.empty())
                     {
                         ImGui::Indent();

@@ -218,7 +218,21 @@ namespace Eppo
                 }
                 task->Group = snapshotIt->second;
             }
-            UpdateTaskGroup(task->Group, TaskStatus::Pending);
+
+            for (const auto dependencyId : dependencies)
+            {
+                const auto dependencyIt = m_AllTasks.find(dependencyId);
+                if (dependencyIt == m_AllTasks.end())
+                    continue;
+
+                const auto& dependency = dependencyIt->second;
+                if (dependency->Group)
+                    continue;
+
+                AddTaskToGroup(dependency, task->Group);
+            }
+
+            AddTaskToGroup(task, task->Group);
 
             task->RemainingDeps.store(remainingDeps, std::memory_order_relaxed);
             isReady = remainingDeps == 0;
@@ -246,6 +260,47 @@ namespace Eppo
             snapshots.emplace(name, *snapshot);
 
         return snapshots;
+    }
+
+    auto ThreadPool::AddTaskToGroup(const Ref<Task>& task, const Ref<TaskGroupSnapshot>& group) -> void
+    {
+        task->Group = group;
+
+        auto version = group->m_Version.load(std::memory_order_seq_cst);
+        while (true)
+        {
+            if ((version & 1u) != 0)
+            {
+                std::this_thread::yield();
+                version = group->m_Version.load(std::memory_order_seq_cst);
+                continue;
+            }
+
+            if (group->m_Version.compare_exchange_weak(version, version + 1, std::memory_order_seq_cst, std::memory_order_seq_cst))
+                break;
+        }
+
+        switch (task->Status.load(std::memory_order_relaxed))
+        {
+            case TaskStatus::Pending:
+                group->Pending.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Running:
+                group->Running.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Completed:
+                group->Completed.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Failed:
+                group->Failed.fetch_add(1, std::memory_order_seq_cst);
+                break;
+            case TaskStatus::Cancelled:
+                group->Cancelled.fetch_add(1, std::memory_order_seq_cst);
+                break;
+        }
+        group->Total.fetch_add(1, std::memory_order_seq_cst);
+
+        group->m_Version.store(version + 2, std::memory_order_seq_cst);
     }
 
     auto ThreadPool::UpdateTaskGroup(const Ref<TaskGroupSnapshot>& group, const TaskStatus status) -> void
@@ -306,6 +361,7 @@ namespace Eppo
             if (status != TaskStatus::Cancelled)
                 task->Status.store(status, std::memory_order_relaxed);
             dependents = std::move(task->Dependents);
+            CompleteTask(task, status);
         }
 
         std::vector<Ref<Task>> readyTasks;
@@ -332,8 +388,6 @@ namespace Eppo
 
             m_WorkAvailableCV.notify_all();
         }
-
-        CompleteTask(task, status);
     }
 
     auto ThreadPool::CompleteTask(const Ref<Task>& task, const TaskStatus status) -> void
@@ -513,8 +567,6 @@ namespace Eppo
             if (!task)
                 continue;
 
-            UpdateTaskGroup(task->Group, TaskStatus::Running);
-
             auto taskStatus = TaskStatus::Completed;
             try
             {
@@ -566,6 +618,7 @@ namespace Eppo
 
                 m_TasksInFlight.fetch_add(1, std::memory_order_seq_cst);
                 m_TasksPending.fetch_sub(1, std::memory_order_seq_cst);
+                UpdateTaskGroup(task->Group, TaskStatus::Running);
                 return task;
             }
         }

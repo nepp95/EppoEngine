@@ -54,7 +54,7 @@ TEST(Renderer, Framebuffer_ExistingCubemapIsUsedAsColorAttachment)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> cubemap = CreateRef<Image>(ImageSpecification{
+    const Ref<Image> cubemap = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 64u,
         .Height = 64u,
@@ -87,7 +87,7 @@ TEST(Renderer, Framebuffer_ExistingCubemapMipTarget_AttachesChosenMipAndAllFaces
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> cubemap = CreateRef<Image>(ImageSpecification{
+    const Ref<Image> cubemap = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 128u,
         .Height = 128u,
@@ -127,7 +127,7 @@ TEST(Renderer, Framebuffer_MixedOwnedAndSuppliedAttachmentsKeepListOrder)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> supplied = CreateRef<Image>(ImageSpecification{
+    const Ref<Image> supplied = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 32u,
         .Height = 32u,

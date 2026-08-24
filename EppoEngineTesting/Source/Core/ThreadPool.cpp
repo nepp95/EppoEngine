@@ -413,6 +413,96 @@ TEST(Core, ThreadPool_QueueTaskWithDependencies_FiresCompletionCallback)
     EXPECT_EQ(TaskStatus::Completed, reported.load());
 }
 
+TEST(Core, ThreadPool_QueueTaskWithDependencies_FiresDependencyCompletionFirst)
+{
+    constexpr uint32_t taskCount = 512;
+
+    std::vector<uint8_t> completionStates(taskCount, 0);
+    uint32_t outOfOrder = 0;
+    ThreadPool pool;
+
+    for (uint32_t i = 0; i < taskCount; i++)
+    {
+        const auto dependency = pool.QueueTask(
+            "Dependency",
+            []() -> void
+            {
+            },
+            [&completionStates, &outOfOrder, i](TaskStatus) -> void
+            {
+                if (completionStates[i] != 0)
+                    outOfOrder++;
+                completionStates[i] = 1;
+            }
+        );
+
+        pool.QueueTaskWithDependencies(
+            "Dependent",
+            []() -> void
+            {
+            },
+            [&completionStates, &outOfOrder, i](TaskStatus) -> void
+            {
+                if (completionStates[i] != 1)
+                    outOfOrder++;
+                completionStates[i] = 2;
+            },
+            { dependency }
+        );
+    }
+
+    pool.Shutdown(false);
+
+    EXPECT_EQ(0u, outOfOrder);
+    for (const auto state : completionStates)
+        EXPECT_EQ(2u, state);
+}
+
+TEST(Core, ThreadPool_GetTaskGroupSnapshots_IncludesDependencies)
+{
+    constexpr uint32_t dependencyCount = 2;
+
+    std::atomic<bool> gate = false;
+    std::atomic<uint32_t> dependenciesRunning = 0;
+    ThreadPool pool;
+
+    std::vector<TaskId> dependencies;
+    dependencies.reserve(dependencyCount);
+    for (uint32_t i = 0; i < dependencyCount; i++)
+    {
+        dependencies.emplace_back(pool.QueueTask(
+            [&gate, &dependenciesRunning]() -> void
+            {
+                dependenciesRunning.fetch_add(1, std::memory_order_release);
+                WaitForGate(gate);
+            },
+            nullptr
+        ));
+    }
+
+    pool.QueueTaskWithDependencies("Mesh", []() -> void {}, nullptr, dependencies);
+
+    ASSERT_TRUE(WaitUntil(
+        [&dependenciesRunning]() -> bool
+        {
+            return dependenciesRunning.load(std::memory_order_acquire) == dependencyCount;
+        }
+    ));
+
+    const auto running = pool.GetTaskGroupSnapshots().at("Mesh");
+    EXPECT_EQ(dependencyCount + 1, running.Total.load(std::memory_order_relaxed));
+    EXPECT_EQ(dependencyCount, running.Running.load(std::memory_order_relaxed));
+    EXPECT_EQ(1u, running.Pending.load(std::memory_order_relaxed));
+
+    gate.store(true, std::memory_order_release);
+    pool.Shutdown(false);
+
+    const auto completed = pool.GetTaskGroupSnapshots().at("Mesh");
+    EXPECT_EQ(dependencyCount + 1, completed.Total.load(std::memory_order_relaxed));
+    EXPECT_EQ(dependencyCount + 1, completed.Completed.load(std::memory_order_relaxed));
+    EXPECT_TRUE(completed.IsFinished());
+}
+
 TEST(Core, ThreadPool_QueueTaskWithDependencies_TreatsCompletedDependencyAsSatisfied)
 {
     std::atomic<bool> dependentRan = false;

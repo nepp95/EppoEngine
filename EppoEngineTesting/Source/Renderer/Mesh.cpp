@@ -7,9 +7,12 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/Vertex.h"
 
+#include <chrono>
 #include <cmath>
+#include <cstring>
 #include <filesystem>
 #include <glm/gtc/matrix_transform.hpp>
+#include <thread>
 
 using namespace Eppo;
 
@@ -207,6 +210,82 @@ namespace
 		FS::WriteText(path, source, true);
 		return path;
 	}
+
+    auto WriteTexturedMesh(const Testing::TempDir& tempDir) -> std::filesystem::path
+    {
+        const std::filesystem::path path = tempDir.File("Textured.gltf");
+        const std::filesystem::path bufferPath = tempDir.File("Textured.bin");
+
+        const std::array positions{
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(1.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f),
+        };
+        const std::array normals{
+            glm::vec3(0.0f, 0.0f, 1.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f),
+        };
+        const std::array textureCoordinates{
+            glm::vec2(0.0f, 0.0f),
+            glm::vec2(1.0f, 0.0f),
+            glm::vec2(0.0f, 1.0f),
+        };
+        const std::array<uint16_t, 3> indices{ 0, 1, 2 };
+
+        std::vector<char> bytes(102);
+        std::memcpy(bytes.data(), positions.data(), sizeof(positions));
+        std::memcpy(bytes.data() + 36, normals.data(), sizeof(normals));
+        std::memcpy(bytes.data() + 72, textureCoordinates.data(), sizeof(textureCoordinates));
+        std::memcpy(bytes.data() + 96, indices.data(), sizeof(indices));
+
+        std::vector<char> imageBytes(18, 0);
+        imageBytes[2] = 2;
+        imageBytes[12] = 2;
+        imageBytes[14] = 2;
+        imageBytes[16] = 24;
+        for (uint32_t i = 0; i < 4; i++)
+            imageBytes.insert(imageBytes.end(), { static_cast<char>(64), static_cast<char>(128), static_cast<char>(200) });
+        bytes.insert(bytes.end(), imageBytes.begin(), imageBytes.end());
+
+        EP_REQUIRE(FS::WriteBytes(bufferPath, bytes, true));
+        const std::string source = R"({
+            "asset": { "version": "2.0" },
+            "scene": 0,
+            "scenes": [{ "nodes": [0] }],
+            "nodes": [{ "mesh": 0 }],
+            "meshes": [{
+                "name": "Textured Triangle",
+                "primitives": [{
+                    "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 },
+                    "indices": 3,
+                    "material": 0
+                }]
+            }],
+            "materials": [{
+                "pbrMetallicRoughness": { "baseColorTexture": { "index": 0 } }
+            }],
+            "textures": [{ "source": 0 }],
+            "images": [{ "bufferView": 4, "mimeType": "image/x-tga" }],
+            "buffers": [{ "byteLength": 132, "uri": "Textured.bin" }],
+            "bufferViews": [
+                { "buffer": 0, "byteOffset": 0, "byteLength": 36 },
+                { "buffer": 0, "byteOffset": 36, "byteLength": 36 },
+                { "buffer": 0, "byteOffset": 72, "byteLength": 24 },
+                { "buffer": 0, "byteOffset": 96, "byteLength": 6 },
+                { "buffer": 0, "byteOffset": 102, "byteLength": 30 }
+            ],
+            "accessors": [
+                { "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0] },
+                { "bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC3" },
+                { "bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC2" },
+                { "bufferView": 3, "componentType": 5123, "count": 3, "type": "SCALAR" }
+            ]
+        })";
+
+        EP_REQUIRE(FS::WriteText(path, source, true));
+        return path;
+    }
 }
 
 TEST(Renderer, Material_DefaultTextureHandlesProduceInvalidIndices)
@@ -296,4 +375,31 @@ TEST(Renderer, Mesh_LoadingSceneHierarchyAccumulatesMatrixAndTrsTransforms)
 		CHECK_VEC4_CLOSE(expectedTransform[column], actualTransform[column], 0.0001f);
 	CHECK_VEC3_CLOSE(glm::vec3(2.0f, 4.0f, -4.0f), mesh.GetBounds().Min, 0.0001f);
 	CHECK_VEC3_CLOSE(glm::vec3(4.0f, 4.0f, -3.0f), mesh.GetBounds().Max, 0.0001f);
+}
+
+TEST(Renderer, Mesh_EmbeddedImageLoadsAndAssignsMaterialHandle)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const Testing::TempDir tempDir;
+    const Mesh mesh(WriteTexturedMesh(tempDir).string());
+
+    EP_REQUIRE(mesh.IsValid());
+    EP_REQUIRE_EQ(1u, static_cast<uint32_t>(mesh.GetImages().size()));
+    const Ref<Image>& image = mesh.GetImage(0);
+    EP_REQUIRE(image != nullptr);
+    EXPECT_FALSE(image->IsLoaded.load(std::memory_order_acquire));
+
+    for (uint32_t frame = 0; frame < 120 && !image->IsLoaded.load(std::memory_order_acquire); frame++)
+    {
+        Testing::AppHarness::AdvanceFrames(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    EP_REQUIRE(image->IsLoaded.load(std::memory_order_acquire));
+    EXPECT_EQ(2u, image->GetWidth());
+    EXPECT_EQ(2u, image->GetHeight());
+    EXPECT_TRUE(image->GetTexture() != nullptr);
+    EXPECT_NE(-1, mesh.GetMaterial(0)->GetDiffuseMapIndex());
 }

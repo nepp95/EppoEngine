@@ -112,7 +112,7 @@ namespace Eppo
         // Create render passes
         // Shadow Depth
         {
-            const auto shadowMap = CreateRef<Image>(ImageSpecification{
+            const auto shadowMap = Image::Create(ImageSpecification{
                 .ImageFormat = nvrhi::Format::D32,
                 .Width = s_ShadowMapSize,
                 .Height = s_ShadowMapSize,
@@ -788,10 +788,6 @@ namespace Eppo
             return;
         }
 
-        // Allocate and record the attempt before loading, so a failed load doesn't retry every frame.
-        EnsureIblResources();
-        m_EnvironmentCube->Handle = environment.SkyboxHandle;
-
         // Image is an asset; resolves through the registry like meshes do.
         const auto& image = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Image>(environment.SkyboxHandle);
         if (!image)
@@ -799,6 +795,12 @@ namespace Eppo
             Log::Error("Failed to load skybox image for handle {}", static_cast<uint64_t>(environment.SkyboxHandle));
             return;
         }
+
+        if (!image->IsLoaded.load(std::memory_order_acquire))
+            return;
+
+        EnsureIblResources();
+        m_EnvironmentCube->Handle = environment.SkyboxHandle;
 
         BakeEnvironmentMap(image);
 
@@ -1920,7 +1922,7 @@ namespace Eppo
 
         const auto& renderer = DeviceManager::Get()->GetRenderer();
 
-        m_EnvironmentCube = CreateRef<Image>(ImageSpecification{
+        m_EnvironmentCube = Image::Create(ImageSpecification{
             .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
             .Width = s_IblEnvironmentSize,
             .Height = s_IblEnvironmentSize,
@@ -1930,7 +1932,7 @@ namespace Eppo
             .DebugName = "IBL Environment Cube",
         });
 
-        m_IrradianceCube = CreateRef<Image>(ImageSpecification{
+        m_IrradianceCube = Image::Create(ImageSpecification{
             .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
             .Width = s_IblIrradianceSize,
             .Height = s_IblIrradianceSize,
@@ -1939,7 +1941,7 @@ namespace Eppo
             .DebugName = "IBL Irradiance Cube",
         });
 
-        m_PrefilterCube = CreateRef<Image>(ImageSpecification{
+        m_PrefilterCube = Image::Create(ImageSpecification{
             .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
             .Width = s_IblPrefilterSize,
             .Height = s_IblPrefilterSize,
@@ -1949,7 +1951,7 @@ namespace Eppo
             .DebugName = "IBL Prefilter Cube",
         });
 
-        m_BrdfLut = CreateRef<Image>(ImageSpecification{
+        m_BrdfLut = Image::Create(ImageSpecification{
             .ImageFormat = nvrhi::Format::RG16_FLOAT,
             .Width = s_IblBrdfLutSize,
             .Height = s_IblBrdfLutSize,

@@ -122,7 +122,7 @@ return float4(1.0, 1.0, 1.0, 1.0);
         const auto materialData = CreateRef<StorageBuffer>(80, 80, "TestSB Material Data");
         const auto materialSampler = Sampler::Create();
         const auto ssao = CreateRef<UniformBuffer>(sizeof(glm::vec4) * 34, "TestCB Ssao");
-        const auto ssaoTex = CreateRef<Image>(ImageSpecification{
+        const auto ssaoTex = Image::Create(ImageSpecification{
             .ImageFormat = nvrhi::Format::RGBA8_UNORM,
             .Width = 4,
             .Height = 4,
@@ -159,7 +159,7 @@ return float4(1.0, 1.0, 1.0, 1.0);
 
     [[nodiscard]] auto MakeTestImage() -> Ref<Image>
     {
-        return CreateRef<Image>(ImageSpecification{
+        return Image::Create(ImageSpecification{
             .ImageFormat = nvrhi::Format::RGBA8_UNORM,
             .Width = 4,
             .Height = 4,

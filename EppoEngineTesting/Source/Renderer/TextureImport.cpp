@@ -6,6 +6,9 @@
 #include "Project/Project.h"
 #include "Renderer/Image.h"
 
+#include <chrono>
+#include <thread>
+
 using namespace Eppo;
 
 // Registering a texture on disk and resolving it through GetOrLoadAsset<Image> is the
@@ -13,6 +16,17 @@ using namespace Eppo;
 // so this rides the graphical Renderer suite.
 namespace
 {
+    auto WaitForImage(const Ref<Image>& image) -> bool
+    {
+        for (uint32_t frame = 0; frame < 120 && !image->IsLoaded.load(std::memory_order_acquire); frame++)
+        {
+            Testing::AppHarness::AdvanceFrames(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        return image->IsLoaded.load(std::memory_order_acquire);
+    }
+
     // Minimal uncompressed 2x2 24-bit TGA (stb decodes it to RGBA -> SRGBA8_UNORM).
     [[nodiscard]] auto MakeTgaBytes() -> std::vector<char>
     {
@@ -90,6 +104,7 @@ TEST(Renderer, ImportTexture_LdrFile_LoadsAsSrgbaImageWithExpectedDimensions)
     const Ref<Image> image = fixture.Manager()->GetOrLoadAsset<Image>(handle);
 
     EP_REQUIRE(image != nullptr);
+    EP_REQUIRE(WaitForImage(image));
     EXPECT_TRUE(image->GetTexture() != nullptr);
     EXPECT_EQ(static_cast<uint64_t>(handle), static_cast<uint64_t>(image->Handle));
     EXPECT_EQ(2u, image->GetWidth());
@@ -108,6 +123,7 @@ TEST(Renderer, ImportTexture_GrayscaleLdrFile_ExpandsToSrgbaImage)
     const Ref<Image> image = fixture.Manager()->GetOrLoadAsset<Image>(handle);
 
     EP_REQUIRE(image != nullptr);
+    EP_REQUIRE(WaitForImage(image));
     EXPECT_EQ(2u, image->GetWidth());
     EXPECT_EQ(2u, image->GetHeight());
     EXPECT_TRUE(image->GetFormat() == nvrhi::Format::SRGBA8_UNORM);
@@ -124,6 +140,7 @@ TEST(Renderer, ImportTexture_HdrFile_LoadsAsFloatImage)
     const Ref<Image> image = fixture.Manager()->GetOrLoadAsset<Image>(handle);
 
     EP_REQUIRE(image != nullptr);
+    EP_REQUIRE(WaitForImage(image));
     EXPECT_EQ(1u, image->GetWidth());
     EXPECT_EQ(1u, image->GetHeight());
     EXPECT_TRUE(image->GetFormat() == nvrhi::Format::RGBA32_FLOAT);
