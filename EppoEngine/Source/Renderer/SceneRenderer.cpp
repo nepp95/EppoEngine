@@ -65,6 +65,7 @@ namespace Eppo
         static_assert(offsetof(MaterialData, EmissiveFactor) == 48);
         static_assert(offsetof(MaterialData, Metallic) == 60);
         static_assert(offsetof(MaterialData, Roughness) == 64);
+        static_assert(offsetof(MaterialData, NormalScale) == 68);
 
         const auto& dm = DeviceManager::Get();
         const auto& renderer = dm->GetRenderer();
@@ -1122,6 +1123,7 @@ namespace Eppo
                             .EmissiveFactor = material->EmissiveFactor,
                             .Metallic = material->Metallic,
                             .Roughness = material->Roughness,
+                            .NormalScale = material->NormalScale,
                         }
                     );
                 }
