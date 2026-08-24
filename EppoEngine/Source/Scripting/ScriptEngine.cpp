@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Scripting/ScriptEngine.h"
 
+#include "Core/Application.h"
 #include "Project/Project.h"
 #include "Utility/Process.h"
 
@@ -110,6 +111,8 @@ namespace Eppo
 
     auto ScriptEngine::VerifyRuntime() -> void
     {
+        EP_PROFILE_FN("ScriptEngine::VerifyRuntime");
+
         if (!m_ScriptWatcher || !Project::GetActive())
             return;
 
@@ -124,8 +127,8 @@ namespace Eppo
         if (!m_ReloadPending || GetSceneContext())
             return;
 
-        ReloadProjectAssembly();
-        m_ReloadPending = false;
+        if (ReloadProjectAssembly())
+            m_ReloadPending = false;
     }
 
     auto ScriptEngine::Get() -> ScriptEngine&
@@ -184,35 +187,118 @@ namespace Eppo
         }
 
         const auto outputDirectory = Project::GetCacheDirectory() / "Scripts";
-        const int32_t exitCode = RunProcess(
-            "dotnet",
-            { "build", projectFile.string(), "-c", "Debug", "-o", outputDirectory.string(),
-              // Point the project at this build's core assembly instead of a baked-in
-              // path that goes stale when the output layout changes.
-              "-p:CoreManagedDll=" + (FS::GetRootDirectory() / "EppoScriptCore.dll").string(), "--nologo" }
+
+        // Queue async build if needed
+        const auto& threadPool = Application::Get().GetThreadPool();
+
+        if (m_BuildTaskId != 0)
+        {
+            // Build already queued, cancel if possible
+            bool cancelled = threadPool->CancelTask(m_BuildTaskId);
+
+            // Build already running, check back later
+            if (!cancelled)
+            {
+                m_ReloadPending = true;
+                return false;
+            }
+        }
+
+        auto result = CreateRef<TaskResult<int32_t>>();
+        m_BuildTaskId = threadPool->QueueTask(
+            "Compiling .NET Runtime",
+            [result, projectFile, outputDirectory]() -> void
+            {
+                const auto tempDir = outputDirectory / "Temp";
+
+                const int32_t exitCode = RunProcess(
+                    "dotnet",
+                    { "build", projectFile.string(), "-c", "Debug", "-o", tempDir.string(),
+                      // Point the project at this build's core assembly instead of a baked-in
+                      // path that goes stale when the output layout changes.
+                      "-p:CoreManagedDll=" + (FS::GetExecutableDirectory() / "EppoScriptCore.dll").string(), "--nologo" }
+                );
+
+                *result = exitCode;
+            },
+            [this, result, name, outputDirectory, project](const TaskStatus status) -> void
+            {
+                const auto tempDir = outputDirectory / "Temp";
+
+                if (status == TaskStatus::Cancelled)
+                {
+                    Log::Error(LogSource::Script, "Script build for '{}' failed because the worker task was cancelled!", name);
+                    return;
+                }
+
+                m_BuildTaskId = 0;
+
+                if (Project::GetActive() != project)
+                {
+                    Log::Error(LogSource::Script, "Script build for '{}' failed because the project isn't currently loaded!", name);
+                    return;
+                }
+
+                if (status != TaskStatus::Completed)
+                {
+                    Log::Error(LogSource::Script, "Script build for '{}' failed because the worker task failed!", name);
+                    return;
+                }
+
+                const int32_t exitCode = result->has_value() ? result->value() : -1;
+
+                if (exitCode != 0)
+                {
+                    Log::Error(
+                        LogSource::Script, "Script build for '{}' failed with exit code {}; see the build output above.", name, exitCode
+                    );
+                    return;
+                }
+
+                const auto oldAssemblyPath = outputDirectory / (name + ".dll");
+                const auto backupAssemblyPath = outputDirectory / (name + ".dll.bak");
+                const auto newAssemblyPath = tempDir / (name + ".dll");
+
+                if (!FS::Exists(newAssemblyPath))
+                {
+                    Log::Error(LogSource::Script, "Script build for '{}' produced no assembly at '{}'.", name, newAssemblyPath);
+                    return;
+                }
+
+                bool hasBackupAssembly = FS::Exists(oldAssemblyPath);
+                if (!FS::Move(oldAssemblyPath, backupAssemblyPath))
+                    hasBackupAssembly = false;
+
+                if (!FS::Move(newAssemblyPath, oldAssemblyPath) && hasBackupAssembly)
+                {
+                    FS::Move(backupAssemblyPath, oldAssemblyPath);
+                    FS::RemoveAll(tempDir);
+                    return;
+                }
+
+                UnloadUserAssembly();
+
+                if (!LoadUserAssembly(oldAssemblyPath))
+                {
+                    Log::Error(LogSource::Script, "Failed to load script assembly for '{}', restoring old assembly if possible.", name);
+
+                    if (hasBackupAssembly)
+                    {
+                        FS::Move(backupAssemblyPath, oldAssemblyPath);
+                        if (!LoadUserAssembly(oldAssemblyPath))
+                            Log::Error(LogSource::Script, "Failed to load previous script assembly!");
+                        else
+                            Log::Info(LogSource::Script, "Restored previous script assembly.");
+                    }
+
+                    FS::RemoveAll(tempDir);
+
+                    return;
+                }
+
+                Log::Info(LogSource::Script, "Loaded script assembly for '{}'.", name);
+            }
         );
-
-        if (exitCode != 0)
-        {
-            Log::Error(LogSource::Script, "Script build for '{}' failed with exit code {}; see the build output above.", name, exitCode);
-            return false;
-        }
-
-        const auto assemblyPath = outputDirectory / (name + ".dll");
-        if (!FS::Exists(assemblyPath))
-        {
-            Log::Error(LogSource::Script, "Script build for '{}' produced no assembly at '{}'.", name, assemblyPath);
-            return false;
-        }
-
-        UnloadUserAssembly();
-        if (!LoadUserAssembly(assemblyPath))
-        {
-            Log::Error(LogSource::Script, "Failed to load script assembly for '{}'.", name);
-            return false;
-        }
-
-        Log::Info(LogSource::Script, "Loaded script assembly for '{}'.", name);
 
         return true;
     }
@@ -220,6 +306,16 @@ namespace Eppo
     auto ScriptEngine::IsUserAssemblyValid() -> bool
     {
         return s_Instance && s_Instance->m_UserAssemblyValid;
+    }
+
+    auto ScriptEngine::IsUserAssemblyCompiling() -> bool
+    {
+        return s_Instance && s_Instance->m_BuildTaskId != 0;
+    }
+
+    auto ScriptEngine::IsUserAssemblyReloadPending() -> bool
+    {
+        return s_Instance && s_Instance->m_ReloadPending;
     }
 
     auto ScriptEngine::SetSceneContext(const Ref<Scene>& scene) -> void
@@ -361,9 +457,8 @@ namespace Eppo
         return nullptr;
     }
 
-    auto ScriptEngine::GetFieldValueOrDefault(
-        const UUID& entityId, const int32_t classIndex, const int32_t fieldIndex
-    ) const -> ScriptFieldValue
+    auto ScriptEngine::GetFieldValueOrDefault(const UUID& entityId, const int32_t classIndex, const int32_t fieldIndex) const
+        -> ScriptFieldValue
     {
         if (!m_CoreAssembly || classIndex < 0 || classIndex >= static_cast<int32_t>(GetClasses().size()))
             return {};

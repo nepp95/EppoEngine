@@ -11,7 +11,7 @@
         Button5 = 5,
         Button6 = 6,
         Button7 = 7,
-        
+
         ButtonLast = Button7,
         ButtonLeft = Button0,
         ButtonRight = Button1,

@@ -1,17 +1,16 @@
 #include "pch.h"
 #include "Renderer/Mesh.h"
 
+#include "Core/Application.h"
 #include "Renderer/DeviceManager.h"
+#include "Renderer/Renderer.h"
 #include "Renderer/Vertex.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
-#include <stb_image.h>
 #include <tiny_gltf_v3.h>
-
-#include <execution>
 
 namespace Eppo
 {
@@ -440,135 +439,175 @@ namespace Eppo
 
         const auto device = DeviceManager::Get()->GetDevice();
 
+        struct MaterialImages
+        {
+            int32_t Diffuse = -1;
+            int32_t Normal = -1;
+            int32_t RoughMet = -1;
+            int32_t AO = -1;
+            int32_t Emissive = -1;
+        };
+
         // Format look up
         std::unordered_map<uint32_t, nvrhi::Format> imageFormats;
+        std::vector<MaterialImages> materialImages(model.materials_count);
         for (uint32_t i = 0; i < model.materials_count; i++)
         {
             const auto& material = model.materials[i];
             if (const auto texture = material.pbr_metallic_roughness.base_color_texture.index; texture >= 0)
+            {
                 imageFormats[model.textures[texture].source] = nvrhi::Format::SRGBA8_UNORM;
+                materialImages[i].Diffuse = model.textures[texture].source;
+            }
             if (const auto texture = material.normal_texture.index; texture >= 0)
+            {
                 imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+                materialImages[i].Normal = model.textures[texture].source;
+            }
             if (const auto texture = material.pbr_metallic_roughness.metallic_roughness_texture.index; texture >= 0)
+            {
                 imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+                materialImages[i].RoughMet = model.textures[texture].source;
+            }
             if (const auto texture = material.occlusion_texture.index; texture >= 0)
+            {
                 imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+                materialImages[i].AO = model.textures[texture].source;
+            }
             if (const auto texture = material.emissive_texture.index; texture >= 0)
+            {
                 imageFormats[model.textures[texture].source] = nvrhi::Format::SRGBA8_UNORM;
+                materialImages[i].Emissive = model.textures[texture].source;
+            }
         }
 
         m_Images.resize(model.images_count);
         std::vector<nvrhi::CommandListHandle> cmdLists(m_Images.size());
+        std::vector<TaskId> imageTasks;
+        imageTasks.reserve(m_Images.size());
+        const auto& threadPool = Application::Get().GetThreadPool();
 
-        std::for_each(
-            std::execution::par, m_Images.begin(), m_Images.end(),
-            [&, model](auto& img)
+        for (size_t i = 0; i < m_Images.size(); i++)
+        {
+            const auto& image = model.images[i];
+
+            if (image.image.data == nullptr)
             {
-                int idx = &img - &m_Images[0];
-                const auto& image = model.images[idx];
-
-                nvrhi::CommandListParameters params{
-                    .enableImmediateExecution = false,
-                };
-
-                const auto cmd = device->createCommandList(params);
-                cmd->open();
-
-                if (image.image.data == nullptr)
+                if (image.uri.data == nullptr && image.buffer_view > -1)
                 {
-                    if (image.uri.data == nullptr && image.buffer_view > -1)
-                    {
-                        // Embedded image with buffer view
-                        const auto& bufferView = model.buffer_views[image.buffer_view];
-                        const auto& buffer = model.buffers[bufferView.buffer];
-                        const auto* imageData = &buffer.data.data[bufferView.byte_offset];
+                    // Embedded image with buffer view
+                    const auto& bufferView = model.buffer_views[image.buffer_view];
+                    const auto& buffer = model.buffers[bufferView.buffer];
+                    EP_ASSERT(bufferView.byte_offset + bufferView.byte_length <= buffer.data.count);
+                    const auto* imageData = &buffer.data.data[bufferView.byte_offset];
 
-                        auto name = std::string(bufferView.name.data, bufferView.name.len);
+                    auto name = std::string(bufferView.name.data, bufferView.name.len);
 
-                        auto format = nvrhi::Format::UNKNOWN;
-                        if (auto it = imageFormats.find(idx); it != imageFormats.end())
-                            format = it->second;
-                        EP_ASSERT(format != nvrhi::Format::UNKNOWN);
+                    auto format = nvrhi::Format::UNKNOWN;
+                    if (auto it = imageFormats.find(static_cast<uint32_t>(i)); it != imageFormats.end())
+                        format = it->second;
+                    EP_ASSERT(format != nvrhi::Format::UNKNOWN);
 
-                        int width = 0, height = 0, channels = 0;
-                        stbi_info_from_memory(imageData, static_cast<int>(buffer.data.count), &width, &height, &channels);
-                        EP_ASSERT(width > 0 && height > 0);
+                    ImageSpecification spec{
+                        .ImageFormat = format,
+                        .DebugName = std::format("Image {}", name),
+                    };
 
-                        ImageSpecification spec{
-                            .ImageFormat = format,
-                            .Width = static_cast<uint32_t>(width),
-                            .Height = static_cast<uint32_t>(height),
-                            .DebugName = std::format("Image {}", name),
-                        };
-
-                        Buffer imageBuffer(buffer.data.count);
-                        imageBuffer.Data = const_cast<uint8_t*>(imageData);
-
-                        m_Images[idx] = CreateRef<Image>(spec, imageBuffer, cmd);
-                        cmdLists[idx] = cmd;
-                    }
-                    else
-                    {
-                        // External image
-                        std::string uri(image.uri.data, image.uri.len);
-                        std::filesystem::path path = std::filesystem::path(basePath) / uri;
-
-                        nvrhi::Format format = nvrhi::Format::UNKNOWN;
-                        if (auto it = imageFormats.find(idx); it != imageFormats.end())
-                            format = it->second;
-                        EP_ASSERT(format != nvrhi::Format::UNKNOWN);
-
-                        ImageSpecification spec{
-                            .ImageFormat = format,
-                            .DebugName = std::format("Image {}", uri),
-                        };
-
-                        m_Images[idx] = CreateRef<Image>(spec, path, cmd);
-                        cmdLists[idx] = cmd;
-                    }
+                    cmdLists[i] = device->createCommandList(nvrhi::CommandListParameters{ .enableImmediateExecution = false });
+                    const Buffer imageBuffer(const_cast<uint8_t*>(imageData), bufferView.byte_length);
+                    m_Images[i] = Image::Create(spec, ImageSource(imageBuffer), cmdLists[i]);
                 }
+                else if (image.uri.data)
+                {
+                    // External image
+                    std::string uri(image.uri.data, image.uri.len);
+                    std::filesystem::path path = std::filesystem::path(basePath) / uri;
 
-                cmd->close();
+                    nvrhi::Format format = nvrhi::Format::UNKNOWN;
+                    if (auto it = imageFormats.find(static_cast<uint32_t>(i)); it != imageFormats.end())
+                        format = it->second;
+                    EP_ASSERT(format != nvrhi::Format::UNKNOWN);
+
+                    ImageSpecification spec{
+                        .ImageFormat = format,
+                        .DebugName = std::format("Image {}", uri),
+                    };
+
+                    cmdLists[i] = device->createCommandList(nvrhi::CommandListParameters{ .enableImmediateExecution = false });
+                    m_Images[i] = Image::Create(spec, ImageSource(path), cmdLists[i]);
+                }
             }
+
+            if (m_Images[i])
+                imageTasks.emplace_back(m_Images[i]->GetLoadTaskId());
+        }
+
+        if (imageTasks.empty())
+            return;
+
+        threadPool->QueueTaskWithDependencies(
+            std::format("Loading mesh {}", m_Name),
+            []() -> void
+            {
+            },
+            [images = m_Images, cmdLists = std::move(cmdLists), materials = m_Materials,
+             materialImages = std::move(materialImages)](const TaskStatus status)
+            {
+                if (status != TaskStatus::Completed)
+                    return;
+
+                Renderer::Submit(
+                    [images, cmdLists, materials, materialImages]()
+                    {
+                        const auto device = DeviceManager::Get()->GetDevice();
+                        std::vector<nvrhi::ICommandList*> rawCmds;
+                        rawCmds.reserve(cmdLists.size());
+                        for (uint32_t i = 0; i < images.size(); i++)
+                        {
+                            if (images[i] && images[i]->GetTexture())
+                                rawCmds.emplace_back(cmdLists[i].Get());
+                        }
+
+                        if (!rawCmds.empty())
+                            device->executeCommandLists(rawCmds.data(), rawCmds.size());
+
+                        const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+                        std::vector<Ref<BindlessHandle>> imageHandles(images.size());
+                        for (uint32_t i = 0; i < images.size(); i++)
+                        {
+                            if (!images[i] || !images[i]->GetTexture())
+                                continue;
+
+                            auto handle = descriptorManager->Register<Image>(images[i]);
+                            if (handle.Index != std::numeric_limits<uint32_t>::max())
+                                imageHandles[i] = CreateRef<BindlessHandle>(std::move(handle));
+                        }
+
+                        const auto GetHandle = [&imageHandles](const int32_t imageIndex) -> Ref<BindlessHandle>
+                        {
+                            return imageIndex >= 0 ? imageHandles.at(imageIndex) : nullptr;
+                        };
+
+                        for (uint32_t i = 0; i < materials.size(); i++)
+                        {
+                            const auto& material = materials[i];
+                            const auto& source = materialImages[i];
+                            material->DiffuseMap = GetHandle(source.Diffuse);
+                            material->NormalMap = GetHandle(source.Normal);
+                            material->RoughMetMap = GetHandle(source.RoughMet);
+                            material->AOMap = GetHandle(source.AO);
+                            material->EmissiveMap = GetHandle(source.Emissive);
+                        }
+
+                        for (const auto& image : images)
+                        {
+                            if (image && image->GetTexture())
+                                image->IsLoaded.store(true, std::memory_order_release);
+                        }
+                    }
+                );
+            },
+            imageTasks
         );
-
-        // We need the raw pointers, but because of the only strong reference, stored it in a vector as a shared ptr
-        std::vector<nvrhi::ICommandList*> rawCmds;
-        rawCmds.reserve(cmdLists.size());
-        for (const auto& cmd : cmdLists)
-            rawCmds.emplace_back(cmd.Get());
-
-        device->executeCommandLists(rawCmds.data(), cmdLists.size());
-
-        const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
-        std::vector<Ref<BindlessHandle>> imageHandles(m_Images.size());
-        for (uint32_t i = 0; i < m_Images.size(); i++)
-        {
-            if (!m_Images[i])
-                continue;
-
-            auto handle = descriptorManager->Register<Image>(m_Images[i]);
-            if (handle.Index != std::numeric_limits<uint32_t>::max())
-                imageHandles[i] = CreateRef<BindlessHandle>(std::move(handle));
-        }
-
-        const auto GetHandle = [&](const int32_t textureIndex) -> Ref<BindlessHandle>
-        {
-            if (textureIndex < 0)
-                return nullptr;
-            const int32_t imageIndex = model.textures[textureIndex].source;
-            return imageIndex >= 0 ? imageHandles.at(imageIndex) : nullptr;
-        };
-
-        for (uint32_t i = 0; i < model.materials_count; i++)
-        {
-            const auto& source = model.materials[i];
-            const auto& material = m_Materials.at(i);
-            material->DiffuseMap = GetHandle(source.pbr_metallic_roughness.base_color_texture.index);
-            material->NormalMap = GetHandle(source.normal_texture.index);
-            material->RoughMetMap = GetHandle(source.pbr_metallic_roughness.metallic_roughness_texture.index);
-            material->AOMap = GetHandle(source.occlusion_texture.index);
-            material->EmissiveMap = GetHandle(source.emissive_texture.index);
-        }
     }
 }

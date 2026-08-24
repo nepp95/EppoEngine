@@ -69,6 +69,7 @@ namespace Eppo
         [[nodiscard]] auto GetPushConstants() const -> const PushConstantRange& { return m_PushConstants; }
 
         [[nodiscard]] constexpr auto GetName() const -> const std::string& { return m_Specification.Name; }
+        [[nodiscard]] auto IsLoaded() const -> bool;
 
         static auto Create(ShaderSpecification spec) -> Ref<Shader>;
 
@@ -79,6 +80,7 @@ namespace Eppo
 
     protected:
         ShaderSpecification m_Specification;
+        std::atomic<bool> m_IsLoaded = false;
 
         std::unordered_map<nvrhi::ShaderType, nvrhi::ShaderHandle> m_ShaderHandles;
 

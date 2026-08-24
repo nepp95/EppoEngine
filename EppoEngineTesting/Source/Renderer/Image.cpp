@@ -1,147 +1,201 @@
-#include "Support/EppoTest.h"
-#include "Support/AppHarness.h"
-#include "Support/TempDir.h"
+#include "TestSupport/EppoTest.h"
+#include "TestSupport/AppHarness.h"
+#include "TestSupport/TempDir.h"
 
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/Image.h"
 #include "Renderer/Renderer.h"
 
+#include <chrono>
+#include <thread>
+
 using namespace Eppo;
 
-SUITE(Renderer)
+namespace
 {
-    namespace
+    auto WaitForImage(const Ref<Image>& image) -> bool
     {
-        [[nodiscard]] auto MakeHdrBytes() -> std::vector<char>
+        for (uint32_t frame = 0; frame < 120 && !image->IsLoaded.load(std::memory_order_acquire); frame++)
         {
-            const std::string header = "#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n";
-            std::vector<char> bytes(header.begin(), header.end());
-            bytes.insert(bytes.end(), { static_cast<char>(128), static_cast<char>(64), static_cast<char>(32), static_cast<char>(130) });
-            return bytes;
+            Testing::AppHarness::AdvanceFrames(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
-        auto WriteHdrImage(const Testing::TempDir& tempDir, const std::vector<char>& bytes) -> std::filesystem::path
-        {
-            const std::filesystem::path path = tempDir.File("Unclamped.hdr");
-            REQUIRE CHECK(FS::WriteBytes(path, bytes, true));
-            return path;
-        }
-
-        [[nodiscard]] auto ReadFloatPixels(const Ref<Image>& image) -> std::array<float, 4>
-        {
-            const auto device = Testing::AppHarness::Get()->GetDeviceManager()->GetDevice();
-            const auto stagingTexture = device->createStagingTexture(image->GetTexture()->getDesc(), nvrhi::CpuAccessMode::Read);
-            const auto commandList = device->createCommandList();
-
-            commandList->open();
-            commandList->copyTexture(stagingTexture, nvrhi::TextureSlice{}, image->GetTexture(), nvrhi::TextureSlice{});
-            commandList->close();
-            device->executeCommandList(commandList);
-            REQUIRE CHECK(device->waitForIdle());
-
-            size_t rowPitch = 0;
-            const auto* data = static_cast<const float*>(
-                device->mapStagingTexture(stagingTexture, nvrhi::TextureSlice{}, nvrhi::CpuAccessMode::Read, &rowPitch)
-            );
-            REQUIRE CHECK(data != nullptr);
-            CHECK(rowPitch >= sizeof(float) * 4);
-
-            const std::array pixels{ data[0], data[1], data[2], data[3] };
-            device->unmapStagingTexture(stagingTexture);
-            return pixels;
-        }
-
-        auto CheckUploadedImage(const ImageSource& source) -> void
-        {
-            const Ref<Image> image = CreateRef<Image>(
-                ImageSpecification{
-                    .ImageFormat = nvrhi::Format::RGBA32_FLOAT,
-                    .DebugName = "Image HDR upload test",
-                },
-                source
-            );
-
-            REQUIRE CHECK(image->GetTexture() != nullptr);
-            CHECK_EQUAL(1u, image->GetWidth());
-            CHECK_EQUAL(1u, image->GetHeight());
-            CHECK(image->GetFormat() == nvrhi::Format::RGBA32_FLOAT);
-
-            const std::array<float, 4> pixels = ReadFloatPixels(image);
-            CHECK_CLOSE(2.0f, pixels[0], 0.0001f);
-            CHECK_CLOSE(1.0f, pixels[1], 0.0001f);
-            CHECK_CLOSE(0.5f, pixels[2], 0.0001f);
-            CHECK_CLOSE(1.0f, pixels[3], 0.0001f);
-        }
+        return image->IsLoaded.load(std::memory_order_acquire);
     }
 
-    TEST(Image_HdrFileUploadsFourUnclampedFloatChannels)
+    [[nodiscard]] auto MakeHdrBytes() -> std::vector<char>
     {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
-
-        const Testing::TempDir tempDir;
-        const std::vector<char> bytes = MakeHdrBytes();
-        const std::filesystem::path path = WriteHdrImage(tempDir, bytes);
-
-        CheckUploadedImage(path);
+        const std::string header = "#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n";
+        std::vector<char> bytes(header.begin(), header.end());
+        bytes.insert(bytes.end(), { static_cast<char>(128), static_cast<char>(64), static_cast<char>(32), static_cast<char>(130) });
+        return bytes;
     }
 
-    TEST(Image_HdrMemoryUploadsFourUnclampedFloatChannels)
+    auto WriteHdrImage(const Testing::TempDir& tempDir, const std::vector<char>& bytes) -> std::filesystem::path
     {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+        const std::filesystem::path path = tempDir.File("Unclamped.hdr");
+        EP_REQUIRE(FS::WriteBytes(path, bytes, true));
+        return path;
+    }
 
+    [[nodiscard]] auto ReadFloatPixels(const Ref<Image>& image) -> std::array<float, 4>
+    {
+        const auto device = Testing::AppHarness::Get()->GetDeviceManager()->GetDevice();
+        const auto stagingTexture = device->createStagingTexture(image->GetTexture()->getDesc(), nvrhi::CpuAccessMode::Read);
+        const auto commandList = device->createCommandList();
+
+        commandList->open();
+        commandList->copyTexture(stagingTexture, nvrhi::TextureSlice{}, image->GetTexture(), nvrhi::TextureSlice{});
+        commandList->close();
+        device->executeCommandList(commandList);
+        EP_REQUIRE(device->waitForIdle());
+
+        size_t rowPitch = 0;
+        const auto* data = static_cast<const float*>(
+            device->mapStagingTexture(stagingTexture, nvrhi::TextureSlice{}, nvrhi::CpuAccessMode::Read, &rowPitch)
+        );
+        EP_REQUIRE(data != nullptr);
+        EXPECT_TRUE(rowPitch >= sizeof(float) * 4);
+
+        const std::array pixels{ data[0], data[1], data[2], data[3] };
+        device->unmapStagingTexture(stagingTexture);
+        return pixels;
+    }
+
+    auto CheckUploadedImage(const ImageSource& source) -> void
+    {
+        const Ref<Image> image = Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA32_FLOAT,
+                .DebugName = "Image HDR upload test",
+            },
+            source
+        );
+
+        EXPECT_FALSE(image->IsLoaded.load(std::memory_order_acquire));
+        EP_REQUIRE(WaitForImage(image));
+        EP_REQUIRE(image->GetTexture() != nullptr);
+        EXPECT_EQ(1u, image->GetWidth());
+        EXPECT_EQ(1u, image->GetHeight());
+        EXPECT_TRUE(image->GetFormat() == nvrhi::Format::RGBA32_FLOAT);
+
+        const std::array<float, 4> pixels = ReadFloatPixels(image);
+        EXPECT_NEAR(2.0f, pixels[0], 0.0001f);
+        EXPECT_NEAR(1.0f, pixels[1], 0.0001f);
+        EXPECT_NEAR(0.5f, pixels[2], 0.0001f);
+        EXPECT_NEAR(1.0f, pixels[3], 0.0001f);
+    }
+}
+
+TEST(Renderer, Image_HdrFileUploadsFourUnclampedFloatChannels)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const Testing::TempDir tempDir;
+    const std::vector<char> bytes = MakeHdrBytes();
+    const std::filesystem::path path = WriteHdrImage(tempDir, bytes);
+
+    CheckUploadedImage(path);
+}
+
+TEST(Renderer, Image_HdrMemoryUploadsFourUnclampedFloatChannels)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    std::vector<char> bytes = MakeHdrBytes();
+    const Buffer buffer(reinterpret_cast<uint8_t*>(bytes.data()), bytes.size());
+
+    CheckUploadedImage(buffer);
+}
+
+TEST(Renderer, Image_MemorySourceIsOwnedUntilWorkerDecodesIt)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    Ref<Image> image;
+    {
         std::vector<char> bytes = MakeHdrBytes();
         const Buffer buffer(reinterpret_cast<uint8_t*>(bytes.data()), bytes.size());
-
-        CheckUploadedImage(buffer);
+        image = Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA32_FLOAT,
+                .DebugName = "Image owned memory test",
+            },
+            buffer
+        );
     }
 
-    TEST(Image_CubemapRenderTargetCreatesSixSlicesAndRequestedMips)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    EP_REQUIRE(WaitForImage(image));
+    const std::array<float, 4> pixels = ReadFloatPixels(image);
+    EXPECT_NEAR(2.0f, pixels[0], 0.0001f);
+    EXPECT_NEAR(1.0f, pixels[1], 0.0001f);
+    EXPECT_NEAR(0.5f, pixels[2], 0.0001f);
+    EXPECT_NEAR(1.0f, pixels[3], 0.0001f);
+}
 
-        const Ref<Image> image = CreateRef<Image>(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
-            .Width = 128u,
-            .Height = 128u,
-            .MipLevels = 5u,
-            .IsCubemap = true,
-            .IsRenderTarget = true,
-            .DebugName = "Image cubemap test",
-        });
+TEST(Renderer, Image_CubemapRenderTargetCreatesSixSlicesAndRequestedMips)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        REQUIRE CHECK(image->GetTexture() != nullptr);
-        const nvrhi::TextureDesc& desc = image->GetTexture()->getDesc();
-        CHECK(desc.dimension == nvrhi::TextureDimension::TextureCube);
-        CHECK_EQUAL(6u, desc.arraySize);
-        CHECK_EQUAL(5u, desc.mipLevels);
-        CHECK_EQUAL(128u, desc.width);
-        CHECK_EQUAL(128u, desc.height);
-    }
+    const Ref<Image> image = Image::Create(ImageSpecification{
+        .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+        .Width = 128u,
+        .Height = 128u,
+        .MipLevels = 5u,
+        .IsCubemap = true,
+        .IsRenderTarget = true,
+        .DebugName = "Image cubemap test",
+    });
 
-    TEST(DescriptorManager_CubemapRegistersAsResource)
-    {
-        if (!Testing::AppHarness::IsAvailable())
-            return;
+    EP_REQUIRE(image->GetTexture() != nullptr);
+    const nvrhi::TextureDesc& desc = image->GetTexture()->getDesc();
+    EXPECT_TRUE(desc.dimension == nvrhi::TextureDimension::TextureCube);
+    EXPECT_EQ(6u, desc.arraySize);
+    EXPECT_EQ(5u, desc.mipLevels);
+    EXPECT_EQ(128u, desc.width);
+    EXPECT_EQ(128u, desc.height);
+}
 
-        const Ref<Image> image = CreateRef<Image>(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
-            .Width = 16u,
-            .Height = 16u,
-            .IsCubemap = true,
-            .IsRenderTarget = true,
-            .DebugName = "Bindless cubemap test",
-        });
-        const Ref<DescriptorManager> descriptorManager =
-            Testing::AppHarness::Get()->GetDeviceManager()->GetRenderer()->GetDescriptorManager();
+TEST(Renderer, Image_FallbackImageUploadsAndRegistersBindlessIndex)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-        const BindlessHandle handle = descriptorManager->Register(image);
+    const Ref<Image> image = Image::GenerateFallbackImage();
 
-        CHECK(handle.HeapType == BindlessHeapType::Resource);
-        CHECK(handle.Index != std::numeric_limits<uint32_t>::max());
-        CHECK(handle.Index < descriptorManager->GetResourceHeap()->Capacity);
-        CHECK(image->GetTexture()->getDesc().dimension == nvrhi::TextureDimension::TextureCube);
-    }
+    EP_REQUIRE(image != nullptr);
+    EP_REQUIRE(image->GetTexture() != nullptr);
+    EXPECT_EQ(16u, image->GetWidth());
+    EXPECT_EQ(16u, image->GetHeight());
+    EXPECT_TRUE(image->GetFormat() == nvrhi::Format::SRGBA8_UNORM);
+    EXPECT_NE(std::numeric_limits<uint32_t>::max(), image->GetBindlessIndex());
+}
+
+TEST(Renderer, DescriptorManager_CubemapRegistersAsResource)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const Ref<Image> image = Image::Create(ImageSpecification{
+        .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
+        .Width = 16u,
+        .Height = 16u,
+        .IsCubemap = true,
+        .IsRenderTarget = true,
+        .DebugName = "Bindless cubemap test",
+    });
+    const Ref<DescriptorManager> descriptorManager =
+        Testing::AppHarness::Get()->GetDeviceManager()->GetRenderer()->GetDescriptorManager();
+
+    const BindlessHandle handle = descriptorManager->Register(image);
+
+    EXPECT_TRUE(handle.HeapType == BindlessHeapType::Resource);
+    EXPECT_TRUE(handle.Index != std::numeric_limits<uint32_t>::max());
+    EXPECT_TRUE(handle.Index < descriptorManager->GetResourceHeap()->Capacity);
+    EXPECT_TRUE(image->GetTexture()->getDesc().dimension == nvrhi::TextureDimension::TextureCube);
 }

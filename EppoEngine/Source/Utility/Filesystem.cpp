@@ -81,26 +81,4 @@ namespace Eppo::FS
         return cacheDirectory;
     }
 
-    auto GetUserStateDirectory(const std::string& applicationName) -> std::filesystem::path
-    {
-        if (applicationName.empty())
-            return {};
-
-#if defined(EP_PLATFORM_WINDOWS)
-        char* localAppData = nullptr;
-        size_t length = 0;
-        if (_dupenv_s(&localAppData, &length, "LOCALAPPDATA") != 0 || !localAppData)
-            return {};
-        const std::filesystem::path directory = std::filesystem::path(localAppData) / applicationName;
-        std::free(localAppData);
-        return directory;
-#elif defined(EP_PLATFORM_LINUX)
-        if (const char* stateHome = std::getenv("XDG_STATE_HOME"); stateHome && *stateHome)
-            return std::filesystem::path(stateHome) / applicationName;
-        const char* home = std::getenv("HOME");
-        return home ? std::filesystem::path(home) / ".local" / "state" / applicationName : std::filesystem::path{};
-#else
-        return {};
-#endif
-    }
 }

@@ -63,7 +63,8 @@ namespace Eppo
         auto BeginSceneInternal() -> void;
         auto EnsureColliderMeshes() -> void;
         auto GatherWireframes() -> void;
-        auto PrepareRender() -> void;
+        auto PrepareRenderData() -> void;
+        auto UploadRenderData() -> void;
         auto FillShadowData() -> void;
 
         auto ShadowDepthPass() -> void;
@@ -226,7 +227,9 @@ namespace Eppo
         };
 
         std::map<DrawKey, DrawCommand> m_DrawCommands;
+        std::vector<glm::mat4> m_InstanceTransforms;
         Ref<StorageBuffer> m_InstanceTransformsSB = nullptr;
+        std::vector<glm::mat4> m_WireframeTransforms;
         std::vector<DrawCommand> m_WireframeDrawCommands;
         Ref<StorageBuffer> m_WireframeInstanceSB = nullptr;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cfloat>
 #include <cstring>
 #include <filesystem>
 #include <fstream>

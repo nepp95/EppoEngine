@@ -136,7 +136,7 @@ namespace Eppo
 			spec.ImageFormat = nvrhi::Format::SRGBA8_UNORM;
 			spec.DebugName = fileName;
 
-			return CreateRef<Image>(spec, ImageSource(path));
+			return Image::Create(spec, ImageSource(path));
 		};
 
 		m_DirectoryIcon = load("Directory.png");
@@ -287,7 +287,7 @@ namespace Eppo
 			const Ref<Image>& icon = isDirectory ? m_DirectoryIcon : GetIcon(type);
 
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-			if (icon)
+			if (icon && icon->IsLoaded.load(std::memory_order_acquire))
 				ImGui::ImageButton("##icon", ImGuiEx::CreateTextureRef(icon->GetTexture()), ImVec2(THUMBNAIL_SIZE, THUMBNAIL_SIZE));
 			else
 				ImGui::Button("##icon", ImVec2(THUMBNAIL_SIZE, THUMBNAIL_SIZE));

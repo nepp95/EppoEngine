@@ -50,14 +50,14 @@
     },
     {
       "name": "tracy",
-      "version>=": "0.13.1",
+      "version>=": "0.14.1",
       "features": [
         "on-demand"
       ]
     },
     {
-      "name": "unittest-cpp",
-      "version>=": "2.0.0#6"
+      "name": "gtest",
+      "version>=": "1.14.0"
     },
     {
       "name": "imguizmo",

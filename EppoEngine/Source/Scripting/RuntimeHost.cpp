@@ -99,9 +99,9 @@ namespace Eppo
             SHGetSpecialFolderPath(nullptr, programFiles, CSIDL_PROGRAM_FILES, FALSE);
             return std::filesystem::path(programFiles) / "dotnet";
 #elif defined(EP_PLATFORM_LINUX)
-            return "/usr/share/dotnet"
+            return "/usr/share/dotnet";
 #else
-    #error "Unsupported platform!
+    #error "Unsupported platform!"
 #endif
         };
 

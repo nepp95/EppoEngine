@@ -6,14 +6,19 @@
     <AssemblyName>EppoTesting.Scripts</AssemblyName>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <!-- CMake passes CoreManagedDll as a global property, which wins over this.
-         The fallback exists only so IDEs and language servers opening the project
-         standalone can still resolve the core types. -->
-    <CoreManagedDll Condition="'$(CoreManagedDll)' == ''">$(MSBuildThisFileDirectory)../../../build/debug/EppoScriptCore.dll</CoreManagedDll>
+    <Platforms>x64</Platforms>
+    <CoreManagedDll Condition="'$(CoreManagedDll)' == '' and '$(Configuration)' == 'Debug'">$(MSBuildThisFileDirectory)../../../build/bin/Debug-windows-x86_64/EppoScriptCore/EppoScriptCore.dll</CoreManagedDll>
+    <CoreManagedDll Condition="'$(CoreManagedDll)' == '' and '$(Configuration)' == 'Release'">$(MSBuildThisFileDirectory)../../../build/bin/Release-windows-x86_64/EppoScriptCore/EppoScriptCore.dll</CoreManagedDll>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <OutputPath>../../../build/bin/Debug-windows-x86_64/EppoEngineTesting/</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputPath>../../../build/bin/Release-windows-x86_64/EppoEngineTesting/</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Source/**/*.cs" />
-    <!-- CMake passes CoreManagedDll; the runtime loads the core, so don't copy it. -->
+    <!-- The runtime loads the core separately, so don't copy it with the harness. -->
     <Reference Include="EppoScriptCore">
       <HintPath>$(CoreManagedDll)</HintPath>
       <Private>false</Private>

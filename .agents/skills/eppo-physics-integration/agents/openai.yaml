@@ -1,4 +1,0 @@
-interface:
-  display_name: "Eppo Physics Integration"
-  short_description: "Develop Box3D scene integration safely"
-  default_prompt: "Use $eppo-physics-integration to implement or diagnose Eppo physics behavior across colliders, hierarchy, and scripting."
