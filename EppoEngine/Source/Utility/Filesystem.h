@@ -105,20 +105,9 @@ namespace Eppo::FS
     auto GetExecutableDirectory() -> std::filesystem::path;
     auto ConfigureWritableDirectory(const std::filesystem::path& path) -> bool;
     auto GetWritableDirectory() -> std::filesystem::path;
-    auto GetUserStateDirectory(const std::string& applicationName) -> std::filesystem::path;
-
-    inline auto GetRootDirectory() -> std::filesystem::path
-    {
-        // Resolve engine data (Resources/, runtimeconfig.json, EppoScriptCore.dll)
-        // relative to the executable, not the working directory — the latter differs
-        // per launcher (CLion sets it to the output dir, Visual Studio does not),
-        // which left scripting unable to find its managed core.
-        return GetExecutableDirectory();
-    }
-
     inline auto GetResourcesDirectory() -> std::filesystem::path
     {
-        return GetRootDirectory() / "Resources";
+        return std::filesystem::current_path() / "Resources";
     }
 
     auto GetShaderCacheDirectory() -> std::filesystem::path;

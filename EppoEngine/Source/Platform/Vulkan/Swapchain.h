@@ -3,8 +3,6 @@
 #include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/DeviceManager.h"
 
-#include <queue>
-
 namespace Eppo
 {
     struct SwapchainSupportDetails
@@ -24,11 +22,13 @@ namespace Eppo
         auto Present() -> bool;
 
         auto CreateSwapchain(uint32_t width = 0, uint32_t height = 0) -> void;
-        auto Resize(uint32_t width, uint32_t height) -> void;
+        auto Resize(uint32_t width = 0, uint32_t height = 0) -> void;
 
-        auto GetCurrentBackBufferIndex() const -> uint32_t { return m_SwapchainIndex; }
+        auto GetCurrentFrameIndex() const -> uint32_t { return m_CurrentFrameIndex; }
+        auto GetMaxFramesInFlight() const -> uint32_t { return m_MaxFramesInFlight; }
+        auto GetCurrentBackBufferIndex() const -> uint32_t { return m_SwapchainImageIndex; }
         auto GetImageCount() const -> uint32_t { return static_cast<uint32_t>(m_Images.size()); }
-        auto GetCurrentSwapchainImage() -> const SwapchainImage& { return m_Images.at(m_SwapchainIndex); }
+        auto GetCurrentSwapchainImage() -> const SwapchainImage& { return m_Images.at(m_SwapchainImageIndex); }
 
     private:
         [[nodiscard]] auto QuerySwapchainSupportDetails() const -> SwapchainSupportDetails;
@@ -47,12 +47,19 @@ namespace Eppo
         VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
         VkSurfaceFormatKHR m_SurfaceFormat;
 
-        std::array<VkSemaphore, g_MaxFramesInFlight> m_AcquireSemaphores{};
-        std::vector<VkSemaphore> m_PresentSemaphores;
-        std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
-        std::vector<nvrhi::EventQueryHandle> m_QueryPool;
+        struct FrameSync
+        {
+            VkSemaphore AcquireSemaphore = nullptr;
+            nvrhi::EventQueryHandle CompletionQuery = nullptr;
+            bool InFlight = false;
+        };
 
-        uint32_t m_AcquireIndex = 0;
-        uint32_t m_SwapchainIndex = 0;
+        std::vector<FrameSync> m_FrameSyncData;
+        std::vector<VkSemaphore> m_PresentSemaphores;
+        bool m_FrameActive = false;
+        bool m_ResizePending = false;
+        uint32_t m_CurrentFrameIndex = 0; // Index into m_FrameSyncData
+        uint32_t m_MaxFramesInFlight = 1;
+        uint32_t m_SwapchainImageIndex = 0; // Index into m_Images
     };
 }

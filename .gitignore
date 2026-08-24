@@ -5,6 +5,20 @@
 
 # Build / Cache
 /build
+/.eppo
+/.vcpkg-cache
+/compile_commands.json
+__pycache__/
+*.py[cod]
+.ninja_deps
+.ninja_log
+*.sln
+*.slnx
+/*.ninja
+/**/*.vcxproj
+/**/*.vcxproj.filters
+/**/*.vcxproj.user
+/**/*.ninja
 /EppoEditor/Projects/Test/Cache
 /EppoEditor/Projects/Test/Scripts/bin
 /EppoEditor/Projects/Test/Scripts/obj

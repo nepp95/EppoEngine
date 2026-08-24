@@ -21,7 +21,7 @@ inherits the whole [component checklist](adding-a-component.md). Read the
 3. **`AppendColliders`** — translate the new collider *component* into a
    `ColliderData{ .Shape = ColliderShape::Xxx, … }`. This is what feeds
    `GatherColliders` and the compound body. Remember the two-walk-direction
-   gotcha in CLAUDE.md — parenting/relationship repair affects which colliders get
+   gotcha in AGENTS.md — parenting/relationship repair affects which colliders get
    gathered.
 
 4. **`Scene::FitColliderToMesh`** — add the overload for the new collider

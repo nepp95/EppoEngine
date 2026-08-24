@@ -1,4 +1,0 @@
-interface:
-  display_name: "Eppo Scene and ECS Lifecycle"
-  short_description: "Change scenes, entities, and runtime lifecycle safely"
-  default_prompt: "Use $eppo-scene-ecs-lifecycle to implement an Eppo scene or ECS change with correct identity, hierarchy, and runtime behavior."

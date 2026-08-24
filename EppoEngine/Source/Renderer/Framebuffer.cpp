@@ -102,7 +102,7 @@ namespace Eppo
                     .DebugName = std::format("{} Image {}", m_Specification.DebugName, attachmentIndex),
                 };
 
-                m_Images.emplace_back(CreateRef<Image>(spec));
+                m_Images.emplace_back(Image::Create(spec));
             }
 
             attachmentIndex++;

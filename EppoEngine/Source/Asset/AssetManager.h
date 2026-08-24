@@ -49,6 +49,8 @@ namespace Eppo
         // and the content browser (for picking icons on unregistered files).
         [[nodiscard]] static auto GetAssetTypeFromPath(const std::filesystem::path& path) -> AssetType;
 
+        auto GetPlaceholderAsset(AssetType type) -> Ref<Asset>;
+
         auto SerializeAssetRegistry() const -> void;
         auto DeserializeAssetRegistry() -> bool;
 

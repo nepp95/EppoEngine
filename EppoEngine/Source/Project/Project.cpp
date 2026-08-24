@@ -77,7 +77,7 @@ namespace Eppo
 
     auto Project::GetProjectsDirectory() -> std::filesystem::path
     {
-        return FS::GetRootDirectory() / "Projects";
+        return std::filesystem::current_path() / "Projects";
     }
 
     auto Project::GetProjectFile() -> std::filesystem::path

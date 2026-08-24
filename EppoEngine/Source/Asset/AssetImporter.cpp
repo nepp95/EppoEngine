@@ -73,9 +73,9 @@ namespace Eppo
             return nullptr;
         }
 
-        // Format left UNKNOWN so the source constructor resolves it from the pixels.
+        // Format left UNKNOWN so the source factory resolves it from the pixels.
         const ImageSpecification spec{ .DebugName = metadata.Filepath.string() };
-        Ref<Image> image = CreateRef<Image>(spec, ImageSource{ path });
+        Ref<Image> image = Image::Create(spec, ImageSource{ path });
         image->Handle = handle;
 
         return image;

@@ -4,6 +4,11 @@
 
 #include <tracy/Tracy.hpp>
 
+#if defined(EP_DIST)
+    #undef TracyFree
+    #define TracyFree(ptr) ((void)0)
+#endif
+
 #include <csignal>
 #include <memory>
 
@@ -43,9 +48,11 @@ namespace Eppo
 #if defined(TRACY_ENABLE)
     #define EP_FRAME_MARK FrameMark
     #define EP_PROFILE_FN(name) ZoneScopedN(name)
+    #define EP_TAG_THREAD(name) tracy::SetThreadName(name)
 #else
     #define EP_FRAME_MARK
     #define EP_PROFILE_FN(name)
+    #define EP_TAG_THREAD(name)
 #endif
 
     template<typename T>

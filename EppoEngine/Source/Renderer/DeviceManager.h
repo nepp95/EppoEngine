@@ -66,7 +66,6 @@ namespace Eppo
         uint32_t Width = 1600;
         uint32_t Height = 900;
         uint32_t MaxFramesInFlight = 2;
-        uint32_t SwapchainImageCount = 3;
         bool VSync = false;
 
         bool EnableComputeQueue = true;
@@ -97,6 +96,8 @@ namespace Eppo
         [[nodiscard]] constexpr auto GetRenderer() const -> const ScopedPtr<Renderer>& { return m_Renderer; }
 
         // Swapchain/Nvrhi device
+        [[nodiscard]] virtual auto GetCurrentFrameIndex() const -> uint32_t = 0;
+        [[nodiscard]] virtual auto GetMaxFramesInFlight() const -> uint32_t = 0;
         [[nodiscard]] virtual auto GetCurrentBackBufferIndex() const -> uint32_t = 0;
         [[nodiscard]] virtual auto GetBackBufferCount() const -> uint32_t = 0;
         virtual auto GetCurrentSwapchainImage() -> const SwapchainImage& = 0;

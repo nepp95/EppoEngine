@@ -26,6 +26,8 @@ namespace Eppo
         auto BeginFrame() -> bool override;
         auto Present() -> bool override;
 
+        [[nodiscard]] virtual auto GetCurrentFrameIndex() const -> uint32_t override { return m_Swapchain->GetCurrentFrameIndex(); }
+        [[nodiscard]] virtual auto GetMaxFramesInFlight() const -> uint32_t override { return m_Swapchain->GetMaxFramesInFlight(); }
         [[nodiscard]] auto GetCurrentBackBufferIndex() const -> uint32_t override { return m_Swapchain->GetCurrentBackBufferIndex(); }
         [[nodiscard]] auto GetBackBufferCount() const -> uint32_t override { return m_Swapchain->GetImageCount(); }
         auto GetCurrentSwapchainImage() -> const SwapchainImage& override { return m_Swapchain->GetCurrentSwapchainImage(); }
@@ -33,7 +35,7 @@ namespace Eppo
         [[nodiscard]] constexpr auto GetVulkanInstance() const -> VkInstance { return m_Instance; }
         [[nodiscard]] constexpr auto GetPhysicalDevice() const -> const ScopedPtr<PhysicalDevice>& { return m_PhysicalDevice; }
         [[nodiscard]] constexpr auto GetLogicalDevice() const -> const ScopedPtr<LogicalDevice>& { return m_LogicalDevice; }
-        [[nodiscard]] constexpr auto GetSwapchain() const -> const ScopedPtr<Swapchain>& { return m_Swapchain; }
+        [[nodiscard]] constexpr auto GetSwapchain() const -> const Ref<Swapchain>& { return m_Swapchain; }
 
     private:
         auto CreateVulkanInstance() -> void;
@@ -48,6 +50,6 @@ namespace Eppo
 
         ScopedPtr<PhysicalDevice> m_PhysicalDevice = nullptr;
         ScopedPtr<LogicalDevice> m_LogicalDevice = nullptr;
-        ScopedPtr<Swapchain> m_Swapchain = nullptr;
+        Ref<Swapchain> m_Swapchain = nullptr;
     };
 }

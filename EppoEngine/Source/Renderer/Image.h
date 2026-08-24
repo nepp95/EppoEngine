@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "Core/Threading/ThreadPool.h"
 
 #include <nvrhi/nvrhi.h>
 
@@ -27,12 +28,18 @@ namespace Eppo
         std::string DebugName = "Image";
     };
 
+    struct ImageTaskResult
+    {
+        ScopedBuffer Pixels;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint32_t Channels = 0;
+        bool IsHdr = false;
+    };
+
     class Image : public Asset, public std::enable_shared_from_this<Image>
     {
     public:
-        explicit Image(const ImageSpecification& spec);
-        explicit Image(const ImageSpecification& spec, void* ExistingImage);
-        explicit Image(const ImageSpecification& spec, const ImageSource& source, const nvrhi::CommandListHandle& cmdList = nullptr);
         ~Image() override = default;
 
         static auto GetStaticType() -> AssetType { return AssetType::Texture; }
@@ -55,12 +62,24 @@ namespace Eppo
         [[nodiscard]] auto GetFormat() const -> nvrhi::Format { return m_Specification.ImageFormat; }
         [[nodiscard]] auto IsDepthImage() const -> bool;
 
-        // Registers a bindless SRV for the requested subresource range on first request and returns its slot.
-        // The whole-image default and an equivalent explicit range resolve to one shared slot; distinct mip/array views get distinct slots.
+        auto RegisterBindlessIndex(const nvrhi::TextureSubresourceSet& subresources = nvrhi::AllSubresources) -> uint32_t;
         [[nodiscard]] auto GetBindlessIndex(const nvrhi::TextureSubresourceSet& subresources = nvrhi::AllSubresources) -> uint32_t;
 
+        [[nodiscard]] auto GetLoadTaskId() const -> TaskId { return m_LoadTaskId; }
+
+        // Fallback image used by asset manager
+        static auto GenerateFallbackImage() -> Ref<Image>;
+        static auto Create(const ImageSpecification& spec) -> Ref<Image>;
+        static auto Create(const ImageSpecification& spec, void* existingImage) -> Ref<Image>;
+        static auto Create(const ImageSpecification& spec, const ImageSource& source, const nvrhi::CommandListHandle& cmdList = nullptr)
+            -> Ref<Image>;
+
     private:
-        [[nodiscard]] auto DecodeImageData(const ImageSource& source, uint32_t& outChannels, bool& outIsHdr) -> void*;
+        Image() = default;
+        explicit Image(const ImageSpecification& spec);
+        explicit Image(const ImageSpecification& spec, void* ExistingImage);
+
+        static auto DecodeImageData(const ImageSource& source, ImageTaskResult& result) -> void;
         auto SelectFormat(uint32_t channels, bool isHdr = false) -> nvrhi::Format;
         [[nodiscard]] constexpr auto GetStride(nvrhi::Format format) const -> uint32_t;
 
@@ -73,5 +92,7 @@ namespace Eppo
         uint32_t m_Stride = 0;
 
         std::unordered_map<nvrhi::TextureSubresourceSet, Ref<BindlessHandle>> m_BindlessHandles;
+
+        TaskId m_LoadTaskId = 0;
     };
 }

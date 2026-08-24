@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Threading/ThreadPool.h"
 #include "Scene/Entity.h"
 #include "Scripting/Assembly.h"
 #include "Scripting/ScriptClass.h"
@@ -38,6 +39,8 @@ namespace Eppo
 
         [[nodiscard]] auto IsRuntimeLoaded() const -> bool;
         [[nodiscard]] static auto IsUserAssemblyValid() -> bool;
+        [[nodiscard]] static auto IsUserAssemblyCompiling() -> bool;
+        [[nodiscard]] static auto IsUserAssemblyReloadPending() -> bool;
 
         // Class metadata
         [[nodiscard]] auto GetClasses() const -> const std::vector<ScriptClass>&;
@@ -81,6 +84,7 @@ namespace Eppo
         std::filesystem::path m_WatchedScriptsDirectory;
         bool m_UserAssemblyValid = false;
         bool m_ReloadPending = false;
+        TaskId m_BuildTaskId = 0;
 
         WeakRef<PhysicsWorld> m_ActivePhysicsWorld;
         WeakRef<Scene> m_SceneContext;

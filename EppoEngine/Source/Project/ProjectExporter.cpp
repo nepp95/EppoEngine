@@ -4,12 +4,19 @@
 #include "Project/GameData.h"
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Renderer.h"
+#include "Utility/Json.h"
 #include "Utility/Process.h"
 
 namespace Eppo
 {
     namespace
     {
+#if defined(EP_PLATFORM_WINDOWS)
+        constexpr std::string_view s_BuildSystem = "windows";
+#elif defined(EP_PLATFORM_LINUX)
+        constexpr std::string_view s_BuildSystem = "linux";
+#endif
+
         auto RuntimeExecutableName() -> std::filesystem::path
         {
 #if defined(EP_PLATFORM_WINDOWS)
@@ -113,8 +120,6 @@ namespace Eppo
         const auto configurations = GetExportConfigurations(options);
         if (options.CopyRuntime)
         {
-            const auto sourceDirectory = GetSourceDirectory(options);
-
             for (size_t index = 0; index < configurations.size(); ++index)
             {
                 const auto& configuration = configurations[index];
@@ -123,7 +128,7 @@ namespace Eppo
                 std::string runtimeError;
 
                 if (options.BuildRuntime &&
-                    !BuildRuntime(options, sourceDirectory, configuration, progressStart, progressSpan, runtimeError))
+                    !BuildRuntime(options, options.SourceDirectory, configuration, progressStart, progressSpan, runtimeError))
                 {
                     result.Errors.emplace_back(std::move(runtimeError));
                     return result;
@@ -269,6 +274,9 @@ namespace Eppo
         if (const auto configurations = GetExportConfigurations(options); configurations.empty())
             result.Errors.emplace_back("At least one export configuration must be selected.");
 
+        if (options.CopyRuntime && options.BuildRuntime && options.SourceDirectory.empty())
+            result.Errors.emplace_back("The engine source directory is required when building the runtime.");
+
         result.OutputPath = (options.ParentDirectory / specification.Name).lexically_normal();
         if (FS::Exists(result.OutputPath))
         {
@@ -307,34 +315,23 @@ namespace Eppo
             options.ProgressCallback(std::clamp(value, 0.0f, 1.0f), phase);
     }
 
-    auto ProjectExporter::GetSourceDirectory(const ProjectExportOptions& options) const -> std::filesystem::path
-    {
-        if (!options.SourceDirectory.empty())
-            return options.SourceDirectory;
-        return FS::GetRootDirectory().parent_path().parent_path().parent_path();
-    }
-
     auto ProjectExporter::GetExportConfigurations(const ProjectExportOptions& options) const -> std::vector<ExportConfiguration>
     {
-        const auto sourceDirectory = GetSourceDirectory(options);
         std::vector<ExportConfiguration> configurations;
 
         if (options.ExportDebug)
         {
-            const auto runtimeDirectory =
-                options.DebugRuntimeDirectory.empty() ? sourceDirectory / "build" / "debug" / "EppoRuntime" : options.DebugRuntimeDirectory;
+            const auto outputDirectory =
+                options.SourceDirectory / "build" / "bin" / std::format("Debug-{}-x86_64", s_BuildSystem);
+            const auto runtimeDirectory = options.DebugRuntimeDirectory.empty() ? outputDirectory / "EppoRuntime" : options.DebugRuntimeDirectory;
             configurations.emplace_back(
                 ExportConfiguration{
                     .Name = "Debug",
-#if defined(EP_PLATFORM_WINDOWS)
-                    .CMakePreset = "windows-debug",
-#else
-                    .CMakePreset = "linux-debug",
-#endif
+                    .BuildConfiguration = "Debug",
                     .ScriptConfiguration = "Debug",
                     .RuntimeDirectory = runtimeDirectory,
                     .ManagedDirectory =
-                        options.DebugManagedDirectory.empty() ? runtimeDirectory.parent_path() : options.DebugManagedDirectory,
+                        options.DebugManagedDirectory.empty() ? outputDirectory / "EppoScriptCore" : options.DebugManagedDirectory,
                     .IncludeDebugSymbols = true,
                 }
             );
@@ -342,20 +339,22 @@ namespace Eppo
 
         if (options.ExportRelease)
         {
-            const auto runtimeDirectory = options.ReleaseRuntimeDirectory.empty() ? sourceDirectory / "build" / "dist" / "EppoRuntime"
-                                                                                  : options.ReleaseRuntimeDirectory;
+            const auto outputDirectory =
+                options.SourceDirectory / "build" / "bin" / std::format("Dist-{}-x86_64", s_BuildSystem);
+            const auto managedOutputDirectory =
+                options.SourceDirectory / "build" / "bin" / std::format("Release-{}-x86_64", s_BuildSystem);
+            const auto runtimeDirectory = options.ReleaseRuntimeDirectory.empty()
+                ? outputDirectory / "EppoRuntime"
+                : options.ReleaseRuntimeDirectory;
             configurations.emplace_back(
                 ExportConfiguration{
                     .Name = "Release",
-#if defined(EP_PLATFORM_WINDOWS)
-                    .CMakePreset = "windows-dist",
-#else
-                    .CMakePreset = "linux-dist",
-#endif
+                    .BuildConfiguration = "Dist",
                     .ScriptConfiguration = "Release",
                     .RuntimeDirectory = runtimeDirectory,
-                    .ManagedDirectory =
-                        options.ReleaseManagedDirectory.empty() ? runtimeDirectory.parent_path() : options.ReleaseManagedDirectory,
+                    .ManagedDirectory = options.ReleaseManagedDirectory.empty()
+                        ? managedOutputDirectory / "EppoScriptCore"
+                        : options.ReleaseManagedDirectory,
                     .IncludeDebugSymbols = false,
                 }
             );
@@ -369,27 +368,65 @@ namespace Eppo
         const float progressStart, const float progressSpan, std::string& error
     ) const -> bool
     {
-        if (!FS::Exists(sourceDirectory / "CMakePresets.json"))
+        if (!FS::Exists(sourceDirectory / "premake5.lua"))
         {
-            error = std::format("CMakePresets.json was not found in '{}'.", sourceDirectory.string());
+            error = std::format("premake5.lua was not found in '{}'.", sourceDirectory.string());
             return false;
         }
 
-        ReportProgress(options, progressStart, std::format("Configuring {} runtime", configuration.Name));
-        int32_t exitCode = RunProcess("cmake", { "-E", "chdir", sourceDirectory.string(), "cmake", "--preset", configuration.CMakePreset });
-
-        if (exitCode != 0)
+        const auto buildInfoPath = sourceDirectory / ".eppo" / "build.json";
+        if (!FS::Exists(buildInfoPath))
         {
-            error = std::format("{} runtime configuration failed with exit code {}.", configuration.Name, exitCode);
+            error = "Build tool information is missing. Run setup before exporting a runtime.";
             return false;
         }
 
-        ReportProgress(options, progressStart + progressSpan * 0.25f, std::format("Building {} runtime", configuration.Name));
-        exitCode = RunProcess(
-            "cmake",
-            { "-E", "chdir", sourceDirectory.string(), "cmake", "--build", "--preset", configuration.CMakePreset, "--target",
-              "EppoRuntime" }
-        );
+        const auto buildInfoText = FS::ReadText(buildInfoPath);
+        const auto buildInfo = nlohmann::json::parse(buildInfoText, nullptr, false);
+        if (buildInfo.is_discarded() || !buildInfo.contains("action") || !buildInfo["action"].is_string() ||
+            !buildInfo.contains("buildTool") || !buildInfo["buildTool"].is_string())
+        {
+            error = "Build tool information is invalid. Rerun setup before exporting a runtime.";
+            return false;
+        }
+
+        const auto action = buildInfo["action"].get<std::string>();
+        const auto buildTool = buildInfo["buildTool"].get<std::string>();
+
+        ReportProgress(options, progressStart, std::format("Building {} runtime", configuration.Name));
+        int32_t exitCode = -1;
+        if (action == "vs2022" || action == "vs2026")
+        {
+            const auto solution = sourceDirectory / (action == "vs2026" ? "EppoEngine.slnx" : "EppoEngine.sln");
+            if (!FS::Exists(solution))
+            {
+                error = std::format("{} is missing. Rerun setup before exporting a runtime.", solution.filename().string());
+                return false;
+            }
+
+            exitCode = RunProcess(
+                buildTool,
+                { solution.string(), "/m", "/p:Configuration=" + configuration.BuildConfiguration, "/p:Platform=x64", "/t:EppoRuntime" }
+            );
+        }
+        else if (action == "ninja")
+        {
+            if (!FS::Exists(sourceDirectory / "build.ninja"))
+            {
+                error = "build.ninja is missing. Rerun setup before exporting a runtime.";
+                return false;
+            }
+
+            exitCode = RunProcess(
+                buildTool,
+                { "-C", sourceDirectory.string(), "EppoRuntime_" + configuration.BuildConfiguration + "_x64" }
+            );
+        }
+        else
+        {
+            error = std::format("Unsupported generated build action '{}'.", action);
+            return false;
+        }
 
         if (exitCode != 0)
         {

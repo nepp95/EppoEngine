@@ -41,7 +41,7 @@ namespace Eppo
         struct ExportConfiguration
         {
             std::string Name;
-            std::string CMakePreset;
+            std::string BuildConfiguration;
             std::string ScriptConfiguration;
             std::filesystem::path RuntimeDirectory;
             std::filesystem::path ManagedDirectory;
@@ -51,7 +51,6 @@ namespace Eppo
         auto ValidateProject(const ProjectExportOptions& options, ProjectExportResult& result) const -> void;
         auto CopyAssets(const std::filesystem::path& source, const std::filesystem::path& destination) const -> bool;
         auto ReportProgress(const ProjectExportOptions& options, float value, std::string_view phase) const -> void;
-        auto GetSourceDirectory(const ProjectExportOptions& options) const -> std::filesystem::path;
         auto GetExportConfigurations(const ProjectExportOptions& options) const -> std::vector<ExportConfiguration>;
         auto BuildRuntime(
             const ProjectExportOptions& options, const std::filesystem::path& sourceDirectory, const ExportConfiguration& configuration,
