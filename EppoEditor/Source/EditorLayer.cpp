@@ -54,7 +54,7 @@ namespace Eppo
             spec.ImageFormat = nvrhi::Format::SRGBA8_UNORM;
             spec.DebugName = fileName;
 
-            return CreateRef<Image>(spec, ImageSource(path));
+            return Image::Create(spec, ImageSource(path));
         };
 
         m_PlayIcon = LoadIcon("PlayButton.png");
@@ -957,7 +957,7 @@ namespace Eppo
                 drawList->AddRectFilled(p0, p1, ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.14f)), rounding, corners);
 
             const ImU32 tint = button.Enabled ? IM_COL32_WHITE : IM_COL32(255, 255, 255, 70);
-            if (button.Icon)
+            if (button.Icon && button.Icon->IsLoaded.load(std::memory_order_acquire))
             {
                 constexpr float pad = 6.0f;
                 drawList->AddImage(

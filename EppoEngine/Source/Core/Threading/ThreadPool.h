@@ -118,6 +118,7 @@ namespace Eppo
         auto QueueTaskInternal(
             std::string name, TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority
         ) -> TaskId;
+        auto AddTaskToGroup(const Ref<Task>& task, const Ref<TaskGroupSnapshot>& group) -> void;
         auto UpdateTaskGroup(const Ref<TaskGroupSnapshot>& group, TaskStatus status) -> void;
         auto FinalizeTask(const Ref<Task>& task, TaskStatus status) -> void;
         auto CompleteTask(const Ref<Task>& task, TaskStatus status) -> void;

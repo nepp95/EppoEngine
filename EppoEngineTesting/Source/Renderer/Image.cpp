@@ -6,10 +6,24 @@
 #include "Renderer/Image.h"
 #include "Renderer/Renderer.h"
 
+#include <chrono>
+#include <thread>
+
 using namespace Eppo;
 
 namespace
 {
+    auto WaitForImage(const Ref<Image>& image) -> bool
+    {
+        for (uint32_t frame = 0; frame < 120 && !image->IsLoaded.load(std::memory_order_acquire); frame++)
+        {
+            Testing::AppHarness::AdvanceFrames(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        return image->IsLoaded.load(std::memory_order_acquire);
+    }
+
     [[nodiscard]] auto MakeHdrBytes() -> std::vector<char>
     {
         const std::string header = "#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n";
@@ -51,7 +65,7 @@ namespace
 
     auto CheckUploadedImage(const ImageSource& source) -> void
     {
-        const Ref<Image> image = CreateRef<Image>(
+        const Ref<Image> image = Image::Create(
             ImageSpecification{
                 .ImageFormat = nvrhi::Format::RGBA32_FLOAT,
                 .DebugName = "Image HDR upload test",
@@ -59,6 +73,8 @@ namespace
             source
         );
 
+        EXPECT_FALSE(image->IsLoaded.load(std::memory_order_acquire));
+        EP_REQUIRE(WaitForImage(image));
         EP_REQUIRE(image->GetTexture() != nullptr);
         EXPECT_EQ(1u, image->GetWidth());
         EXPECT_EQ(1u, image->GetHeight());
@@ -95,12 +111,38 @@ TEST(Renderer, Image_HdrMemoryUploadsFourUnclampedFloatChannels)
     CheckUploadedImage(buffer);
 }
 
+TEST(Renderer, Image_MemorySourceIsOwnedUntilWorkerDecodesIt)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    Ref<Image> image;
+    {
+        std::vector<char> bytes = MakeHdrBytes();
+        const Buffer buffer(reinterpret_cast<uint8_t*>(bytes.data()), bytes.size());
+        image = Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA32_FLOAT,
+                .DebugName = "Image owned memory test",
+            },
+            buffer
+        );
+    }
+
+    EP_REQUIRE(WaitForImage(image));
+    const std::array<float, 4> pixels = ReadFloatPixels(image);
+    EXPECT_NEAR(2.0f, pixels[0], 0.0001f);
+    EXPECT_NEAR(1.0f, pixels[1], 0.0001f);
+    EXPECT_NEAR(0.5f, pixels[2], 0.0001f);
+    EXPECT_NEAR(1.0f, pixels[3], 0.0001f);
+}
+
 TEST(Renderer, Image_CubemapRenderTargetCreatesSixSlicesAndRequestedMips)
 {
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> image = CreateRef<Image>(ImageSpecification{
+    const Ref<Image> image = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 128u,
         .Height = 128u,
@@ -139,7 +181,7 @@ TEST(Renderer, DescriptorManager_CubemapRegistersAsResource)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> image = CreateRef<Image>(ImageSpecification{
+    const Ref<Image> image = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 16u,
         .Height = 16u,

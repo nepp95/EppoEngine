@@ -267,7 +267,7 @@ namespace Eppo
                 .Width = m_Extent.width,
                 .Height = m_Extent.height,
                 .SwapchainTarget = true,
-                .SwapchainImage = CreateRef<Image>(imageSpec, image.NativeImage),
+                .SwapchainImage = Image::Create(imageSpec, image.NativeImage),
                 .DebugName = std::format("Swapchain Framebuffer {}", i),
             };
 
