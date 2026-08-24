@@ -6,6 +6,7 @@ local suites = {
     { "Scene", "core" },
     { "Scripting", "scripting" },
     { "ScriptMarshalling", "scripting" },
+    { "ScriptReloadGraphical", "graphical" },
     { "App", "graphical" },
     { "CoreGraphical", "graphical" },
     { "ProjectExport", "graphical" },

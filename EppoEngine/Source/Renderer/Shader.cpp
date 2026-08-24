@@ -87,6 +87,11 @@ namespace Eppo
         }
     }
 
+    auto Shader::IsLoaded() const -> bool
+    {
+        return m_IsLoaded.load(std::memory_order_acquire);
+    }
+
     auto Shader::CreateShaderHandles() -> void
     {
         const auto& dm = DeviceManager::Get();

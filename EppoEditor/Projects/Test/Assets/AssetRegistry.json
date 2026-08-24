@@ -6,13 +6,28 @@
             "Type": "Texture"
         },
         {
-            "Filepath": "Meshes\\player.glb",
-            "Handle": 17559226157527298045,
+            "Filepath": "Meshes\\main_sponza\\NewSponza_Main_glTF_003.gltf",
+            "Handle": 13075392022024015801,
             "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\sponza_curtains\\NewSponza_Curtains_glTF.gltf",
+            "Handle": 13075392022024015802,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Scenes\\Sponza.epscene",
+            "Handle": 13075392022024015803,
+            "Type": "Scene"
         },
         {
             "Filepath": "Meshes\\pbr_showcase.gltf",
             "Handle": 16319850260215055169,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\player.glb",
+            "Handle": 17559226157527298045,
             "Type": "Mesh"
         },
         {

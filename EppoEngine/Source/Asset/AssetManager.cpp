@@ -61,9 +61,9 @@ namespace Eppo
         return true;
     }
 
-    auto AssetManager::GetOrLoadAsset(AssetHandle handle, bool async) -> Ref<Asset>
+    auto AssetManager::GetOrLoadAsset(AssetHandle handle, const bool async) -> Ref<Asset>
     {
-        EP_PROFILE_FN("AssetManager::LoadAsset");
+        EP_PROFILE_FN("AssetManager::GetOrLoadAsset");
 
         std::scoped_lock lock(m_Mutex);
 
@@ -73,8 +73,8 @@ namespace Eppo
 
         Ref<Asset> asset = nullptr;
 
-        // Create generated asset if handle is reserved
-        if (auto id = static_cast<uint64_t>(handle); id < 100)
+        // Get placeholder asset if handle is reserved
+        if (auto id = static_cast<uint64_t>(handle); id < 11)
             asset = GenerateAsset(handle);
 
         // Create asset instance
@@ -133,12 +133,14 @@ namespace Eppo
 
     auto AssetManager::HasAssetData(AssetHandle handle) const -> bool
     {
+        std::shared_lock lock(m_Mutex);
         return m_AssetData.contains(handle);
     }
 
     auto AssetManager::IsAssetLoaded(AssetHandle handle) const -> bool
     {
-        return m_AssetData.contains(handle) && m_LoadedAssets.contains(handle);
+        std::shared_lock lock(m_Mutex);
+        return m_LoadedAssets.contains(handle);
     }
 
     auto AssetManager::GetMetadata(AssetHandle handle) -> AssetMetadata&
@@ -183,6 +185,39 @@ namespace Eppo
         }
 
         SerializeAssetRegistry();
+    }
+
+    auto AssetManager::GetPlaceholderAsset(AssetType type) -> Ref<Asset>
+    {
+        // Reserved id's listed in UUID.cpp
+        switch (type)
+        {
+            case AssetType::Mesh:
+            {
+                return GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+                break;
+            }
+
+            case AssetType::Scene:
+            {
+                EP_ASSERT(false);
+                break;
+            }
+
+            case AssetType::Script:
+            {
+                EP_ASSERT(false);
+                break;
+            }
+
+            case AssetType::Texture:
+            {
+                return GetOrLoadAsset<Image>(10);
+                break;
+            }
+        }
+
+        return nullptr;
     }
 
     auto AssetManager::SerializeAssetRegistry() const -> void
@@ -272,6 +307,21 @@ namespace Eppo
             m_AssetData[handle] = metadata;
 
             return mesh;
+        }
+
+        if (id == 10)
+        {
+            Ref<Image> image = Image::GenerateFallbackImage();
+
+            const AssetMetadata metadata{
+                .Handle = handle,
+                .Type = AssetType::Texture,
+                .IsRuntimeAsset = true,
+            };
+
+            m_AssetData[handle] = metadata;
+
+            return image;
         }
 
         return nullptr;
