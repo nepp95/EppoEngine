@@ -24,7 +24,8 @@ namespace
 		const FramebufferSpecification framebufferSpec{
 			.Width = 256,
 			.Height = 256,
-			.Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
+			.Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::RGBA16_FLOAT, nvrhi::Format::RGBA16_FLOAT,
+			                 nvrhi::Format::D32 },
 			.DebugName = "Framebuffer RenderPassTest",
 		};
 
@@ -112,35 +113,15 @@ return float4(1.0, 1.0, 1.0, 1.0);
     auto SetGeometryInputs(
         RenderPass& pass,
         const Ref<UniformBuffer>& camera,
-        const Ref<UniformBuffer>& lights,
-        const Ref<UniformBuffer>& environment,
         const Ref<StorageBuffer>& instances
     ) -> void
     {
-        const auto shadow = CreateRef<UniformBuffer>(4096, "TestCB Shadow");
         const auto drawData = CreateRef<StorageBuffer>(80, 80, "TestSB Draw Data");
-        const auto materialData = CreateRef<StorageBuffer>(80, 80, "TestSB Material Data");
-        const auto materialSampler = Sampler::Create();
-        const auto ssao = CreateRef<UniformBuffer>(sizeof(glm::vec4) * 34, "TestCB Ssao");
-        const auto ssaoTex = Image::Create(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RGBA8_UNORM,
-            .Width = 4,
-            .Height = 4,
-            .DebugName = "Image RenderPassTest Ssao",
-        });
-        const auto ssaoSampler = Sampler::Create();
-
-        pass.SetInput(0, 0, materialSampler);
-        pass.SetInput(0, 1, ssaoSampler);
+        const auto materialData = CreateRef<StorageBuffer>(96, 96, "TestSB Material Data");
         pass.SetInput(0, 0, instances);
-        pass.SetInput(0, 1, shadow);
         pass.SetInput(0, 1, drawData);
         pass.SetInput(0, 2, camera);
         pass.SetInput(0, 2, materialData);
-        pass.SetInput(0, 3, lights);
-        pass.SetInput(0, 3, ssaoTex);
-        pass.SetInput(0, 4, environment);
-        pass.SetInput(0, 5, ssao);
     }
 
     [[nodiscard]] auto FindBinding(
@@ -170,6 +151,9 @@ return float4(1.0, 1.0, 1.0, 1.0);
 
 TEST(Renderer, RenderPass_ConstructionStoresSpecification)
 {
+	if (!Testing::AppHarness::IsAvailable())
+		return;
+
 	const RenderPass pass(RenderPassSpecification{
 		.Name = "TestPass",
 	    .Pipeline = MakeGeometryPipeline(),
@@ -209,12 +193,10 @@ TEST(Renderer, RenderPass_BakeMergesBoundAndBindlessSetsWithoutGaps)
 
 	const auto pipeline = MakeGeometryPipeline();
 	const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-	const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
-	const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
 	const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
 	RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
-    SetGeometryInputs(pass, camera, lights, environment, instances);
+    SetGeometryInputs(pass, camera, instances);
 	pass.Bake();
 
 	const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
@@ -235,12 +217,10 @@ TEST(Renderer, RenderPass_BakeDerivesPushConstantsFromShaderReflection)
 
     const auto pipeline = MakeGeometryPipeline();
     const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
-    const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
     const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
-    SetGeometryInputs(pass, camera, lights, environment, instances);
+    SetGeometryInputs(pass, camera, instances);
     pass.Bake();
 
     const auto& pushConstants = pipeline->GetSpecification().Shader->GetPushConstants();
@@ -256,12 +236,10 @@ TEST(Renderer, RenderPass_InputsPersistAcrossForcedRebake)
         return;
 
     const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
-    const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
     const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
-    SetGeometryInputs(pass, camera, lights, environment, instances);
+    SetGeometryInputs(pass, camera, instances);
     pass.Bake();
 
     const nvrhi::BindingSetHandle firstSet = pass.GetBindingSets().at(0);
@@ -280,12 +258,10 @@ TEST(Renderer, RenderPass_BakeRebuildsWhenStorageBufferGrows)
         return;
 
     const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
-    const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
     const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
-    SetGeometryInputs(pass, camera, lights, environment, instances);
+    SetGeometryInputs(pass, camera, instances);
     pass.Bake();
 
     const nvrhi::BindingSetHandle firstSet = pass.GetBindingSets().at(0);
@@ -305,16 +281,14 @@ TEST(Renderer, RenderPass_SetInputBuildsBufferItemsMatchingResourceType)
         return;
 
     const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
-    const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
     const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
-    SetGeometryInputs(pass, camera, lights, environment, instances);
+    SetGeometryInputs(pass, camera, instances);
     pass.Bake();
 
     const auto& desc = *pass.GetBindingSets().at(0)->getDesc();
-    EXPECT_TRUE(FindBinding(desc, 1, nvrhi::ResourceType::ConstantBuffer) != nullptr);
+    EXPECT_TRUE(FindBinding(desc, 2, nvrhi::ResourceType::ConstantBuffer) != nullptr);
     EXPECT_TRUE(FindBinding(desc, 0, nvrhi::ResourceType::StructuredBuffer_SRV) != nullptr);
 }
 
@@ -398,13 +372,11 @@ TEST(Renderer, RenderPass_SetInputReplacesMatchingBindingAndType)
         return;
 
     const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto lights = CreateRef<UniformBuffer>(4096, "TestCB Lights");
-    const auto environment = CreateRef<UniformBuffer>(4096, "TestCB Environment");
     const auto firstInstances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO First Instances");
     const auto secondInstances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Second Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
-    SetGeometryInputs(pass, camera, lights, environment, firstInstances);
+    SetGeometryInputs(pass, camera, firstInstances);
     pass.SetInput(0, 0, secondInstances);
     pass.Bake();
 

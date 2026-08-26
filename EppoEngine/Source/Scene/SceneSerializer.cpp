@@ -137,6 +137,7 @@ namespace Eppo
         data["Scene"]["Environment"]["HorizonColor"] = env.HorizonColor;
         data["Scene"]["Environment"]["GroundColor"] = env.GroundColor;
         data["Scene"]["Environment"]["AmbientIntensity"] = env.AmbientIntensity;
+        data["Scene"]["Environment"]["Exposure"] = env.Exposure;
 
         const auto& bloom = m_SceneContext->GetBloomSettings();
         data["Scene"]["Bloom"]["Threshold"] = bloom.Threshold;
@@ -236,6 +237,8 @@ namespace Eppo
                 env.GroundColor = envJson["GroundColor"].get<glm::vec3>();
             if (envJson.contains("AmbientIntensity"))
                 env.AmbientIntensity = envJson["AmbientIntensity"].get<float>();
+            if (envJson.contains("Exposure"))
+                env.Exposure = envJson["Exposure"].get<float>();
         }
 
         if (data["Scene"].contains("Bloom"))

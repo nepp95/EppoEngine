@@ -24,6 +24,7 @@ namespace Eppo
         glm::vec3 HorizonColor = { 0.65f, 0.66f, 0.67f };
         glm::vec3 GroundColor = { 0.20f, 0.17f, 0.13f };
         float AmbientIntensity = 1.0f;
+        float Exposure = 1.0f;
     };
 
     struct BloomSettings

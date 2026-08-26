@@ -446,6 +446,18 @@ namespace Eppo
             newMat->NormalScale = static_cast<float>(material.normal_texture.scale);
             newMat->EmissiveFactor = glm::make_vec3(material.emissive_factor) * GetEmissiveStrength(material);
 
+            if (material.alpha_mode.data)
+            {
+                const std::string_view alphaMode(material.alpha_mode.data, material.alpha_mode.len);
+                if (alphaMode == "MASK")
+                    newMat->AlphaMode = MaterialAlphaMode::Mask;
+                else if (alphaMode == "BLEND")
+                    newMat->AlphaMode = MaterialAlphaMode::Blend;
+            }
+
+            newMat->AlphaCutoff = static_cast<float>(material.alpha_cutoff);
+            newMat->DoubleSided = material.double_sided != 0;
+
             if (const int32_t textureIndex = material.pbr_metallic_roughness.base_color_texture.index; textureIndex >= 0)
             {
                 if (model.textures[textureIndex].sampler >= 0)
