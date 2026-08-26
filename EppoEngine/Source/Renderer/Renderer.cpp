@@ -16,10 +16,23 @@ namespace Eppo
     namespace
     {
         constexpr std::array s_EngineShaderNames{
-            "bloomDownSample", "bloomUpSample", "bloomComposite", "composite",         "geometry",
-            "imgui",           "shadowDepth",   "skybox",         "ssaoPrepass",       "ssao",
-            "ssaoBlur",        "tonemap",       "wireframe",      "iblEquirectToCube", "iblEnvironmentMip",
-            "iblIrradiance",   "iblPrefilter",  "iblBrdfLut",
+            "bloomDownSample",
+            "bloomUpSample",
+            "composite",
+            "geometry",
+            "lighting",
+            "imgui",
+            "shadowDepth",
+            "skybox",
+            "ssao",
+            "ssaoBlur",
+            "tonemap",
+            "wireframe",
+            "iblEquirectToCube",
+            "iblEnvironmentMip",
+            "iblIrradiance",
+            "iblPrefilter",
+            "iblBrdfLut",
         };
     }
 

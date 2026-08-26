@@ -412,6 +412,50 @@ TEST(Renderer, SceneRenderer_PointLightAndGradientSky_RendersWithoutError)
     EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
 }
 
+TEST(Renderer, SceneRenderer_DeferredSkyDepthBindingSurvivesResize)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    const Ref<Scene> scene = ctx.GetScene();
+    const auto sink = std::make_shared<ErrorCountingSink>();
+    Log::AddSink(sink);
+    constexpr uint32_t initialWidth = 64u;
+    constexpr uint32_t initialHeight = 64u;
+    const Ref<SceneRenderer> sceneRenderer =
+        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
+    EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
+    camera.SetViewportSize(initialWidth, initialHeight);
+
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+
+    constexpr uint32_t resizedWidth = 96u;
+    constexpr uint32_t resizedHeight = 48u;
+    sceneRenderer->Resize(resizedWidth, resizedHeight);
+    camera.SetViewportSize(resizedWidth, resizedHeight);
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+
+    const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
+    EP_REQUIRE(finalImage != nullptr);
+    EXPECT_EQ(resizedWidth, finalImage->GetWidth());
+    EXPECT_EQ(resizedHeight, finalImage->GetHeight());
+    EXPECT_EQ(0u, sink->ErrorCount());
+    EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
+}
+
 TEST(Renderer, SceneRenderer_HdrSceneTonemapsBeforeDepthAwareWireframes)
 {
     Testing::TestContext ctx;
@@ -496,9 +540,11 @@ TEST(Renderer, SceneRenderer_DirectionalShadowDarkensReceiverAndSurvivesResize)
     );
 
     const Rgba8Readback readback = ReadRgba8(sceneRenderer->GetFinalImage());
-    const float shadowed = AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), initialWidth, initialHeight));
-    const float lit = AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight));
-    EXPECT_TRUE(lit > shadowed + 0.05f);
+    const glm::ivec2 shadowedPixel = ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), initialWidth, initialHeight);
+    const glm::ivec2 litPixel = ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight);
+    const float shadowed = AverageLuminance(readback, shadowedPixel);
+    const float lit = AverageLuminance(readback, litPixel);
+    EXPECT_GT(lit, shadowed + 0.05f);
 
     constexpr uint32_t resizedWidth = 320u;
     constexpr uint32_t resizedHeight = 180u;

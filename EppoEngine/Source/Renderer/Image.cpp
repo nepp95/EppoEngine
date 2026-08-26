@@ -255,8 +255,6 @@ namespace Eppo
         if (m_BindlessHandles.contains(resolved))
             return m_BindlessHandles.at(resolved)->Index;
 
-        Log::Warn("GetBindlessIndex called on a image that did not yet have a bindless index, registering now...");
-
         return RegisterBindlessIndex(subresources);
     }
 

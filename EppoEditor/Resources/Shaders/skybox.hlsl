@@ -1,3 +1,5 @@
+#include "Includes/fullscreen.hlsli"
+
 // Procedural gradient sky. Reconstructs a world-space view ray per pixel and
 // shades a vertical zenith->horizon->ground gradient. This is the fallback until
 // an equirectangular HDR skybox is sampled (Environment.Params.y flags that).
@@ -25,29 +27,25 @@ struct Environment
 };
 ConstantBuffer<Environment> uEnvironment : register(b3, space0);
 
-struct Varyings
+Texture2D uSceneDepth : register(t0, space0);
+SamplerState uDepthSampler : register(s0, space0);
+
+FullscreenVaryings VSMain(uint vertexID : SV_VertexID)
 {
-    float4 Position : SV_Position;
-    float2 NDC : TEXCOORD0;
-};
-
-Varyings VSMain(uint vertexID : SV_VertexID)
-{
-    Varyings output;
-
-    float2 uv = float2((vertexID << 1) & 2, vertexID & 2);
-    output.NDC = uv * 2.0 - 1.0;
-    output.Position = float4(output.NDC, 1.0, 1.0);
-
-    return output;
+    return BuildFullscreenTriangleVertex(vertexID);
 }
 
-float4 PSMain(Varyings input) : SV_Target
+float4 PSMain(FullscreenVaryings input) : SV_Target
 {
+    if (uSceneDepth.SampleLevel(uDepthSampler, input.TexCoord, 0).r < 1.0)
+        discard;
+
+    const float2 ndc = input.TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0);
+
     // Reconstruct the world-space ray direction through this pixel by unprojecting
     // the near and far clip points and taking their difference.
-    float4 worldNear = mul(uCamera.InverseViewProjection, float4(input.NDC, 0.0, 1.0));
-    float4 worldFar = mul(uCamera.InverseViewProjection, float4(input.NDC, 1.0, 1.0));
+    float4 worldNear = mul(uCamera.InverseViewProjection, float4(ndc, 0.0, 1.0));
+    float4 worldFar = mul(uCamera.InverseViewProjection, float4(ndc, 1.0, 1.0));
     float3 dir = normalize(worldFar.xyz / worldFar.w - worldNear.xyz / worldNear.w);
 
     if (uEnvironment.Params.y > 0.5)

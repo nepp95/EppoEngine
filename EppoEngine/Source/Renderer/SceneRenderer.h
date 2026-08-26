@@ -70,6 +70,7 @@ namespace Eppo
         auto ShadowDepthPass() -> void;
         auto SsaoPass() -> void;
         auto GeometryPass() -> void;
+        auto LightingPass() -> void;
         auto SkyPass() const -> void;
         auto BloomPass() -> void;
         auto TonemapPass() const -> void;
@@ -101,21 +102,23 @@ namespace Eppo
 
         // Render passes
         Ref<RenderPass> m_ShadowDepthPass = nullptr;
-        Ref<RenderPass> m_SsaoPrePass = nullptr;
         Ref<RenderPass> m_SsaoEvaluationPass = nullptr;
         Ref<RenderPass> m_SsaoBlurHorizontalPass = nullptr;
-        Ref<RenderPass> m_SsaoBlurVerticalPass = nullptr;
         Ref<RenderPass> m_GeometryPass = nullptr;
+        Ref<RenderPass> m_LightingPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
 
         uint32_t m_BloomMipLevels = 0;
         Ref<Framebuffer> m_BloomPyramidFramebuffer = nullptr;
         Ref<RenderPass> m_BloomDownSamplePass = nullptr;
         Ref<RenderPass> m_BloomUpSamplePass = nullptr;
-        Ref<RenderPass> m_BloomCompositePass = nullptr;
 
         Ref<RenderPass> m_TonemapPass = nullptr;
         Ref<RenderPass> m_WireframePass = nullptr;
+
+        // Extra pipelines
+        Ref<Pipeline> m_GeometryDoubleSidedPipeline = nullptr;
+        Ref<Pipeline> m_ShadowDepthDoubleSidedPipeline = nullptr;
 
         // Resources
         Ref<Mesh> m_BoxColliderMesh = nullptr;
@@ -129,15 +132,17 @@ namespace Eppo
         {
             glm::mat4 LightViewProjection;
             float SplitDistance; // view-space far depth of this cascade
-            glm::vec3 Padding; // constant-buffer array elements pad to a 16-byte (80-byte) stride
+            float WorldUnitsPerTexel;
+            float TransitionStart;
+            float Padding;
         };
         struct ShadowDepthData
         {
             std::array<Cascade, s_ShadowCascadeCount> Cascades;
             uint32_t ShadowMapIndex;
             uint32_t ShadowSamplerIndex;
-            float DepthBias;
-            float NormalBias;
+            float DepthBiasTexels;
+            float NormalBiasTexels;
             float InvMapSize;
             float ShadowDistance;
         } m_ShadowDepthData;
@@ -165,7 +170,7 @@ namespace Eppo
         } m_CameraData{};
         Ref<UniformBuffer> m_CameraUB = nullptr;
 
-        static constexpr uint32_t MaxPointLights = 32;
+        static constexpr uint32_t MaxPointLights = 16;
         struct LightData
         {
             struct DirectionalLight
@@ -192,7 +197,7 @@ namespace Eppo
             glm::vec4 ZenithColor = glm::vec4(0.0f);
             glm::vec4 HorizonColor = glm::vec4(0.0f);
             glm::vec4 GroundColor = glm::vec4(0.0f);
-            glm::vec4 Params = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f); // x = ambient intensity, y = has skybox
+            glm::vec4 Params = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f); // x = ambient intensity, y = has skybox, z = exposure
             glm::uvec4 IBL0 = glm::uvec4(0); // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
             glm::uvec4 IBL1 = glm::uvec4(0); // x = IBL sampler index (clamp — cube/LUT edge taps must not wrap)
         } m_EnvironmentData{};
@@ -256,7 +261,8 @@ namespace Eppo
             float Metallic; // 76-79
             float Roughness; // 80-83
             float NormalScale; // 84-87
-            uint32_t Padding1[2]; // 88-95
+            float AlphaCutoff; // 88-91
+            uint32_t Flags; // 92-95 // bit 0+1 = alpha mode, bit 2 = double sided bool
         };
         std::vector<MaterialData> m_MaterialData;
         Ref<StorageBuffer> m_MaterialDataSB = nullptr;

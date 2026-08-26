@@ -323,12 +323,19 @@ namespace Eppo
             idxDst += drawList->IdxBuffer.Size;
         }
 
-        m_RenderCommandBuffer.GetCommandList()->writeBuffer(
-            m_VertexBuffer, m_LocalVertexData.data(), m_LocalVertexData.size() * sizeof(ImDrawVert)
-        );
-        m_RenderCommandBuffer.GetCommandList()->writeBuffer(
-            m_IndexBuffer, m_LocalIndexData.data(), m_LocalIndexData.size() * sizeof(ImDrawIdx)
-        );
+        if (!m_LocalVertexData.empty())
+        {
+            m_RenderCommandBuffer.GetCommandList()->writeBuffer(
+                m_VertexBuffer, m_LocalVertexData.data(), m_LocalVertexData.size() * sizeof(ImDrawVert)
+            );
+        }
+
+        if (!m_LocalIndexData.empty())
+        {
+            m_RenderCommandBuffer.GetCommandList()->writeBuffer(
+                m_IndexBuffer, m_LocalIndexData.data(), m_LocalIndexData.size() * sizeof(ImDrawIdx)
+            );
+        }
     }
 
     auto ImGuiRenderer::ReallocateBuffer(const uint64_t size, const bool indexBuffer) -> nvrhi::BufferHandle
