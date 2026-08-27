@@ -754,17 +754,9 @@ namespace Eppo
     auto SceneRenderer::SubmitPointLight(const glm::vec3& position, const glm::vec3& color, const float intensity, const float range)
         -> void
     {
-        if (m_LightData.NumLights >= MaxPointLights)
-        {
-            Log::Warn("Scene has more than {} point lights; extra lights are ignored.", MaxPointLights);
-            return;
-        }
-
-        auto& light = m_LightData.Lights.at(m_LightData.NumLights);
+        auto& light = m_PointLights.emplace_back();
         light.Position = glm::vec4(position, glm::max(range, 0.01f));
         light.Color = glm::vec4(color, intensity);
-
-        m_LightData.NumLights++;
     }
 
     auto SceneRenderer::SubmitEnvironmentSettings(const EnvironmentSettings& environment) -> void
@@ -881,6 +873,7 @@ namespace Eppo
         );
 
         m_DrawCommands.clear();
+        m_PointLights.clear();
         m_LightData.NumLights = 0;
         m_LightData.HasDirectionalLight = 0;
 
@@ -1075,7 +1068,32 @@ namespace Eppo
 
     auto SceneRenderer::PrepareRenderData() -> void
     {
-        EP_PROFILE_FN("SceneRenderer::PrepareRenderData")
+        EP_PROFILE_FN("SceneRenderer::PrepareRenderData");
+
+        // Select closest point lights for rendering
+        const uint32_t pointLightCount = static_cast<uint32_t>(m_PointLights.size());
+        m_LightData.NumLights = glm::min(pointLightCount, MaxPointLights);
+
+        if (pointLightCount > MaxPointLights)
+        {
+            std::map<float, PointLight> distances;
+
+            for (size_t i = 0; i < m_PointLights.size(); i++)
+            {
+                const auto& light = m_PointLights.at(i);
+                const float distance = glm::distance(glm::vec3(light.Position), glm::vec3(m_CameraData.Position));
+                distances.insert({ distance, light });
+            }
+
+            auto lightIt = distances.cbegin();
+            for (uint32_t i = 0; i < MaxPointLights; i++, lightIt++)
+                m_LightData.Lights.at(i) = lightIt->second;
+        }
+        else
+        {
+            for (uint32_t i = 0; i < m_LightData.NumLights; i++)
+                m_LightData.Lights.at(i) = m_PointLights.at(i);
+        }
 
         // Shadow depth
         FillShadowData();

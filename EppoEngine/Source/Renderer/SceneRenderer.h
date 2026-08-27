@@ -180,25 +180,26 @@ namespace Eppo
         } m_CameraData{};
         Ref<UniformBuffer> m_CameraUB = nullptr;
 
+        struct DirectionalLight
+        {
+            glm::vec4 Direction;
+            glm::vec4 Color;
+        };
+
+        struct PointLight
+        {
+            glm::vec4 Position = glm::vec4(1.0f); // xyz = position, w = range
+            glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
+        };
+
         struct LightData
         {
-            struct DirectionalLight
-            {
-                glm::vec4 Direction;
-                glm::vec4 Color;
-            };
-
-            struct PointLight
-            {
-                glm::vec4 Position = glm::vec4(1.0f); // xyz = position, w = range
-                glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
-            };
-
             DirectionalLight DirectionalLight{};
             std::array<PointLight, MaxPointLights> Lights{};
             uint32_t NumLights = 0;
             uint32_t HasDirectionalLight = 0;
         } m_LightData{};
+        std::vector<PointLight> m_PointLights;
         Ref<UniformBuffer> m_LightsUB = nullptr;
 
         struct EnvironmentData
