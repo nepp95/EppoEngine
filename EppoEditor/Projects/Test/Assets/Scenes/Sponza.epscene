@@ -9,10 +9,752 @@
         "Entities": [
             {
                 "IDComponent": {
-                    "ID": 13075392022024015804
+                    "ID": 42353519118992451
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_04"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        6.141829013824463,
+                        4.171391487121582,
+                        4.742170810699463
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 552075641713726997
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_14"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -13.589994430541992,
+                        3.8677940368652344,
+                        0.06591804325580597
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 678824005506214993
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_03"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        2.1935784816741943,
+                        4.171391487121582,
+                        4.742170810699463
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1076160693287200533
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_02"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -1.8494460582733154,
+                        4.171391487121582,
+                        4.742170810699463
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 1845192500032486790
                 },
                 "MeshComponent": {
                     "MeshHandle": 13075392022024015801
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "Sponza Main"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 3719159093924973427
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_12"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        15.619152069091797,
+                        3.2758443355560303,
+                        -0.9174348711967468
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 3796683478367097774
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_01"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -5.928595066070557,
+                        4.171391487121582,
+                        4.742170810699463
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 4912690686808322244
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_03"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        10.07526683807373,
+                        9.285232543945313,
+                        4.725813865661621
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 5354054376186360872
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_05"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        10.024332046508789,
+                        4.171391487121582,
+                        4.757481098175049
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 6596317478260908467
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_06"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -9.82472038269043,
+                        4.171391487121582,
+                        -4.806305885314941
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 7210638321796411869
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_09"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        2.1935784816741943,
+                        4.171391487121582,
+                        -4.806305885314941
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 8131095097832424140
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_13"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -9.82472038269043,
+                        4.171391487121582,
+                        4.742170810699463
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 8175641059929824996
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_05"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        2.0937211513519287,
+                        9.285232543945313,
+                        -4.654066562652588
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 8338295361201509527
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_11"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        10.024332046508789,
+                        4.171391487121582,
+                        -4.7909955978393555
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 9960071034580097128
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_10"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        6.141829013824463,
+                        4.171391487121582,
+                        -4.806305885314941
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 10361912458777111115
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_08"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -5.8483757972717285,
+                        9.285232543945313,
+                        4.665034294128418
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 10791103270908153847
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_07"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -9.751104354858398,
+                        9.285232543945313,
+                        -4.729568958282471
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 12281347489833679984
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_1st_floor_08"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -1.8494460582733154,
+                        4.171391487121582,
+                        -4.806305885314941
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 12683281539922914379
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_01"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -9.765947341918945,
+                        9.285232543945313,
+                        4.742170810699463
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 13075392022024015804
+                },
+                "RelationshipComponent": {
+                    "Children": [
+                        1845192500032486790,
+                        13075392022024015805,
+                        3719159093924973427,
+                        8338295361201509527,
+                        9960071034580097128,
+                        7210638321796411869,
+                        12281347489833679984,
+                        14116821426041436915,
+                        6596317478260908467,
+                        5354054376186360872,
+                        42353519118992451,
+                        678824005506214993,
+                        1076160693287200533,
+                        3796683478367097774,
+                        8131095097832424140,
+                        10361912458777111115,
+                        12683281539922914379,
+                        15762138379482402277,
+                        4912690686808322244,
+                        15749570443572815666,
+                        8175641059929824996,
+                        14181524427477759186,
+                        10791103270908153847,
+                        552075641713726997
+                    ],
+                    "Parent": 0
                 },
                 "TagComponent": {
                     "Tag": "Sponza"
@@ -42,6 +784,10 @@
                 "MeshComponent": {
                     "MeshHandle": 13075392022024015802
                 },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
                 "TagComponent": {
                     "Tag": "Sponza Curtains"
                 },
@@ -66,7 +812,7 @@
             {
                 "CameraComponent": {
                     "FarClip": 1000.0,
-                    "NearClip": 0.1,
+                    "NearClip": 0.10000000149011612,
                     "Primary": true,
                     "VerticalFov": 60.0
                 },
@@ -111,7 +857,7 @@
                 },
                 "TransformComponent": {
                     "Rotation": [
-                        -0.65,
+                        -0.6499999761581421,
                         0.0,
                         0.5
                     ],
@@ -129,24 +875,28 @@
             },
             {
                 "IDComponent": {
-                    "ID": 14391617540648856579
+                    "ID": 14116821426041436915
                 },
                 "PointLightComponent": {
                     "Color": [
                         1.0,
-                        1.0,
-                        1.0
+                        0.45601436495780945,
+                        0.11401355266571045
                     ],
-                    "Intensity": 10.0,
-                    "Range": 16.5
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
                 },
                 "TagComponent": {
-                    "Tag": "New entity"
+                    "Tag": "lamp_light_1st_floor_07"
                 },
                 "TransformComponent": {
                     "Rotation": [
                         0.0,
-                        -0.0,
+                        0.0,
                         0.0
                     ],
                     "Scale": [
@@ -155,9 +905,123 @@
                         1.0
                     ],
                     "Translation": [
+                        -5.928595066070557,
+                        4.171391487121582,
+                        -4.806305885314941
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 14181524427477759186
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.5400034785270691,
+                        0.1914873719215393
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_06"
+                },
+                "TransformComponent": {
+                    "Rotation": [
                         0.0,
-                        2.9086899757385254,
+                        0.0,
                         0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        -5.847650051116943,
+                        9.285232543945313,
+                        -4.663136959075928
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 15749570443572815666
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_04"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        10.07526683807373,
+                        9.285232543945313,
+                        -4.727108478546143
+                    ]
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 15762138379482402277
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.45601436495780945,
+                        0.11401355266571045
+                    ],
+                    "Intensity": 1.0,
+                    "Range": 8.0
+                },
+                "RelationshipComponent": {
+                    "Children": [],
+                    "Parent": 13075392022024015804
+                },
+                "TagComponent": {
+                    "Tag": "lamp_light_2nd_floor_02"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        2.1614978313446045,
+                        9.285232543945313,
+                        4.665034294128418
                     ]
                 }
             }
