@@ -126,10 +126,45 @@
                         0.0
                     ]
                 }
+            },
+            {
+                "IDComponent": {
+                    "ID": 14391617540648856579
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Intensity": 10.0,
+                    "Range": 16.5
+                },
+                "TagComponent": {
+                    "Tag": "New entity"
+                },
+                "TransformComponent": {
+                    "Rotation": [
+                        0.0,
+                        -0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Translation": [
+                        0.0,
+                        2.9086899757385254,
+                        0.0
+                    ]
+                }
             }
         ],
         "Environment": {
             "AmbientIntensity": 0.35,
+            "Exposure": 1.0,
             "GroundColor": [
                 0.2,
                 0.17,

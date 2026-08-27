@@ -155,8 +155,10 @@ TEST(Renderer, Shader_ShadowDepthReflectsMeshLayoutAndBindings)
 
     EXPECT_TRUE(HasResource(shadowDepth, 0, 0, nvrhi::ResourceType::StructuredBuffer_SRV));
     EXPECT_TRUE(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::ConstantBuffer));
+    EXPECT_TRUE(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::StructuredBuffer_SRV));
+    EXPECT_TRUE(HasResource(shadowDepth, 0, 2, nvrhi::ResourceType::StructuredBuffer_SRV));
     EP_REQUIRE(shadowDepth->HasPushConstants());
-    EXPECT_EQ(68u, shadowDepth->GetPushConstants().Size);
+    EXPECT_EQ(sizeof(uint32_t), shadowDepth->GetPushConstants().Size);
 
     EXPECT_TRUE(HasResource(renderer->GetShader("geometry"), 0, 2, nvrhi::ResourceType::ConstantBuffer));
 }

@@ -1,7 +1,11 @@
 #include "Includes/fullscreen.hlsli"
 #include "Includes/lighting.hlsli"
 
+static const uint s_MaxPointLights = 16;
 static const uint s_CascadeCount = 4;
+static const uint s_PointShadowFaceCount = s_MaxPointLights * 6;
+static const float s_DirectionalInvMapSize = 1.0 / 2048.0;
+static const float s_PointInvMapSize = 1.0 / 512.0;
 struct Cascade
 {
     float4x4 LightViewProjection;
@@ -18,8 +22,13 @@ struct ShadowDepthData
     uint ShadowSamplerIndex;
     float DepthBiasTexels;
     float NormalBiasTexels;
-    float InvMapSize;
     float ShadowDistance;
+    uint3 Padding0;
+    float4x4 PointLightViewProjections[s_PointShadowFaceCount];
+    uint PointShadowMapIndex;
+    uint PointShadowSamplerIndex;
+    uint PointShadowLightCount;
+    uint Padding1;
 };
 ConstantBuffer<ShadowDepthData> uShadowDepth : register(b1, space0);
 
@@ -41,7 +50,6 @@ struct DirectionalLight
     float4 Color;
 };
 
-static const uint s_MaxPointLights = 16;
 struct Light
 {
     float4 Position;
@@ -100,14 +108,14 @@ bool SampleDirectionalCascade(const uint cascade, const float3 worldPosition, co
         return false;
     
     const float2 uv = lightNdc.xy * float2(0.5, -0.5) + 0.5;
-    const float border = uShadowDepth.InvMapSize * 1.5;
+    const float border = s_DirectionalInvMapSize * 1.5;
     if (any(uv < border) || any(uv > 1.0 - border))
         return false;
     
     Texture2DArray<float> shadowMap = ResourceDescriptorHeap[uShadowDepth.ShadowMapIndex];
     SamplerState shadowSampler = SamplerDescriptorHeap[uShadowDepth.ShadowSamplerIndex];
     
-    const float compareDepth = lightNdc.z - uShadowDepth.DepthBiasTexels * uShadowDepth.InvMapSize;
+    const float compareDepth = lightNdc.z - uShadowDepth.DepthBiasTexels * s_DirectionalInvMapSize;
     float visibleSamples = 0.0;
     
     [unroll]
@@ -116,7 +124,7 @@ bool SampleDirectionalCascade(const uint cascade, const float3 worldPosition, co
         [unroll]
         for (int x = -1; x <= 1; x++)
         {
-            const float3 sampleUv = float3(uv + float2(x, y) * uShadowDepth.InvMapSize, cascade);
+            const float3 sampleUv = float3(uv + float2(x, y) * s_DirectionalInvMapSize, cascade);
             const float storedDepth = shadowMap.SampleLevel(shadowSampler, sampleUv, 0);
             visibleSamples += compareDepth <= storedDepth ? 1.0 : 0.0;
         }
@@ -165,6 +173,46 @@ float CalcShadowFactor(const float3 worldPosition, const float3 worldNormal, con
     }
         
     return visibility;
+}
+
+static const float3 s_PcfOffsets[8] =
+{ 
+    float3(1.0, 1.0, 1.0),  float3(1.0, -1.0, -1.0), float3(-1.0, 1.0, -1.0), float3(-1.0, -1.0, 1.0),
+    float3(1.0, 1.0, -1.0), float3(1.0, -1.0, 1.0),  float3(-1.0, 1.0, 1.0),  float3(-1.0, -1.0, -1.0),
+};
+
+float CalcPointShadowFactor(const uint index, const float3 worldPosition, const float3 worldNormal, const float3 L)
+{
+    if (index >= uShadowDepth.PointShadowLightCount)
+        return 1.0;
+    
+    const Light light = uLights.Lights[index];
+    const float range = light.Position.w;
+    const float3 lightToFragment = worldPosition - light.Position.xyz;
+    const float distanceToFragment = length(lightToFragment);
+    if (distanceToFragment >= range)
+        return 1.0;
+    
+    const float texelWorldSize = 2.0 * distanceToFragment * s_PointInvMapSize;
+    const float3 N = normalize(worldNormal);
+    const float slope = 1.0 - saturate(dot(N, L));
+    const float3 samplePosition = worldPosition + N * texelWorldSize * uShadowDepth.NormalBiasTexels * slope;
+    const float3 fragmentToLight = samplePosition - light.Position.xyz;
+    const float compareDepth = length(fragmentToLight) / range - uShadowDepth.DepthBiasTexels * texelWorldSize / range;
+    
+    TextureCubeArray<float> shadowMap = ResourceDescriptorHeap[uShadowDepth.PointShadowMapIndex];
+    SamplerState shadowSampler = SamplerDescriptorHeap[uShadowDepth.PointShadowSamplerIndex];
+    
+    float visibleSamples = 0.0;
+    [unroll]
+    for (uint tap = 0; tap < 8; tap++)
+    {
+        const float3 tapDirection = fragmentToLight + s_PcfOffsets[tap] * texelWorldSize;
+        const float storedDepth = shadowMap.SampleLevel(shadowSampler, float4(tapDirection, index), 0);
+        visibleSamples += compareDepth <= storedDepth ? 1.0 : 0.0;
+    }
+    
+    return visibleSamples / 8.0;
 }
 
 float3 ReconstructWorldPosition(const float2 uv, const float depth)
@@ -225,11 +273,18 @@ float4 PSMain(FullscreenVaryings input) : SV_Target
         const Light light = uLights.Lights[i];
         const float3 toLight = light.Position.xyz - worldPosition;
         const float distanceSquared = max(dot(toLight, toLight), 0.0001);
+        const float range = light.Position.w;
+        const float distance = sqrt(distanceSquared);
+        if (distance >= range)
+            continue;
         const float3 L = toLight * rsqrt(distanceSquared);
-        const float attenuation = 1.0 / distanceSquared;
+        const float normalizedDistance = distance / range;
+        const float squaredDistance = normalizedDistance * normalizedDistance;
+        const float rangeWindow = saturate(1.0 - squaredDistance * squaredDistance);
+        const float attenuation = rangeWindow * rangeWindow / distanceSquared;
         const float3 radiance = light.Color.rgb * light.Color.a * attenuation;
 
-        Lo += BRDF(albedo, L, V, N, metallic, roughness, radiance);
+        Lo += CalcPointShadowFactor(i, worldPosition, N, L) * BRDF(albedo, L, V, N, metallic, roughness, radiance);
     }
 
     // Image-based ambient lighting when an environment has been baked.

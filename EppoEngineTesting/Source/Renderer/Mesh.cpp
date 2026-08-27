@@ -286,6 +286,49 @@ namespace
         EP_REQUIRE(FS::WriteText(path, source, true));
         return path;
     }
+
+    auto WriteMaterialMesh(const Testing::TempDir& tempDir) -> std::filesystem::path
+    {
+        const std::filesystem::path path = tempDir.File("Materials.gltf");
+        const std::string source = R"({
+            "asset": { "version": "2.0" },
+            "scene": 0,
+            "scenes": [{ "nodes": [0] }],
+            "nodes": [{ "mesh": 0 }],
+            "meshes": [{
+                "name": "Material Triangles",
+                "primitives": [
+                    { "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 }, "indices": 3, "material": 0 },
+                    { "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 }, "indices": 3, "material": 1 },
+                    { "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 }, "indices": 3, "material": 2 }
+                ]
+            }],
+            "materials": [
+                { "name": "Opaque", "alphaMode": "OPAQUE" },
+                { "name": "Mask", "alphaMode": "MASK", "alphaCutoff": 0.37, "doubleSided": true },
+                { "name": "Blend", "alphaMode": "BLEND", "alphaCutoff": 0.21 }
+            ],
+            "buffers": [{
+                "byteLength": 102,
+                "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAABAAIA"
+            }],
+            "bufferViews": [
+                { "buffer": 0, "byteOffset": 0, "byteLength": 36 },
+                { "buffer": 0, "byteOffset": 36, "byteLength": 36 },
+                { "buffer": 0, "byteOffset": 72, "byteLength": 24 },
+                { "buffer": 0, "byteOffset": 96, "byteLength": 6 }
+            ],
+            "accessors": [
+                { "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0] },
+                { "bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC3" },
+                { "bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC2" },
+                { "bufferView": 3, "componentType": 5123, "count": 3, "type": "SCALAR" }
+            ]
+        })";
+
+        EP_REQUIRE(FS::WriteText(path, source, true));
+        return path;
+    }
 }
 
 TEST(Renderer, Material_DefaultTextureHandlesProduceInvalidIndices)
@@ -402,4 +445,32 @@ TEST(Renderer, Mesh_EmbeddedImageLoadsAndAssignsMaterialHandle)
     EXPECT_EQ(2u, image->GetHeight());
     EXPECT_TRUE(image->GetTexture() != nullptr);
     EXPECT_NE(-1, mesh.GetMaterial(0)->GetDiffuseMapIndex());
+}
+
+TEST(Renderer, Mesh_GltfMaterial_ImportsAlphaModeCutoffAndDoubleSided)
+{
+    if (!Testing::AppHarness::IsAvailable())
+        return;
+
+    const Testing::TempDir tempDir;
+    const Mesh mesh(WriteMaterialMesh(tempDir).string());
+
+    EP_REQUIRE(mesh.IsValid());
+    EP_REQUIRE_EQ(3u, static_cast<uint32_t>(mesh.GetSubmeshes().front().Primitives.size()));
+
+    const Ref<Material>& opaque = mesh.GetMaterial(0);
+    const Ref<Material>& mask = mesh.GetMaterial(1);
+    const Ref<Material>& blend = mesh.GetMaterial(2);
+    EP_REQUIRE(opaque != nullptr);
+    EP_REQUIRE(mask != nullptr);
+    EP_REQUIRE(blend != nullptr);
+
+    EXPECT_EQ(MaterialAlphaMode::Opaque, opaque->AlphaMode);
+    EXPECT_FALSE(opaque->DoubleSided);
+    EXPECT_EQ(MaterialAlphaMode::Mask, mask->AlphaMode);
+    EXPECT_NEAR(0.37f, mask->AlphaCutoff, 0.0001f);
+    EXPECT_TRUE(mask->DoubleSided);
+    EXPECT_EQ(MaterialAlphaMode::Blend, blend->AlphaMode);
+    EXPECT_NEAR(0.21f, blend->AlphaCutoff, 0.0001f);
+    EXPECT_FALSE(blend->DoubleSided);
 }
