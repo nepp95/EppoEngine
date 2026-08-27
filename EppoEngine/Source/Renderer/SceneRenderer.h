@@ -35,7 +35,7 @@ namespace Eppo
 
         auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
         auto SubmitDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity) -> void;
-        auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity) -> void;
+        auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity, float range) -> void;
         // TODO: Remove these 3. We have the scene, the scene has all these.
         auto SubmitEnvironmentSettings(const EnvironmentSettings& environment) -> void;
         auto SubmitBloomSettings(const BloomSettings& bloom) -> void;
@@ -68,6 +68,7 @@ namespace Eppo
         auto FillShadowData() -> void;
 
         auto ShadowDepthPass() -> void;
+        auto PointShadowDepthPass() -> void;
         auto SsaoPass() -> void;
         auto GeometryPass() -> void;
         auto LightingPass() -> void;
@@ -102,6 +103,7 @@ namespace Eppo
 
         // Render passes
         Ref<RenderPass> m_ShadowDepthPass = nullptr;
+        Ref<RenderPass> m_PointShadowDepthPass = nullptr;
         Ref<RenderPass> m_SsaoEvaluationPass = nullptr;
         Ref<RenderPass> m_SsaoBlurHorizontalPass = nullptr;
         Ref<RenderPass> m_GeometryPass = nullptr;
@@ -119,6 +121,7 @@ namespace Eppo
         // Extra pipelines
         Ref<Pipeline> m_GeometryDoubleSidedPipeline = nullptr;
         Ref<Pipeline> m_ShadowDepthDoubleSidedPipeline = nullptr;
+        Ref<Pipeline> m_PointShadowDepthDoubleSidedPipeline = nullptr;
 
         // Resources
         Ref<Mesh> m_BoxColliderMesh = nullptr;
@@ -127,7 +130,9 @@ namespace Eppo
         Ref<Mesh> m_CylinderColliderMesh = nullptr;
 
         // Uniforms
+        static constexpr uint32_t MaxPointLights = 16;
         static constexpr uint32_t s_ShadowCascadeCount = 4;
+        static constexpr uint32_t s_PointShadowFaceCount = MaxPointLights * 6;
         struct Cascade
         {
             glm::mat4 LightViewProjection;
@@ -143,8 +148,13 @@ namespace Eppo
             uint32_t ShadowSamplerIndex;
             float DepthBiasTexels;
             float NormalBiasTexels;
-            float InvMapSize;
             float ShadowDistance;
+            uint32_t Padding0[3];
+            std::array<glm::mat4, s_PointShadowFaceCount> PointLightViewProjections;
+            uint32_t PointShadowMapIndex;
+            uint32_t PointShadowSamplerIndex;
+            uint32_t PointShadowLightCount;
+            uint32_t Padding1;
         } m_ShadowDepthData;
         Ref<UniformBuffer> m_ShadowDepthUB = nullptr;
 
@@ -170,7 +180,6 @@ namespace Eppo
         } m_CameraData{};
         Ref<UniformBuffer> m_CameraUB = nullptr;
 
-        static constexpr uint32_t MaxPointLights = 16;
         struct LightData
         {
             struct DirectionalLight
@@ -181,7 +190,7 @@ namespace Eppo
 
             struct PointLight
             {
-                glm::vec4 Position = glm::vec4(1.0f);
+                glm::vec4 Position = glm::vec4(1.0f); // xyz = position, w = range
                 glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
             };
 

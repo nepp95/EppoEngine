@@ -100,6 +100,12 @@ namespace EppoScriptCore.Scene
             get => InternalCalls.PointLightComponent_GetIntensity(Entity.ID);
             set => InternalCalls.PointLightComponent_SetIntensity(Entity.ID, value);
         }
+
+        public float Range
+        {
+            get => InternalCalls.PointLightComponent_GetRange(Entity.ID);
+            set => InternalCalls.PointLightComponent_SetRange(Entity.ID, value);
+        }
     }
 
     public class RelationshipComponent : Component

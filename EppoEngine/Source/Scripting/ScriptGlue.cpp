@@ -590,6 +590,24 @@ namespace Eppo
             entity.GetComponent<PointLightComponent>().Intensity = intensity;
         }
 
+        auto PointLightComponent_GetRange(const uint64_t id) -> float
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<PointLightComponent>())
+                return 0.0f;
+
+            return entity.GetComponent<PointLightComponent>().Range;
+        }
+
+        auto PointLightComponent_SetRange(const uint64_t id, const float range) -> void
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<PointLightComponent>())
+                return;
+
+            entity.GetComponent<PointLightComponent>().Range = range;
+        }
+
         auto RelationshipComponent_GetParent(const uint64_t id) -> uint64_t
         {
             const Entity entity = GetEntity(id);
@@ -1256,6 +1274,8 @@ namespace Eppo
             { "PointLightComponent_SetColor",             reinterpret_cast<void*>(&PointLightComponent_SetColor)             },
             { "PointLightComponent_GetIntensity",         reinterpret_cast<void*>(&PointLightComponent_GetIntensity)         },
             { "PointLightComponent_SetIntensity",         reinterpret_cast<void*>(&PointLightComponent_SetIntensity)         },
+            { "PointLightComponent_GetRange",             reinterpret_cast<void*>(&PointLightComponent_GetRange)             },
+            { "PointLightComponent_SetRange",             reinterpret_cast<void*>(&PointLightComponent_SetRange)             },
             { "RelationshipComponent_GetParent",          reinterpret_cast<void*>(&RelationshipComponent_GetParent)          },
             { "RelationshipComponent_SetParent",          reinterpret_cast<void*>(&RelationshipComponent_SetParent)          },
             { "RelationshipComponent_GetChildCount",      reinterpret_cast<void*>(&RelationshipComponent_GetChildCount)      },

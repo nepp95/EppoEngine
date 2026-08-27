@@ -117,14 +117,14 @@ namespace Eppo
 
         auto dimension = nvrhi::TextureDimension::Texture2D;
         if (spec.IsCubemap)
-            dimension = nvrhi::TextureDimension::TextureCube;
+            dimension = spec.ArraySize > 6 ? nvrhi::TextureDimension::TextureCubeArray : nvrhi::TextureDimension::TextureCube;
         if (!spec.IsCubemap && spec.ArraySize > 1)
             dimension = nvrhi::TextureDimension::Texture2DArray;
 
         const nvrhi::TextureDesc textureDesc{
             .width = m_Width,
             .height = m_Height,
-            .arraySize = spec.IsCubemap ? 6u : spec.ArraySize,
+            .arraySize = spec.IsCubemap ? glm::max(spec.ArraySize, 6u) : spec.ArraySize,
             .mipLevels = spec.MipLevels,
             .format = spec.ImageFormat,
             .dimension = dimension,

@@ -299,6 +299,9 @@ namespace Eppo
                 ImGui::DragFloat("Intensity", &component.Intensity, 0.1f, 0.0f, 0.0f);
                 if (component.Intensity < 0.0f)
                     component.Intensity = 0.0f;
+                ImGui::DragFloat("Range", &component.Range, 0.1f, 0.01f, 0.0f);
+                if (component.Range < 0.01f)
+                    component.Range = 0.01f;
             }
         );
 
@@ -480,8 +483,10 @@ namespace Eppo
             if (ImGui::MenuItem(label.c_str()))
             {
                 T& component = GetSelectedEntity().AddComponent<T>();
-                if constexpr (std::same_as<T, BoxColliderComponent> || std::same_as<T, SphereColliderComponent> ||
-                              std::same_as<T, CapsuleColliderComponent> || std::same_as<T, CylinderColliderComponent>)
+                if constexpr (
+                    std::same_as<T, BoxColliderComponent> || std::same_as<T, SphereColliderComponent> ||
+                    std::same_as<T, CapsuleColliderComponent> || std::same_as<T, CylinderColliderComponent>
+                )
                     GetSceneContext()->FitColliderToMesh(GetSelectedEntity(), component);
                 ImGui::CloseCurrentPopup();
             }
