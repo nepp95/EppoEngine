@@ -56,6 +56,7 @@ namespace Eppo
         }
 
         ImGui::DragFloat("Intensity", &environment.AmbientIntensity, 0.01f, 0.0f, 100.0f);
+        ImGui::DragFloat("Exposure", &environment.Exposure, 0.01f, 0.01f, 32.0f);
 
         ImGui::ColorEdit3("Zenith", glm::value_ptr(environment.ZenithColor));
         ImGui::ColorEdit3("Horizon", glm::value_ptr(environment.HorizonColor));

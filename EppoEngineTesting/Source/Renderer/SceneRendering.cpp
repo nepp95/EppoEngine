@@ -61,6 +61,19 @@ namespace
 
         ~PrimitiveProjectFixture() { Project::SetActive(m_Previous); }
 
+        auto RegisterMesh(const uint64_t handle, const std::string& filename, const std::string& source) -> AssetHandle
+        {
+            const std::filesystem::path path = m_ProjectDirectory / "Assets" / filename;
+            EP_REQUIRE(FS::WriteText(path, source, true));
+
+            const Ref<Asset> asset = CreateRef<Asset>();
+            asset->Handle = AssetHandle(handle);
+            EP_REQUIRE(m_AssetManager->CreateAsset(path, asset));
+            return asset->Handle;
+        }
+
+        [[nodiscard]] auto Manager() const -> const Ref<AssetManager>& { return m_AssetManager; }
+
     private:
         Ref<Project> m_Previous;
         Testing::TempDir m_Directory;
@@ -127,6 +140,46 @@ namespace
             }
         }
         return bytes;
+    }
+
+    [[nodiscard]] auto MakeDoubleSidedTriangleGltf() -> std::string
+    {
+        return R"({
+            "asset": { "version": "2.0" },
+            "scene": 0,
+            "scenes": [{ "nodes": [0] }],
+            "nodes": [{ "mesh": 0 }],
+            "meshes": [{
+                "name": "Double-sided triangle",
+                "primitives": [{
+                    "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 },
+                    "indices": 3,
+                    "material": 0
+                }]
+            }],
+            "materials": [{
+                "doubleSided": true,
+                "emissiveFactor": [1.0, 0.25, 0.05],
+                "extensions": { "KHR_materials_emissive_strength": { "emissiveStrength": 4.0 } }
+            }],
+            "extensionsUsed": ["KHR_materials_emissive_strength"],
+            "buffers": [{
+                "byteLength": 102,
+                "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAABAAIA"
+            }],
+            "bufferViews": [
+                { "buffer": 0, "byteOffset": 0, "byteLength": 36 },
+                { "buffer": 0, "byteOffset": 36, "byteLength": 36 },
+                { "buffer": 0, "byteOffset": 72, "byteLength": 24 },
+                { "buffer": 0, "byteOffset": 96, "byteLength": 6 }
+            ],
+            "accessors": [
+                { "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0] },
+                { "bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC3" },
+                { "bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC2" },
+                { "bufferView": 3, "componentType": 5123, "count": 3, "type": "SCALAR" }
+            ]
+        })";
     }
 
     [[nodiscard]] auto ReadRgba8(const Ref<Image>& image) -> Rgba8Readback
@@ -412,6 +465,50 @@ TEST(Renderer, SceneRenderer_PointLightAndGradientSky_RendersWithoutError)
     EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
 }
 
+TEST(Renderer, SceneRenderer_DeferredSkyDepthBindingSurvivesResize)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    const Ref<Scene> scene = ctx.GetScene();
+    const auto sink = std::make_shared<ErrorCountingSink>();
+    Log::AddSink(sink);
+    constexpr uint32_t initialWidth = 64u;
+    constexpr uint32_t initialHeight = 64u;
+    const Ref<SceneRenderer> sceneRenderer =
+        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
+    EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
+    camera.SetViewportSize(initialWidth, initialHeight);
+
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+
+    constexpr uint32_t resizedWidth = 96u;
+    constexpr uint32_t resizedHeight = 48u;
+    sceneRenderer->Resize(resizedWidth, resizedHeight);
+    camera.SetViewportSize(resizedWidth, resizedHeight);
+    ctx.AdvanceFrames(
+        2,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+
+    const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
+    EP_REQUIRE(finalImage != nullptr);
+    EXPECT_EQ(resizedWidth, finalImage->GetWidth());
+    EXPECT_EQ(resizedHeight, finalImage->GetHeight());
+    EXPECT_EQ(0u, sink->ErrorCount());
+    EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
+}
+
 TEST(Renderer, SceneRenderer_HdrSceneTonemapsBeforeDepthAwareWireframes)
 {
     Testing::TestContext ctx;
@@ -496,9 +593,11 @@ TEST(Renderer, SceneRenderer_DirectionalShadowDarkensReceiverAndSurvivesResize)
     );
 
     const Rgba8Readback readback = ReadRgba8(sceneRenderer->GetFinalImage());
-    const float shadowed = AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), initialWidth, initialHeight));
-    const float lit = AverageLuminance(readback, ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight));
-    EXPECT_TRUE(lit > shadowed + 0.05f);
+    const glm::ivec2 shadowedPixel = ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), initialWidth, initialHeight);
+    const glm::ivec2 litPixel = ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight);
+    const float shadowed = AverageLuminance(readback, shadowedPixel);
+    const float lit = AverageLuminance(readback, litPixel);
+    EXPECT_GT(lit, shadowed + 0.05f);
 
     constexpr uint32_t resizedWidth = 320u;
     constexpr uint32_t resizedHeight = 180u;
@@ -517,6 +616,201 @@ TEST(Renderer, SceneRenderer_DirectionalShadowDarkensReceiverAndSurvivesResize)
     EXPECT_EQ(resizedWidth, finalImage->GetWidth());
     EXPECT_EQ(resizedHeight, finalImage->GetHeight());
     EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
+}
+
+TEST(Renderer, SceneRenderer_AlphaMaskMatchesGeometryAndDirectionalShadow)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    PrimitiveProjectFixture project;
+    const Ref<Scene> scene = ctx.GetScene();
+    auto& environment = scene->GetEnvironmentSettings();
+    environment.ZenithColor = glm::vec3(0.0f);
+    environment.HorizonColor = glm::vec3(0.0f);
+    environment.GroundColor = glm::vec3(0.0f);
+    environment.AmbientIntensity = 0.0f;
+    scene->GetSsaoSettings().Intensity = 0.0f;
+    scene->GetBloomSettings().Intensity = 0.0f;
+
+    const Ref<Mesh> casterMesh =
+        project.Manager()->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
+    EP_REQUIRE(casterMesh != nullptr);
+    const Ref<Material>& casterMaterial = casterMesh->GetMaterial(0);
+    casterMaterial->AlphaMode = MaterialAlphaMode::Mask;
+    casterMaterial->AlphaCutoff = 0.5f;
+    casterMaterial->DoubleSided = true;
+    casterMaterial->BaseColor = glm::vec4(1.0f, 0.02f, 0.02f, 0.0f);
+    casterMaterial->EmissiveFactor = glm::vec3(4.0f, 0.0f, 0.0f);
+
+    Entity receiver = scene->CreateEntity("Alpha-mask receiver");
+    receiver.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+    receiver.GetComponent<TransformComponent>().Translation = { 0.0f, -0.05f, 0.0f };
+    receiver.GetComponent<TransformComponent>().Scale = { 3.0f, 0.05f, 3.0f };
+
+    Entity caster = scene->CreateEntity("Alpha-mask caster");
+    caster.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Sphere);
+    caster.GetComponent<TransformComponent>().Translation = { 0.0f, 0.75f, 0.0f };
+    caster.GetComponent<TransformComponent>().Scale = glm::vec3(0.75f);
+
+    Entity sun = scene->CreateEntity("Sun");
+    sun.AddComponent<DirectionalLightComponent>().Intensity = 8.0f;
+    sun.GetComponent<TransformComponent>().Rotation.z = glm::radians(30.0f);
+
+    constexpr uint32_t size = 256u;
+    const Ref<SceneRenderer> sceneRenderer =
+        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    EditorCamera camera(glm::vec3(0.0f, 5.0f, 16.0f), -32.0f, -90.0f);
+    camera.SetViewportSize(size, size);
+
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+    const Rgba8Readback rejected = ReadRgba8(sceneRenderer->GetFinalImage());
+
+    casterMaterial->BaseColor.a = 1.0f;
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+    const Rgba8Readback accepted = ReadRgba8(sceneRenderer->GetFinalImage());
+
+    const glm::ivec2 shadowPixel = ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), size, size);
+    EXPECT_GT(AverageLuminance(rejected, shadowPixel), AverageLuminance(accepted, shadowPixel) + 0.05f);
+
+    const glm::ivec2 casterPixel = ProjectToPixel(camera, glm::vec3(0.0f, 0.75f, 0.0f), size, size);
+    const glm::vec3 rejectedCaster = ReadPixel(rejected, casterPixel);
+    const glm::vec3 acceptedCaster = ReadPixel(accepted, casterPixel);
+    EXPECT_LT(glm::abs(rejectedCaster.r - rejectedCaster.g), 0.08f);
+    EXPECT_GT(acceptedCaster.r, acceptedCaster.g + 0.08f);
+}
+
+TEST(Renderer, SceneRenderer_DoubleSidedMaterialRendersFromBothSides)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    PrimitiveProjectFixture project;
+    const AssetHandle triangleHandle = project.RegisterMesh(700u, "DoubleSidedTriangle.gltf", MakeDoubleSidedTriangleGltf());
+    const Ref<Mesh> triangleMesh = project.Manager()->GetOrLoadAsset<Mesh>(triangleHandle);
+    EP_REQUIRE(triangleMesh != nullptr);
+    const Ref<Material>& material = triangleMesh->GetMaterial(0);
+    EP_REQUIRE(material != nullptr);
+
+    const Ref<Scene> scene = ctx.GetScene();
+    auto& environment = scene->GetEnvironmentSettings();
+    environment.ZenithColor = glm::vec3(0.0f);
+    environment.HorizonColor = glm::vec3(0.0f);
+    environment.GroundColor = glm::vec3(0.0f);
+    environment.AmbientIntensity = 0.0f;
+    scene->GetSsaoSettings().Intensity = 0.0f;
+    scene->GetBloomSettings().Intensity = 0.0f;
+
+    Entity triangle = scene->CreateEntity("Double-sided triangle");
+    triangle.AddComponent<MeshComponent>().MeshHandle = triangleHandle;
+    triangle.GetComponent<TransformComponent>().Translation = { -1.0f, -1.0f, 0.0f };
+    triangle.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f);
+
+    constexpr uint32_t size = 128u;
+    const Ref<SceneRenderer> sceneRenderer =
+        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    EditorCamera frontCamera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
+    EditorCamera backCamera(glm::vec3(0.0f, 0.0f, -4.0f), 0.0f, 90.0f);
+    frontCamera.SetViewportSize(size, size);
+    backCamera.SetViewportSize(size, size);
+    const glm::vec3 samplePosition(-0.5f, -0.5f, 0.0f);
+
+    const auto renderLuminance = [&](EditorCamera& camera) -> float
+    {
+        ctx.AdvanceFrames(
+            3,
+            [&](float)
+            {
+                scene->OnRenderEditor(sceneRenderer, camera);
+            }
+        );
+        const glm::ivec2 pixel = ProjectToPixel(camera, samplePosition, size, size);
+        return AverageLuminance(ReadRgba8(sceneRenderer->GetFinalImage()), pixel);
+    };
+
+    material->DoubleSided = false;
+    const float singleSidedFront = renderLuminance(frontCamera);
+    const float singleSidedBack = renderLuminance(backCamera);
+
+    material->DoubleSided = true;
+    const float doubleSidedFront = renderLuminance(frontCamera);
+    const float doubleSidedBack = renderLuminance(backCamera);
+
+    EXPECT_LT(glm::min(singleSidedFront, singleSidedBack), 0.02f);
+    EXPECT_GT(glm::min(doubleSidedFront, doubleSidedBack), 0.05f);
+}
+
+TEST(Renderer, SceneRenderer_DirectionalShadowIncludesOffFrustumCasterInOuterCascade)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    PrimitiveProjectFixture project;
+    const Ref<Scene> scene = ctx.GetScene();
+    auto& environment = scene->GetEnvironmentSettings();
+    environment.ZenithColor = glm::vec3(0.0f);
+    environment.HorizonColor = glm::vec3(0.0f);
+    environment.GroundColor = glm::vec3(0.0f);
+    environment.AmbientIntensity = 0.0f;
+    scene->GetSsaoSettings().Intensity = 0.0f;
+    scene->GetBloomSettings().Intensity = 0.0f;
+
+    Entity receiver = scene->CreateEntity("Outer-cascade receiver");
+    receiver.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+    receiver.GetComponent<TransformComponent>().Translation = { 0.0f, 0.0f, -20.0f };
+    receiver.GetComponent<TransformComponent>().Scale = { 4.0f, 4.0f, 0.05f };
+
+    Entity caster = scene->CreateEntity("Off-frustum caster");
+    caster.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+    caster.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, -2.6795f };
+    caster.GetComponent<TransformComponent>().Scale = glm::vec3(0.75f);
+
+    Entity sun = scene->CreateEntity("Sun");
+    sun.AddComponent<DirectionalLightComponent>().Intensity = 8.0f;
+    sun.GetComponent<TransformComponent>().Rotation.x = glm::radians(60.0f);
+
+    constexpr uint32_t size = 256u;
+    const Ref<SceneRenderer> sceneRenderer =
+        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    EditorCamera camera(glm::vec3(0.0f), 0.0f, -90.0f);
+    camera.SetViewportSize(size, size);
+
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+    const Rgba8Readback shadowed = ReadRgba8(sceneRenderer->GetFinalImage());
+
+    caster.GetComponent<TransformComponent>().Translation.x = 50.0f;
+    ctx.AdvanceFrames(
+        3,
+        [&](float)
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+    const Rgba8Readback unshadowed = ReadRgba8(sceneRenderer->GetFinalImage());
+
+    const glm::ivec2 receiverPixel = ProjectToPixel(camera, glm::vec3(0.0f, 0.0f, -19.94f), size, size);
+    EXPECT_GT(AverageLuminance(unshadowed, receiverPixel), AverageLuminance(shadowed, receiverPixel) + 0.05f);
 }
 
 TEST(Renderer, SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)

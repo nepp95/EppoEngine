@@ -61,6 +61,7 @@ namespace Eppo
             -> nvrhi::FramebufferHandle;
         [[nodiscard]] auto GetFinalImage() const -> const Ref<Image>& { return m_Images.at(0); }
         [[nodiscard]] auto GetDepthImage() const -> const Ref<Image>&;
+        [[nodiscard]] auto GetImage(uint32_t index) const -> const Ref<Image>&;
 
         [[nodiscard]] constexpr auto GetSpecification() const -> const FramebufferSpecification& { return m_Specification; }
         [[nodiscard]] constexpr auto GetWidth() const -> uint32_t { return m_Width; }

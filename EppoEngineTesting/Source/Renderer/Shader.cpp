@@ -155,10 +155,12 @@ TEST(Renderer, Shader_ShadowDepthReflectsMeshLayoutAndBindings)
 
     EXPECT_TRUE(HasResource(shadowDepth, 0, 0, nvrhi::ResourceType::StructuredBuffer_SRV));
     EXPECT_TRUE(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::ConstantBuffer));
+    EXPECT_TRUE(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::StructuredBuffer_SRV));
+    EXPECT_TRUE(HasResource(shadowDepth, 0, 2, nvrhi::ResourceType::StructuredBuffer_SRV));
     EP_REQUIRE(shadowDepth->HasPushConstants());
-    EXPECT_EQ(68u, shadowDepth->GetPushConstants().Size);
+    EXPECT_EQ(sizeof(uint32_t), shadowDepth->GetPushConstants().Size);
 
-    EXPECT_TRUE(HasResource(renderer->GetShader("geometry"), 0, 1, nvrhi::ResourceType::ConstantBuffer));
+    EXPECT_TRUE(HasResource(renderer->GetShader("geometry"), 0, 2, nvrhi::ResourceType::ConstantBuffer));
 }
 
 TEST(Renderer, Shader_TonemapReflectsTextureSamplerAndExposure)
@@ -171,29 +173,11 @@ TEST(Renderer, Shader_TonemapReflectsTextureSamplerAndExposure)
     EP_REQUIRE(shaders.contains("tonemap"));
 
     const auto& shader = shaders.at("tonemap");
-    const auto& resources = shader->GetShaderResources();
-    EP_REQUIRE(resources.contains(0));
-
-    const auto& setResources = resources.at(0);
-    const auto hasTexture = std::ranges::any_of(
-        setResources,
-        [](const ShaderResourceBinding& resource) -> bool
-        {
-            return resource.Binding == 0 && resource.Type == nvrhi::ResourceType::Texture_SRV;
-        }
-    );
-    const auto hasSampler = std::ranges::any_of(
-        setResources,
-        [](const ShaderResourceBinding& resource) -> bool
-        {
-            return resource.Binding == 0 && resource.Type == nvrhi::ResourceType::Sampler;
-        }
-    );
-
-    EXPECT_TRUE(hasTexture);
-    EXPECT_TRUE(hasSampler);
+    EXPECT_TRUE(HasResource(shader, 0, 0, nvrhi::ResourceType::Texture_SRV));
+    EXPECT_TRUE(HasResource(shader, 0, 1, nvrhi::ResourceType::Texture_SRV));
+    EXPECT_TRUE(HasResource(shader, 0, 0, nvrhi::ResourceType::Sampler));
     EP_REQUIRE(shader->HasPushConstants());
-    EXPECT_EQ(static_cast<uint32_t>(sizeof(float)), shader->GetPushConstants().Size);
+    EXPECT_EQ(16u, shader->GetPushConstants().Size);
 }
 
 TEST(Renderer, Shader_WireframeReflectsSceneDepthTexture)

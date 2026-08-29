@@ -329,6 +329,16 @@ namespace EppoScriptCore.Core
             ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("PointLightComponent_SetIntensity"))(id, intensity);
         }
 
+        internal static float PointLightComponent_GetRange(ulong id)
+        {
+            return ((delegate* unmanaged[Cdecl]<ulong, float>)Get("PointLightComponent_GetRange"))(id);
+        }
+
+        internal static void PointLightComponent_SetRange(ulong id, float range)
+        {
+            ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("PointLightComponent_SetRange"))(id, range);
+        }
+
         internal static ulong RelationshipComponent_GetParent(ulong id)
         {
             return ((delegate* unmanaged[Cdecl]<ulong, ulong>)Get("RelationshipComponent_GetParent"))(id);

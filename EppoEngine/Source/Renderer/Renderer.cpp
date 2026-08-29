@@ -16,10 +16,23 @@ namespace Eppo
     namespace
     {
         constexpr std::array s_EngineShaderNames{
-            "bloomDownSample", "bloomUpSample", "bloomComposite", "composite",         "geometry",
-            "imgui",           "shadowDepth",   "skybox",         "ssaoPrepass",       "ssao",
-            "ssaoBlur",        "tonemap",       "wireframe",      "iblEquirectToCube", "iblEnvironmentMip",
-            "iblIrradiance",   "iblPrefilter",  "iblBrdfLut",
+            "bloomDownSample",
+            "bloomUpSample",
+            "composite",
+            "geometry",
+            "lighting",
+            "imgui",
+            "shadowDepth",
+            "skybox",
+            "ssao",
+            "ssaoBlur",
+            "tonemap",
+            "wireframe",
+            "iblEquirectToCube",
+            "iblEnvironmentMip",
+            "iblIrradiance",
+            "iblPrefilter",
+            "iblBrdfLut",
         };
     }
 
@@ -54,14 +67,13 @@ namespace Eppo
 
     auto Renderer::Init() -> void
     {
-        m_CompositeSampler = Sampler::Create(
+        m_CompositeSampler = GetSampler(
             {
                 .AddressModeU = nvrhi::SamplerAddressMode::Clamp,
                 .AddressModeV = nvrhi::SamplerAddressMode::Clamp,
                 .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
             }
         );
-
         m_CompositeCommandBuffer = CreateRef<RenderCommandBuffer>();
     }
 
@@ -194,6 +206,22 @@ namespace Eppo
     auto Renderer::GetShader(const std::string& name) const -> Ref<Shader>
     {
         return m_ShaderLibrary.Get(name);
+    }
+
+    auto Renderer::GetSampler(const SamplerSpecification& specification) -> Ref<Sampler>
+    {
+        const uint64_t key = specification.GetKey();
+
+        if (const auto it = m_Samplers.find(key); it != m_Samplers.end())
+            return it->second;
+
+        const std::scoped_lock lock(m_SamplerMutex);
+        if (const auto it = m_Samplers.find(key); it != m_Samplers.end())
+            return it->second;
+
+        const auto sampler = Sampler::Create(specification, m_DescriptorManager);
+        m_Samplers.emplace(key, sampler);
+        return sampler;
     }
 
     auto Renderer::GetDescriptorManager() const -> const Ref<DescriptorManager>&

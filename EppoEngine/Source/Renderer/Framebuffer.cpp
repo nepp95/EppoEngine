@@ -37,6 +37,12 @@ namespace Eppo
         return m_Images.front();
     }
 
+    auto Framebuffer::GetImage(const uint32_t index) const -> const Ref<Image>&
+    {
+        EP_ASSERT(index < m_Images.size());
+        return m_Images.at(index);
+    }
+
     auto Framebuffer::GetFramebuffer(const nvrhi::TextureSubresourceSet& subresources) const -> nvrhi::FramebufferHandle
     {
         EP_ASSERT(!m_Images.empty(), "Framebuffer has no attachments.");

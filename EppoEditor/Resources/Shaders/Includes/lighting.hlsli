@@ -38,6 +38,7 @@ float3 BRDF(float3 matColor, float3 L, float3 V, float3 N, float metallic, float
     float dotNV = clamp(dot(N, V), 0.0, 1.0);
     float dotNL = clamp(dot(N, L), 0.0, 1.0);
     float dotNH = clamp(dot(N, H), 0.0, 1.0);
+    float dotVH = clamp(dot(V, H), 0.0, 1.0);
 
     float3 color = float3(0.0, 0.0, 0.0);
 
@@ -47,7 +48,7 @@ float3 BRDF(float3 matColor, float3 L, float3 V, float3 N, float metallic, float
         float rroughness = max(0.05, roughness);
         float D = DGGX(dotNH, rroughness);
         float G = GSchlickSmithGGX(dotNL, dotNV, rroughness);
-        float3 F = FSchlick(matColor, dotNV, metallic);
+        float3 F = FSchlick(matColor, dotVH, metallic);
         float3 spec = D * F * G / (4.0 * dotNL * dotNV + 0.001);
 
         // Energy-conserving Lambertian diffuse: metals have no diffuse response,

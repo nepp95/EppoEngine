@@ -137,6 +137,7 @@ namespace Eppo
         data["Scene"]["Environment"]["HorizonColor"] = env.HorizonColor;
         data["Scene"]["Environment"]["GroundColor"] = env.GroundColor;
         data["Scene"]["Environment"]["AmbientIntensity"] = env.AmbientIntensity;
+        data["Scene"]["Environment"]["Exposure"] = env.Exposure;
 
         const auto& bloom = m_SceneContext->GetBloomSettings();
         data["Scene"]["Bloom"]["Threshold"] = bloom.Threshold;
@@ -236,6 +237,8 @@ namespace Eppo
                 env.GroundColor = envJson["GroundColor"].get<glm::vec3>();
             if (envJson.contains("AmbientIntensity"))
                 env.AmbientIntensity = envJson["AmbientIntensity"].get<float>();
+            if (envJson.contains("Exposure"))
+                env.Exposure = envJson["Exposure"].get<float>();
         }
 
         if (data["Scene"].contains("Bloom"))
@@ -349,6 +352,7 @@ namespace Eppo
                 auto& nc = newEntity.AddComponent<PointLightComponent>();
                 nc.Color = c["Color"].get<glm::vec3>();
                 nc.Intensity = c["Intensity"].get<float>();
+                nc.Range = c["Range"].get<float>();
             }
 
             if (entity.contains("ScriptComponent"))
@@ -492,6 +496,7 @@ namespace Eppo
             const auto& c = entity.GetComponent<PointLightComponent>();
             e["PointLightComponent"]["Color"] = c.Color;
             e["PointLightComponent"]["Intensity"] = c.Intensity;
+            e["PointLightComponent"]["Range"] = c.Range;
         }
 
         if (entity.HasComponent<RelationshipComponent>())
