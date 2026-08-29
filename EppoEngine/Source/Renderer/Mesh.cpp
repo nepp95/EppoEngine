@@ -54,6 +54,22 @@ namespace Eppo
             return 1.0;
         }
 
+        auto GetSamplerAddressMode(const int32_t wrapMode) -> nvrhi::SamplerAddressMode
+        {
+            switch (wrapMode)
+            {
+                case TG3_TEXTURE_WRAP_REPEAT:
+                    return nvrhi::SamplerAddressMode::Wrap;
+                case TG3_TEXTURE_WRAP_CLAMP_TO_EDGE:
+                    return nvrhi::SamplerAddressMode::Clamp;
+                case TG3_TEXTURE_WRAP_MIRRORED_REPEAT:
+                    return nvrhi::SamplerAddressMode::Mirror;
+                default:
+                    EP_ASSERT(false, "Unsupported glTF texture wrap mode!");
+                    return nvrhi::SamplerAddressMode::Wrap;
+            }
+        }
+
         auto GenerateTangents(
             std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const uint32_t firstVertex, const uint64_t vertexCount,
             const uint32_t firstIndex, const uint64_t indexCount
@@ -427,7 +443,160 @@ namespace Eppo
             newMat->BaseColor = glm::make_vec4(material.pbr_metallic_roughness.base_color_factor);
             newMat->Roughness = static_cast<float>(material.pbr_metallic_roughness.roughness_factor);
             newMat->Metallic = static_cast<float>(material.pbr_metallic_roughness.metallic_factor);
+            newMat->NormalScale = static_cast<float>(material.normal_texture.scale);
             newMat->EmissiveFactor = glm::make_vec3(material.emissive_factor) * GetEmissiveStrength(material);
+
+            if (material.alpha_mode.data)
+            {
+                const std::string_view alphaMode(material.alpha_mode.data, material.alpha_mode.len);
+                if (alphaMode == "MASK")
+                    newMat->AlphaMode = MaterialAlphaMode::Mask;
+                else if (alphaMode == "BLEND")
+                    newMat->AlphaMode = MaterialAlphaMode::Blend;
+            }
+
+            newMat->AlphaCutoff = static_cast<float>(material.alpha_cutoff);
+            newMat->DoubleSided = material.double_sided != 0;
+
+            if (const int32_t textureIndex = material.pbr_metallic_roughness.base_color_texture.index; textureIndex >= 0)
+            {
+                if (model.textures[textureIndex].sampler >= 0)
+                {
+                    const auto& sampler = model.samplers[model.textures[textureIndex].sampler];
+                    newMat->DiffuseSampler = DeviceManager::Get()->GetRenderer()->GetSampler(
+                        SamplerSpecification{
+                            .AddressModeU = GetSamplerAddressMode(sampler.wrap_s),
+                            .AddressModeV = GetSamplerAddressMode(sampler.wrap_t),
+                            .MinFilter = sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR,
+                            .MagFilter = sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST,
+                            .MipFilter = sampler.min_filter == TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR ||
+                                sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR,
+                            .MaxAnisotropy = sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR &&
+                                    sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST
+                                ? 16.0f
+                                : 1.0f,
+                        }
+                    );
+                }
+                else
+                {
+                    newMat->DiffuseSampler = DeviceManager::Get()->GetRenderer()->GetSampler({});
+                }
+            }
+
+            if (const int32_t textureIndex = material.normal_texture.index; textureIndex >= 0)
+            {
+                if (model.textures[textureIndex].sampler >= 0)
+                {
+                    const auto& sampler = model.samplers[model.textures[textureIndex].sampler];
+                    newMat->NormalSampler = DeviceManager::Get()->GetRenderer()->GetSampler(
+                        SamplerSpecification{
+                            .AddressModeU = GetSamplerAddressMode(sampler.wrap_s),
+                            .AddressModeV = GetSamplerAddressMode(sampler.wrap_t),
+                            .MinFilter = sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR,
+                            .MagFilter = sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST,
+                            .MipFilter = sampler.min_filter == TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR ||
+                                sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR,
+                            .MaxAnisotropy = sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR &&
+                                    sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST
+                                ? 16.0f
+                                : 1.0f,
+                        }
+                    );
+                }
+                else
+                {
+                    newMat->NormalSampler = DeviceManager::Get()->GetRenderer()->GetSampler({});
+                }
+            }
+
+            if (const int32_t textureIndex = material.pbr_metallic_roughness.metallic_roughness_texture.index; textureIndex >= 0)
+            {
+                if (model.textures[textureIndex].sampler >= 0)
+                {
+                    const auto& sampler = model.samplers[model.textures[textureIndex].sampler];
+                    newMat->RoughMetSampler = DeviceManager::Get()->GetRenderer()->GetSampler(
+                        SamplerSpecification{
+                            .AddressModeU = GetSamplerAddressMode(sampler.wrap_s),
+                            .AddressModeV = GetSamplerAddressMode(sampler.wrap_t),
+                            .MinFilter = sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR,
+                            .MagFilter = sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST,
+                            .MipFilter = sampler.min_filter == TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR ||
+                                sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR,
+                            .MaxAnisotropy = sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR &&
+                                    sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST
+                                ? 16.0f
+                                : 1.0f,
+                        }
+                    );
+                }
+                else
+                {
+                    newMat->RoughMetSampler = DeviceManager::Get()->GetRenderer()->GetSampler({});
+                }
+            }
+
+            if (const int32_t textureIndex = material.occlusion_texture.index; textureIndex >= 0)
+            {
+                if (model.textures[textureIndex].sampler >= 0)
+                {
+                    const auto& sampler = model.samplers[model.textures[textureIndex].sampler];
+                    newMat->AOSampler = DeviceManager::Get()->GetRenderer()->GetSampler(
+                        SamplerSpecification{
+                            .AddressModeU = GetSamplerAddressMode(sampler.wrap_s),
+                            .AddressModeV = GetSamplerAddressMode(sampler.wrap_t),
+                            .MinFilter = sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR,
+                            .MagFilter = sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST,
+                            .MipFilter = sampler.min_filter == TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR ||
+                                sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR,
+                            .MaxAnisotropy = sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR &&
+                                    sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST
+                                ? 16.0f
+                                : 1.0f,
+                        }
+                    );
+                }
+                else
+                {
+                    newMat->AOSampler = DeviceManager::Get()->GetRenderer()->GetSampler({});
+                }
+            }
+
+            if (const int32_t textureIndex = material.emissive_texture.index; textureIndex >= 0)
+            {
+                if (model.textures[textureIndex].sampler >= 0)
+                {
+                    const auto& sampler = model.samplers[model.textures[textureIndex].sampler];
+                    newMat->EmissiveSampler = DeviceManager::Get()->GetRenderer()->GetSampler(
+                        SamplerSpecification{
+                            .AddressModeU = GetSamplerAddressMode(sampler.wrap_s),
+                            .AddressModeV = GetSamplerAddressMode(sampler.wrap_t),
+                            .MinFilter = sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST &&
+                                sampler.min_filter != TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR,
+                            .MagFilter = sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST,
+                            .MipFilter = sampler.min_filter == TG3_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR ||
+                                sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR,
+                            .MaxAnisotropy = sampler.min_filter == TG3_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR &&
+                                    sampler.mag_filter != TG3_TEXTURE_FILTER_NEAREST
+                                ? 16.0f
+                                : 1.0f,
+                        }
+                    );
+                }
+                else
+                {
+                    newMat->EmissiveSampler = DeviceManager::Get()->GetRenderer()->GetSampler({});
+                }
+            }
 
             m_Materials[i] = newMat;
         }
@@ -448,35 +617,45 @@ namespace Eppo
             int32_t Emissive = -1;
         };
 
-        // Format look up
-        std::unordered_map<uint32_t, nvrhi::Format> imageFormats;
+        struct ImageProperties
+        {
+            nvrhi::Format ImageFormat = nvrhi::Format::UNKNOWN;
+            MipGenerationMode MipMode = MipGenerationMode::None;
+        };
+
+        std::unordered_map<uint32_t, ImageProperties> imageProperties;
         std::vector<MaterialImages> materialImages(model.materials_count);
         for (uint32_t i = 0; i < model.materials_count; i++)
         {
             const auto& material = model.materials[i];
             if (const auto texture = material.pbr_metallic_roughness.base_color_texture.index; texture >= 0)
             {
-                imageFormats[model.textures[texture].source] = nvrhi::Format::SRGBA8_UNORM;
+                imageProperties[model.textures[texture].source] =
+                    ImageProperties{ .ImageFormat = nvrhi::Format::SRGBA8_UNORM, .MipMode = MipGenerationMode::ColorSRGB };
                 materialImages[i].Diffuse = model.textures[texture].source;
             }
             if (const auto texture = material.normal_texture.index; texture >= 0)
             {
-                imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+                imageProperties[model.textures[texture].source] =
+                    ImageProperties{ .ImageFormat = nvrhi::Format::RGBA8_UNORM, .MipMode = MipGenerationMode::NormalMap };
                 materialImages[i].Normal = model.textures[texture].source;
             }
             if (const auto texture = material.pbr_metallic_roughness.metallic_roughness_texture.index; texture >= 0)
             {
-                imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+                imageProperties[model.textures[texture].source] =
+                    ImageProperties{ .ImageFormat = nvrhi::Format::RGBA8_UNORM, .MipMode = MipGenerationMode::Linear };
                 materialImages[i].RoughMet = model.textures[texture].source;
             }
             if (const auto texture = material.occlusion_texture.index; texture >= 0)
             {
-                imageFormats[model.textures[texture].source] = nvrhi::Format::RGBA8_UNORM;
+                imageProperties[model.textures[texture].source] =
+                    ImageProperties{ .ImageFormat = nvrhi::Format::RGBA8_UNORM, .MipMode = MipGenerationMode::Linear };
                 materialImages[i].AO = model.textures[texture].source;
             }
             if (const auto texture = material.emissive_texture.index; texture >= 0)
             {
-                imageFormats[model.textures[texture].source] = nvrhi::Format::SRGBA8_UNORM;
+                imageProperties[model.textures[texture].source] =
+                    ImageProperties{ .ImageFormat = nvrhi::Format::SRGBA8_UNORM, .MipMode = MipGenerationMode::ColorSRGB };
                 materialImages[i].Emissive = model.textures[texture].source;
             }
         }
@@ -503,13 +682,12 @@ namespace Eppo
 
                     auto name = std::string(bufferView.name.data, bufferView.name.len);
 
-                    auto format = nvrhi::Format::UNKNOWN;
-                    if (auto it = imageFormats.find(static_cast<uint32_t>(i)); it != imageFormats.end())
-                        format = it->second;
-                    EP_ASSERT(format != nvrhi::Format::UNKNOWN);
+                    const auto properties = imageProperties.find(static_cast<uint32_t>(i));
+                    EP_ASSERT(properties != imageProperties.end());
 
                     ImageSpecification spec{
-                        .ImageFormat = format,
+                        .ImageFormat = properties->second.ImageFormat,
+                        .MipMode = properties->second.MipMode,
                         .DebugName = std::format("Image {}", name),
                     };
 
@@ -523,13 +701,12 @@ namespace Eppo
                     std::string uri(image.uri.data, image.uri.len);
                     std::filesystem::path path = std::filesystem::path(basePath) / uri;
 
-                    nvrhi::Format format = nvrhi::Format::UNKNOWN;
-                    if (auto it = imageFormats.find(static_cast<uint32_t>(i)); it != imageFormats.end())
-                        format = it->second;
-                    EP_ASSERT(format != nvrhi::Format::UNKNOWN);
+                    const auto properties = imageProperties.find(static_cast<uint32_t>(i));
+                    EP_ASSERT(properties != imageProperties.end());
 
                     ImageSpecification spec{
-                        .ImageFormat = format,
+                        .ImageFormat = properties->second.ImageFormat,
+                        .MipMode = properties->second.MipMode,
                         .DebugName = std::format("Image {}", uri),
                     };
 

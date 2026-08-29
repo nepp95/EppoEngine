@@ -15,7 +15,10 @@ namespace Eppo
         samplerDesc.addressU = specification.AddressModeU;
         samplerDesc.addressV = specification.AddressModeV;
         samplerDesc.addressW = specification.AddressModeW;
-        samplerDesc.setAllFilters(specification.AllFilters);
+        samplerDesc.minFilter = specification.MinFilter;
+        samplerDesc.magFilter = specification.MagFilter;
+        samplerDesc.mipFilter = specification.MipFilter;
+        samplerDesc.maxAnisotropy = specification.MaxAnisotropy;
         m_Sampler = device->createSampler(samplerDesc);
     }
 

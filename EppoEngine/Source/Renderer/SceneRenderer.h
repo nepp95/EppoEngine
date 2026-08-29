@@ -35,7 +35,7 @@ namespace Eppo
 
         auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
         auto SubmitDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity) -> void;
-        auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity) -> void;
+        auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity, float range) -> void;
         // TODO: Remove these 3. We have the scene, the scene has all these.
         auto SubmitEnvironmentSettings(const EnvironmentSettings& environment) -> void;
         auto SubmitBloomSettings(const BloomSettings& bloom) -> void;
@@ -68,8 +68,10 @@ namespace Eppo
         auto FillShadowData() -> void;
 
         auto ShadowDepthPass() -> void;
+        auto PointShadowDepthPass() -> void;
         auto SsaoPass() -> void;
         auto GeometryPass() -> void;
+        auto LightingPass() -> void;
         auto SkyPass() const -> void;
         auto BloomPass() -> void;
         auto TonemapPass() const -> void;
@@ -101,21 +103,25 @@ namespace Eppo
 
         // Render passes
         Ref<RenderPass> m_ShadowDepthPass = nullptr;
-        Ref<RenderPass> m_SsaoPrePass = nullptr;
+        Ref<RenderPass> m_PointShadowDepthPass = nullptr;
         Ref<RenderPass> m_SsaoEvaluationPass = nullptr;
         Ref<RenderPass> m_SsaoBlurHorizontalPass = nullptr;
-        Ref<RenderPass> m_SsaoBlurVerticalPass = nullptr;
         Ref<RenderPass> m_GeometryPass = nullptr;
+        Ref<RenderPass> m_LightingPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
 
         uint32_t m_BloomMipLevels = 0;
         Ref<Framebuffer> m_BloomPyramidFramebuffer = nullptr;
         Ref<RenderPass> m_BloomDownSamplePass = nullptr;
         Ref<RenderPass> m_BloomUpSamplePass = nullptr;
-        Ref<RenderPass> m_BloomCompositePass = nullptr;
 
         Ref<RenderPass> m_TonemapPass = nullptr;
         Ref<RenderPass> m_WireframePass = nullptr;
+
+        // Extra pipelines
+        Ref<Pipeline> m_GeometryDoubleSidedPipeline = nullptr;
+        Ref<Pipeline> m_ShadowDepthDoubleSidedPipeline = nullptr;
+        Ref<Pipeline> m_PointShadowDepthDoubleSidedPipeline = nullptr;
 
         // Resources
         Ref<Mesh> m_BoxColliderMesh = nullptr;
@@ -123,28 +129,32 @@ namespace Eppo
         Ref<Mesh> m_CapsuleColliderMesh = nullptr;
         Ref<Mesh> m_CylinderColliderMesh = nullptr;
 
-        Ref<Sampler> m_ClampAllFiltersFalseSampler = nullptr;
-        Ref<Sampler> m_ClampAllFiltersTrueSampler = nullptr;
-        Ref<Sampler> m_WrapAllFiltersTrueSampler = nullptr;
-        Ref<Sampler> m_EquirectSampler = nullptr;
-
         // Uniforms
+        static constexpr uint32_t MaxPointLights = 16;
         static constexpr uint32_t s_ShadowCascadeCount = 4;
+        static constexpr uint32_t s_PointShadowFaceCount = MaxPointLights * 6;
         struct Cascade
         {
             glm::mat4 LightViewProjection;
             float SplitDistance; // view-space far depth of this cascade
-            glm::vec3 Padding; // constant-buffer array elements pad to a 16-byte (80-byte) stride
+            float WorldUnitsPerTexel;
+            float TransitionStart;
+            float Padding;
         };
         struct ShadowDepthData
         {
             std::array<Cascade, s_ShadowCascadeCount> Cascades;
             uint32_t ShadowMapIndex;
             uint32_t ShadowSamplerIndex;
-            float DepthBias;
-            float NormalBias;
-            float InvMapSize;
+            float DepthBiasTexels;
+            float NormalBiasTexels;
             float ShadowDistance;
+            uint32_t Padding0[3];
+            std::array<glm::mat4, s_PointShadowFaceCount> PointLightViewProjections;
+            uint32_t PointShadowMapIndex;
+            uint32_t PointShadowSamplerIndex;
+            uint32_t PointShadowLightCount;
+            uint32_t Padding1;
         } m_ShadowDepthData;
         Ref<UniformBuffer> m_ShadowDepthUB = nullptr;
 
@@ -170,26 +180,26 @@ namespace Eppo
         } m_CameraData{};
         Ref<UniformBuffer> m_CameraUB = nullptr;
 
-        static constexpr uint32_t MaxPointLights = 32;
+        struct DirectionalLight
+        {
+            glm::vec4 Direction;
+            glm::vec4 Color;
+        };
+
+        struct PointLight
+        {
+            glm::vec4 Position = glm::vec4(1.0f); // xyz = position, w = range
+            glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
+        };
+
         struct LightData
         {
-            struct DirectionalLight
-            {
-                glm::vec4 Direction;
-                glm::vec4 Color;
-            };
-
-            struct PointLight
-            {
-                glm::vec4 Position = glm::vec4(1.0f);
-                glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
-            };
-
             DirectionalLight DirectionalLight{};
             std::array<PointLight, MaxPointLights> Lights{};
             uint32_t NumLights = 0;
             uint32_t HasDirectionalLight = 0;
         } m_LightData{};
+        std::vector<PointLight> m_PointLights;
         Ref<UniformBuffer> m_LightsUB = nullptr;
 
         struct EnvironmentData
@@ -197,7 +207,7 @@ namespace Eppo
             glm::vec4 ZenithColor = glm::vec4(0.0f);
             glm::vec4 HorizonColor = glm::vec4(0.0f);
             glm::vec4 GroundColor = glm::vec4(0.0f);
-            glm::vec4 Params = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f); // x = ambient intensity, y = has skybox
+            glm::vec4 Params = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f); // x = ambient intensity, y = has skybox, z = exposure
             glm::uvec4 IBL0 = glm::uvec4(0); // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
             glm::uvec4 IBL1 = glm::uvec4(0); // x = IBL sampler index (clamp — cube/LUT edge taps must not wrap)
         } m_EnvironmentData{};
@@ -250,12 +260,19 @@ namespace Eppo
             int32_t RoughMetMapIndex; // 8-11
             int32_t AOMapIndex; // 12-15
             int32_t EmissiveMapIndex; // 16-19
-            uint32_t Padding0[3]; // 20-31
-            glm::vec4 BaseColor; // 32-47
-            glm::vec3 EmissiveFactor; // 48-59
-            float Metallic; // 60-63
-            float Roughness; // 64-67
-            uint32_t Padding1[3]; // 68-79
+            uint32_t DiffuseSamplerIndex; // 20-23
+            uint32_t NormalSamplerIndex; // 24-27
+            uint32_t RoughMetSamplerIndex; // 28-31
+            uint32_t AOSamplerIndex; // 32-35
+            uint32_t EmissiveSamplerIndex; // 36-39
+            uint32_t Padding0[2]; // 40-47
+            glm::vec4 BaseColor; // 48-63
+            glm::vec3 EmissiveFactor; // 64-75
+            float Metallic; // 76-79
+            float Roughness; // 80-83
+            float NormalScale; // 84-87
+            float AlphaCutoff; // 88-91
+            uint32_t Flags; // 92-95 // bit 0+1 = alpha mode, bit 2 = double sided bool
         };
         std::vector<MaterialData> m_MaterialData;
         Ref<StorageBuffer> m_MaterialDataSB = nullptr;

@@ -810,7 +810,7 @@ namespace Eppo
         {
             const auto& lightComponent = view.get<PointLightComponent>(entity);
             const auto worldPosition = glm::vec3(GetWorldTransform(Entity(entity, this))[3]);
-            sceneRenderer->SubmitPointLight(worldPosition, lightComponent.Color, lightComponent.Intensity);
+            sceneRenderer->SubmitPointLight(worldPosition, lightComponent.Color, lightComponent.Intensity, lightComponent.Range);
         }
 
         for (const auto view = m_Registry.view<MeshComponent, TransformComponent>(); const auto& entity : view)

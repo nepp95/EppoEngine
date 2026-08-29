@@ -11,7 +11,22 @@ namespace Eppo
         nvrhi::SamplerAddressMode AddressModeU = nvrhi::SamplerAddressMode::Wrap;
         nvrhi::SamplerAddressMode AddressModeV = nvrhi::SamplerAddressMode::Wrap;
         nvrhi::SamplerAddressMode AddressModeW = nvrhi::SamplerAddressMode::Wrap;
-        bool AllFilters = true;
+        bool MinFilter = true;
+        bool MagFilter = true;
+        bool MipFilter = true;
+        float MaxAnisotropy = 1.0f;
+
+        [[nodiscard]] auto GetKey() const -> uint64_t
+        {
+            uint64_t key = static_cast<uint64_t>(AddressModeU);
+            key |= static_cast<uint64_t>(AddressModeV) << 8;
+            key |= static_cast<uint64_t>(AddressModeW) << 16;
+            key |= static_cast<uint64_t>(MinFilter) << 24;
+            key |= static_cast<uint64_t>(MagFilter) << 25;
+            key |= static_cast<uint64_t>(MipFilter) << 26;
+            key |= static_cast<uint64_t>(std::bit_cast<uint32_t>(MaxAnisotropy)) << 32;
+            return key;
+        }
     };
 
     class Sampler

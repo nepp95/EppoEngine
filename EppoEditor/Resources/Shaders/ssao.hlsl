@@ -40,12 +40,13 @@ FullscreenVaryings VSMain(uint vertexID : SV_VertexID)
 
 float PSMain(FullscreenVaryings input) : SV_Target
 {
-    const float depth = uDepth.SampleLevel(uSampler, input.TexCoord, 0);
+    const float depth = uDepth.SampleLevel(uSampler, input.TexCoord, 0).r;
     if (depth >= 1.0)
         return 1.0;
 
     const float3 viewPos = ReconstructViewPosition(input.TexCoord, depth);
-    const float3 normal = normalize(uNormal.SampleLevel(uSampler, input.TexCoord, 0).xyz * 2.0 - 1.0);
+    const float3 worldNormal = normalize(uNormal.SampleLevel(uSampler, input.TexCoord, 0).xyz * 2.0 - 1.0);
+    const float3 normal = normalize(mul((float3x3) uCamera.View, worldNormal));
 
     // Stable per pixel rotation from integer pixel coords (interleaved gradient hash)
     const float2 px = input.Position.xy;
@@ -75,7 +76,7 @@ float PSMain(FullscreenVaryings input) : SV_Target
         if (any(sampleUv < 0.0) || any(sampleUv > 1.0))
             continue;
 
-        const float sampleDepth = uDepth.SampleLevel(uSampler, sampleUv, 0);
+        const float sampleDepth = uDepth.SampleLevel(uSampler, sampleUv, 0).r;
         if (sampleDepth >= 1.0)
             continue;
         validSamples += 1.0;

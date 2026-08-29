@@ -83,6 +83,7 @@ namespace Eppo
     {
         glm::vec3 Color = glm::vec3(1.0f);
         float Intensity = 10.0f;
+        float Range = 10.0f;
 
         PointLightComponent() = default;
         PointLightComponent(const PointLightComponent&) = default;
