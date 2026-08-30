@@ -16,7 +16,6 @@ namespace Eppo
     {
         EP_ASSERT(params.API != RendererAPI::None, "No renderer api selected!");
 #if !defined(EP_PLATFORM_WINDOWS)
-        EP_ASSERT(params.API != RendererAPI::DX11, "DX11 renderer api selected on a non windows target!");
         EP_ASSERT(params.API != RendererAPI::DX12, "DX12 renderer api selected on a non windows target!");
 #endif
         EP_ASSERT(params.MaxFramesInFlight >= 2);
@@ -24,12 +23,6 @@ namespace Eppo
         switch (params.API)
         {
 #if defined(EP_PLATFORM_WINDOWS)
-            case RendererAPI::DX11:
-            {
-                EP_ASSERT(false, "Currently we do not support DX11!");
-                break;
-            }
-
             case RendererAPI::DX12:
             {
                 EP_ASSERT(false, "Currently we do not support DX12!");

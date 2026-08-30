@@ -1,17 +1,11 @@
 #include "pch.h"
 #include "Platform/Vulkan/VulkanShader.h"
 
+#include "Platform/ComPtr.h"
 #include "Renderer/DeviceManager.h"
-
-#if defined(EP_PLATFORM_WINDOWS)
-    #include <atlbase.h>
-#else
-    #include <dxc/WinAdapter.h>
-#endif
 
 #include <dxc/dxcapi.h>
 
-#include <ranges>
 #include <nvrhi/utils.h>
 #include <spirv_cross/spirv_cross.hpp>
 
@@ -74,7 +68,7 @@ namespace Eppo
                     return E_FAIL;
                 }
 
-                CComPtr<IDxcBlobEncoding> blob;
+                ComPtr<IDxcBlobEncoding> blob;
                 if (FAILED(m_Utils->CreateBlob(source->data(), static_cast<uint32_t>(source->size()), DXC_CP_UTF8, &blob)))
                     return E_FAIL;
 
@@ -298,8 +292,8 @@ namespace Eppo
     auto VulkanShader::Compile(const nvrhi::ShaderType type) -> bool
     {
         // Create compiler
-        CComPtr<IDxcUtils> utils;
-        CComPtr<IDxcCompiler3> compiler;
+        ComPtr<IDxcUtils> utils;
+        ComPtr<IDxcCompiler3> compiler;
         if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils))) ||
             FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler))))
         {
@@ -310,11 +304,11 @@ namespace Eppo
         // Create include handler. A packed shader gets the pack-backed one and never the default:
         // the default reads from disk, which a deployed game has none of.
         const bool packed = !m_Specification.Source.empty();
-        PackedIncludeHandler packedIncludeHandler(utils, m_Specification.Includes);
-        CComPtr<IDxcIncludeHandler> diskIncludeHandler;
+        PackedIncludeHandler packedIncludeHandler(utils.Get(), m_Specification.Includes);
+        ComPtr<IDxcIncludeHandler> diskIncludeHandler;
         if (!packed)
             utils->CreateDefaultIncludeHandler(&diskIncludeHandler);
-        IDxcIncludeHandler* includeHandler = packed ? static_cast<IDxcIncludeHandler*>(&packedIncludeHandler) : diskIncludeHandler.p;
+        IDxcIncludeHandler* includeHandler = packed ? static_cast<IDxcIncludeHandler*>(&packedIncludeHandler) : diskIncludeHandler.Get();
 
         // Command line args for compiler. A packed shader is named relative to the virtual Resources/Shaders
         // root, so DXC hands its #include paths to the handler the way the pack keys them.
@@ -365,14 +359,14 @@ namespace Eppo
         };
 
         // Execute compiler
-        CComPtr<IDxcResult> result;
+        ComPtr<IDxcResult> result;
         if (FAILED(compiler->Compile(&srcBuffer, args, _countof(args), includeHandler, IID_PPV_ARGS(&result))) || !result)
         {
             Log::Error("Invoking the compiler for shader '{}' failed!", m_Specification.Name);
             return false;
         }
 
-        CComPtr<IDxcBlobUtf8> errors = nullptr;
+        ComPtr<IDxcBlobUtf8> errors;
         result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
 
         if (errors != nullptr && errors->GetStringLength() != 0)
@@ -389,8 +383,8 @@ namespace Eppo
         }
 
         // Save shader binary
-        CComPtr<IDxcBlob> binary = nullptr;
-        CComPtr<IDxcBlobWide> binaryName = nullptr;
+        ComPtr<IDxcBlob> binary;
+        ComPtr<IDxcBlobWide> binaryName;
         result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&binary), &binaryName);
 
         if (binary == nullptr)

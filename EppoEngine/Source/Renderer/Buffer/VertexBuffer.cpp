@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Renderer/VertexBuffer.h"
+#include "Renderer/Buffer/VertexBuffer.h"
 
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Mesh.h"
