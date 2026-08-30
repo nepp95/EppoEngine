@@ -42,7 +42,7 @@ namespace Eppo
         m_LogicalDevice = nullptr;
         m_PhysicalDevice = nullptr;
 
-        if (g_EnableValidationLayers)
+        if (s_EnableValidationLayers)
             DestroyDebugUtilsMessengerEXT(m_Instance, m_DebugMessenger, nullptr);
 
         vkDestroyInstance(m_Instance, nullptr);
@@ -84,9 +84,8 @@ namespace Eppo
 
         const std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-#if !defined(EP_DIST)
-        m_Params.RequiredVulkanInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
+        if (s_EnableValidationLayers)
+            m_Params.RequiredVulkanInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
         for (const auto& extension : extensions)
             m_Params.RequiredVulkanInstanceExtensions.emplace_back(extension);
@@ -106,7 +105,7 @@ namespace Eppo
         };
 
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
-        if (g_EnableValidationLayers)
+        if (s_EnableValidationLayers)
         {
             instanceInfo.enabledLayerCount = static_cast<uint32_t>(g_ValidationLayers.size());
             instanceInfo.ppEnabledLayerNames = g_ValidationLayers.data();
@@ -127,7 +126,7 @@ namespace Eppo
         VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &m_Instance), "Failed to create vulkan instance!");
         EP_ASSERT(m_Instance);
 
-        if (g_EnableValidationLayers)
+        if (s_EnableValidationLayers)
         {
             VK_CHECK(
                 CreateDebugUtilsMessengerEXT(m_Instance, &debugMessengerInfo, nullptr, &m_DebugMessenger),
@@ -162,7 +161,7 @@ namespace Eppo
 
         m_Device = nvrhi::vulkan::createDevice(deviceDesc);
 
-        if (g_EnableValidationLayers)
+        if (s_EnableValidationLayers)
             m_ValidationLayer = nvrhi::validation::createValidationLayer(m_Device);
     }
 }
