@@ -13,7 +13,6 @@ namespace Eppo
     enum class RendererAPI
     {
         None,
-        DX11,
         DX12,
         Vulkan,
     };

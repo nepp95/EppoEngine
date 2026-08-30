@@ -48,14 +48,6 @@ namespace Eppo
         vkDestroyInstance(m_Instance, nullptr);
     }
 
-    auto DeviceManagerVK::GetDevice() const -> nvrhi::IDevice*
-    {
-        if (m_ValidationLayer)
-            return m_ValidationLayer;
-
-        return m_Device;
-    }
-
     auto DeviceManagerVK::BeginFrame() -> bool
     {
         return m_Swapchain->BeginFrame();
@@ -64,6 +56,14 @@ namespace Eppo
     auto DeviceManagerVK::Present() -> bool
     {
         return m_Swapchain->Present();
+    }
+
+    auto DeviceManagerVK::GetDevice() const -> nvrhi::IDevice*
+    {
+        if (m_ValidationLayer)
+            return m_ValidationLayer;
+
+        return m_Device;
     }
 
     auto DeviceManagerVK::CreateVulkanInstance() -> void

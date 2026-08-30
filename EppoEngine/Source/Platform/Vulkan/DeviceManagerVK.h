@@ -15,13 +15,11 @@ namespace Eppo
     class DeviceManagerVK : public DeviceManager
     {
     public:
-        DeviceManagerVK(const Ref<Window>& window, const DeviceParams& params);
+        explicit DeviceManagerVK(const Ref<Window>& window, const DeviceParams& params);
         ~DeviceManagerVK() override = default;
 
         auto Init() -> void override;
         auto Shutdown() -> void override;
-
-        [[nodiscard]] auto GetDevice() const -> nvrhi::IDevice* override;
 
         auto BeginFrame() -> bool override;
         auto Present() -> bool override;
@@ -31,6 +29,7 @@ namespace Eppo
         [[nodiscard]] auto GetCurrentBackBufferIndex() const -> uint32_t override { return m_Swapchain->GetCurrentBackBufferIndex(); }
         [[nodiscard]] auto GetBackBufferCount() const -> uint32_t override { return m_Swapchain->GetImageCount(); }
         auto GetCurrentSwapchainImage() -> const SwapchainImage& override { return m_Swapchain->GetCurrentSwapchainImage(); }
+        [[nodiscard]] auto GetDevice() const -> nvrhi::IDevice* override;
 
         [[nodiscard]] constexpr auto GetVulkanInstance() const -> VkInstance { return m_Instance; }
         [[nodiscard]] constexpr auto GetPhysicalDevice() const -> const ScopedPtr<PhysicalDevice>& { return m_PhysicalDevice; }

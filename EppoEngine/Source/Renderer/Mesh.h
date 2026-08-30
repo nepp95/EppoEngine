@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "Renderer/Buffer/IndexBuffer.h"
+#include "Renderer/Buffer/VertexBuffer.h"
 #include "Renderer/Image.h"
-#include "Renderer/IndexBuffer.h"
 #include "Renderer/Material.h"
 #include "Renderer/Sampler.h"
-#include "Renderer/VertexBuffer.h"
 
 #include <glm/glm.hpp>
 
