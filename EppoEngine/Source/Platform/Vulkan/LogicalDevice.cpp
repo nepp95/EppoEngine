@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Platform/Vulkan/LogicalDevice.h"
 
+#include "Renderer/DeviceManager.h"
+
 namespace Eppo
 {
     LogicalDevice::LogicalDevice(const ScopedPtr<PhysicalDevice>& physicalDevice)
@@ -89,7 +91,7 @@ namespace Eppo
             .ppEnabledExtensionNames = g_DeviceExtensions.data(),
         };
 
-        if (g_EnableValidationLayers)
+        if (s_EnableValidationLayers)
         {
             deviceInfo.enabledLayerCount = static_cast<uint32_t>(g_ValidationLayers.size());
             deviceInfo.ppEnabledLayerNames = g_ValidationLayers.data();
