@@ -10,6 +10,12 @@ namespace Eppo
 {
     class DeviceManagerVK;
 
+#if !defined(EP_DIST)
+    constexpr bool s_EnableValidationLayers = true;
+#else
+    constexpr bool s_EnableValidationLayers = false;
+#endif
+
     enum class RendererAPI
     {
         None,
