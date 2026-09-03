@@ -14,13 +14,13 @@ namespace Eppo
         const VkPhysicalDevice physicalDevice = dm->GetPhysicalDevice()->GetNative();
         const VkDevice device = dm->GetLogicalDevice()->GetNative();
         const VkQueue graphicsQueue = dm->GetLogicalDevice()->GetGraphicsQueue();
-        const auto graphicsFamily = static_cast<uint32_t>(dm->GetPhysicalDevice()->GetQueueFamilyIndices().Graphics);
+        const auto& indices = dm->GetPhysicalDevice()->GetQueueFamilyIndices();
 
         // TracyVkContext owns and re-begins its setup buffer, so give it a dedicated one from a reset-capable pool, not an nvrhi list.
         const VkCommandPoolCreateInfo poolInfo{
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = graphicsFamily,
+            .queueFamilyIndex = static_cast<uint32_t>(indices.Graphics),
         };
         VkCommandPool setupPool = nullptr;
         VK_CHECK(vkCreateCommandPool(device, &poolInfo, nullptr, &setupPool), "Failed to create Tracy setup command pool!");
@@ -52,8 +52,8 @@ namespace Eppo
     auto VulkanGpuProfiler::Collect([[maybe_unused]] const Ref<RenderCommandBuffer>& commandBuffer) -> void
     {
 #if defined(TRACY_ENABLE)
-        const auto cmd = static_cast<VkCommandBuffer>(
-            commandBuffer->GetCommandList()->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer));
+        const auto cmd =
+            static_cast<VkCommandBuffer>(commandBuffer->GetCommandList()->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer));
         TracyVkCollect(m_Context, cmd);
 #endif
     }

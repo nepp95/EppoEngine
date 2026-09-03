@@ -31,8 +31,15 @@ function WriteCTestFiles()
         for _, suite in ipairs(suites) do
             manifest:write(string.format('add_test(%s "%s" "--gtest_filter=%s.*")\n', suite[1], testExecutable, suite[1]))
             manifest:write(string.format(
-                'set_tests_properties(%s PROPERTIES WORKING_DIRECTORY "%s" LABELS "%s")\n',
+                'set_tests_properties(%s PROPERTIES WORKING_DIRECTORY "%s" LABELS "%s" ENVIRONMENT "EPPO_TEST_RENDERER=Vulkan")\n',
                 suite[1], workingDirectory, suite[2]))
+            if os.target() == "windows" and suite[2] == "graphical" then
+                local dx12Suite = suite[1] .. "DX12"
+                manifest:write(string.format('add_test(%s "%s" "--gtest_filter=%s.*")\n', dx12Suite, testExecutable, suite[1]))
+                manifest:write(string.format(
+                    'set_tests_properties(%s PROPERTIES WORKING_DIRECTORY "%s" LABELS "graphical;dx12" ENVIRONMENT "EPPO_TEST_RENDERER=DX12")\n',
+                    dx12Suite, workingDirectory))
+            end
         end
         manifest:close()
     end

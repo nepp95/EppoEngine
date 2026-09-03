@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "Platform/Vulkan/Swapchain.h"
+#include "Platform/Vulkan/VulkanSwapchain.h"
 
-#include "Core/Application.h"
 #include "Platform/Vulkan/DeviceManagerVK.h"
 #include "Renderer/Image.h"
+#include "Renderer/Renderer.h"
 
 #include <GLFW/glfw3.h>
 #include <nvrhi/vulkan.h>
@@ -30,10 +30,13 @@ namespace Eppo
         }
     }
 
-    Swapchain::Swapchain(const VkSurfaceKHR surface)
-        : m_Surface(surface)
+    VulkanSwapchain::VulkanSwapchain(GLFWwindow* window)
+        : Swapchain(window)
     {
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+
+        VK_CHECK(glfwCreateWindowSurface(dm->GetVulkanInstance(), window, nullptr, &m_Surface), "Failed to create window surface!");
+        EP_ASSERT(m_Surface);
 
         // Get swapchain support details
         auto [capabilities, formats, presentModes] = QuerySwapchainSupportDetails();
@@ -43,8 +46,11 @@ namespace Eppo
         m_Extent = SelectExtent(capabilities);
     }
 
-    Swapchain::~Swapchain()
+    VulkanSwapchain::~VulkanSwapchain()
     {
+        // Viewport swapchains are destroyed while the device is still alive
+        DeviceManager::Get()->WaitIdle();
+
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
         VkDevice device = dm->GetLogicalDevice()->GetNative();
 
@@ -55,15 +61,23 @@ namespace Eppo
 
         for (auto& frame : m_FrameSyncData)
             vkDestroySemaphore(device, frame.AcquireSemaphore, nullptr);
+        m_FrameSyncData.clear();
 
         vkDestroySwapchainKHR(device, m_Swapchain, nullptr);
         vkDestroySurfaceKHR(dm->GetVulkanInstance(), m_Surface, nullptr);
     }
 
-    auto Swapchain::BeginFrame() -> bool
+    auto VulkanSwapchain::BeginFrame() -> bool
     {
         EP_PROFILE_FN("Swapchain::BeginFrame");
         EP_ASSERT(!m_FrameActive, "BeginFrame was called while a swapchain frame is already active!");
+
+        const auto [width, height] = GetWindowFramebufferSize();
+        if (width == 0 || height == 0)
+            return false;
+
+        if (width != m_Width || height != m_Height)
+            m_ResizePending = true;
 
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
         VkDevice device = dm->GetLogicalDevice()->GetNative();
@@ -72,7 +86,7 @@ namespace Eppo
         constexpr uint32_t maxAttempts = 3;
         VkResult result;
 
-        for (uint32_t attempt = 0; attempt < maxAttempts; attempt++) // switch to ++attempt
+        for (uint32_t attempt = 0; attempt < maxAttempts; attempt++)
         {
             if (m_ResizePending)
                 Resize();
@@ -85,7 +99,8 @@ namespace Eppo
                 frame.InFlight = false;
             }
 
-            result = vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, frame.AcquireSemaphore, nullptr, &m_SwapchainImageIndex);
+            const VkSemaphore acquireSemaphore = frame.AcquireSemaphore;
+            result = vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX, acquireSemaphore, nullptr, &m_SwapchainImageIndex);
 
             if (result == VK_ERROR_OUT_OF_DATE_KHR)
             {
@@ -101,7 +116,7 @@ namespace Eppo
                 return false;
             }
 
-            vkNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, frame.AcquireSemaphore, 0);
+            vkNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, acquireSemaphore, 0);
             m_FrameActive = true;
             return true;
         }
@@ -110,7 +125,7 @@ namespace Eppo
         return false;
     }
 
-    auto Swapchain::Present() -> bool
+    auto VulkanSwapchain::Present() -> bool
     {
         EP_PROFILE_FN("Swapchain::Present");
         EP_ASSERT(m_FrameActive, "Present was called without an active swapchain frame!");
@@ -152,15 +167,13 @@ namespace Eppo
         return false;
     }
 
-    auto Swapchain::CreateSwapchain(uint32_t width, uint32_t height) -> void
+    auto VulkanSwapchain::CreateSwapchain(uint32_t width, uint32_t height) -> void
     {
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
         VkDevice device = dm->GetLogicalDevice()->GetNative();
 
         if (m_Swapchain)
         {
-            VK_CHECK(vkDeviceWaitIdle(device), "Failed to wait for vulkan device");
-
             for (const VkSemaphore semaphore : m_PresentSemaphores)
                 vkDestroySemaphore(device, semaphore, nullptr);
             m_PresentSemaphores.clear();
@@ -176,6 +189,9 @@ namespace Eppo
             m_Extent = SelectExtent(capabilities);
         else
             m_Extent = { width, height };
+
+        m_Width = m_Extent.width;
+        m_Height = m_Extent.height;
 
         VkSwapchainCreateInfoKHR swapchainInfo{
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -225,9 +241,9 @@ namespace Eppo
 
             for (auto& frame : m_FrameSyncData)
             {
-                VK_CHECK(
-                    vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.AcquireSemaphore), "Failed to create acquire semaphore!"
-                );
+                VkSemaphore acquireSemaphore = nullptr;
+                VK_CHECK(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &acquireSemaphore), "Failed to create acquire semaphore!");
+                frame.AcquireSemaphore = acquireSemaphore;
                 frame.CompletionQuery = dm->GetDevice()->createEventQuery();
                 EP_ASSERT(frame.CompletionQuery != nullptr, "Failed to create frame completion query.");
                 frame.InFlight = false;
@@ -278,15 +294,7 @@ namespace Eppo
         }
     }
 
-    auto Swapchain::Resize(uint32_t width, uint32_t height) -> void
-    {
-        const auto device = DeviceManager::Get()->GetDevice();
-
-        device->waitForIdle();
-        CreateSwapchain(width, height);
-    }
-
-    auto Swapchain::QuerySwapchainSupportDetails() const -> SwapchainSupportDetails
+    auto VulkanSwapchain::QuerySwapchainSupportDetails() const -> SwapchainSupportDetails
     {
         const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
         const auto& physicalDevice = dm->GetPhysicalDevice();
@@ -336,7 +344,7 @@ namespace Eppo
         return details;
     }
 
-    auto Swapchain::SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats) -> VkSurfaceFormatKHR
+    auto VulkanSwapchain::SelectSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats) -> VkSurfaceFormatKHR
     {
         EP_ASSERT(!surfaceFormats.empty(), "The Vulkan device reported no supported surface formats.");
 
@@ -360,7 +368,7 @@ namespace Eppo
         return surfaceFormats.front();
     }
 
-    auto Swapchain::SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes, const bool vsync) -> VkPresentModeKHR
+    auto VulkanSwapchain::SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes, const bool vsync) -> VkPresentModeKHR
     {
         if (vsync)
             return VK_PRESENT_MODE_FIFO_KHR;
@@ -374,13 +382,13 @@ namespace Eppo
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    auto Swapchain::SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities) const -> VkExtent2D
+    auto VulkanSwapchain::SelectExtent(const VkSurfaceCapabilitiesKHR& capabilities) const -> VkExtent2D
     {
         VkExtent2D extent = capabilities.currentExtent;
 
         if (capabilities.currentExtent.width == UINT32_MAX)
         {
-            const auto [width, height] = Application::Get().GetWindow()->GetFramebufferSize();
+            const auto [width, height] = GetWindowFramebufferSize();
 
             extent = { .width = width, .height = height };
             extent.width = std::clamp(extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);

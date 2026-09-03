@@ -13,7 +13,7 @@ struct PushConstants
     float2 Translate;
 };
 PUSH_CONSTANTS
-ConstantBuffer<PushConstants> uPC : register(b0, space1);
+ConstantBuffer<PushConstants> uPC : register(b0, space0);
 
 Texture2D uTexture : register(t0, space0);
 SamplerState uSampler : register(s0, space0);

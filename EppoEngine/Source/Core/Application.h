@@ -32,6 +32,7 @@ namespace Eppo
     struct ApplicationParams
     {
         CommandLineArgs Args;
+        RendererAPI RendererAPI = RendererAPI::DX12;
 
         std::string Title = "EppoEngine";
         uint32_t Width = 1600;

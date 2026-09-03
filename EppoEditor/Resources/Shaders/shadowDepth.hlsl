@@ -74,6 +74,7 @@ struct DrawData
     float4x4 Transform;
     uint InstanceOffset;
     uint MaterialIndex;
+    uint2 Padding;
 };
 StructuredBuffer<DrawData> uDrawData : register(t1, space0);
 

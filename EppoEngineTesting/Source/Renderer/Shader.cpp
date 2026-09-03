@@ -30,8 +30,9 @@ namespace
 	// A packed shader must compile fresh: a cache hit from an earlier run would bypass include resolution entirely.
 	auto DiscardShaderCache(const std::string& name) -> void
 	{
-		FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.vert.spv", name));
-		FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.hash", name));
+        const auto extension = DeviceManager::Get()->GetParams().API == RendererAPI::DX12 ? "dxil" : "spv";
+        FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.vert.{}", name, extension));
+        FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.{}.hash", name, extension));
 	}
 
     auto CheckMeshVertexLayout(const Ref<Shader>& shader) -> void
@@ -49,7 +50,7 @@ namespace
             EP_REQUIRE(attribute != nullptr);
             EXPECT_EQ(static_cast<uint32_t>(sizeof(Vertex)), attribute->elementStride);
 
-            if (attribute->name.ends_with("TANGENT0"))
+            if (attribute->name.ends_with("TANGENT0") || attribute->name == "TANGENT")
             {
                 foundTangent = true;
                 EXPECT_TRUE(attribute->format == nvrhi::Format::RGBA32_FLOAT);
@@ -158,7 +159,7 @@ TEST(Renderer, Shader_ShadowDepthReflectsMeshLayoutAndBindings)
     EXPECT_TRUE(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::StructuredBuffer_SRV));
     EXPECT_TRUE(HasResource(shadowDepth, 0, 2, nvrhi::ResourceType::StructuredBuffer_SRV));
     EP_REQUIRE(shadowDepth->HasPushConstants());
-    EXPECT_EQ(sizeof(uint32_t), shadowDepth->GetPushConstants().Size);
+    EXPECT_EQ(3 * sizeof(uint32_t), shadowDepth->GetPushConstants().Size);
 
     EXPECT_TRUE(HasResource(renderer->GetShader("geometry"), 0, 2, nvrhi::ResourceType::ConstantBuffer));
 }
@@ -230,4 +231,14 @@ TEST(Renderer, Shader_WithoutStaticBindingsStillProducesGaplessLayouts)
 	EXPECT_TRUE(layouts.at(0));
 	EXPECT_TRUE(layouts.contains(1));
 	EXPECT_TRUE(layouts.contains(2));
+}
+
+TEST(Renderer, Shader_ImGuiReflectsPushConstantsSeparatelyFromConstantBuffers)
+{
+    ASSERT_TRUE(Testing::AppHarness::IsAvailable());
+    const auto& shader = DeviceManager::Get()->GetRenderer()->GetShader("imgui");
+    ASSERT_TRUE(shader->HasPushConstants());
+    EXPECT_EQ(0u, shader->GetPushConstants().Binding);
+    EXPECT_EQ(16u, shader->GetPushConstants().Size);
+    EXPECT_FALSE(HasResource(shader, 0, 0, nvrhi::ResourceType::ConstantBuffer));
 }

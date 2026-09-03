@@ -88,6 +88,7 @@ namespace Eppo
         m_ActiveCommandList = nullptr;
         m_ActiveTimerQuery = nullptr;
         m_ActiveFrameIndex = UINT32_MAX;
+        m_GraphicsState = {};
     }
 
     auto RenderCommandBuffer::BeginTimerQuery(const std::string& name) -> void

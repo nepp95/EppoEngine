@@ -5,6 +5,8 @@
 #include "Renderer/DeviceManager.h"
 
 #include <exception>
+#include <cstdlib>
+#include <string_view>
 
 namespace Eppo::Testing
 {
@@ -31,6 +33,19 @@ namespace Eppo::Testing
             if (!s_BootAttempted)
             {
                 s_BootAttempted = true;
+                if (const auto* renderer = std::getenv("EPPO_TEST_RENDERER"))
+                {
+                    const std::string_view rendererName(renderer);
+                    if (rendererName == "Vulkan")
+                        params.RendererAPI = RendererAPI::Vulkan;
+                    else if (rendererName == "DX12")
+                        params.RendererAPI = RendererAPI::DX12;
+                    else
+                    {
+                        Log::Error("Unknown test renderer '{}'. Expected Vulkan or DX12.", rendererName);
+                        return nullptr;
+                    }
+                }
                 try
                 {
                     s_App = std::make_unique<HarnessApp>(std::move(params));

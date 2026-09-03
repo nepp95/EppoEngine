@@ -5,23 +5,12 @@
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Renderer.h"
 
-// TODO: TEMPORARY
-#include "Platform/Vulkan/Swapchain.h"
-
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <nvrhi/utils.h>
 
 namespace Eppo
 {
-    struct ImGuiViewportData
-    {
-        bool WindowOwned = false;
-        bool FrameAcquired = false;
-        Ref<Swapchain> Swapchain = nullptr;
-        ScopedPtr<ImGuiRenderer> Renderer = nullptr;
-    };
-
     ImGuiRenderer::ImGuiRenderer()
     {
         const auto& dm = DeviceManager::Get();
