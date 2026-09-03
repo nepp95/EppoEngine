@@ -4,10 +4,6 @@
 #include "Core/Application.h"
 #include "Renderer/DeviceManager.h"
 
-// TODO: TEMPORARY
-#include "Platform/Vulkan/DeviceManagerVK.h"
-#include "Platform/Vulkan/Swapchain.h"
-
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <ImGuizmo.h>
@@ -15,14 +11,6 @@
 namespace Eppo
 {
     static bool s_FontFallbackWarningLogged = false;
-
-    struct ImGuiViewportData
-    {
-        bool WindowOwned = false;
-        bool FrameAcquired = false;
-        Ref<Swapchain> Swapchain = nullptr;
-        ScopedPtr<ImGuiRenderer> Renderer = nullptr;
-    };
 
     namespace
     {
@@ -196,7 +184,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("ImGuiLayer::Render")
 
-        const auto& dm = static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        const auto& dm = DeviceManager::Get();
 
         ImGui::Render();
         m_ImGuiRenderer->RenderToSwapchain(ImGui::GetMainViewport(), dm->GetSwapchain(), m_ClearMainSwapchainTarget);
@@ -224,9 +212,6 @@ namespace Eppo
     auto ImGuiLayer::InitPlatformInterface() -> void
     {
         ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            EP_ASSERT(platformIO.Platform_CreateVkSurface != nullptr);
-
         platformIO.Renderer_CreateWindow = ImGuiRenderer_CreateWindow;
         platformIO.Renderer_DestroyWindow = ImGuiRenderer_DestroyWindow;
         platformIO.Renderer_SetWindowSize = ImGuiRenderer_SetWindowSize;
@@ -238,23 +223,18 @@ namespace Eppo
     {
         EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_CreateWindow")
 
-        const auto& dm = static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
-        const auto& platformIO = ImGui::GetPlatformIO();
+        const auto& dm = DeviceManager::Get();
 
         const auto data = IM_NEW(ImGuiViewportData)();
         viewport->RendererUserData = data;
 
-        VkSurfaceKHR surface = nullptr;
-        VkInstance instance = dm->GetVulkanInstance();
-        VK_CHECK(
-            platformIO.Platform_CreateVkSurface(viewport, reinterpret_cast<ImU64>(instance), nullptr, reinterpret_cast<ImU64*>(&surface)),
-            "Failed to create vk surface for ImGui!"
-        );
+        auto* glfwWindow = static_cast<GLFWwindow*>(viewport->PlatformHandle);
+        EP_ASSERT(glfwWindow, "ImGui platform window was created without a native window handle!");
 
-        data->Swapchain = CreateScopedPtr<Swapchain>(surface);
-        data->Swapchain->CreateSwapchain(static_cast<uint32_t>(viewport->Size.x), static_cast<uint32_t>(viewport->Size.y));
+        data->Swapchain = dm->CreateSwapchain(
+            glfwWindow, static_cast<uint32_t>(viewport->Size.x), static_cast<uint32_t>(viewport->Size.y)
+        );
         data->Renderer = CreateScopedPtr<ImGuiRenderer>();
-        data->WindowOwned = true;
     }
 
     auto ImGuiLayer::ImGuiRenderer_DestroyWindow(ImGuiViewport* viewport) -> void
@@ -271,6 +251,10 @@ namespace Eppo
         EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_SetWindowSize")
 
         const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+
+        // The render pass cache holds references to swapchain back buffers, which must be
+        // released before the swapchain recreates them
+        vd->Renderer->Resize();
         vd->Swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
     }
 

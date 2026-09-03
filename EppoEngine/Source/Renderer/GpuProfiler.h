@@ -10,13 +10,15 @@
     #include <vulkan/vulkan.h>
 
     #include <tracy/TracyVulkan.hpp>
+    #if defined(EP_PLATFORM_WINDOWS)
+        #include <tracy/TracyD3D12.hpp>
+    #endif
 #endif
 
 namespace Eppo
 {
     class RenderCommandBuffer;
 
-    // Backend-neutral facade; GetNativeContext stays void* so a D3D12 backend can slot in beside Vulkan.
     class GpuProfiler
     {
     public:
@@ -39,17 +41,17 @@ namespace Eppo
     private:
         static ScopedPtr<GpuProfiler> s_Instance;
     };
-}
 
-// TracyVkZone is an RAII/source-location macro, so it must expand at the call site rather than behind the interface.
+    // TracyVkZone is an RAII/source-location macro, so it must expand at the call site rather than behind the interface.
 #if defined(TRACY_ENABLE)
-    #define EP_GPU_ZONE(commandBuffer, name)                                                                    \
-        TracyVkZone(static_cast<TracyVkCtx>(::Eppo::GpuProfiler::Get()->GetNativeContext()),                    \
-            static_cast<VkCommandBuffer>((commandBuffer)->GetCommandList()->getNativeObject(                    \
-                nvrhi::ObjectTypes::VK_CommandBuffer)),                                                          \
-            name)
-    #define EP_GPU_COLLECT(commandBuffer) ::Eppo::GpuProfiler::Get()->Collect(commandBuffer)
+    #define EP_GPU_ZONE(commandBuffer, name)                                                                                               \
+        TracyVkZone(                                                                                                                       \
+            static_cast<TracyVkCtx>(GpuProfiler::Get()->GetNativeContext()),                                                               \
+            static_cast<VkCommandBuffer>((commandBuffer)->GetCommandList()->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)), name   \
+        )
+    #define EP_GPU_COLLECT(commandBuffer) GpuProfiler::Get()->Collect(commandBuffer)
 #else
     #define EP_GPU_ZONE(commandBuffer, name)
     #define EP_GPU_COLLECT(commandBuffer)
 #endif
+}

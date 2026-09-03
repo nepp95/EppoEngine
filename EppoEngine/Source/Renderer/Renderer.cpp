@@ -141,6 +141,12 @@ namespace Eppo
         commandBuffer->GetCommandList()->clearState();
     }
 
+    auto Renderer::ReleaseSwapchainResources() -> void
+    {
+        m_CompositePasses.clear();
+        m_CompositeFramebuffers.clear();
+    }
+
     auto Renderer::CompositeToSwapchain(const Ref<Image>& image) -> void
     {
         EP_PROFILE_FN("Renderer::CompositeToSwapchain");

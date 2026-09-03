@@ -33,9 +33,9 @@ namespace Eppo
             }
         );
 
-        // Create device manager (dx11/dx12/vk)
+        // Create device manager (dx12/vk)
         const DeviceParams deviceParams{
-            .API = RendererAPI::Vulkan,
+            .API = m_Params.RendererAPI,
             .VSync = m_Params.VSync,
         };
 

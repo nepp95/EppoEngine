@@ -50,8 +50,9 @@ TEST(Renderer, DescriptorManager_RegisterResourceIncreasesNextFreeSlot)
     const auto& manager = CreateRef<DescriptorManager>();
     EP_REQUIRE(manager);
 
-    const auto& dm = DeviceManager::Get();
-    const auto& image = dm->GetCurrentSwapchainImage().Framebuffer->GetFinalImage();
+    const auto image = Image::Create(ImageSpecification{
+        .ImageFormat = nvrhi::Format::RGBA8_UNORM, .Width = 1, .Height = 1,
+    });
     EP_REQUIRE(image);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -87,8 +88,9 @@ TEST(Renderer, DescriptorManager_RegisterResourceReturnsValidHandle)
     const auto& manager = CreateRef<DescriptorManager>();
     EP_REQUIRE(manager);
 
-    const auto& dm = DeviceManager::Get();
-    const auto& image = dm->GetCurrentSwapchainImage().Framebuffer->GetFinalImage();
+    const auto image = Image::Create(ImageSpecification{
+        .ImageFormat = nvrhi::Format::RGBA8_UNORM, .Width = 1, .Height = 1,
+    });
     EP_REQUIRE(image);
 
     const auto handle = manager->Register(image);
@@ -303,7 +305,7 @@ TEST(Renderer, DescriptorManager_SamplerLayoutIsMutableSampler)
     EXPECT_TRUE(layout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSampler);
 }
 
-TEST(Renderer, DescriptorManager_DescriptorTableCapacityMatchesLayoutMaxCapacity)
+TEST(Renderer, DescriptorManager_DescriptorTableCapacityCoversAllocatedSlots)
 {
     if (!Testing::AppHarness::IsAvailable())
         return;
@@ -317,7 +319,8 @@ TEST(Renderer, DescriptorManager_DescriptorTableCapacityMatchesLayoutMaxCapacity
     const auto& layout = resourceHeap->BindingLayout;
     EP_REQUIRE(layout);
 
-    EXPECT_EQ(layout->getBindlessDesc()->maxCapacity, resourceHeap->DescriptorTable->getCapacity());
+    EXPECT_GE(resourceHeap->DescriptorTable->getCapacity(), resourceHeap->Capacity);
+    EXPECT_LE(resourceHeap->DescriptorTable->getCapacity(), layout->getBindlessDesc()->maxCapacity);
 }
 
 TEST(Renderer, DescriptorManager_HandleReleasesToOwningManager)

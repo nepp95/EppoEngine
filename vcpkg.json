@@ -35,7 +35,7 @@
     },
     {
       "name": "nvrhi",
-      "version>=": "2026-02-26"
+      "version>=": "2026-06-01"
     },
     {
       "name": "spdlog",

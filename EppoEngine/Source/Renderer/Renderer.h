@@ -28,6 +28,7 @@ namespace Eppo
         static auto BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<RenderPass>& renderPass) -> void;
         static auto EndRenderPass(const Ref<RenderCommandBuffer>& commandBuffer) -> void;
         auto CompositeToSwapchain(const Ref<Image>& image) -> void;
+        auto ReleaseSwapchainResources() -> void;
 
         [[nodiscard]] auto GetShader(const std::string& name) const -> Ref<Shader>;
         [[nodiscard]] auto GetSampler(const SamplerSpecification& specification) -> Ref<Sampler>;

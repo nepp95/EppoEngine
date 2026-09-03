@@ -74,6 +74,8 @@ namespace Eppo
         static auto Create(ShaderSpecification spec) -> Ref<Shader>;
 
     protected:
+        auto CompileOrGetCache() -> bool;
+        auto Compile(nvrhi::ShaderType type) -> bool;
         auto CreateShaderHandles() -> void;
         auto CreateInputLayout() -> void;
         auto CreateBindingLayout() -> void;

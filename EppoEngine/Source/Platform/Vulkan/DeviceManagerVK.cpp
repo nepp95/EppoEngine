@@ -2,6 +2,7 @@
 #include "Platform/Vulkan/DeviceManagerVK.h"
 
 #include "Platform/Vulkan/Vulkan.h"
+#include "Platform/Vulkan/VulkanSwapchain.h"
 #include "Renderer/GpuProfiler.h"
 
 #include <GLFW/glfw3.h>
@@ -19,12 +20,7 @@ namespace Eppo
 
     auto DeviceManagerVK::Init() -> void
     {
-        VkSurfaceKHR surface = nullptr;
-        VK_CHECK(glfwCreateWindowSurface(m_Instance, m_Window->GetNative(), nullptr, &surface), "Failed to create window surface!");
-        EP_ASSERT(surface);
-
-        m_Swapchain = CreateRef<Swapchain>(surface);
-        m_Swapchain->CreateSwapchain();
+        m_Swapchain = CreateSwapchain(m_Window->GetNative(), 0, 0);
     }
 
     auto DeviceManagerVK::Shutdown() -> void
@@ -48,14 +44,11 @@ namespace Eppo
         vkDestroyInstance(m_Instance, nullptr);
     }
 
-    auto DeviceManagerVK::BeginFrame() -> bool
+    auto DeviceManagerVK::CreateSwapchain(GLFWwindow* window, const uint32_t width, const uint32_t height) -> Ref<Swapchain>
     {
-        return m_Swapchain->BeginFrame();
-    }
-
-    auto DeviceManagerVK::Present() -> bool
-    {
-        return m_Swapchain->Present();
+        Ref<VulkanSwapchain> swapchain = CreateRef<VulkanSwapchain>(window);
+        swapchain->CreateSwapchain(width, height);
+        return swapchain;
     }
 
     auto DeviceManagerVK::GetDevice() const -> nvrhi::IDevice*

@@ -3,6 +3,7 @@
 #include "Renderer/Pipeline.h"
 #include "Renderer/RenderCommandBuffer.h"
 #include "Renderer/RenderPass.h"
+#include "Renderer/Swapchain.h"
 
 #include <imgui.h>
 #include <nvrhi/nvrhi.h>
@@ -11,7 +12,14 @@
 
 namespace Eppo
 {
-    class Swapchain;
+    class ImGuiRenderer;
+
+    struct ImGuiViewportData
+    {
+        bool FrameAcquired = false;
+        Ref<Swapchain> Swapchain = nullptr;
+        ScopedPtr<ImGuiRenderer> Renderer = nullptr;
+    };
 
     class ImGuiRenderer
     {

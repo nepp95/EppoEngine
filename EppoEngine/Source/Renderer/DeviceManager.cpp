@@ -5,6 +5,10 @@
 #include "Platform/Vulkan/DeviceManagerVK.h"
 #include "Renderer/GpuProfiler.h"
 
+#if defined(EP_PLATFORM_WINDOWS)
+    #include "Platform/DX12/DeviceManagerDX12.h"
+#endif
+
 namespace Eppo
 {
     auto DeviceManager::Get() -> Ref<DeviceManager>
@@ -24,10 +28,7 @@ namespace Eppo
         {
 #if defined(EP_PLATFORM_WINDOWS)
             case RendererAPI::DX12:
-            {
-                EP_ASSERT(false, "Currently we do not support DX12!");
-                break;
-            }
+                return CreateScopedPtr<DeviceManagerDX12>(window, params);
 #endif
 
             case RendererAPI::Vulkan:
