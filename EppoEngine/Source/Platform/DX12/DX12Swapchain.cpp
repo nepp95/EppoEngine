@@ -113,9 +113,9 @@ namespace Eppo
 
         if (width == 0 || height == 0)
         {
-            const auto extent = GetWindowFramebufferSize();
-            m_Width = extent.Width;
-            m_Height = extent.Height;
+            const auto [width, height] = GetWindowFramebufferSize();
+            m_Width = width;
+            m_Height = height;
         }
         else
         {
