@@ -28,11 +28,17 @@ namespace Eppo
         {
 #if defined(EP_PLATFORM_WINDOWS)
             case RendererAPI::DX12:
+            {
+                Log::Info("Creating DirectX 12 device");
                 return CreateScopedPtr<DeviceManagerDX12>(window, params);
+            }
 #endif
 
             case RendererAPI::Vulkan:
+            {
+                Log::Info("Creating Vulkan device");
                 return CreateScopedPtr<DeviceManagerVK>(window, params);
+            }
 
             default:
                 break;
