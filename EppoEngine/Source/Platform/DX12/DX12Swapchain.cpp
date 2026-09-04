@@ -164,6 +164,9 @@ namespace Eppo
             );
             EP_ASSERT(swapchain);
             DX_CHECK(swapchain.As(&m_Swapchain), "Failed to query IDXGISwapChain4!");
+
+            // Fullscreen transitions are owned by the window, not DXGI
+            DX_CHECK(dm->GetFactory()->MakeWindowAssociation(m_WindowHandle, DXGI_MWA_NO_ALT_ENTER), "Failed to disable DXGI Alt+Enter!");
         }
 
         DXGI_SWAP_CHAIN_DESC1 scDesc{};

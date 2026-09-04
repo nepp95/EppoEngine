@@ -49,6 +49,25 @@ namespace Eppo
 #endif
     }
 
+    auto VulkanGpuProfiler::BeginZone(
+        [[maybe_unused]] const Ref<RenderCommandBuffer>& commandBuffer, [[maybe_unused]] const char* name,
+        [[maybe_unused]] const char* function, [[maybe_unused]] const char* file, [[maybe_unused]] const uint32_t line
+    ) -> void
+    {
+#if defined(TRACY_ENABLE)
+        const auto cmd =
+            static_cast<VkCommandBuffer>(commandBuffer->GetCommandList()->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer));
+        m_Zone.emplace(m_Context, line, file, strlen(file), function, strlen(function), name, strlen(name), cmd, true);
+#endif
+    }
+
+    auto VulkanGpuProfiler::EndZone() -> void
+    {
+#if defined(TRACY_ENABLE)
+        m_Zone.reset();
+#endif
+    }
+
     auto VulkanGpuProfiler::Collect([[maybe_unused]] const Ref<RenderCommandBuffer>& commandBuffer) -> void
     {
 #if defined(TRACY_ENABLE)
@@ -58,12 +77,4 @@ namespace Eppo
 #endif
     }
 
-    auto VulkanGpuProfiler::GetNativeContext() const -> void*
-    {
-#if defined(TRACY_ENABLE)
-        return m_Context;
-#else
-        return nullptr;
-#endif
-    }
 }
