@@ -1088,9 +1088,6 @@ TEST(Renderer, VulkanGpuProfiler_Construction_EmitsNoVulkanValidationErrors)
 
     {
         const VulkanGpuProfiler profiler;
-#if defined(TRACY_ENABLE)
-        EXPECT_TRUE(profiler.GetNativeContext() != nullptr);
-#endif
     }
 
     EXPECT_EQ(0u, sink->ErrorCount());

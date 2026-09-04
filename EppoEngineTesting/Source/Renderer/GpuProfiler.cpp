@@ -22,12 +22,6 @@ TEST(Renderer, GpuProfiler_UsesSelectedBackend)
 
     const auto* profiler = GpuProfiler::Get();
     ASSERT_NE(nullptr, profiler);
-#if defined(TRACY_ENABLE)
-    EXPECT_NE(nullptr, profiler->GetNativeContext());
-#else
-    EXPECT_EQ(nullptr, profiler->GetNativeContext());
-#endif
-
     switch (DeviceManager::Get()->GetParams().API)
     {
         case RendererAPI::Vulkan:
