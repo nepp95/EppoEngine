@@ -3,17 +3,26 @@
 #include "Core/Window.h"
 #include "Renderer/Framebuffer.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/Swapchain.h"
 
 #include <nvrhi/nvrhi.h>
+
+struct GLFWwindow;
 
 namespace Eppo
 {
     class DeviceManagerVK;
+    class DeviceManagerDX12;
+
+#if !defined(EP_DIST)
+    constexpr bool s_EnableValidationLayers = true;
+#else
+    constexpr bool s_EnableValidationLayers = false;
+#endif
 
     enum class RendererAPI
     {
         None,
-        DX11,
         DX12,
         Vulkan,
     };
@@ -52,12 +61,6 @@ namespace Eppo
         }
     };
 
-    struct SwapchainImage
-    {
-        void* NativeImage = nullptr;
-        Ref<Framebuffer> Framebuffer = nullptr;
-    };
-
     struct DeviceParams
     {
         RendererAPI API = RendererAPI::Vulkan;
@@ -87,20 +90,24 @@ namespace Eppo
         virtual auto Shutdown() -> void = 0;
 
         // Frame
-        virtual auto BeginFrame() -> bool = 0;
-        virtual auto Present() -> bool = 0;
+        auto BeginFrame() -> bool { return m_Swapchain->BeginFrame(); }
+        auto Present() -> bool { return m_Swapchain->Present(); }
         [[nodiscard]] auto WaitIdle() const -> bool;
 
         // Renderer
         auto InitRenderer() -> void;
         [[nodiscard]] constexpr auto GetRenderer() const -> const ScopedPtr<Renderer>& { return m_Renderer; }
 
-        // Swapchain/Nvrhi device
-        [[nodiscard]] virtual auto GetCurrentFrameIndex() const -> uint32_t = 0;
-        [[nodiscard]] virtual auto GetMaxFramesInFlight() const -> uint32_t = 0;
-        [[nodiscard]] virtual auto GetCurrentBackBufferIndex() const -> uint32_t = 0;
-        [[nodiscard]] virtual auto GetBackBufferCount() const -> uint32_t = 0;
-        virtual auto GetCurrentSwapchainImage() -> const SwapchainImage& = 0;
+        // Swapchain
+        virtual auto CreateSwapchain(GLFWwindow* window, uint32_t width = 0, uint32_t height = 0) -> Ref<Swapchain> = 0;
+        [[nodiscard]] auto GetSwapchain() const -> const Ref<Swapchain>& { return m_Swapchain; }
+        [[nodiscard]] auto GetCurrentFrameIndex() const -> uint32_t { return m_Swapchain->GetCurrentFrameIndex(); }
+        [[nodiscard]] auto GetMaxFramesInFlight() const -> uint32_t { return m_Swapchain->GetMaxFramesInFlight(); }
+        [[nodiscard]] auto GetCurrentBackBufferIndex() const -> uint32_t { return m_Swapchain->GetCurrentBackBufferIndex(); }
+        [[nodiscard]] auto GetBackBufferCount() const -> uint32_t { return m_Swapchain->GetImageCount(); }
+        [[nodiscard]] auto GetCurrentSwapchainImage() const -> const SwapchainImage& { return m_Swapchain->GetCurrentSwapchainImage(); }
+
+        // Nvrhi device
         [[nodiscard]] virtual auto GetDevice() const -> nvrhi::IDevice* = 0;
 
         // Device Manager
@@ -114,6 +121,7 @@ namespace Eppo
         DeviceParams m_Params;
         ScopedPtr<Renderer> m_Renderer = nullptr;
         Ref<Window> m_Window = nullptr;
+        Ref<Swapchain> m_Swapchain = nullptr;
 
         NvrhiMessageCallback m_MessageCallback;
     };

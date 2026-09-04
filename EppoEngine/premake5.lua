@@ -69,6 +69,7 @@ project "EppoEngine"
     filter "system:linux"
         defines { "EP_PLATFORM_LINUX", "__EMULATE_UUID" }
         pic "On"
+        removefiles { "Source/Platform/DX12/**" }
 
     filter {}
 

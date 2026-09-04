@@ -2,7 +2,6 @@
 
 #include "Platform/Vulkan/LogicalDevice.h"
 #include "Platform/Vulkan/PhysicalDevice.h"
-#include "Platform/Vulkan/Swapchain.h"
 #include "Platform/Vulkan/Vulkan.h"
 #include "Renderer/DeviceManager.h"
 
@@ -15,27 +14,19 @@ namespace Eppo
     class DeviceManagerVK : public DeviceManager
     {
     public:
-        DeviceManagerVK(const Ref<Window>& window, const DeviceParams& params);
+        explicit DeviceManagerVK(const Ref<Window>& window, const DeviceParams& params);
         ~DeviceManagerVK() override = default;
 
         auto Init() -> void override;
         auto Shutdown() -> void override;
 
+        auto CreateSwapchain(GLFWwindow* window, uint32_t width, uint32_t height) -> Ref<Swapchain> override;
+
         [[nodiscard]] auto GetDevice() const -> nvrhi::IDevice* override;
-
-        auto BeginFrame() -> bool override;
-        auto Present() -> bool override;
-
-        [[nodiscard]] virtual auto GetCurrentFrameIndex() const -> uint32_t override { return m_Swapchain->GetCurrentFrameIndex(); }
-        [[nodiscard]] virtual auto GetMaxFramesInFlight() const -> uint32_t override { return m_Swapchain->GetMaxFramesInFlight(); }
-        [[nodiscard]] auto GetCurrentBackBufferIndex() const -> uint32_t override { return m_Swapchain->GetCurrentBackBufferIndex(); }
-        [[nodiscard]] auto GetBackBufferCount() const -> uint32_t override { return m_Swapchain->GetImageCount(); }
-        auto GetCurrentSwapchainImage() -> const SwapchainImage& override { return m_Swapchain->GetCurrentSwapchainImage(); }
 
         [[nodiscard]] constexpr auto GetVulkanInstance() const -> VkInstance { return m_Instance; }
         [[nodiscard]] constexpr auto GetPhysicalDevice() const -> const ScopedPtr<PhysicalDevice>& { return m_PhysicalDevice; }
         [[nodiscard]] constexpr auto GetLogicalDevice() const -> const ScopedPtr<LogicalDevice>& { return m_LogicalDevice; }
-        [[nodiscard]] constexpr auto GetSwapchain() const -> const Ref<Swapchain>& { return m_Swapchain; }
 
     private:
         auto CreateVulkanInstance() -> void;
@@ -50,6 +41,5 @@ namespace Eppo
 
         ScopedPtr<PhysicalDevice> m_PhysicalDevice = nullptr;
         ScopedPtr<LogicalDevice> m_LogicalDevice = nullptr;
-        Ref<Swapchain> m_Swapchain = nullptr;
     };
 }

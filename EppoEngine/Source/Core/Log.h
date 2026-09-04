@@ -19,7 +19,8 @@ namespace Eppo
         Core,
         Glfw,
         Script,
-        Vulkan
+        Vulkan,
+        DX12,
     };
 
     class Log
@@ -60,6 +61,12 @@ namespace Eppo
                     break;
                 }
 
+                case LogSource::DX12:
+                {
+                    s_DX12Logger->trace(fmt, std::forward<Args>(args)...);
+                    break;
+                }
+
                 default:
                 {
                     s_CoreLogger->trace(fmt, std::forward<Args>(args)...);
@@ -94,6 +101,12 @@ namespace Eppo
                 case LogSource::Vulkan:
                 {
                     s_VulkanLogger->info(fmt, std::forward<Args>(args)...);
+                    break;
+                }
+
+                case LogSource::DX12:
+                {
+                    s_DX12Logger->info(fmt, std::forward<Args>(args)...);
                     break;
                 }
 
@@ -134,6 +147,12 @@ namespace Eppo
                     break;
                 }
 
+                case LogSource::DX12:
+                {
+                    s_DX12Logger->warn(fmt, std::forward<Args>(args)...);
+                    break;
+                }
+
                 default:
                 {
                     s_CoreLogger->warn(fmt, std::forward<Args>(args)...);
@@ -171,6 +190,12 @@ namespace Eppo
                     break;
                 }
 
+                case LogSource::DX12:
+                {
+                    s_DX12Logger->error(fmt, std::forward<Args>(args)...);
+                    break;
+                }
+
                 default:
                 {
                     s_CoreLogger->error(fmt, std::forward<Args>(args)...);
@@ -186,6 +211,7 @@ namespace Eppo
         static std::shared_ptr<spdlog::logger> s_GlfwLogger;
         static std::shared_ptr<spdlog::logger> s_ScriptLogger;
         static std::shared_ptr<spdlog::logger> s_VulkanLogger;
+        static std::shared_ptr<spdlog::logger> s_DX12Logger;
     };
 }
 

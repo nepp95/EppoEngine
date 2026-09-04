@@ -5,23 +5,12 @@
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Renderer.h"
 
-// TODO: TEMPORARY
-#include "Platform/Vulkan/Swapchain.h"
-
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <nvrhi/utils.h>
 
 namespace Eppo
 {
-    struct ImGuiViewportData
-    {
-        bool WindowOwned = false;
-        bool FrameAcquired = false;
-        Ref<Swapchain> Swapchain = nullptr;
-        ScopedPtr<ImGuiRenderer> Renderer = nullptr;
-    };
-
     ImGuiRenderer::ImGuiRenderer()
     {
         const auto& dm = DeviceManager::Get();
@@ -115,13 +104,8 @@ namespace Eppo
 
     auto ImGuiRenderer::RenderToSwapchain(ImGuiViewport* viewport, const Ref<Swapchain>& swapchain, const bool clearSwapchainTarget) -> void
     {
-        Renderer::Submit(
-            [this, viewport, swapchain, clearSwapchainTarget]()
-            {
-                EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain");
-                Render(viewport, GetOrCreateRenderPass(swapchain), clearSwapchainTarget);
-            }
-        );
+        EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain");
+        Render(viewport, GetOrCreateRenderPass(swapchain), clearSwapchainTarget);
     }
 
     auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<RenderPass>& renderPass, const bool clearTarget) -> void

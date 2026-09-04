@@ -11,6 +11,7 @@ namespace Eppo
     Ref<spdlog::logger> Log::s_GlfwLogger = nullptr;
     Ref<spdlog::logger> Log::s_ScriptLogger = nullptr;
     Ref<spdlog::logger> Log::s_VulkanLogger = nullptr;
+    Ref<spdlog::logger> Log::s_DX12Logger = nullptr;
 
     auto Log::Init() -> void
     {
@@ -40,6 +41,8 @@ namespace Eppo
         s_ScriptLogger->set_level(spdlog::level::trace);
         s_VulkanLogger = CreateRef<spdlog::logger>("Vulkan", sinks);
         s_VulkanLogger->set_level(spdlog::level::trace);
+        s_DX12Logger = CreateRef<spdlog::logger>("DX12", sinks);
+        s_DX12Logger->set_level(spdlog::level::trace);
 
         spdlog::set_default_logger(s_CoreLogger);
         s_CoreLogger->set_pattern("%^[%T.%e] [%n]: %v%$");

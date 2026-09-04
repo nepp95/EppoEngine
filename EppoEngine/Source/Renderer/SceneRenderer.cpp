@@ -1502,6 +1502,7 @@ namespace Eppo
                 Renderer::EndRenderPass(m_RenderCommandBuffer);
                 m_RenderCommandBuffer->EndMarker();
                 m_RenderCommandBuffer->EndTimerQuery(m_ShadowDepthPass->GetName());
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -1593,6 +1594,7 @@ namespace Eppo
                 Renderer::EndRenderPass(m_RenderCommandBuffer);
                 m_RenderCommandBuffer->EndMarker();
                 m_RenderCommandBuffer->EndTimerQuery(m_PointShadowDepthPass->GetName());
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -1669,6 +1671,7 @@ namespace Eppo
                 }
 
                 m_RenderCommandBuffer->EndMarker();
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -1754,6 +1757,7 @@ namespace Eppo
                 Renderer::EndRenderPass(m_RenderCommandBuffer);
                 m_RenderCommandBuffer->EndMarker();
                 m_RenderCommandBuffer->EndTimerQuery(m_GeometryPass->GetName());
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -1794,6 +1798,7 @@ namespace Eppo
                 Renderer::EndRenderPass(m_RenderCommandBuffer);
                 m_RenderCommandBuffer->EndMarker();
                 m_RenderCommandBuffer->EndTimerQuery(m_LightingPass->GetName());
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -1825,6 +1830,7 @@ namespace Eppo
                 Renderer::EndRenderPass(m_RenderCommandBuffer);
                 m_RenderCommandBuffer->EndMarker();
                 m_RenderCommandBuffer->EndTimerQuery(m_SkyPass->GetName());
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -1953,6 +1959,7 @@ namespace Eppo
                 }
 
                 m_RenderCommandBuffer->EndMarker();
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -1994,6 +2001,7 @@ namespace Eppo
                 Renderer::EndRenderPass(m_RenderCommandBuffer);
                 m_RenderCommandBuffer->EndMarker();
                 m_RenderCommandBuffer->EndTimerQuery(m_TonemapPass->GetName());
+                EP_GPU_ZONE_END()
             }
         );
     }
@@ -2010,6 +2018,7 @@ namespace Eppo
                 {
                     m_RenderCommandBuffer->BeginTimerQuery(m_WireframePass->GetName());
                     m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
+                    EP_GPU_ZONE_END()
                     return;
                 }
 
@@ -2080,6 +2089,7 @@ namespace Eppo
                 Renderer::EndRenderPass(m_RenderCommandBuffer);
                 m_RenderCommandBuffer->EndMarker();
                 m_RenderCommandBuffer->EndTimerQuery(m_WireframePass->GetName());
+                EP_GPU_ZONE_END()
             }
         );
     }

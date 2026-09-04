@@ -156,10 +156,18 @@ namespace Eppo
             .keepInitialState = spec.AutomaticStateTracking,
         };
 
-        if (dm->GetParams().API == RendererAPI::Vulkan)
-            m_Texture = device->createHandleForNativeTexture(nvrhi::ObjectTypes::VK_Image, nvrhi::Object(existingImage), textureDesc);
-        else
-            EP_ASSERT(false);
+        switch (dm->GetParams().API)
+        {
+            case RendererAPI::Vulkan:
+                m_Texture = device->createHandleForNativeTexture(nvrhi::ObjectTypes::VK_Image, nvrhi::Object(existingImage), textureDesc);
+                break;
+            case RendererAPI::DX12:
+                m_Texture =
+                    device->createHandleForNativeTexture(nvrhi::ObjectTypes::D3D12_Resource, nvrhi::Object(existingImage), textureDesc);
+                break;
+            default:
+                EP_ASSERT(false, "Unsupported renderer api!");
+        }
 
         m_MipLevels = m_Texture->getDesc().mipLevels;
         m_Stride = GetStride(m_Texture->getDesc().format);
