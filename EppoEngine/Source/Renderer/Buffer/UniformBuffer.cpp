@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Renderer/UniformBuffer.h"
+#include "Renderer/Buffer/UniformBuffer.h"
 
 #include "Renderer/DeviceManager.h"
 

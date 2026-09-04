@@ -1,7 +1,6 @@
 {
   "name": "nvrhi",
-  "version-date": "2026-02-26",
-  "port-version": 1,
+  "version-date": "2026-06-01",
   "description": "NVIDIA Rendering Hardware Interface abstraction layer for D3D11, D3D12, and Vulkan",
   "homepage": "https://github.com/NVIDIA-RTX/NVRHI",
   "license": "MIT",

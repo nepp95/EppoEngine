@@ -1,13 +1,13 @@
 #include "pch.h"
 #include "Renderer/RenderPass.h"
 
+#include "Renderer/Buffer/StorageBuffer.h"
+#include "Renderer/Buffer/UniformBuffer.h"
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Image.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/Sampler.h"
-#include "Renderer/StorageBuffer.h"
-#include "Renderer/UniformBuffer.h"
 
 namespace Eppo
 {

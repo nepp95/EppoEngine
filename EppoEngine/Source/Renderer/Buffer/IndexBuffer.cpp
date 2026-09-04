@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Renderer/IndexBuffer.h"
+#include "Renderer/Buffer/IndexBuffer.h"
 
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Mesh.h"

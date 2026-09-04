@@ -23,6 +23,9 @@ TEST(Renderer, PhysicalDevice_ReportsAllRequiredFeatures)
         return;
 
     const auto& dm = DeviceManager::Get();
+    if (dm->GetParams().API != RendererAPI::Vulkan)
+        GTEST_SKIP() << "This case checks Vulkan physical-device features.";
+
     const auto* deviceManager = dynamic_cast<DeviceManagerVK*>(dm.get());
     EP_REQUIRE(deviceManager);
     EP_REQUIRE(deviceManager->GetPhysicalDevice());

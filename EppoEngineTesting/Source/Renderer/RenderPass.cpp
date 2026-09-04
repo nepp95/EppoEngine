@@ -1,6 +1,8 @@
 #include "TestSupport/EppoTest.h"
 #include "TestSupport/AppHarness.h"
 
+#include "Renderer/Buffer/StorageBuffer.h"
+#include "Renderer/Buffer/UniformBuffer.h"
 #include "Renderer/DescriptorManager.h"
 #include "Renderer/DeviceManager.h"
 #include "Renderer/Framebuffer.h"
@@ -10,36 +12,33 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/Sampler.h"
 #include "Renderer/Shader.h"
-#include "Renderer/StorageBuffer.h"
-#include "Renderer/UniformBuffer.h"
 
 using namespace Eppo;
 
 namespace
 {
-	auto MakeGeometryPipeline() -> Ref<Pipeline>
-	{
-		const auto& renderer = DeviceManager::Get()->GetRenderer();
+    auto MakeGeometryPipeline() -> Ref<Pipeline>
+    {
+        const auto& renderer = DeviceManager::Get()->GetRenderer();
 
-		const FramebufferSpecification framebufferSpec{
-			.Width = 256,
-			.Height = 256,
-			.Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::RGBA16_FLOAT, nvrhi::Format::RGBA16_FLOAT,
-			                 nvrhi::Format::D32 },
-			.DebugName = "Framebuffer RenderPassTest",
-		};
+        const FramebufferSpecification framebufferSpec{
+            .Width = 256,
+            .Height = 256,
+            .Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::RGBA16_FLOAT, nvrhi::Format::RGBA16_FLOAT, nvrhi::Format::D32 },
+            .DebugName = "Framebuffer RenderPassTest",
+        };
 
-		const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+        const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
 
-		const PipelineSpecification pipelineSpec{
-			.Shader = renderer->GetShader("geometry"),
-			.CullMode = nvrhi::RasterCullMode::Front,
-			.DepthTestEnable = true,
-			.DepthWriteEnable = true,
-		};
+        const PipelineSpecification pipelineSpec{
+            .Shader = renderer->GetShader("geometry"),
+            .CullMode = nvrhi::RasterCullMode::Front,
+            .DepthTestEnable = true,
+            .DepthWriteEnable = true,
+        };
 
-		return CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
-	}
+        return CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
+    }
 
     auto MakeCompositePipeline() -> Ref<Pipeline>
     {
@@ -64,9 +63,10 @@ namespace
 
     auto MakeSharedBindingPipeline() -> Ref<Pipeline>
     {
-        const auto shader = Shader::Create(ShaderSpecification{
-            .Name = "SharedLogicalBindingRenderPassTest",
-            .Source = R"(
+        const auto shader = Shader::Create(
+            ShaderSpecification{
+                .Name = "SharedLogicalBindingRenderPassTest",
+                .Source = R"(
 struct Input
 {
 float3 Position : POSITION0;
@@ -90,7 +90,8 @@ float4 PSMain() : SV_Target
 return float4(1.0, 1.0, 1.0, 1.0);
 }
 )",
-        });
+            }
+        );
 
         const FramebufferSpecification framebufferSpec{
             .Width = 256,
@@ -110,11 +111,7 @@ return float4(1.0, 1.0, 1.0, 1.0);
         );
     }
 
-    auto SetGeometryInputs(
-        RenderPass& pass,
-        const Ref<UniformBuffer>& camera,
-        const Ref<StorageBuffer>& instances
-    ) -> void
+    auto SetGeometryInputs(RenderPass& pass, const Ref<UniformBuffer>& camera, const Ref<StorageBuffer>& instances) -> void
     {
         const auto drawData = CreateRef<StorageBuffer>(80, 80, "TestSB Draw Data");
         const auto materialData = CreateRef<StorageBuffer>(96, 96, "TestSB Material Data");
@@ -124,9 +121,8 @@ return float4(1.0, 1.0, 1.0, 1.0);
         pass.SetInput(0, 2, materialData);
     }
 
-    [[nodiscard]] auto FindBinding(
-        const nvrhi::BindingSetDesc& desc, const uint32_t slot, const nvrhi::ResourceType type
-    ) -> const nvrhi::BindingSetItem*
+    [[nodiscard]] auto FindBinding(const nvrhi::BindingSetDesc& desc, const uint32_t slot, const nvrhi::ResourceType type)
+        -> const nvrhi::BindingSetItem*
     {
         const auto it = std::ranges::find_if(
             desc.bindings,
@@ -140,39 +136,43 @@ return float4(1.0, 1.0, 1.0, 1.0);
 
     [[nodiscard]] auto MakeTestImage() -> Ref<Image>
     {
-        return Image::Create(ImageSpecification{
-            .ImageFormat = nvrhi::Format::RGBA8_UNORM,
-            .Width = 4,
-            .Height = 4,
-            .DebugName = "Image RenderPassTest",
-        });
+        return Image::Create(
+            ImageSpecification{
+                .ImageFormat = nvrhi::Format::RGBA8_UNORM,
+                .Width = 4,
+                .Height = 4,
+                .DebugName = "Image RenderPassTest",
+            }
+        );
     }
 }
 
 TEST(Renderer, RenderPass_ConstructionStoresSpecification)
 {
-	if (!Testing::AppHarness::IsAvailable())
-		return;
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-	const RenderPass pass(RenderPassSpecification{
-		.Name = "TestPass",
-	    .Pipeline = MakeGeometryPipeline(),
-		.ClearColorOnLoad = true,
-		.ClearDepthOnLoad = false,
-	});
+    const RenderPass pass(
+        RenderPassSpecification{
+            .Name = "TestPass",
+            .Pipeline = MakeGeometryPipeline(),
+            .ClearColorOnLoad = true,
+            .ClearDepthOnLoad = false,
+        }
+    );
 
-	EXPECT_EQ(std::string("TestPass"), pass.GetName());
+    EXPECT_EQ(std::string("TestPass"), pass.GetName());
     EXPECT_TRUE(pass.GetSpecification().Pipeline);
-	EXPECT_TRUE(pass.GetSpecification().ClearColorOnLoad);
-	EXPECT_TRUE(!pass.GetSpecification().ClearDepthOnLoad);
+    EXPECT_TRUE(pass.GetSpecification().ClearColorOnLoad);
+    EXPECT_TRUE(!pass.GetSpecification().ClearDepthOnLoad);
 }
 
 TEST(Renderer, RenderPass_DefaultConstructionHasNoPipelineOrBindingSets)
 {
-	const RenderPass pass;
+    const RenderPass pass;
 
-	EXPECT_TRUE(!pass.GetPipeline());
-	EXPECT_TRUE(pass.GetBindingSets().empty());
+    EXPECT_TRUE(!pass.GetPipeline());
+    EXPECT_TRUE(pass.GetBindingSets().empty());
 }
 
 TEST(Renderer, RenderPass_StatisticsAreOwnedAndMutable)
@@ -188,26 +188,26 @@ TEST(Renderer, RenderPass_StatisticsAreOwnedAndMutable)
 
 TEST(Renderer, RenderPass_BakeMergesBoundAndBindlessSetsWithoutGaps)
 {
-	if (!Testing::AppHarness::IsAvailable())
-		return;
+    if (!Testing::AppHarness::IsAvailable())
+        return;
 
-	const auto pipeline = MakeGeometryPipeline();
-	const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-	const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
+    const auto pipeline = MakeGeometryPipeline();
+    const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
+    const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
-	RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
+    RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
     SetGeometryInputs(pass, camera, instances);
-	pass.Bake();
+    pass.Bake();
 
-	const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
-	const auto& bindingSets = pass.GetBindingSets();
+    const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+    const auto& bindingSets = pass.GetBindingSets();
 
-	EXPECT_EQ(3u, static_cast<uint32_t>(bindingSets.size()));
-	EXPECT_TRUE(bindingSets[0] != nullptr);
-	EXPECT_TRUE(bindingSets[0]->getDesc() != nullptr);
-	EXPECT_EQ(1ul, bindingSets[0]->GetRefCount());
-	EXPECT_TRUE(bindingSets[1] == descriptorManager->GetResourceDT().Get());
-	EXPECT_TRUE(bindingSets[2] == descriptorManager->GetSamplerDT().Get());
+    EXPECT_EQ(3u, static_cast<uint32_t>(bindingSets.size()));
+    EXPECT_TRUE(bindingSets[0] != nullptr);
+    EXPECT_TRUE(bindingSets[0]->getDesc() != nullptr);
+    EXPECT_EQ(1ul, bindingSets[0]->GetRefCount());
+    EXPECT_TRUE(bindingSets[1] == descriptorManager->GetResourceDT().Get());
+    EXPECT_TRUE(bindingSets[2] == descriptorManager->GetSamplerDT().Get());
 }
 
 TEST(Renderer, RenderPass_BakeDerivesPushConstantsFromShaderReflection)

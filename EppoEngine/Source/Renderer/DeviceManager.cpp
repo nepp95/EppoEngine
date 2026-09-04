@@ -5,6 +5,10 @@
 #include "Platform/Vulkan/DeviceManagerVK.h"
 #include "Renderer/GpuProfiler.h"
 
+#if defined(EP_PLATFORM_WINDOWS)
+    #include "Platform/DX12/DeviceManagerDX12.h"
+#endif
+
 namespace Eppo
 {
     auto DeviceManager::Get() -> Ref<DeviceManager>
@@ -16,7 +20,6 @@ namespace Eppo
     {
         EP_ASSERT(params.API != RendererAPI::None, "No renderer api selected!");
 #if !defined(EP_PLATFORM_WINDOWS)
-        EP_ASSERT(params.API != RendererAPI::DX11, "DX11 renderer api selected on a non windows target!");
         EP_ASSERT(params.API != RendererAPI::DX12, "DX12 renderer api selected on a non windows target!");
 #endif
         EP_ASSERT(params.MaxFramesInFlight >= 2);
@@ -24,21 +27,18 @@ namespace Eppo
         switch (params.API)
         {
 #if defined(EP_PLATFORM_WINDOWS)
-            case RendererAPI::DX11:
-            {
-                EP_ASSERT(false, "Currently we do not support DX11!");
-                break;
-            }
-
             case RendererAPI::DX12:
             {
-                EP_ASSERT(false, "Currently we do not support DX12!");
-                break;
+                Log::Info("Creating DirectX 12 device");
+                return CreateScopedPtr<DeviceManagerDX12>(window, params);
             }
 #endif
 
             case RendererAPI::Vulkan:
+            {
+                Log::Info("Creating Vulkan device");
                 return CreateScopedPtr<DeviceManagerVK>(window, params);
+            }
 
             default:
                 break;

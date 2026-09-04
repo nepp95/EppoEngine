@@ -4,11 +4,11 @@
 
 namespace Eppo
 {
-    class VulkanGpuProfiler final : public GpuProfiler
+    class DX12GpuProfiler final : public GpuProfiler
     {
     public:
-        VulkanGpuProfiler();
-        ~VulkanGpuProfiler() override;
+        DX12GpuProfiler();
+        ~DX12GpuProfiler() override;
 
         auto
         BeginZone(const Ref<RenderCommandBuffer>& commandBuffer, const char* name, const char* function, const char* file, uint32_t line)
@@ -18,8 +18,8 @@ namespace Eppo
 
     private:
 #if defined(TRACY_ENABLE)
-        TracyVkCtx m_Context = nullptr;
-        std::optional<tracy::VkCtxScope> m_Zone;
+        TracyD3D12Ctx m_Context = nullptr;
+        std::optional<tracy::D3D12ZoneScope> m_Zone;
 #endif
     };
 }

@@ -1,41 +1,43 @@
 #include "pch.h"
-#include "Platform/Vulkan/VulkanShader.h"
+#include "Platform/DX12/DX12Shader.h"
 
+#include "Platform/ComPtr.h"
+
+#include <d3d12shader.h>
+#include <dxc/dxcapi.h>
 #include <nvrhi/utils.h>
-#include <spirv_cross/spirv_cross.hpp>
+
+#include <bit>
 
 namespace Eppo
 {
     namespace
     {
-        auto SpirvTypeToNvrhiType(const std::string& semantic, const spirv_cross::SPIRType& type) -> nvrhi::Format
+        auto DxilTypeToNvrhiType(const std::string& semantic, const D3D12_SIGNATURE_PARAMETER_DESC& type) -> nvrhi::Format
         {
-            using spirv_cross::SPIRType;
+            const uint32_t components = std::popcount(static_cast<uint32_t>(type.Mask));
 
             bool packed = semantic.substr(0, 5) == "COLOR";
 
-            switch (type.basetype)
+            switch (type.ComponentType)
             {
-                case SPIRType::BaseType::Float:
+                case D3D_REGISTER_COMPONENT_FLOAT32:
                 {
-                    if (type.vecsize == 1)
+                    if (components == 1)
                         return packed ? nvrhi::Format::R8_UNORM : nvrhi::Format::R32_FLOAT;
-                    if (type.vecsize == 2)
+                    if (components == 2)
                         return packed ? nvrhi::Format::RG8_UNORM : nvrhi::Format::RG32_FLOAT;
-                    if (type.vecsize == 3)
+                    if (components == 3)
                         return nvrhi::Format::RGB32_FLOAT;
-                    if (type.vecsize == 4)
+                    if (components == 4)
                         return packed ? nvrhi::Format::RGBA8_UNORM : nvrhi::Format::RGBA32_FLOAT;
 
                     EP_ASSERT(false);
                     return nvrhi::Format::UNKNOWN;
                 }
 
-                case SPIRType::BaseType::UInt:
+                case D3D_REGISTER_COMPONENT_UINT32:
                     return nvrhi::Format::R32_UINT;
-
-                case SPIRType::BaseType::Boolean:
-                    return nvrhi::Format::R8_UINT;
 
                 default:
                 {
@@ -46,7 +48,7 @@ namespace Eppo
         }
     }
 
-    VulkanShader::VulkanShader(ShaderSpecification spec)
+    DX12Shader::DX12Shader(ShaderSpecification spec)
         : Shader(std::move(spec))
     {
         if (!CompileOrGetCache())
@@ -64,7 +66,13 @@ namespace Eppo
         Log::Info("Name: {}", m_Specification.Name);
 
         for (const auto& [type, bytes] : m_ShaderBytes)
-            Reflect(type);
+        {
+            if (!Reflect(type))
+            {
+                EP_ASSERT(false, "Shader reflection failed!");
+                return;
+            }
+        }
 
         if (m_ShaderBytes.contains(nvrhi::ShaderType::Vertex))
             CreateInputLayout();
@@ -76,28 +84,65 @@ namespace Eppo
         m_IsLoaded.store(true, std::memory_order_release);
     }
 
-    auto VulkanShader::Reflect(nvrhi::ShaderType type) -> void
+    auto DX12Shader::Reflect(const nvrhi::ShaderType type) -> bool
     {
-        const spirv_cross::Compiler compiler(reinterpret_cast<uint32_t*>(m_ShaderBytes.at(type).data()), m_ShaderBytes.at(type).size() / 4);
-        const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
-        constexpr nvrhi::VulkanBindingOffsets vulkanOffsets{};
+        ComPtr<IDxcUtils> utils;
+        ComPtr<IDxcContainerReflection> container;
+        ComPtr<IDxcBlobEncoding> blob;
+        ComPtr<ID3D12ShaderReflection> reflection;
+        UINT32 part = 0;
+        const auto& bytes = m_ShaderBytes.at(type);
+        if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils))) ||
+            FAILED(DxcCreateInstance(CLSID_DxcContainerReflection, IID_PPV_ARGS(&container))) ||
+            FAILED(utils->CreateBlob(bytes.data(), static_cast<uint32_t>(bytes.size()), DXC_CP_ACP, &blob)) ||
+            FAILED(container->Load(blob.Get())) ||
+            FAILED(container->FindFirstPartKind(DXC_PART_DXIL, &part)) ||
+            FAILED(container->GetPartReflection(part, IID_PPV_ARGS(&reflection))))
+        {
+            Log::Error("Could not reflect shader '{}'!", m_Specification.Name);
+            return false;
+        }
+
+        D3D12_SHADER_DESC shaderDesc{};
+        if (FAILED(reflection->GetDesc(&shaderDesc)))
+        {
+            Log::Error("Could not read reflection data for shader '{}'!", m_Specification.Name);
+            return false;
+        }
+
+        std::unordered_map<D3D_SHADER_INPUT_TYPE, std::vector<D3D12_SHADER_INPUT_BIND_DESC>> resources;
+        for (uint32_t index = 0; index < shaderDesc.BoundResources; index++)
+        {
+            D3D12_SHADER_INPUT_BIND_DESC resource{};
+            if (FAILED(reflection->GetResourceBindingDesc(index, &resource)))
+            {
+                Log::Error("Could not read resource {} for shader '{}'!", index, m_Specification.Name);
+                return false;
+            }
+            resources[resource.Type].push_back(resource);
+        }
 
         Log::Info("Stage: {}", nvrhi::utils::ShaderStageToString(type));
 
-        if (!resources.stage_inputs.empty() && type == nvrhi::ShaderType::Vertex)
+        if (shaderDesc.InputParameters != 0 && type == nvrhi::ShaderType::Vertex)
         {
             Log::Info("\tInputs:");
 
-            for (const auto& resource : resources.stage_inputs)
+            for (uint32_t index = 0; index < shaderDesc.InputParameters; index++)
             {
-                const auto& bufferType = compiler.get_type(resource.base_type_id);
-                const uint32_t location = compiler.get_decoration(resource.id, spv::DecorationLocation);
-                const auto& semantic = compiler.get_decoration_string(resource.id, spv::DecorationHlslSemanticGOOGLE);
+                D3D12_SIGNATURE_PARAMETER_DESC resource{};
+                if (FAILED(reflection->GetInputParameterDesc(index, &resource)))
+                {
+                    Log::Error("Could not read input {} for shader '{}'!", index, m_Specification.Name);
+                    return false;
+                }
+                if (resource.SystemValueType != D3D_NAME_UNDEFINED)
+                    continue;
 
                 auto& input = m_ShaderInputs.emplace_back();
-                input.Name = resource.name;
-                input.Location = location;
-                input.Type = SpirvTypeToNvrhiType(semantic, bufferType);
+                input.Name = resource.SemanticName;
+                input.Location = resource.Register;
+                input.Type = DxilTypeToNvrhiType(resource.SemanticName, resource);
                 input.Offset = m_InputAttributeStride;
 
                 m_InputAttributeStride += Utils::NvrhiFormatSize(input.Type);
@@ -107,22 +152,39 @@ namespace Eppo
                 Log::Info("\t\tType: {}", nvrhi::utils::FormatToString(input.Type));
             }
 
-            // Sort inputs by location
             std::ranges::sort(
                 m_ShaderInputs, std::ranges::less{},
-                [](const ShaderInputAttribute& input)
+                [](const ShaderInputAttribute& input) -> uint32_t
                 {
                     return input.Location;
                 }
             );
         }
 
-        if (!resources.push_constant_buffers.empty())
+        for (const auto& resource : resources[D3D_SIT_CBUFFER])
         {
-            const auto& resource = resources.push_constant_buffers[0];
-            const auto& bufferType = compiler.get_type(resource.base_type_id);
-            const size_t bufferSize = compiler.get_declared_struct_size(bufferType);
-            const auto pushConstantSize = static_cast<uint32_t>(bufferSize);
+            if (std::string_view(resource.Name) != "uPC")
+                continue;
+
+            const auto constantBuffer = reflection->GetConstantBufferByName(resource.Name);
+            D3D12_SHADER_BUFFER_DESC bufferDesc{};
+            if (FAILED(constantBuffer->GetDesc(&bufferDesc)) || resource.BindPoint != 0 || resource.Space != 0)
+            {
+                Log::Error("Could not reflect push constants at b0, space0 for shader '{}'!", m_Specification.Name);
+                return false;
+            }
+
+            uint32_t pushConstantSize = 0;
+            for (uint32_t index = 0; index < bufferDesc.Variables; index++)
+            {
+                D3D12_SHADER_VARIABLE_DESC variableDesc{};
+                if (FAILED(constantBuffer->GetVariableByIndex(index)->GetDesc(&variableDesc)))
+                {
+                    Log::Error("Could not read push constant {} for shader '{}'!", index, m_Specification.Name);
+                    return false;
+                }
+                pushConstantSize = std::max(pushConstantSize, variableDesc.StartOffset + variableDesc.Size);
+            }
 
             m_PushConstants.Binding = 0;
             if (pushConstantSize > m_PushConstants.Size)
@@ -131,21 +193,24 @@ namespace Eppo
             m_HasPushConstants = true;
         }
 
-        if (!resources.uniform_buffers.empty())
+        if (!resources[D3D_SIT_CBUFFER].empty())
         {
-            Log::Info("Found {} uniform_buffers", resources.uniform_buffers.size());
+            Log::Info("Found {} uniform_buffers", resources[D3D_SIT_CBUFFER].size());
 
-            for (const auto& resource : resources.uniform_buffers)
+            for (const auto& resource : resources[D3D_SIT_CBUFFER])
             {
-                const uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
-                const uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding) - vulkanOffsets.constantBuffer;
+                if (std::string_view(resource.Name) == "uPC")
+                    continue;
+
+                const uint32_t set = resource.Space;
+                const uint32_t binding = resource.BindPoint;
 
                 bool bindingExists = false;
                 if (m_ShaderResources.contains(set))
                 {
                     for (auto& setResource : m_ShaderResources.at(set))
                     {
-                        if (resource.name == setResource.Name && binding == setResource.Binding)
+                        if (resource.Name == setResource.Name && binding == setResource.Binding)
                         {
                             setResource.Stage = (setResource.Stage | type);
                             bindingExists = true;
@@ -157,7 +222,7 @@ namespace Eppo
                 if (!bindingExists)
                 {
                     ShaderResourceBinding& shaderResource = m_ShaderResources[set].emplace_back();
-                    shaderResource.Name = resource.name;
+                    shaderResource.Name = resource.Name;
                     shaderResource.Binding = binding;
                     shaderResource.Stage = type;
                     shaderResource.Type = nvrhi::ResourceType::ConstantBuffer;
@@ -169,26 +234,23 @@ namespace Eppo
             }
         }
 
-        if (!resources.separate_images.empty())
+        if (!resources[D3D_SIT_TEXTURE].empty())
         {
-            Log::Info("Found {} separate_images", resources.separate_images.size());
+            Log::Info("Found {} separate_images", resources[D3D_SIT_TEXTURE].size());
 
-            for (const auto& resource : resources.separate_images)
+            for (const auto& resource : resources[D3D_SIT_TEXTURE])
             {
-                const uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
-                const uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding) - vulkanOffsets.shaderResource;
+                const uint32_t set = resource.Space;
+                const uint32_t binding = resource.BindPoint;
 
-                auto& spirvType = compiler.get_type(resource.type_id);
-                uint32_t arraySize = 1;
-                if (!spirvType.array.empty())
-                    arraySize = spirvType.array[0];
+                const uint32_t arraySize = resource.BindCount;
 
                 bool bindingExists = false;
                 if (m_ShaderResources.contains(set))
                 {
                     for (auto& setResource : m_ShaderResources.at(set))
                     {
-                        if (resource.name == setResource.Name && binding == setResource.Binding)
+                        if (resource.Name == setResource.Name && binding == setResource.Binding)
                         {
                             setResource.Stage = (setResource.Stage | type);
                             bindingExists = true;
@@ -200,7 +262,7 @@ namespace Eppo
                 if (!bindingExists)
                 {
                     ShaderResourceBinding& shaderResource = m_ShaderResources[set].emplace_back();
-                    shaderResource.Name = resource.name;
+                    shaderResource.Name = resource.Name;
                     shaderResource.Binding = binding;
                     shaderResource.ArraySize = arraySize;
                     shaderResource.Stage = type;
@@ -213,21 +275,21 @@ namespace Eppo
             }
         }
 
-        if (!resources.separate_samplers.empty())
+        if (!resources[D3D_SIT_SAMPLER].empty())
         {
-            Log::Info("Found {} separate_samplers", resources.separate_samplers.size());
+            Log::Info("Found {} separate_samplers", resources[D3D_SIT_SAMPLER].size());
 
-            for (const auto& resource : resources.separate_samplers)
+            for (const auto& resource : resources[D3D_SIT_SAMPLER])
             {
-                const uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
-                const uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding) - vulkanOffsets.sampler;
+                const uint32_t set = resource.Space;
+                const uint32_t binding = resource.BindPoint;
 
                 bool bindingExists = false;
                 if (m_ShaderResources.contains(set))
                 {
                     for (auto& setResource : m_ShaderResources.at(set))
                     {
-                        if (resource.name == setResource.Name && binding == setResource.Binding)
+                        if (resource.Name == setResource.Name && binding == setResource.Binding)
                         {
                             setResource.Stage = (setResource.Stage | type);
                             bindingExists = true;
@@ -239,7 +301,7 @@ namespace Eppo
                 if (!bindingExists)
                 {
                     ShaderResourceBinding& shaderResource = m_ShaderResources[set].emplace_back();
-                    shaderResource.Name = resource.name;
+                    shaderResource.Name = resource.Name;
                     shaderResource.Binding = binding;
                     shaderResource.Stage = type;
                     shaderResource.Type = nvrhi::ResourceType::Sampler;
@@ -251,21 +313,21 @@ namespace Eppo
             }
         }
 
-        if (!resources.storage_buffers.empty())
+        if (!resources[D3D_SIT_STRUCTURED].empty())
         {
-            Log::Info("Found {} storage_buffers", resources.storage_buffers.size());
+            Log::Info("Found {} storage_buffers", resources[D3D_SIT_STRUCTURED].size());
 
-            for (const auto& resource : resources.storage_buffers)
+            for (const auto& resource : resources[D3D_SIT_STRUCTURED])
             {
-                const uint32_t set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
-                const uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding) - vulkanOffsets.shaderResource;
+                const uint32_t set = resource.Space;
+                const uint32_t binding = resource.BindPoint;
 
                 bool bindingExists = false;
                 if (m_ShaderResources.contains(set))
                 {
                     for (auto& setResource : m_ShaderResources.at(set))
                     {
-                        if (resource.name == setResource.Name && binding == setResource.Binding)
+                        if (resource.Name == setResource.Name && binding == setResource.Binding)
                         {
                             setResource.Stage = (setResource.Stage | type);
                             bindingExists = true;
@@ -277,7 +339,7 @@ namespace Eppo
                 if (!bindingExists)
                 {
                     ShaderResourceBinding& shaderResource = m_ShaderResources[set].emplace_back();
-                    shaderResource.Name = resource.name;
+                    shaderResource.Name = resource.Name;
                     shaderResource.Binding = binding;
                     shaderResource.Stage = type;
                     shaderResource.Type = nvrhi::ResourceType::StructuredBuffer_SRV;
@@ -288,7 +350,8 @@ namespace Eppo
                 }
             }
         }
-        Log::Trace("Found {} sampled_images", resources.sampled_images.size());
-        Log::Trace("Found {} storage_images", resources.storage_images.size());
+        Log::Trace("Found {} sampled_images", 0);
+        Log::Trace("Found {} storage_images", resources[D3D_SIT_UAV_RWTYPED].size());
+        return true;
     }
 }
