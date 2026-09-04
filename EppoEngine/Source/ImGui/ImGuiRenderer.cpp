@@ -104,13 +104,8 @@ namespace Eppo
 
     auto ImGuiRenderer::RenderToSwapchain(ImGuiViewport* viewport, const Ref<Swapchain>& swapchain, const bool clearSwapchainTarget) -> void
     {
-        Renderer::Submit(
-            [this, viewport, swapchain, clearSwapchainTarget]()
-            {
-                EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain");
-                Render(viewport, GetOrCreateRenderPass(swapchain), clearSwapchainTarget);
-            }
-        );
+        EP_PROFILE_FN("ImGuiRenderer::RenderToSwapchain");
+        Render(viewport, GetOrCreateRenderPass(swapchain), clearSwapchainTarget);
     }
 
     auto ImGuiRenderer::Render(ImGuiViewport* viewport, const Ref<RenderPass>& renderPass, const bool clearTarget) -> void
