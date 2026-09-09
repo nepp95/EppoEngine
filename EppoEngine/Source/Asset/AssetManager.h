@@ -18,13 +18,13 @@ namespace Eppo
         auto CreateAsset(const std::filesystem::path& path, const Ref<Asset>& existingAsset = nullptr) -> bool;
 
         // Get or load an asset of which we know the metadata
-        auto GetOrLoadAsset(AssetHandle handle, bool async = false) -> Ref<Asset>;
+        auto GetOrLoadAsset(AssetHandle handle) -> Ref<Asset>;
 
         template<typename T>
             requires(std::derived_from<T, Asset>)
-        auto GetOrLoadAsset(const AssetHandle handle, const bool async = false) -> Ref<T>
+        auto GetOrLoadAsset(const AssetHandle handle) -> Ref<T>
         {
-            return std::static_pointer_cast<T>(GetOrLoadAsset(handle, async));
+            return std::static_pointer_cast<T>(GetOrLoadAsset(handle));
         }
 
         auto Tick() -> void;
@@ -58,6 +58,17 @@ namespace Eppo
         auto GenerateAsset(AssetHandle handle) -> Ref<Asset>;
 
     private:
+        struct ImportState
+        {
+            std::thread::id Owner;
+            std::condition_variable_any Changed;
+            Ref<Asset> Result;
+            bool Complete = false;
+        };
+        std::map<AssetHandle, Ref<ImportState>> m_ImportStates;
+        std::map<std::thread::id, AssetHandle> m_WaitingImports;
+        mutable std::mutex m_RegistryWriteMutex;
+
         std::map<AssetHandle, AssetMetadata> m_AssetData;
         std::map<AssetHandle, PackedAssetData> m_PackedAssets;
         std::unordered_map<AssetHandle, Ref<Asset>> m_LoadedAssets;

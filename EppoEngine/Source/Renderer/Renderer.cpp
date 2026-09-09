@@ -16,23 +16,7 @@ namespace Eppo
     namespace
     {
         constexpr std::array s_EngineShaderNames{
-            "bloomDownSample",
-            "bloomUpSample",
-            "composite",
-            "geometry",
-            "lighting",
-            "imgui",
-            "shadowDepth",
-            "skybox",
-            "ssao",
-            "ssaoBlur",
-            "tonemap",
-            "wireframe",
-            "iblEquirectToCube",
-            "iblEnvironmentMip",
-            "iblIrradiance",
-            "iblPrefilter",
-            "iblBrdfLut",
+            "composite", "displayConversion", "imgui", "opaqueForward", "skybox", "wireframe", "iblEquirectToCube",
         };
     }
 
@@ -106,7 +90,7 @@ namespace Eppo
             const auto& clearColor = renderPassSpec.ClearColor;
             for (size_t i = 0; i < framebufferHandle->getDesc().colorAttachments.size(); i++)
                 nvrhi::utils::ClearColorAttachment(
-                    cmd, framebufferHandle, i, nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a)
+                    cmd, framebufferHandle, static_cast<uint32_t>(i), nvrhi::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a)
                 );
         }
 

@@ -39,11 +39,20 @@ namespace Eppo
         const AssetMetadata metadata{
             .Handle = handle,
             .Type = GetAssetTypeFromPath(path),
-            .Filepath = Project::GetAssetRelativeFilepath(path),
+            .Filepath = Project::GetAssetRelativeFilepath(path).lexically_normal(),
         };
 
         {
             std::scoped_lock lock(m_Mutex);
+
+            for (const auto& [existingHandle, existingMetadata] : m_AssetData)
+            {
+                if (existingMetadata.Filepath.lexically_normal() == metadata.Filepath)
+                {
+                    Log::Error("Asset path '{}' is already registered as '{}'", metadata.Filepath, existingHandle);
+                    return false;
+                }
+            }
 
             if (m_AssetData.contains(handle))
             {
@@ -61,72 +70,115 @@ namespace Eppo
         return true;
     }
 
-    auto AssetManager::GetOrLoadAsset(AssetHandle handle, const bool async) -> Ref<Asset>
+    auto AssetManager::GetOrLoadAsset(AssetHandle handle) -> Ref<Asset>
     {
         EP_PROFILE_FN("AssetManager::GetOrLoadAsset");
 
-        std::scoped_lock lock(m_Mutex);
+        const auto caller = std::this_thread::get_id();
+        const auto rawHandle = static_cast<uint64_t>(handle);
+        const bool reserved = rawHandle > 0 && rawHandle < 11;
 
-        // Asset already loaded
-        if (m_LoadedAssets.contains(handle))
-            return m_LoadedAssets.at(handle);
+        Ref<ImportState> state;
+        AssetMetadata metadata;
 
-        Ref<Asset> asset = nullptr;
-
-        // Get placeholder asset if handle is reserved
-        if (auto id = static_cast<uint64_t>(handle); id < 11)
-            asset = GenerateAsset(handle);
-
-        // Create asset instance
-        if (!asset && !m_AssetData.contains(handle))
         {
-            Log::Error("Failed to load asset with handle '{}'", handle);
-            return nullptr;
-        }
+            std::unique_lock lock(m_Mutex);
 
-        const auto& metadata = m_AssetData.at(handle);
+            if (const auto it = m_LoadedAssets.find(handle); it != m_LoadedAssets.end())
+                return it->second;
 
-        if (!asset)
-        {
-            if (async)
+            if (!reserved)
             {
-                // EP_ASSERT(!m_LoadFutures.contains(handle));
-
-                // m_LoadFutures[handle] = std::async(std::launch::async, [this, handle, asset, metadata]()
-                //{
-                //     EP_PROFILE_FN("AssetManager::LoadAsset::Lambda");
-
-                //    // Load asset here
-
-
-                //    m_LoadedComplete.insert(handle);
-                //});
-            }
-            else
-            {
-                if (const auto packedAsset = m_PackedAssets.find(handle); packedAsset != m_PackedAssets.end())
+                const auto it = m_AssetData.find(handle);
+                if (it == m_AssetData.end())
                 {
-                    asset = AssetImporter::ImportPackedAsset(handle, metadata, packedAsset->second.Payload);
-                }
-                else if (m_UsesPackedAssets && metadata.Type == AssetType::Scene)
-                {
-                    Log::Error("Packed scene '{}' has no payload", handle);
+                    Log::Error("Failed to load unregistered asset '{}'!", handle);
                     return nullptr;
                 }
-                else
-                {
-                    asset = AssetImporter::ImportAsset(handle, metadata);
-                }
+
+                metadata = it->second;
             }
+
+            if (const auto it = m_ImportStates.find(handle); it != m_ImportStates.end())
+            {
+                state = it->second;
+                auto owner = state->Owner;
+
+                while (true)
+                {
+                    if (owner == caller)
+                    {
+                        Log::Error("Cyclic import dependency at asset '{}'!", handle);
+                        return nullptr;
+                    }
+
+                    const auto waiting = m_WaitingImports.find(owner);
+                    if (waiting == m_WaitingImports.end())
+                        break;
+
+                    const auto next = m_ImportStates.find(waiting->second);
+                    if (next == m_ImportStates.end())
+                        break;
+
+                    owner = next->second->Owner;
+                }
+
+                m_WaitingImports[caller] = handle;
+                state->Changed.wait(
+                    lock,
+                    [&state]() -> bool
+                    {
+                        return state->Complete;
+                    }
+                );
+                m_WaitingImports.erase(caller);
+                return state->Result;
+            }
+            state = CreateRef<ImportState>();
+            state->Owner = caller;
+            m_ImportStates.emplace(handle, state);
         }
 
-        if (!asset)
-            return nullptr;
+        Ref<Asset> result;
+        try
+        {
+            if (reserved)
+                result = GenerateAsset(handle);
+            else if (const auto packed = m_PackedAssets.find(handle); packed != m_PackedAssets.end())
+                result = AssetImporter::ImportPackedAsset(handle, metadata, packed->second.Payload);
+            else if (m_UsesPackedAssets && metadata.Type == AssetType::Scene)
+                Log::Error("Packed scene '{}' has no payload!", handle);
+            else
+                result = AssetImporter::ImportAsset(handle, metadata);
+        }
+        catch (const std::exception& error)
+        {
+            Log::Error("Import of '{}' failed: {}", handle, error.what());
+        }
+        catch (...)
+        {
+            Log::Error("Import of '{}' failed with an unknown exception!", handle);
+        }
 
-        asset->Handle = handle;
-        m_LoadedAssets[handle] = asset;
+        {
+            std::unique_lock lock(m_Mutex);
 
-        return asset;
+            const auto current = m_ImportStates.find(handle);
+            if (current == m_ImportStates.end() || current->second != state)
+                return nullptr;
+
+            if (result && m_AssetData.contains(handle))
+            {
+                result->Handle = handle;
+                m_LoadedAssets[handle] = result;
+                state->Result = result;
+            }
+
+            state->Complete = true;
+            m_ImportStates.erase(current);
+        }
+        state->Changed.notify_all();
+        return state->Result;
     }
 
     auto AssetManager::Tick() -> void {}
@@ -156,7 +208,7 @@ namespace Eppo
     auto AssetManager::GetHandleForPath(const std::filesystem::path& path) const -> AssetHandle
     {
         // Registry stores asset-relative paths, so normalize whatever we get.
-        const auto relative = path.is_absolute() ? Project::GetAssetRelativeFilepath(path) : path;
+        const auto relative = path.is_absolute() ? Project::GetAssetRelativeFilepath(path).lexically_normal() : path;
 
         std::shared_lock lock(m_Mutex);
 
@@ -182,6 +234,15 @@ namespace Eppo
 
             m_AssetData.erase(handle);
             m_LoadedAssets.erase(handle);
+
+            if (const auto import = m_ImportStates.find(handle); import != m_ImportStates.end())
+            {
+                const auto state = import->second;
+                state->Complete = true;
+                state->Result = nullptr;
+                m_ImportStates.erase(import);
+                state->Changed.notify_all();
+            }
         }
 
         SerializeAssetRegistry();
@@ -224,6 +285,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("AssetManager::SerializeAssetRegistry");
 
+        std::scoped_lock writeLock(m_RegistryWriteMutex);
         std::shared_lock lock(m_Mutex);
 
         json data;
@@ -304,7 +366,10 @@ namespace Eppo
                 .IsRuntimeAsset = true,
             };
 
-            m_AssetData[handle] = metadata;
+            {
+                std::scoped_lock lock(m_Mutex);
+                m_AssetData[handle] = metadata;
+            }
 
             return mesh;
         }
@@ -319,7 +384,10 @@ namespace Eppo
                 .IsRuntimeAsset = true,
             };
 
-            m_AssetData[handle] = metadata;
+            {
+                std::scoped_lock lock(m_Mutex);
+                m_AssetData[handle] = metadata;
+            }
 
             return image;
         }

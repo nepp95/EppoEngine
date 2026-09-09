@@ -295,221 +295,12 @@ namespace
             static_cast<float>(readback.Pixels[index + 2u]) / 255.0f,
         };
     }
-
-    [[nodiscard]] auto AverageNeighbourLuminanceDelta(const Rgba8Readback& readback, const glm::ivec2 center, const int32_t radius) -> float
-    {
-        float delta = 0.0f;
-        uint32_t sampleCount = 0;
-        const glm::vec3 weights(0.2126f, 0.7152f, 0.0722f);
-
-        for (int32_t y = center.y - radius; y < center.y + radius; y++)
-        {
-            for (int32_t x = center.x - radius; x < center.x + radius; x++)
-            {
-                if (glm::distance(glm::vec2(x, y), glm::vec2(center)) > static_cast<float>(radius))
-                    continue;
-
-                const float luminance = glm::dot(ReadPixel(readback, { x, y }), weights);
-                delta += glm::abs(luminance - glm::dot(ReadPixel(readback, { x + 1, y }), weights));
-                delta += glm::abs(luminance - glm::dot(ReadPixel(readback, { x, y + 1 }), weights));
-                sampleCount += 2u;
-            }
-        }
-
-        EP_REQUIRE(sampleCount > 0);
-        return delta / static_cast<float>(sampleCount);
-    }
-
-    auto ConfigureBloomScene(const Ref<Scene>& scene) -> void
-    {
-        auto& environment = scene->GetEnvironmentSettings();
-        environment.ZenithColor = glm::vec3(0.0f);
-        environment.HorizonColor = glm::vec3(0.0f);
-        environment.GroundColor = glm::vec3(0.0f);
-        environment.AmbientIntensity = 0.0f;
-
-        const auto& assetManager = Project::GetActive()->GetAssetManager();
-        const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
-        EP_REQUIRE(mesh != nullptr);
-        mesh->GetMaterial(0)->EmissiveFactor = glm::vec3(8.0f, 4.0f, 1.0f);
-
-        Entity emitter = scene->CreateEntity("Bloom emitter");
-        emitter.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
-        emitter.GetComponent<TransformComponent>().Scale = glm::vec3(0.25f);
-    }
 }
 
 // End-to-end rendering over real frames: these drive a Scene through the SceneRenderer
 // on the booted graphical harness, so they need a display + GPU.
-TEST(Renderer, SceneRenderer_BloomIntensityRaisesNeighbourLuminance)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
 
-    PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
-    ConfigureBloomScene(scene);
-
-    auto& bloom = scene->GetBloomSettings();
-    bloom.Threshold = 0.5f;
-    bloom.Knee = 0.25f;
-    bloom.Intensity = 0.0f;
-    bloom.Radius = 1.0f;
-
-    constexpr uint32_t width = 256u;
-    constexpr uint32_t height = 256u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = width, .Height = height });
-    EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
-    camera.SetViewportSize(width, height);
-
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback disabled = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    bloom.Intensity = 0.55f;
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback enabled = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    const glm::ivec2 neighbour = ProjectToPixel(camera, glm::vec3(0.5f, 0.0f, 0.0f), width, height);
-    EXPECT_TRUE(AverageLuminance(enabled, neighbour) > AverageLuminance(disabled, neighbour) + 0.02f);
-}
-
-TEST(Renderer, SceneRenderer_BloomRadiusWidensHalo)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
-    ConfigureBloomScene(scene);
-
-    auto& bloom = scene->GetBloomSettings();
-    bloom.Threshold = 0.5f;
-    bloom.Knee = 0.25f;
-    bloom.Intensity = 0.55f;
-    bloom.Radius = 0.0f;
-
-    constexpr uint32_t width = 256u;
-    constexpr uint32_t height = 256u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = width, .Height = height });
-    EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
-    camera.SetViewportSize(width, height);
-
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback narrow = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    bloom.Radius = 4.0f;
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback wide = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    const glm::ivec2 farNeighbour = ProjectToPixel(camera, glm::vec3(1.1f, 0.0f, 0.0f), width, height);
-    EXPECT_TRUE(AverageLuminance(wide, farNeighbour) > AverageLuminance(narrow, farNeighbour) + 0.04f);
-}
-
-TEST(Renderer, SceneRenderer_PointLightAndGradientSky_RendersWithoutError)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    const Ref<Scene> scene = ctx.GetScene();
-
-    Entity lamp = scene->CreateEntity("Lamp");
-    lamp.GetComponent<TransformComponent>().Translation = { 2.0f, 3.0f, 2.0f };
-    auto& light = lamp.AddComponent<PointLightComponent>();
-    light.Color = { 1.0f, 0.8f, 0.6f };
-    light.Intensity = 15.0f;
-
-    scene->GetEnvironmentSettings().AmbientIntensity = 0.75f;
-
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
-    const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
-
-    // Render across several real frames to cycle the frames-in-flight indices.
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    EXPECT_TRUE(sceneRenderer->GetFinalImage() != nullptr);
-    EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
-}
-
-TEST(Renderer, SceneRenderer_DeferredSkyDepthBindingSurvivesResize)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    const Ref<Scene> scene = ctx.GetScene();
-    const auto sink = std::make_shared<ErrorCountingSink>();
-    Log::AddSink(sink);
-    constexpr uint32_t initialWidth = 64u;
-    constexpr uint32_t initialHeight = 64u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
-    EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
-    camera.SetViewportSize(initialWidth, initialHeight);
-
-    ctx.AdvanceFrames(
-        2,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    constexpr uint32_t resizedWidth = 96u;
-    constexpr uint32_t resizedHeight = 48u;
-    sceneRenderer->Resize(resizedWidth, resizedHeight);
-    camera.SetViewportSize(resizedWidth, resizedHeight);
-    ctx.AdvanceFrames(
-        2,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
-    EP_REQUIRE(finalImage != nullptr);
-    EXPECT_EQ(resizedWidth, finalImage->GetWidth());
-    EXPECT_EQ(resizedHeight, finalImage->GetHeight());
-    EXPECT_EQ(0u, sink->ErrorCount());
-    EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
-}
-
-TEST(Renderer, SceneRenderer_HdrSceneTonemapsBeforeDepthAwareWireframes)
+TEST(Renderer, SceneRenderer_HdrSceneDisplayConvertsBeforeDepthAwareWireframes)
 {
     Testing::TestContext ctx;
     if (!ctx.IsAvailable())
@@ -548,151 +339,6 @@ TEST(Renderer, SceneRenderer_HdrSceneTonemapsBeforeDepthAwareWireframes)
     EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
 }
 
-TEST(Renderer, SceneRenderer_DirectionalShadowDarkensReceiverAndSurvivesResize)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
-    scene->GetEnvironmentSettings().ZenithColor = glm::vec3(0.0f);
-    scene->GetEnvironmentSettings().HorizonColor = glm::vec3(0.0f);
-    scene->GetEnvironmentSettings().GroundColor = glm::vec3(0.0f);
-    scene->GetEnvironmentSettings().AmbientIntensity = 0.0f;
-
-    Entity receiver = scene->CreateEntity("Shadow receiver");
-    receiver.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
-    receiver.GetComponent<TransformComponent>().Translation = { 0.0f, -0.05f, 0.0f };
-    receiver.GetComponent<TransformComponent>().Scale = { 3.0f, 0.05f, 3.0f };
-
-    Entity caster = scene->CreateEntity("Shadow caster");
-    caster.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
-    caster.GetComponent<TransformComponent>().Translation = { 0.0f, 0.5f, 0.0f };
-    caster.GetComponent<TransformComponent>().Scale = glm::vec3(0.5f);
-
-    Entity sun = scene->CreateEntity("Sun");
-    auto& directionalLight = sun.AddComponent<DirectionalLightComponent>();
-    directionalLight.Intensity = 8.0f;
-    sun.GetComponent<TransformComponent>().Rotation.z = glm::radians(30.0f);
-    sun.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f, 0.0f, -3.0f);
-
-    constexpr uint32_t initialWidth = 256u;
-    constexpr uint32_t initialHeight = 256u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
-    EditorCamera camera(glm::vec3(0.0f, 5.0f, 16.0f), -32.0f, -90.0f);
-    camera.SetViewportSize(initialWidth, initialHeight);
-
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    const Rgba8Readback readback = ReadRgba8(sceneRenderer->GetFinalImage());
-    const glm::ivec2 shadowedPixel = ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), initialWidth, initialHeight);
-    const glm::ivec2 litPixel = ProjectToPixel(camera, glm::vec3(-1.5f, 0.001f, 0.0f), initialWidth, initialHeight);
-    const float shadowed = AverageLuminance(readback, shadowedPixel);
-    const float lit = AverageLuminance(readback, litPixel);
-    EXPECT_GT(lit, shadowed + 0.05f);
-
-    constexpr uint32_t resizedWidth = 320u;
-    constexpr uint32_t resizedHeight = 180u;
-    sceneRenderer->Resize(resizedWidth, resizedHeight);
-    camera.SetViewportSize(resizedWidth, resizedHeight);
-    ctx.AdvanceFrames(
-        2,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
-    EP_REQUIRE(finalImage != nullptr);
-    EXPECT_EQ(resizedWidth, finalImage->GetWidth());
-    EXPECT_EQ(resizedHeight, finalImage->GetHeight());
-    EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
-}
-
-TEST(Renderer, SceneRenderer_AlphaMaskMatchesGeometryAndDirectionalShadow)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
-    auto& environment = scene->GetEnvironmentSettings();
-    environment.ZenithColor = glm::vec3(0.0f);
-    environment.HorizonColor = glm::vec3(0.0f);
-    environment.GroundColor = glm::vec3(0.0f);
-    environment.AmbientIntensity = 0.0f;
-    scene->GetSsaoSettings().Intensity = 0.0f;
-    scene->GetBloomSettings().Intensity = 0.0f;
-
-    const Ref<Mesh> casterMesh =
-        project.Manager()->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
-    EP_REQUIRE(casterMesh != nullptr);
-    const Ref<Material>& casterMaterial = casterMesh->GetMaterial(0);
-    casterMaterial->AlphaMode = MaterialAlphaMode::Mask;
-    casterMaterial->AlphaCutoff = 0.5f;
-    casterMaterial->DoubleSided = true;
-    casterMaterial->BaseColor = glm::vec4(1.0f, 0.02f, 0.02f, 0.0f);
-    casterMaterial->EmissiveFactor = glm::vec3(4.0f, 0.0f, 0.0f);
-
-    Entity receiver = scene->CreateEntity("Alpha-mask receiver");
-    receiver.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
-    receiver.GetComponent<TransformComponent>().Translation = { 0.0f, -0.05f, 0.0f };
-    receiver.GetComponent<TransformComponent>().Scale = { 3.0f, 0.05f, 3.0f };
-
-    Entity caster = scene->CreateEntity("Alpha-mask caster");
-    caster.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Sphere);
-    caster.GetComponent<TransformComponent>().Translation = { 0.0f, 0.75f, 0.0f };
-    caster.GetComponent<TransformComponent>().Scale = glm::vec3(0.75f);
-
-    Entity sun = scene->CreateEntity("Sun");
-    sun.AddComponent<DirectionalLightComponent>().Intensity = 8.0f;
-    sun.GetComponent<TransformComponent>().Rotation.z = glm::radians(30.0f);
-
-    constexpr uint32_t size = 256u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
-    EditorCamera camera(glm::vec3(0.0f, 5.0f, 16.0f), -32.0f, -90.0f);
-    camera.SetViewportSize(size, size);
-
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback rejected = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    casterMaterial->BaseColor.a = 1.0f;
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback accepted = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    const glm::ivec2 shadowPixel = ProjectToPixel(camera, glm::vec3(0.3f, 0.001f, 0.15f), size, size);
-    EXPECT_GT(AverageLuminance(rejected, shadowPixel), AverageLuminance(accepted, shadowPixel) + 0.05f);
-
-    const glm::ivec2 casterPixel = ProjectToPixel(camera, glm::vec3(0.0f, 0.75f, 0.0f), size, size);
-    const glm::vec3 rejectedCaster = ReadPixel(rejected, casterPixel);
-    const glm::vec3 acceptedCaster = ReadPixel(accepted, casterPixel);
-    EXPECT_LT(glm::abs(rejectedCaster.r - rejectedCaster.g), 0.08f);
-    EXPECT_GT(acceptedCaster.r, acceptedCaster.g + 0.08f);
-}
-
 TEST(Renderer, SceneRenderer_DoubleSidedMaterialRendersFromBothSides)
 {
     Testing::TestContext ctx;
@@ -721,8 +367,7 @@ TEST(Renderer, SceneRenderer_DoubleSidedMaterialRendersFromBothSides)
     triangle.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f);
 
     constexpr uint32_t size = 128u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
     EditorCamera frontCamera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     EditorCamera backCamera(glm::vec3(0.0f, 0.0f, -4.0f), 0.0f, 90.0f);
     frontCamera.SetViewportSize(size, size);
@@ -752,65 +397,6 @@ TEST(Renderer, SceneRenderer_DoubleSidedMaterialRendersFromBothSides)
 
     EXPECT_LT(glm::min(singleSidedFront, singleSidedBack), 0.02f);
     EXPECT_GT(glm::min(doubleSidedFront, doubleSidedBack), 0.05f);
-}
-
-TEST(Renderer, SceneRenderer_DirectionalShadowIncludesOffFrustumCasterInOuterCascade)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
-    auto& environment = scene->GetEnvironmentSettings();
-    environment.ZenithColor = glm::vec3(0.0f);
-    environment.HorizonColor = glm::vec3(0.0f);
-    environment.GroundColor = glm::vec3(0.0f);
-    environment.AmbientIntensity = 0.0f;
-    scene->GetSsaoSettings().Intensity = 0.0f;
-    scene->GetBloomSettings().Intensity = 0.0f;
-
-    Entity receiver = scene->CreateEntity("Outer-cascade receiver");
-    receiver.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
-    receiver.GetComponent<TransformComponent>().Translation = { 0.0f, 0.0f, -20.0f };
-    receiver.GetComponent<TransformComponent>().Scale = { 4.0f, 4.0f, 0.05f };
-
-    Entity caster = scene->CreateEntity("Off-frustum caster");
-    caster.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
-    caster.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, -2.6795f };
-    caster.GetComponent<TransformComponent>().Scale = glm::vec3(0.75f);
-
-    Entity sun = scene->CreateEntity("Sun");
-    sun.AddComponent<DirectionalLightComponent>().Intensity = 8.0f;
-    sun.GetComponent<TransformComponent>().Rotation.x = glm::radians(60.0f);
-
-    constexpr uint32_t size = 256u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
-    EditorCamera camera(glm::vec3(0.0f), 0.0f, -90.0f);
-    camera.SetViewportSize(size, size);
-
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback shadowed = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    caster.GetComponent<TransformComponent>().Translation.x = 50.0f;
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-    const Rgba8Readback unshadowed = ReadRgba8(sceneRenderer->GetFinalImage());
-
-    const glm::ivec2 receiverPixel = ProjectToPixel(camera, glm::vec3(0.0f, 0.0f, -19.94f), size, size);
-    EXPECT_GT(AverageLuminance(unshadowed, receiverPixel), AverageLuminance(shadowed, receiverPixel) + 0.05f);
 }
 
 TEST(Renderer, SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)
@@ -868,68 +454,6 @@ TEST(Renderer, SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)
     const Rgba8Readback right = ReadRgba8(sceneRenderer->GetFinalImage());
     EXPECT_TRUE(MaxLuminance(right, rightSample) > 0.3f);
     EXPECT_TRUE(MaxLuminance(right, downSample) < 0.1f);
-}
-
-TEST(Renderer, SceneRenderer_SkyboxEnvironment_BakesIblAndRendersCleanly)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    // A project holding a uniform equirectangular HDR the renderer can bake IBL from.
-    const Ref<Project> previous = Project::GetActive();
-    const Testing::TempDir dir;
-    const auto projectDirectory = dir.File("Project");
-    std::filesystem::create_directories(projectDirectory / "Assets" / "Textures");
-    const Ref<AssetManager> assetManager = CreateRef<AssetManager>();
-    Project::New(ProjectSpecification{ .Name = "Skybox", .ProjectDirectory = projectDirectory }, assetManager);
-
-    const auto hdrPath = projectDirectory / "Assets" / "Textures" / "uniform.hdr";
-    EP_REQUIRE(FS::WriteBytes(hdrPath, MakeUniformHdr(4u, 2u), true));
-    const Ref<Asset> asset = CreateRef<Asset>();
-    asset->Handle = AssetHandle(800);
-    EP_REQUIRE(assetManager->CreateAsset(hdrPath, asset));
-
-    const Ref<Scene> scene = ctx.GetScene();
-    scene->GetEnvironmentSettings().SkyboxHandle = AssetHandle(800);
-    scene->GetEnvironmentSettings().AmbientIntensity = 0.25f;
-    scene->GetBloomSettings().Intensity = 0.0f;
-
-    // A mesh so the geometry pass samples the baked irradiance/prefilter/LUT too.
-    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
-    EP_REQUIRE(mesh != nullptr);
-    mesh->GetMaterial(0)->BaseColor = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
-    mesh->GetMaterial(0)->Metallic = 0.0f;
-    mesh->GetMaterial(0)->Roughness = 1.0f;
-
-    Entity sphere = scene->CreateEntity("Sphere");
-    sphere.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Sphere);
-
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 128u, .Height = 128u });
-    EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
-    camera.SetViewportSize(128u, 128u);
-
-    // The bake fires on the first frame's SubmitEnvironment; rendering several frames sends the
-    // baked cubes/LUT through both the geometry and skybox passes under the validation layer.
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
-    EP_REQUIRE(finalImage != nullptr);
-    EXPECT_EQ(128u, finalImage->GetWidth());
-    EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
-
-    const glm::vec3 centerColor = ReadPixel(ReadRgba8(finalImage), glm::ivec2(64));
-    EXPECT_TRUE(centerColor.r < 0.9f);
-    EXPECT_TRUE(centerColor.r > centerColor.g + 0.05f);
-    EXPECT_TRUE(centerColor.g > centerColor.b + 0.08f);
-
-    Project::SetActive(previous);
 }
 
 TEST(Renderer, SceneRenderer_EquirectangularSkyMapsTopToPositiveY)
@@ -1007,69 +531,6 @@ TEST(Renderer, SceneRenderer_EquirectangularSkyMapsTopToPositiveY)
     EXPECT_TRUE(lowerSideColor.b > lowerSideColor.r + 0.25f);
 }
 
-TEST(Renderer, SceneRenderer_RoughIblSuppressesHighFrequencyFireflies)
-{
-    Testing::TestContext ctx;
-    if (!ctx.IsAvailable())
-        return;
-
-    const ActiveProjectRestorer restoreProject;
-    const Testing::TempDir dir;
-    const auto projectDirectory = dir.File("Project");
-    std::filesystem::create_directories(projectDirectory / "Assets" / "Textures");
-    const Ref<AssetManager> assetManager = CreateRef<AssetManager>();
-    Project::New(ProjectSpecification{ .Name = "IblFiltering", .ProjectDirectory = projectDirectory }, assetManager);
-
-    const auto hdrPath = projectDirectory / "Assets" / "Textures" / "hotspot.hdr";
-    EP_REQUIRE(FS::WriteBytes(hdrPath, MakeHotspotHdr(512u, 256u), true));
-    const Ref<Asset> asset = CreateRef<Asset>();
-    asset->Handle = AssetHandle(802);
-    EP_REQUIRE(assetManager->CreateAsset(hdrPath, asset));
-
-    const Ref<Scene> scene = ctx.GetScene();
-    scene->GetEnvironmentSettings().SkyboxHandle = AssetHandle(802);
-    scene->GetBloomSettings().Intensity = 0.0f;
-
-    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
-    EP_REQUIRE(mesh != nullptr);
-    mesh->GetMaterial(0)->BaseColor = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
-    mesh->GetMaterial(0)->Metallic = 0.0f;
-    mesh->GetMaterial(0)->Roughness = 1.0f;
-
-    Entity sphere = scene->CreateEntity("Sphere");
-    sphere.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Sphere);
-
-    constexpr uint32_t size = 128u;
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
-    EditorCamera camera(glm::vec3(4.0f, 0.0f, 0.0f), 0.0f, 180.0f);
-    camera.SetViewportSize(size, size);
-    ctx.AdvanceFrames(
-        3,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    const Rgba8Readback readback = ReadRgba8(sceneRenderer->GetFinalImage());
-    const float neighbourDelta = AverageNeighbourLuminanceDelta(readback, glm::ivec2(size / 2u), 20);
-    EXPECT_NEAR(0.0f, neighbourDelta, 0.005f);
-
-    mesh->GetMaterial(0)->Metallic = 1.0f;
-    mesh->GetMaterial(0)->Roughness = 0.5f;
-    ctx.AdvanceFrames(
-        2,
-        [&](float)
-        {
-            scene->OnRenderEditor(sceneRenderer, camera);
-        }
-    );
-
-    const Rgba8Readback specularReadback = ReadRgba8(sceneRenderer->GetFinalImage());
-    const float specularDelta = AverageNeighbourLuminanceDelta(specularReadback, glm::ivec2(size / 2u), 20);
-    EXPECT_NEAR(0.0f, specularDelta, 0.05f);
-}
-
 // Regression: the Tracy GPU context must be set up on its own command buffer, not by wrapping an
 // nvrhi command list, which double-began/re-submitted the buffer and tripped Vulkan validation.
 TEST(Renderer, VulkanGpuProfiler_Construction_EmitsNoVulkanValidationErrors)
@@ -1133,4 +594,165 @@ TEST(Renderer, Renderer_CompositeToSwapchain_SurvivesImageCyclingAndResize)
 
     EXPECT_EQ((imageCount + 2) * 2, renderedFrames);
     EXPECT_TRUE(app->IsRunning());
+}
+
+TEST(Renderer, SceneRenderer_ForwardFrameRendersSceneGeometry)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    PrimitiveProjectFixture project;
+    const Ref<Scene> scene = ctx.GetScene();
+    auto& environment = scene->GetEnvironmentSettings();
+    environment.ZenithColor = glm::vec3(0.0f);
+    environment.HorizonColor = glm::vec3(0.0f);
+    environment.GroundColor = glm::vec3(0.0f);
+    environment.AmbientIntensity = 0.0f;
+
+    const auto& assetManager = Project::GetActive()->GetAssetManager();
+    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+    EP_REQUIRE(mesh != nullptr);
+    mesh->GetMaterial(0)->EmissiveFactor = glm::vec3(2.0f, 1.0f, 0.5f);
+
+    Entity cube = scene->CreateEntity("Cube");
+    cube.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+
+    constexpr uint32_t size = 128u;
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
+    camera.SetViewportSize(size, size);
+
+    ctx.AdvanceFrames(
+        3,
+        [&](float) -> void
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+
+    const Rgba8Readback frame = ReadRgba8(sceneRenderer->GetFinalImage());
+    const glm::ivec2 cubePixel = ProjectToPixel(camera, glm::vec3(0.0f, 0.0f, 0.0f), size, size);
+    const glm::ivec2 skyPixel = ProjectToPixel(camera, glm::vec3(3.0f, 2.0f, -2.0f), size, size);
+    EXPECT_GT(AverageLuminance(frame, cubePixel), 0.2f);
+    EXPECT_LT(AverageLuminance(frame, skyPixel), 0.02f);
+    EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
+}
+
+TEST(Renderer, SceneRenderer_ForwardTargetsRebindAfterResize)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    PrimitiveProjectFixture project;
+    const Ref<Scene> scene = ctx.GetScene();
+    auto& environment = scene->GetEnvironmentSettings();
+    environment.ZenithColor = glm::vec3(0.0f);
+    environment.HorizonColor = glm::vec3(0.0f);
+    environment.GroundColor = glm::vec3(0.0f);
+    environment.AmbientIntensity = 0.0f;
+
+    const auto& assetManager = Project::GetActive()->GetAssetManager();
+    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+    EP_REQUIRE(mesh != nullptr);
+    mesh->GetMaterial(0)->EmissiveFactor = glm::vec3(2.0f, 1.0f, 0.5f);
+
+    Entity cube = scene->CreateEntity("Cube");
+    cube.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
+
+    constexpr uint32_t initialWidth = 64u;
+    constexpr uint32_t initialHeight = 64u;
+    const Ref<SceneRenderer> sceneRenderer =
+        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
+    EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
+    camera.SetViewportSize(initialWidth, initialHeight);
+
+    ctx.AdvanceFrames(
+        2,
+        [&](float) -> void
+        {
+            scene->OnRenderEditor(sceneRenderer, camera);
+        }
+    );
+
+    for (const auto dimensions : { glm::uvec2(96u, 48u), glm::uvec2(80u, 112u) })
+    {
+        const uint32_t resizedWidth = dimensions.x;
+        const uint32_t resizedHeight = dimensions.y;
+        sceneRenderer->Resize(resizedWidth, resizedHeight);
+        camera.SetViewportSize(resizedWidth, resizedHeight);
+        ctx.AdvanceFrames(
+            2,
+            [&](float) -> void
+            {
+                scene->OnRenderEditor(sceneRenderer, camera);
+            }
+        );
+
+        // The cube must still come through the rebound forward/display-conversion
+        // targets, not a cleared framebuffer.
+        const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
+        EP_REQUIRE(finalImage != nullptr);
+        EXPECT_EQ(resizedWidth, finalImage->GetWidth());
+        EXPECT_EQ(resizedHeight, finalImage->GetHeight());
+        const Rgba8Readback frame = ReadRgba8(finalImage);
+        const glm::ivec2 cubePixel = ProjectToPixel(camera, glm::vec3(0.0f, 0.0f, 0.0f), resizedWidth, resizedHeight);
+        const glm::ivec2 skyPixel = ProjectToPixel(camera, glm::vec3(3.0f, 2.0f, -2.0f), resizedWidth, resizedHeight);
+        EXPECT_GT(AverageLuminance(frame, cubePixel), 0.2f);
+        EXPECT_LT(AverageLuminance(frame, skyPixel), 0.02f);
+        EXPECT_TRUE(Testing::AppHarness::Get()->IsRunning());
+    }
+}
+
+TEST(Renderer, SceneRenderer_SetSceneInvalidatesOnlyOnIdentityChange)
+{
+    Testing::TestContext ctx;
+    if (!ctx.IsAvailable())
+        return;
+
+    PrimitiveProjectFixture project;
+    const Ref<Scene> scene = ctx.GetScene();
+    const Ref<Scene> otherScene = CreateRef<Scene>();
+    auto& environment = scene->GetEnvironmentSettings();
+    environment.ZenithColor = glm::vec3(0.0f);
+    environment.HorizonColor = glm::vec3(0.0f);
+    environment.GroundColor = glm::vec3(0.0f);
+    environment.AmbientIntensity = 0.0f;
+
+    const auto& assetManager = Project::GetActive()->GetAssetManager();
+    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+    EP_REQUIRE(mesh != nullptr);
+    mesh->GetMaterial(0)->EmissiveFactor = glm::vec3(2.0f, 1.0f, 0.5f);
+
+    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 128u, .Height = 128u });
+    EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
+    camera.SetViewportSize(128u, 128u);
+
+    ctx.AdvanceFrames(
+        1,
+        [&](float) -> void
+        {
+            sceneRenderer->BeginScene(camera);
+            sceneRenderer->SubmitEnvironmentSettings(environment);
+            sceneRenderer->SubmitMesh(static_cast<uint64_t>(MeshPrimitiveType::Cube), glm::mat4(1.0f));
+            sceneRenderer->SetScene(scene);
+            sceneRenderer->EndScene();
+        }
+    );
+    const glm::ivec2 cubePixel = ProjectToPixel(camera, glm::vec3(0.0f), 128u, 128u);
+    EXPECT_GT(AverageLuminance(ReadRgba8(sceneRenderer->GetFinalImage()), cubePixel), 0.2f);
+
+    ctx.AdvanceFrames(
+        1,
+        [&](float) -> void
+        {
+            sceneRenderer->BeginScene(camera);
+            sceneRenderer->SubmitMesh(static_cast<uint64_t>(MeshPrimitiveType::Cube), glm::mat4(1.0f));
+            sceneRenderer->SetScene(otherScene);
+            sceneRenderer->SubmitEnvironmentSettings(environment);
+            sceneRenderer->EndScene();
+        }
+    );
+    EXPECT_LT(AverageLuminance(ReadRgba8(sceneRenderer->GetFinalImage()), cubePixel), 0.02f);
 }

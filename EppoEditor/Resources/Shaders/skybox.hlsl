@@ -14,7 +14,7 @@ struct Camera
     float NearClip;
     float FarClip;
 };
-ConstantBuffer<Camera> uCamera : register(b1, space0);
+ConstantBuffer<Camera> uCamera : register(b0, space0);
 
 struct Environment
 {
@@ -25,7 +25,7 @@ struct Environment
     uint4 IBL0;    // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
     uint4 IBL1;    // x = IBL sampler index
 };
-ConstantBuffer<Environment> uEnvironment : register(b3, space0);
+ConstantBuffer<Environment> uEnvironment : register(b1, space0);
 
 Texture2D uSceneDepth : register(t0, space0);
 SamplerState uDepthSampler : register(s0, space0);

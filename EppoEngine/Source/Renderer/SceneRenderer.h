@@ -34,12 +34,7 @@ namespace Eppo
         [[nodiscard]] auto GetFinalImage() const -> const Ref<Image>&;
 
         auto SubmitMesh(AssetHandle meshHandle, const glm::mat4& transform) -> void;
-        auto SubmitDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity) -> void;
-        auto SubmitPointLight(const glm::vec3& position, const glm::vec3& color, float intensity, float range) -> void;
-        // TODO: Remove these 3. We have the scene, the scene has all these.
         auto SubmitEnvironmentSettings(const EnvironmentSettings& environment) -> void;
-        auto SubmitBloomSettings(const BloomSettings& bloom) -> void;
-        auto SubmitSsaoSettings(const SsaoSettings& ssao) -> void;
 
         auto Resize(uint32_t width, uint32_t height) -> void;
 
@@ -57,31 +52,23 @@ namespace Eppo
         // Keep the renderer's scene reference in sync with the editor's active scene.
         // m_Scene is set once at construction and goes stale across play/stop (the
         // editor swaps m_ActiveScene to a runtime copy); call this every frame.
-        auto SetScene(const Ref<Scene>& scene) -> void { m_Scene = scene; }
+        auto SetScene(const Ref<Scene>& scene) -> void;
 
     private:
         auto BeginSceneInternal() -> void;
+        auto InvalidateSceneState() -> void;
         auto EnsureColliderMeshes() -> void;
         auto GatherWireframes() -> void;
         auto PrepareRenderData() -> void;
         auto UploadRenderData() -> void;
-        auto FillShadowData() -> void;
 
-        auto ShadowDepthPass() -> void;
-        auto PointShadowDepthPass() -> void;
-        auto SsaoPass() -> void;
-        auto GeometryPass() -> void;
-        auto LightingPass() -> void;
+        auto OpaqueForwardPass() -> void;
         auto SkyPass() const -> void;
-        auto BloomPass() -> void;
-        auto TonemapPass() const -> void;
+        auto DisplayConversionPass() const -> void;
         auto WireframePass() const -> void;
 
         auto EnsureIblResources() -> void;
         auto BakeEnvironmentMap(const Ref<Image>& equirect) -> void;
-        auto RecordEnvironmentMipPass(
-            const Ref<Image>& target, const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, uint32_t mipLevel
-        ) const -> void;
         auto RecordIblPass(
             const Ref<Shader>& shader, const Ref<Image>& source, const Ref<Sampler>& sampler, const Ref<Image>& target,
             const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, uint32_t mipLevel, float roughness = 0.0f,
@@ -102,26 +89,13 @@ namespace Eppo
         uint32_t m_Height = 0;
 
         // Render passes
-        Ref<RenderPass> m_ShadowDepthPass = nullptr;
-        Ref<RenderPass> m_PointShadowDepthPass = nullptr;
-        Ref<RenderPass> m_SsaoEvaluationPass = nullptr;
-        Ref<RenderPass> m_SsaoBlurHorizontalPass = nullptr;
-        Ref<RenderPass> m_GeometryPass = nullptr;
-        Ref<RenderPass> m_LightingPass = nullptr;
+        Ref<RenderPass> m_OpaqueForwardPass = nullptr;
         Ref<RenderPass> m_SkyPass = nullptr;
-
-        uint32_t m_BloomMipLevels = 0;
-        Ref<Framebuffer> m_BloomPyramidFramebuffer = nullptr;
-        Ref<RenderPass> m_BloomDownSamplePass = nullptr;
-        Ref<RenderPass> m_BloomUpSamplePass = nullptr;
-
-        Ref<RenderPass> m_TonemapPass = nullptr;
+        Ref<RenderPass> m_DisplayConversionPass = nullptr;
         Ref<RenderPass> m_WireframePass = nullptr;
 
         // Extra pipelines
-        Ref<Pipeline> m_GeometryDoubleSidedPipeline = nullptr;
-        Ref<Pipeline> m_ShadowDepthDoubleSidedPipeline = nullptr;
-        Ref<Pipeline> m_PointShadowDepthDoubleSidedPipeline = nullptr;
+        Ref<Pipeline> m_OpaqueForwardDoubleSidedPipeline = nullptr;
 
         // Resources
         Ref<Mesh> m_BoxColliderMesh = nullptr;
@@ -130,44 +104,6 @@ namespace Eppo
         Ref<Mesh> m_CylinderColliderMesh = nullptr;
 
         // Uniforms
-        static constexpr uint32_t MaxPointLights = 16;
-        static constexpr uint32_t s_ShadowCascadeCount = 4;
-        static constexpr uint32_t s_PointShadowFaceCount = MaxPointLights * 6;
-        struct Cascade
-        {
-            glm::mat4 LightViewProjection;
-            float SplitDistance; // view-space far depth of this cascade
-            float WorldUnitsPerTexel;
-            float TransitionStart;
-            float Padding;
-        };
-        struct ShadowDepthData
-        {
-            std::array<Cascade, s_ShadowCascadeCount> Cascades;
-            uint32_t ShadowMapIndex;
-            uint32_t ShadowSamplerIndex;
-            float DepthBiasTexels;
-            float NormalBiasTexels;
-            float ShadowDistance;
-            uint32_t Padding0[3];
-            std::array<glm::mat4, s_PointShadowFaceCount> PointLightViewProjections;
-            uint32_t PointShadowMapIndex;
-            uint32_t PointShadowSamplerIndex;
-            uint32_t PointShadowLightCount;
-            uint32_t Padding1;
-        } m_ShadowDepthData;
-        Ref<UniformBuffer> m_ShadowDepthUB = nullptr;
-
-        static constexpr uint32_t s_SsaoKernelSize = 32;
-        struct SsaoData
-        {
-            std::array<glm::vec4, s_SsaoKernelSize> Kernel;
-            glm::vec4 Params;
-            glm::vec4 InvSize;
-        } m_SsaoData;
-        Ref<UniformBuffer> m_SsaoUB = nullptr;
-        SsaoSettings m_SsaoSettings;
-
         struct CameraData
         {
             glm::mat4 View;
@@ -179,28 +115,6 @@ namespace Eppo
             float FarClip;
         } m_CameraData{};
         Ref<UniformBuffer> m_CameraUB = nullptr;
-
-        struct DirectionalLight
-        {
-            glm::vec4 Direction;
-            glm::vec4 Color;
-        };
-
-        struct PointLight
-        {
-            glm::vec4 Position = glm::vec4(1.0f); // xyz = position, w = range
-            glm::vec4 Color = glm::vec4(1.0f); // rgb = color, a = intensity
-        };
-
-        struct LightData
-        {
-            DirectionalLight DirectionalLight{};
-            std::array<PointLight, MaxPointLights> Lights{};
-            uint32_t NumLights = 0;
-            uint32_t HasDirectionalLight = 0;
-        } m_LightData{};
-        std::vector<PointLight> m_PointLights;
-        Ref<UniformBuffer> m_LightsUB = nullptr;
 
         struct EnvironmentData
         {
@@ -214,11 +128,6 @@ namespace Eppo
         Ref<UniformBuffer> m_EnvironmentUB = nullptr;
 
         Ref<Image> m_EnvironmentCube = nullptr;
-        Ref<Image> m_IrradianceCube = nullptr;
-        Ref<Image> m_PrefilterCube = nullptr;
-        Ref<Image> m_BrdfLut = nullptr;
-
-        BloomSettings m_BloomSettings;
 
         // Draw commands
         struct DrawKey

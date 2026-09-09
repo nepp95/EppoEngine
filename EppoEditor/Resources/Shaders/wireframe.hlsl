@@ -31,8 +31,7 @@ struct Camera
 ConstantBuffer<Camera> uCamera : register(b1, space0);
 
 StructuredBuffer<float4x4> uInstanceTransforms : register(t0, space0);
-
-Texture2D<float> uSceneDepth : register(t2, space0);
+Texture2D<float> uSceneDepth : register(t1, space0);
 
 struct Varyings
 {
