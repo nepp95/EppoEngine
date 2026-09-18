@@ -10,7 +10,7 @@ using namespace Eppo;
 
 TEST(Project, AssetManager_PackedScene_LoadsLazilyFromOwnedPayload)
 {
-    const Ref<Project> previous = Project::GetActive();
+    Ref<Project> previous = Project::GetActive();
     const Testing::TempDir dir;
     const auto projectDirectory = dir.File("Project");
     std::filesystem::create_directories(projectDirectory / "Assets" / "Scenes");
@@ -18,7 +18,7 @@ TEST(Project, AssetManager_PackedScene_LoadsLazilyFromOwnedPayload)
     // A packed scene is the .epscene file's bytes; author one, capture its bytes, then remove
     // the file so the lazy load has to materialize it back from the owned payload.
     const auto scenePath = projectDirectory / "Assets" / "Scenes" / "packed.epscene";
-    const Ref<Scene> authored = CreateRef<Scene>();
+    Ref<Scene> authored = Ref<Scene>::Create();
     authored->Handle = AssetHandle(500);
     authored->CreateEntityWithUUID(Eppo::UUID(501), "PackedEntity");
     EP_REQUIRE(SceneSerializer(authored).Serialize(scenePath));
@@ -31,13 +31,13 @@ TEST(Project, AssetManager_PackedScene_LoadsLazilyFromOwnedPayload)
     std::map<AssetHandle, PackedAssetData> packedAssets;
     packedAssets.emplace(500, PackedAssetData{ AssetType::Scene, payload });
 
-    const Ref<AssetManager> manager = CreateRef<AssetManager>(std::move(registry), std::move(packedAssets));
+    Ref<AssetManager> manager = Ref<AssetManager>::Create(std::move(registry), std::move(packedAssets));
     Project::New(ProjectSpecification{ .Name = "Packed", .ProjectDirectory = projectDirectory }, manager);
 
     EP_REQUIRE(manager->HasAssetData(AssetHandle(500)));
     EXPECT_TRUE(!manager->IsAssetLoaded(AssetHandle(500)));
 
-    const Ref<Scene> scene = manager->GetOrLoadAsset<Scene>(AssetHandle(500));
+    Ref<Scene> scene = manager->GetOrLoadAsset(AssetHandle(500)).As<Scene>();
     EP_REQUIRE(scene != nullptr);
     EXPECT_TRUE(manager->IsAssetLoaded(AssetHandle(500)));
     EXPECT_EQ(500, static_cast<uint64_t>(scene->Handle));
@@ -50,7 +50,7 @@ TEST(Project, AssetManager_PackedScene_LoadsLazilyFromOwnedPayload)
 
 TEST(Project, AssetManager_InvalidPackedScene_ReturnsNullWithoutCaching)
 {
-    const Ref<Project> previous = Project::GetActive();
+    Ref<Project> previous = Project::GetActive();
     const Testing::TempDir dir;
     const auto projectDirectory = dir.File("Project");
     std::filesystem::create_directories(projectDirectory / "Assets" / "Scenes");
@@ -61,7 +61,7 @@ TEST(Project, AssetManager_InvalidPackedScene_ReturnsNullWithoutCaching)
     std::map<AssetHandle, PackedAssetData> packedAssets;
     packedAssets.emplace(500, PackedAssetData{ AssetType::Scene, Buffer::Copy(garbage.data(), garbage.size()) });
 
-    const Ref<AssetManager> manager = CreateRef<AssetManager>(std::move(registry), std::move(packedAssets));
+    Ref<AssetManager> manager = Ref<AssetManager>::Create(std::move(registry), std::move(packedAssets));
     Project::New(ProjectSpecification{ .Name = "Packed", .ProjectDirectory = projectDirectory }, manager);
 
     EXPECT_TRUE(manager->GetOrLoadAsset(AssetHandle(500)) == nullptr);
@@ -72,15 +72,15 @@ TEST(Project, AssetManager_InvalidPackedScene_ReturnsNullWithoutCaching)
 
 TEST(Project, Project_RuntimeConstruction_UsesProvidedAssetManager)
 {
-    const Ref<Project> previous = Project::GetActive();
-    const Ref<AssetManager> assetManager = CreateRef<AssetManager>();
+    Ref<Project> previous = Project::GetActive();
+    Ref<AssetManager> assetManager = Ref<AssetManager>::Create();
     const ProjectSpecification specification{
         .Name = "RuntimeGame",
         .ProjectDirectory = "C:/Export/RuntimeGame",
         .StartScene = AssetHandle(500),
     };
 
-    const Ref<Project> project = Project::New(specification, assetManager);
+    Ref<Project> project = Project::New(specification, assetManager);
     EP_REQUIRE(project != nullptr);
     EXPECT_TRUE(Project::GetActive() == project);
     EXPECT_TRUE(project->GetAssetManager() == assetManager);

@@ -33,7 +33,7 @@ namespace Eppo
     VulkanSwapchain::VulkanSwapchain(GLFWwindow* window)
         : Swapchain(window)
     {
-        const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        Ref<DeviceManagerVK> dm = DeviceManager::Get().As<DeviceManagerVK>();
 
         VK_CHECK(glfwCreateWindowSurface(dm->GetVulkanInstance(), window, nullptr, &m_Surface), "Failed to create window surface!");
         EP_ASSERT(m_Surface);
@@ -51,7 +51,7 @@ namespace Eppo
         // Viewport swapchains are destroyed while the device is still alive
         DeviceManager::Get()->WaitIdle();
 
-        const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        Ref<DeviceManagerVK> dm = DeviceManager::Get().As<DeviceManagerVK>();
         VkDevice device = dm->GetLogicalDevice()->GetNative();
 
         m_Images.clear();
@@ -79,7 +79,7 @@ namespace Eppo
         if (width != m_Width || height != m_Height)
             m_ResizePending = true;
 
-        const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        Ref<DeviceManagerVK> dm = DeviceManager::Get().As<DeviceManagerVK>();
         VkDevice device = dm->GetLogicalDevice()->GetNative();
         nvrhi::vulkan::IDevice* vkNvrhiDevice = dm->GetDevice()->getNativeObject(nvrhi::ObjectTypes::Nvrhi_VK_Device);
 
@@ -130,7 +130,7 @@ namespace Eppo
         EP_PROFILE_FN("Swapchain::Present");
         EP_ASSERT(m_FrameActive, "Present was called without an active swapchain frame!");
 
-        const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        Ref<DeviceManagerVK> dm = DeviceManager::Get().As<DeviceManagerVK>();
         nvrhi::vulkan::IDevice* vkNvrhiDevice(dm->GetDevice()->getNativeObject(nvrhi::ObjectTypes::Nvrhi_VK_Device));
 
         auto& frame = m_FrameSyncData.at(m_CurrentFrameIndex);
@@ -169,7 +169,7 @@ namespace Eppo
 
     auto VulkanSwapchain::CreateSwapchain(uint32_t width, uint32_t height) -> void
     {
-        const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        Ref<DeviceManagerVK> dm = DeviceManager::Get().As<DeviceManagerVK>();
         VkDevice device = dm->GetLogicalDevice()->GetNative();
 
         if (m_Swapchain)
@@ -287,7 +287,7 @@ namespace Eppo
                 .DebugName = std::format("Swapchain Framebuffer {}", i),
             };
 
-            image.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+            image.Framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
             // Create present semaphores
             VK_CHECK(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_PresentSemaphores[i]), "Failed to create semaphore!");
@@ -296,7 +296,7 @@ namespace Eppo
 
     auto VulkanSwapchain::QuerySwapchainSupportDetails() const -> SwapchainSupportDetails
     {
-        const auto& dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        Ref<DeviceManagerVK> dm = DeviceManager::Get().As<DeviceManagerVK>();
         const auto& physicalDevice = dm->GetPhysicalDevice();
 
         SwapchainSupportDetails details;

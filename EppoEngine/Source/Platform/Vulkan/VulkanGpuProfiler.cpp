@@ -9,7 +9,7 @@ namespace Eppo
     VulkanGpuProfiler::VulkanGpuProfiler()
     {
 #if defined(TRACY_ENABLE)
-        const auto dm = std::static_pointer_cast<DeviceManagerVK>(DeviceManager::Get());
+        const auto dm = DeviceManager::Get().As<DeviceManagerVK>();
 
         const VkPhysicalDevice physicalDevice = dm->GetPhysicalDevice()->GetNative();
         const VkDevice device = dm->GetLogicalDevice()->GetNative();
@@ -50,7 +50,7 @@ namespace Eppo
     }
 
     auto VulkanGpuProfiler::BeginZone(
-        [[maybe_unused]] const Ref<RenderCommandBuffer>& commandBuffer, [[maybe_unused]] const char* name,
+        [[maybe_unused]] Ref<RenderCommandBuffer> commandBuffer, [[maybe_unused]] const char* name,
         [[maybe_unused]] const char* function, [[maybe_unused]] const char* file, [[maybe_unused]] const uint32_t line
     ) -> void
     {
@@ -68,7 +68,7 @@ namespace Eppo
 #endif
     }
 
-    auto VulkanGpuProfiler::Collect([[maybe_unused]] const Ref<RenderCommandBuffer>& commandBuffer) -> void
+    auto VulkanGpuProfiler::Collect([[maybe_unused]] Ref<RenderCommandBuffer> commandBuffer) -> void
     {
 #if defined(TRACY_ENABLE)
         const auto cmd =

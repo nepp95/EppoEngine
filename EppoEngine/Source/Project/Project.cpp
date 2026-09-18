@@ -8,7 +8,7 @@ namespace Eppo
 {
     auto Project::New() -> Ref<Project>
     {
-        s_ActiveProject = CreateRef<Project>();
+        s_ActiveProject = Ref<Project>::Create();
         return s_ActiveProject;
     }
 
@@ -30,7 +30,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("Project::Open");
 
-        const auto project = CreateRef<Project>();
+        Ref<Project> project = Ref<Project>::Create();
 
         if (ProjectSerializer serializer(project); !serializer.Deserialize(path))
             return nullptr;
@@ -38,7 +38,7 @@ namespace Eppo
         project->GetSpecification().ProjectDirectory = path.parent_path();
         s_ActiveProject = project;
 
-        const auto assetManager = CreateRef<AssetManager>();
+        Ref<AssetManager> assetManager = Ref<AssetManager>::Create();
         s_ActiveProject->m_AssetManager = assetManager;
         assetManager->DeserializeAssetRegistry();
 
@@ -49,7 +49,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("Project::SaveActive");
 
-        const auto& assetManager = s_ActiveProject->GetAssetManager();
+        Ref<AssetManager> assetManager = s_ActiveProject->GetAssetManager();
         const auto& registry = assetManager->GetAssetRegistry();
 
         for (const auto& [handle, metadata] : registry)
@@ -57,7 +57,7 @@ namespace Eppo
             if (metadata.Type != AssetType::Scene)
                 continue;
 
-            Ref<Scene> scene = assetManager->GetOrLoadAsset<Scene>(handle);
+            Ref<Scene> scene = assetManager->GetOrLoadAsset(handle).As<Scene>();
 
             SceneSerializer serializer(scene);
             serializer.Serialize(GetAssetFilepath(metadata.Filepath));

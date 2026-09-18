@@ -120,7 +120,7 @@ namespace Eppo
         : m_SceneContext(scene)
     {}
 
-    auto SceneSerializer::Serialize(const std::filesystem::path& path) const -> bool
+    auto SceneSerializer::Serialize(const std::filesystem::path& path) -> bool
     {
         EP_PROFILE_FN("SceneSerializer::Serialize");
 
@@ -168,7 +168,7 @@ namespace Eppo
         return true;
     }
 
-    auto SceneSerializer::Deserialize(const std::filesystem::path& path) const -> bool
+    auto SceneSerializer::Deserialize(const std::filesystem::path& path) -> bool
     {
         EP_PROFILE_FN("SceneSerializer::Deserialize");
 
@@ -189,7 +189,7 @@ namespace Eppo
         return DeserializeScene(data);
     }
 
-    auto SceneSerializer::Deserialize(const Buffer& buffer) const -> bool
+    auto SceneSerializer::Deserialize(const Buffer& buffer) -> bool
     {
         EP_PROFILE_FN("SceneSerializer::Deserialize");
 
@@ -216,7 +216,7 @@ namespace Eppo
         return notices;
     }
 
-    auto SceneSerializer::DeserializeScene(const json& data) const -> bool
+    auto SceneSerializer::DeserializeScene(const json& data) -> bool
     {
         const auto sceneName = data["Scene"]["Name"].get<std::string>();
         Log::Info("Deserializing scene '{}'", sceneName);
@@ -607,7 +607,7 @@ namespace Eppo
         return ScriptEngine::IsInitialized() ? &ScriptEngine::Get().GetFieldMap(entityId) : nullptr;
     }
 
-    auto SceneSerializer::RepairRelationships(const std::string& sceneName) const -> void
+    auto SceneSerializer::RepairRelationships(const std::string& sceneName) -> void
     {
         std::vector<std::string> repairs;
         bool changed = true;

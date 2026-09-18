@@ -312,7 +312,7 @@ namespace Eppo
 
         auto Scene_CreateEntity(const char* name) -> uint64_t
         {
-            const auto& scene = GetScene();
+            Ref<Scene> scene = GetScene();
             if (!scene)
                 return 0;
 
@@ -322,7 +322,7 @@ namespace Eppo
 
         auto Scene_DestroyEntity(const uint64_t id) -> void
         {
-            const auto& scene = GetScene();
+            Ref<Scene> scene = GetScene();
             if (!scene)
                 return;
 
@@ -335,7 +335,7 @@ namespace Eppo
 
         auto Scene_FindEntityByName(const char* name) -> uint64_t
         {
-            const auto& scene = GetScene();
+            Ref<Scene> scene = GetScene();
             if (!scene || !name)
                 return 0;
 
@@ -619,7 +619,7 @@ namespace Eppo
 
         auto RelationshipComponent_SetParent(const uint64_t id, const uint64_t parent) -> void
         {
-            const auto& scene = GetScene();
+            Ref<Scene> scene = GetScene();
             if (!scene)
                 return;
 

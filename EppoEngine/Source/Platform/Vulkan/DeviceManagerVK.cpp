@@ -46,7 +46,7 @@ namespace Eppo
 
     auto DeviceManagerVK::CreateSwapchain(GLFWwindow* window, const uint32_t width, const uint32_t height) -> Ref<Swapchain>
     {
-        Ref<VulkanSwapchain> swapchain = CreateRef<VulkanSwapchain>(window);
+        Ref<VulkanSwapchain> swapchain = Ref<VulkanSwapchain>::Create(window);
         swapchain->CreateSwapchain(width, height);
         return swapchain;
     }

@@ -11,7 +11,7 @@ TEST(Renderer, DescriptorManager_CreatesBindlessLayouts)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -28,7 +28,7 @@ TEST(Renderer, DescriptorManager_CreatesDescriptorHeaps)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -47,7 +47,7 @@ TEST(Renderer, DescriptorManager_RegisterResourceIncreasesNextFreeSlot)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto image = Image::Create(ImageSpecification{
@@ -68,7 +68,7 @@ TEST(Renderer, DescriptorManager_RegisterSamplerIncreasesNextFreeSlot)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto sampler = Sampler::Create({}, manager);
@@ -85,7 +85,7 @@ TEST(Renderer, DescriptorManager_RegisterResourceReturnsValidHandle)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto image = Image::Create(ImageSpecification{
@@ -103,7 +103,7 @@ TEST(Renderer, DescriptorManager_RegisterSamplerReturnsValidHandle)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto sampler = Sampler::Create({}, manager);
@@ -120,7 +120,7 @@ TEST(Renderer, DescriptorManager_RegisterResourceIncreasesCapacityIfFull)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     constexpr uint32_t initialSize = 256;
@@ -129,7 +129,7 @@ TEST(Renderer, DescriptorManager_RegisterResourceIncreasesCapacityIfFull)
     std::array<BindlessHandle, trySize> handles{};
     for (uint32_t i = 0; i < trySize; i++)
     {
-        const auto buffer = CreateRef<UniformBuffer>(256);
+        Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
         EP_REQUIRE(buffer);
         handles.at(i) = manager->Register(buffer);
         EXPECT_TRUE(handles.at(i).Index != std::numeric_limits<uint32_t>::max());
@@ -147,7 +147,7 @@ TEST(Renderer, DescriptorManager_RegisterSamplerIncreasesCapacityIfFull)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     constexpr uint32_t initialSize = 256;
@@ -174,7 +174,7 @@ TEST(Renderer, DescriptorManager_ReleaseAddsToFreeList)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -182,7 +182,7 @@ TEST(Renderer, DescriptorManager_ReleaseAddsToFreeList)
 
     uint32_t index = std::numeric_limits<uint32_t>::max();
     {
-        const auto buffer = CreateRef<UniformBuffer>(256);
+        Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
         const auto handle = manager->Register(buffer);
         index = handle.Index;
         EXPECT_TRUE(resourceHeap->FreeList.empty());
@@ -197,7 +197,7 @@ TEST(Renderer, DescriptorManager_ReleasedSlotIsReused)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -205,12 +205,12 @@ TEST(Renderer, DescriptorManager_ReleasedSlotIsReused)
 
     uint32_t freed = std::numeric_limits<uint32_t>::max();
     {
-        const auto buffer = CreateRef<UniformBuffer>(256);
+        Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
         const auto handle = manager->Register(buffer);
         freed = handle.Index;
     }
 
-    const auto buffer = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
     const auto handle = manager->Register(buffer);
     EXPECT_EQ(freed, handle.Index);
     EXPECT_EQ(1, resourceHeap->NextFreeSlot);
@@ -222,7 +222,7 @@ TEST(Renderer, DescriptorManager_MoveConstructorTransfersOwnership)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -230,7 +230,7 @@ TEST(Renderer, DescriptorManager_MoveConstructorTransfersOwnership)
 
     uint32_t index = std::numeric_limits<uint32_t>::max();
     {
-        const auto buffer = CreateRef<UniformBuffer>(256);
+        Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
         BindlessHandle handle = manager->Register(buffer);
         index = handle.Index;
 
@@ -250,14 +250,14 @@ TEST(Renderer, DescriptorManager_MoveAssignReleasesTargetSlot)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
     EP_REQUIRE(resourceHeap);
 
-    const auto bufferA = CreateRef<UniformBuffer>(256);
-    const auto bufferB = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> bufferA = Ref<UniformBuffer>::Create(256);
+    Ref<UniformBuffer> bufferB = Ref<UniformBuffer>::Create(256);
     BindlessHandle a = manager->Register(bufferA);
     BindlessHandle b = manager->Register(bufferB);
     const uint32_t indexA = a.Index;
@@ -276,7 +276,7 @@ TEST(Renderer, DescriptorManager_ResourceLayoutIsMutableSrvUavCbv)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -293,7 +293,7 @@ TEST(Renderer, DescriptorManager_SamplerLayoutIsMutableSampler)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& samplerHeap = manager->GetSamplerHeap();
@@ -310,7 +310,7 @@ TEST(Renderer, DescriptorManager_DescriptorTableCapacityCoversAllocatedSlots)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -328,7 +328,7 @@ TEST(Renderer, DescriptorManager_HandleReleasesToOwningManager)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -336,10 +336,10 @@ TEST(Renderer, DescriptorManager_HandleReleasesToOwningManager)
 
     uint32_t index = std::numeric_limits<uint32_t>::max();
     {
-        const auto buffer = CreateRef<UniformBuffer>(256);
+        Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
         const auto handle = manager->Register(buffer);
         index = handle.Index;
-        EXPECT_TRUE(handle.Manager.lock() == manager);
+        EXPECT_TRUE(handle.Manager == manager);
     }
 
     EXPECT_EQ(1, resourceHeap->FreeList.size());
@@ -351,7 +351,7 @@ TEST(Renderer, DescriptorManager_ResourceAndSamplerHeapsAllocateIndependently)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -359,7 +359,7 @@ TEST(Renderer, DescriptorManager_ResourceAndSamplerHeapsAllocateIndependently)
     const auto& samplerHeap = manager->GetSamplerHeap();
     EP_REQUIRE(samplerHeap);
 
-    const auto buffer = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
     EP_REQUIRE(buffer);
     (void)manager->Register(buffer);
     EXPECT_EQ(1, resourceHeap->NextFreeSlot);
@@ -376,7 +376,7 @@ TEST(Renderer, DescriptorManager_FreeListReuseTakesPriorityOverGrowth)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -386,7 +386,7 @@ TEST(Renderer, DescriptorManager_FreeListReuseTakesPriorityOverGrowth)
     std::vector<BindlessHandle> handles;
     for (uint32_t i = 0; i < 256; i++)
     {
-        buffers.emplace_back(CreateRef<UniformBuffer>(256));
+        buffers.emplace_back(Ref<UniformBuffer>::Create(256));
         handles.emplace_back(manager->Register(buffers.back()));
     }
     EXPECT_EQ(256, resourceHeap->NextFreeSlot);
@@ -395,14 +395,14 @@ TEST(Renderer, DescriptorManager_FreeListReuseTakesPriorityOverGrowth)
     handles.pop_back();
 
     // With the heap full, the freed slot must be reused rather than triggering a grow.
-    buffers.emplace_back(CreateRef<UniformBuffer>(256));
+    buffers.emplace_back(Ref<UniformBuffer>::Create(256));
     const auto reused = manager->Register(buffers.back());
     EXPECT_EQ(freed, reused.Index);
     EXPECT_EQ(256, resourceHeap->Capacity);
     EXPECT_TRUE(resourceHeap->FreeList.empty());
 
     // A following allocation will grow the heap
-    buffers.emplace_back(CreateRef<UniformBuffer>(256));
+    buffers.emplace_back(Ref<UniformBuffer>::Create(256));
     const auto grown = manager->Register(buffers.back());
     EXPECT_TRUE(resourceHeap->Capacity > 256);
     EXPECT_EQ(256, grown.Index);
@@ -414,14 +414,14 @@ TEST(Renderer, DescriptorManager_RegisterAssignsDistinctSequentialSlots)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     std::array<Ref<UniformBuffer>, 256> buffers{};
     std::array<BindlessHandle, 256> handles{};
     for (uint32_t i = 0; i < 256; i++)
     {
-        const auto buffer = CreateRef<UniformBuffer>(256);
+        Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
         buffers.at(i) = buffer;
         handles.at(i) = manager->Register(buffer);
     }
@@ -435,7 +435,7 @@ TEST(Renderer, DescriptorManager_CapacityGrowsByHalfEachTime)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -447,7 +447,7 @@ TEST(Renderer, DescriptorManager_CapacityGrowsByHalfEachTime)
     EXPECT_EQ(256, resourceHeap->Capacity);
     for (uint32_t i = 0; i < 256 + 1; i++)
     {
-        buffers.emplace_back(CreateRef<UniformBuffer>(256));
+        buffers.emplace_back(Ref<UniformBuffer>::Create(256));
         handles.emplace_back(manager->Register(buffers.back()));
     }
     EXPECT_EQ(384, resourceHeap->Capacity);
@@ -458,13 +458,13 @@ TEST(Renderer, DescriptorManager_ReleaseDoesNotChangeNextFreeSlot)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
     EP_REQUIRE(resourceHeap);
 
-    const auto buffer = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
     EXPECT_EQ(0, resourceHeap->NextFreeSlot);
 
     {
@@ -485,7 +485,7 @@ TEST(Renderer, DescriptorManager_DefaultHandleIsInvalid)
 
     EXPECT_EQ(std::numeric_limits<uint32_t>::max(), handle.Index);
     EXPECT_TRUE(handle.HeapType == BindlessHeapType::Resource);
-    EXPECT_TRUE(!handle.Manager.lock());
+    EXPECT_TRUE(!handle.Manager);
 }
 
 TEST(Renderer, DescriptorManager_DefaultHandleDestructionDoesNotTouchFreeList)
@@ -493,7 +493,7 @@ TEST(Renderer, DescriptorManager_DefaultHandleDestructionDoesNotTouchFreeList)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
@@ -514,13 +514,13 @@ TEST(Renderer, DescriptorManager_MoveAssignFromInvalidHandleReleasesTargetSlot)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
     EP_REQUIRE(resourceHeap);
 
-    const auto buffer = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
     BindlessHandle a = manager->Register(buffer);
     const uint32_t indexA = a.Index;
 
@@ -537,13 +537,13 @@ TEST(Renderer, DescriptorManager_MoveAssignIntoInvalidHandleTakesOwnership)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
     EP_REQUIRE(resourceHeap);
 
-    const auto buffer = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
     BindlessHandle a = manager->Register(buffer);
     const uint32_t indexA = a.Index;
 
@@ -560,12 +560,12 @@ TEST(Renderer, DescriptorManager_SelfMoveAssignmentKeepsSlot)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& resourceHeap = manager->GetResourceHeap();
 
-    const auto buffer = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
     BindlessHandle a = manager->Register(buffer);
     const uint32_t indexA = a.Index;
 
@@ -581,12 +581,12 @@ TEST(Renderer, DescriptorManager_SeparateManagersAllocateIndependently)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto managerA = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> managerA = Ref<DescriptorManager>::Create();
     EP_REQUIRE(managerA);
-    const auto managerB = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> managerB = Ref<DescriptorManager>::Create();
     EP_REQUIRE(managerB);
 
-    const auto buffer = CreateRef<UniformBuffer>(256);
+    Ref<UniformBuffer> buffer = Ref<UniformBuffer>::Create(256);
     (void)managerA->Register(buffer);
 
     EXPECT_EQ(1, managerA->GetResourceHeap()->NextFreeSlot);
@@ -599,7 +599,7 @@ TEST(Renderer, DescriptorManager_RegisterOnFullHeapReturnsInvalidHandle)
         return;
 
     // The sampler heap's hard cap is 2048; registering past it must fail rather than grow beyond max.
-    const auto manager = CreateRef<DescriptorManager>();
+    Ref<DescriptorManager> manager = Ref<DescriptorManager>::Create();
     EP_REQUIRE(manager);
 
     const auto& samplerHeap = manager->GetSamplerHeap();

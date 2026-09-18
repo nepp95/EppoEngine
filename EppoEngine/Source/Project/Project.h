@@ -11,7 +11,7 @@ namespace Eppo
         AssetHandle StartScene = 0;
     };
 
-    class Project
+    class Project : public RefCtr
     {
     public:
         [[nodiscard]] auto GetSpecification() -> ProjectSpecification& { return m_Specification; }

@@ -7,7 +7,7 @@
 
 namespace Eppo
 {
-    class RenderCommandBuffer
+    class RenderCommandBuffer : public RefCtr
     {
     public:
         RenderCommandBuffer();

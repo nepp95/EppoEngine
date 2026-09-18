@@ -8,24 +8,18 @@
 
 namespace Eppo
 {
-    class AssetManager
+    class AssetManager : public RefCtr
     {
     public:
         AssetManager() = default;
         AssetManager(std::map<AssetHandle, AssetMetadata>&& assetData, std::map<AssetHandle, PackedAssetData>&& packedAssets);
+        virtual ~AssetManager() = default;
 
         // Create an asset from a file on disk
         auto CreateAsset(const std::filesystem::path& path, const Ref<Asset>& existingAsset = nullptr) -> bool;
 
         // Get or load an asset of which we know the metadata
         auto GetOrLoadAsset(AssetHandle handle) -> Ref<Asset>;
-
-        template<typename T>
-            requires(std::derived_from<T, Asset>)
-        auto GetOrLoadAsset(const AssetHandle handle) -> Ref<T>
-        {
-            return std::static_pointer_cast<T>(GetOrLoadAsset(handle));
-        }
 
         auto Tick() -> void;
 
@@ -58,7 +52,7 @@ namespace Eppo
         auto GenerateAsset(AssetHandle handle) -> Ref<Asset>;
 
     private:
-        struct ImportState
+        struct ImportState : RefCtr
         {
             std::thread::id Owner;
             std::condition_variable_any Changed;

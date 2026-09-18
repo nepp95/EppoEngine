@@ -49,7 +49,7 @@ namespace Eppo
         m_Width = specification.Width == 0 ? Application::Get().GetWindow()->GetWidth() : specification.Width;
         m_Height = specification.Height == 0 ? Application::Get().GetWindow()->GetHeight() : specification.Height;
 
-        m_RenderCommandBuffer = CreateRef<RenderCommandBuffer>();
+        m_RenderCommandBuffer = Ref<RenderCommandBuffer>::Create();
 
         // Create render passes
         // Opaque Forward
@@ -61,7 +61,7 @@ namespace Eppo
                 .DebugName = "Framebuffer Opaque Forward",
             };
 
-            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+            const auto framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
             PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("opaqueForward"),
@@ -72,18 +72,18 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Opaque Forward",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Pipeline = Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
                 .Framebuffer = framebuffer,
                 .ClearColorOnLoad = true,
                 .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
                 .ClearDepthOnLoad = true,
             };
 
-            m_OpaqueForwardPass = CreateRef<RenderPass>(renderPassSpec);
+            m_OpaqueForwardPass = Ref<RenderPass>::Create(renderPassSpec);
 
             // Opaque Forward Double Sided
             pipelineSpec.CullMode = nvrhi::RasterCullMode::None;
-            m_OpaqueForwardDoubleSidedPipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
+            m_OpaqueForwardDoubleSidedPipeline = Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
         }
 
         // Skybox
@@ -95,7 +95,7 @@ namespace Eppo
                 .DebugName = "Framebuffer Skybox",
             };
 
-            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+            const auto framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("skybox"),
@@ -104,11 +104,11 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Skybox",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Pipeline = Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
                 .Framebuffer = framebuffer,
             };
 
-            m_SkyPass = CreateRef<RenderPass>(renderPassSpec);
+            m_SkyPass = Ref<RenderPass>::Create(renderPassSpec);
         }
 
         // Display Conversion
@@ -120,7 +120,7 @@ namespace Eppo
                 .DebugName = "Framebuffer Display Conversion",
             };
 
-            const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+            const auto framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
             const PipelineSpecification pipelineSpec{
                 .Shader = renderer->GetShader("displayConversion"),
@@ -129,13 +129,13 @@ namespace Eppo
 
             const RenderPassSpecification renderPassSpec{
                 .Name = "Display Conversion",
-                .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Pipeline = Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo()),
                 .Framebuffer = framebuffer,
                 .ClearColorOnLoad = true,
                 .ClearColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
             };
 
-            m_DisplayConversionPass = CreateRef<RenderPass>(renderPassSpec);
+            m_DisplayConversionPass = Ref<RenderPass>::Create(renderPassSpec);
         }
 
         // Wireframe
@@ -153,23 +153,23 @@ namespace Eppo
             const RenderPassSpecification renderPassSpec{
                 .Name = "Wireframe",
                 .Pipeline =
-                    CreateRef<Pipeline>(pipelineSpec, m_DisplayConversionPass->GetFramebuffer()->GetFramebuffer()->getFramebufferInfo()),
+                    Ref<Pipeline>::Create(pipelineSpec, m_DisplayConversionPass->GetFramebuffer()->GetFramebuffer()->getFramebufferInfo()),
                 .Framebuffer = m_DisplayConversionPass->GetFramebuffer(),
                 .OwnsFramebuffer = false,
             };
 
-            m_WireframePass = CreateRef<RenderPass>(renderPassSpec);
+            m_WireframePass = Ref<RenderPass>::Create(renderPassSpec);
         }
 
         // Uniform buffers
-        m_CameraUB = CreateRef<UniformBuffer>(sizeof(CameraData), "UniformBuffer Camera");
-        m_EnvironmentUB = CreateRef<UniformBuffer>(sizeof(EnvironmentData), "UniformBuffer Environment");
+        m_CameraUB = Ref<UniformBuffer>::Create(sizeof(CameraData), "UniformBuffer Camera");
+        m_EnvironmentUB = Ref<UniformBuffer>::Create(sizeof(EnvironmentData), "UniformBuffer Environment");
 
-        m_InstanceTransformsSB = CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
+        m_InstanceTransformsSB = Ref<StorageBuffer>::Create(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Instance Transforms");
         m_WireframeInstanceSB =
-            CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Wireframe Instance Transforms");
-        m_DrawDataSB = CreateRef<StorageBuffer>(sizeof(DrawData), sizeof(DrawData), "StorageBuffer Draw Data");
-        m_MaterialDataSB = CreateRef<StorageBuffer>(sizeof(MaterialData), sizeof(MaterialData), "StorageBuffer Material Data");
+            Ref<StorageBuffer>::Create(sizeof(glm::mat4), sizeof(glm::mat4), "StorageBuffer Wireframe Instance Transforms");
+        m_DrawDataSB = Ref<StorageBuffer>::Create(sizeof(DrawData), sizeof(DrawData), "StorageBuffer Draw Data");
+        m_MaterialDataSB = Ref<StorageBuffer>::Create(sizeof(MaterialData), sizeof(MaterialData), "StorageBuffer Material Data");
 
         m_OpaqueForwardPass->SetInput(0, 0, m_InstanceTransformsSB);
         m_OpaqueForwardPass->SetInput(0, 1, m_DrawDataSB);
@@ -401,7 +401,8 @@ namespace Eppo
         }
         else
         {
-            const auto& mesh = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Mesh>(meshHandle);
+            Ref<AssetManager> assetManager = Project::GetActive()->GetAssetManager();
+            const Ref<Mesh> mesh = assetManager->GetOrLoadAsset(meshHandle).As<Mesh>();
 
             const DrawCommand cmd{
                 .Mesh = mesh,
@@ -438,7 +439,8 @@ namespace Eppo
         }
 
         // Image is an asset; resolves through the registry like meshes do.
-        const auto& image = Project::GetActive()->GetAssetManager()->GetOrLoadAsset<Image>(environment.SkyboxHandle);
+        Ref<AssetManager> assetManager = Project::GetActive()->GetAssetManager();
+        const Ref<Image> image = assetManager->GetOrLoadAsset(environment.SkyboxHandle).As<Image>();
         if (!image)
         {
             Log::Error("Failed to load skybox image for handle {}", static_cast<uint64_t>(environment.SkyboxHandle));
@@ -541,16 +543,16 @@ namespace Eppo
         if (!project)
             return;
 
-        const auto& assetManager = project->GetAssetManager();
+        Ref<AssetManager> assetManager = project->GetAssetManager();
         if (!m_BoxColliderMesh)
-            m_BoxColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+            m_BoxColliderMesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cube)).As<Mesh>();
 
         if (!m_SphereColliderMesh)
-            m_SphereColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere));
+            m_SphereColliderMesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Sphere)).As<Mesh>();
         if (!m_CapsuleColliderMesh)
-            m_CapsuleColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
+            m_CapsuleColliderMesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Capsule)).As<Mesh>();
         if (!m_CylinderColliderMesh)
-            m_CylinderColliderMesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cylinder));
+            m_CylinderColliderMesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cylinder)).As<Mesh>();
     }
 
     auto SceneRenderer::GatherWireframes() -> void
@@ -570,20 +572,20 @@ namespace Eppo
         constexpr auto directionalLightColor = glm::vec4(1.0f, 0.8f, 0.1f, 1.0f);
         constexpr auto directionalLightMarkerColor = glm::vec4(0.95f, 0.95f, 0.85f, 1.0f);
         constexpr auto meshWireframeColor = glm::vec4(0.45f, 0.63f, 0.95f, 1.0f);
-        const auto& assetManager = project->GetAssetManager();
+        Ref<AssetManager> assetManager = project->GetAssetManager();
 
         if (m_Scene)
         {
             DrawCommand markerDraw{
-                .Mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Sphere)),
+                .Mesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Sphere)).As<Mesh>(),
                 .Color = directionalLightMarkerColor,
             };
             DrawCommand shaftDraw{
-                .Mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cylinder)),
+                .Mesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cylinder)).As<Mesh>(),
                 .Color = directionalLightColor,
             };
             DrawCommand headDraw{
-                .Mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cone)),
+                .Mesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cone)).As<Mesh>(),
                 .Color = directionalLightColor,
             };
 
@@ -698,7 +700,7 @@ namespace Eppo
         {
             if (const auto& mc = m_HighlightedEntity.GetComponent<MeshComponent>(); mc.MeshHandle)
             {
-                const auto mesh = assetManager->GetOrLoadAsset<Mesh>(mc.MeshHandle);
+                const Ref<Mesh> mesh = assetManager->GetOrLoadAsset(mc.MeshHandle).As<Mesh>();
                 if (const auto& bounds = mesh->GetBounds(); bounds.IsValid())
                 {
                     const glm::mat4 world = m_Scene->GetWorldTransform(m_HighlightedEntity);
@@ -907,7 +909,7 @@ namespace Eppo
         );
     }
 
-    auto SceneRenderer::SkyPass() const -> void
+    auto SceneRenderer::SkyPass() -> void
     {
         Renderer::Submit(
             [this]()
@@ -939,7 +941,7 @@ namespace Eppo
         );
     }
 
-    auto SceneRenderer::DisplayConversionPass() const -> void
+    auto SceneRenderer::DisplayConversionPass() -> void
     {
         Renderer::Submit(
             [this]()
@@ -971,7 +973,7 @@ namespace Eppo
         );
     }
 
-    auto SceneRenderer::WireframePass() const -> void
+    auto SceneRenderer::WireframePass() -> void
     {
         Renderer::Submit(
             [this]()
@@ -1093,11 +1095,11 @@ namespace Eppo
         for (uint32_t face = 0; face < 6; face++)
             inverseViewProjection[face] = GenerateFaceInverseViewProjection(face);
 
-        const auto facesUB = CreateRef<UniformBuffer>(sizeof(glm::mat4) * 6, "UniformBuffer IBL Faces");
+        Ref<UniformBuffer> facesUB = Ref<UniformBuffer>::Create(sizeof(glm::mat4) * 6, "UniformBuffer IBL Faces");
 
         DeviceManager::Get()->GetDevice()->waitForIdle();
 
-        const auto cmdBuffer = CreateRef<RenderCommandBuffer>();
+        Ref<RenderCommandBuffer> cmdBuffer = Ref<RenderCommandBuffer>::Create();
         cmdBuffer->Begin();
 
         facesUB->SetData(cmdBuffer->GetCommandList(), &inverseViewProjection, sizeof(glm::mat4) * 6);
@@ -1122,11 +1124,11 @@ namespace Eppo
 
     auto SceneRenderer::RecordIblPass(
         const Ref<Shader>& shader, const Ref<Image>& source, const Ref<Sampler>& sampler, const Ref<Image>& target,
-        const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, const uint32_t mipLevel, const float roughness,
+        const Ref<UniformBuffer>& facesUB, Ref<RenderCommandBuffer> cmdBuffer, const uint32_t mipLevel, const float roughness,
         const float envMapSize
     ) -> void
     {
-        const auto framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+        const auto framebuffer = Ref<Framebuffer>::Create(FramebufferSpecification{
             .Width = target->GetWidth(),
             .Height = target->GetHeight(),
             .Attachments = { FramebufferTextureSpecification(target) },
@@ -1134,7 +1136,7 @@ namespace Eppo
         });
 
         // FramebufferInfo carries only formats/samples, so mip zero's handle describes every mip; the pass selects the mip below.
-        const auto pipeline = CreateRef<Pipeline>(
+        const auto pipeline = Ref<Pipeline>::Create(
             PipelineSpecification{
                 .Shader = shader,
                 .CullMode = nvrhi::RasterCullMode::None,
@@ -1142,7 +1144,7 @@ namespace Eppo
             framebuffer->GetFramebuffer()->getFramebufferInfo()
         );
 
-        const auto pass = CreateRef<RenderPass>(RenderPassSpecification{
+        Ref<RenderPass> pass = Ref<RenderPass>::Create(RenderPassSpecification{
             .Name = "IBL Bake",
             .Pipeline = pipeline,
             .Framebuffer = framebuffer,

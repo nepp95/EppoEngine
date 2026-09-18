@@ -134,7 +134,7 @@ namespace Eppo
                 m_WaitingImports.erase(caller);
                 return state->Result;
             }
-            state = CreateRef<ImportState>();
+            state = Ref<ImportState>::Create();
             state->Owner = caller;
             m_ImportStates.emplace(handle, state);
         }
@@ -237,7 +237,7 @@ namespace Eppo
 
             if (const auto import = m_ImportStates.find(handle); import != m_ImportStates.end())
             {
-                const auto state = import->second;
+                auto state = import->second;
                 state->Complete = true;
                 state->Result = nullptr;
                 m_ImportStates.erase(import);
@@ -255,7 +255,7 @@ namespace Eppo
         {
             case AssetType::Mesh:
             {
-                return GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+                return GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cube)).As<Mesh>();
                 break;
             }
 
@@ -273,7 +273,7 @@ namespace Eppo
 
             case AssetType::Texture:
             {
-                return GetOrLoadAsset<Image>(10);
+                return GetOrLoadAsset(10).As<Image>();
                 break;
             }
         }

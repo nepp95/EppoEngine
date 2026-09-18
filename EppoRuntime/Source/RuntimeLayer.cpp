@@ -11,7 +11,7 @@ namespace Eppo
         const std::string projectName = m_GameData.ProjectName;
 
         // The engine shaders were already loaded from m_GameData during application startup.
-        m_AssetManager = CreateRef<AssetManager>(std::move(m_GameData.AssetRegistry), std::move(m_GameData.PackedAssets));
+        m_AssetManager = Ref<AssetManager>::Create(std::move(m_GameData.AssetRegistry), std::move(m_GameData.PackedAssets));
         m_Project = Project::New(
             ProjectSpecification{
                 .Name = projectName,
@@ -42,7 +42,7 @@ namespace Eppo
             Log::Info("Game '{}' has no user script assembly.", projectName);
         }
 
-        m_Scene = m_AssetManager->GetOrLoadAsset<Scene>(startScene);
+        m_Scene = m_AssetManager->GetOrLoadAsset(startScene).As<Scene>();
         if (!m_Scene)
         {
             Fail("The packed start scene could not be loaded.");
@@ -60,7 +60,7 @@ namespace Eppo
             Fail("The runtime window has no drawable framebuffer.");
             return;
         }
-        m_SceneRenderer = CreateRef<SceneRenderer>(m_Scene, SceneRendererSpecification{ .Width = width, .Height = height });
+        m_SceneRenderer = Ref<SceneRenderer>::Create(m_Scene, SceneRendererSpecification{ .Width = width, .Height = height });
         Resize(width, height);
         Input::SetViewportInputEnabled(true);
 
@@ -79,16 +79,16 @@ namespace Eppo
         m_RuntimeStarted = false;
         m_StartupComplete = false;
 
-        m_SceneRenderer.reset();
-        m_Scene.reset();
+        m_SceneRenderer.Reset();
+        m_Scene.Reset();
 
         if (m_ScriptEngineInitialized)
             ScriptEngine::Shutdown();
         m_ScriptEngineInitialized = false;
 
         Project::SetActive(nullptr);
-        m_Project.reset();
-        m_AssetManager.reset();
+        m_Project.Reset();
+        m_AssetManager.Reset();
     }
 
     auto RuntimeLayer::OnUpdate(const float timestep) -> void

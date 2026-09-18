@@ -22,7 +22,7 @@ namespace Eppo
 
     Renderer::Renderer()
     {
-        m_DescriptorManager = CreateRef<DescriptorManager>();
+        m_DescriptorManager = Ref<DescriptorManager>::Create();
     }
 
     auto Renderer::LoadShaders(const std::map<std::string, std::string>& packed, const std::map<std::string, std::string>& includes) -> void
@@ -58,7 +58,7 @@ namespace Eppo
                 .AddressModeW = nvrhi::SamplerAddressMode::Clamp,
             }
         );
-        m_CompositeCommandBuffer = CreateRef<RenderCommandBuffer>();
+        m_CompositeCommandBuffer = Ref<RenderCommandBuffer>::Create();
     }
 
     auto Renderer::Submit(RenderCommand command) -> void
@@ -75,7 +75,7 @@ namespace Eppo
         renderer->m_RenderCommandQueue.Execute();
     }
 
-    auto Renderer::BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<RenderPass>& renderPass) -> void
+    auto Renderer::BeginRenderPass(Ref<RenderCommandBuffer> commandBuffer, const Ref<RenderPass>& renderPass) -> void
     {
         const auto& cmd = commandBuffer->GetCommandList();
         const auto& pipeline = renderPass->GetPipeline();
@@ -120,7 +120,7 @@ namespace Eppo
         commandBuffer->CommitGraphicsState();
     }
 
-    auto Renderer::EndRenderPass(const Ref<RenderCommandBuffer>& commandBuffer) -> void
+    auto Renderer::EndRenderPass(Ref<RenderCommandBuffer> commandBuffer) -> void
     {
         commandBuffer->GetCommandList()->clearState();
     }
@@ -162,9 +162,9 @@ namespace Eppo
                         .CullMode = nvrhi::RasterCullMode::None,
                     };
 
-                    renderPass = CreateRef<RenderPass>(RenderPassSpecification{
+                    renderPass = Ref<RenderPass>::Create(RenderPassSpecification{
                         .Name = "Composite",
-                        .Pipeline = CreateRef<Pipeline>(pipelineSpec, framebufferHandle->getFramebufferInfo()),
+                        .Pipeline = Ref<Pipeline>::Create(pipelineSpec, framebufferHandle->getFramebufferInfo()),
                         .Framebuffer = framebuffer,
                         .OwnsFramebuffer = false,
                     });

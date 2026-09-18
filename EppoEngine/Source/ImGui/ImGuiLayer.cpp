@@ -134,7 +134,7 @@ namespace Eppo
         }
 
         // Initialize imgui for glfw
-        const auto& dm = DeviceManager::Get();
+        Ref<DeviceManager> dm = DeviceManager::Get();
         const auto& window = Application::Get().GetWindow();
 
         if (dm->GetParams().API == RendererAPI::Vulkan)
@@ -223,7 +223,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_CreateWindow")
 
-        const auto& dm = DeviceManager::Get();
+        Ref<DeviceManager> dm = DeviceManager::Get();
 
         const auto data = IM_NEW(ImGuiViewportData)();
         viewport->RendererUserData = data;
@@ -250,7 +250,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("ImGuiLayer::ImGuiRenderer_SetWindowSize")
 
-        const auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+        auto* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
 
         // The render pass cache holds references to swapchain back buffers, which must be
         // released before the swapchain recreates them

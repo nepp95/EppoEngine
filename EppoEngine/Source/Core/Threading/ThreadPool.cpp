@@ -106,7 +106,7 @@ namespace Eppo
 
         const TaskId id = m_NextTaskId.fetch_add(1, std::memory_order_relaxed);
 
-        auto task = CreateRef<Task>();
+        auto task = Ref<Task>::Create();
         task->Id = id;
         task->Fn = std::move(taskFn);
         task->OnComplete = std::move(completionFn);
@@ -167,7 +167,7 @@ namespace Eppo
 
         const TaskId id = m_NextTaskId.fetch_add(1, std::memory_order_relaxed);
 
-        auto task = CreateRef<Task>();
+        auto task = Ref<Task>::Create();
         task->Id = id;
         task->Name = std::move(name);
         task->Fn = std::move(taskFn);
@@ -213,7 +213,7 @@ namespace Eppo
                 const auto [snapshotIt, inserted] = m_Snapshots.try_emplace(task->Name);
                 if (inserted)
                 {
-                    snapshotIt->second = CreateRef<TaskGroupSnapshot>();
+                    snapshotIt->second = Ref<TaskGroupSnapshot>::Create();
                     snapshotIt->second->Name = task->Name;
                 }
                 task->Group = snapshotIt->second;
@@ -262,7 +262,7 @@ namespace Eppo
         return snapshots;
     }
 
-    auto ThreadPool::AddTaskToGroup(const Ref<Task>& task, const Ref<TaskGroupSnapshot>& group) -> void
+    auto ThreadPool::AddTaskToGroup(Ref<Task> task, Ref<TaskGroupSnapshot> group) -> void
     {
         task->Group = group;
 
@@ -303,7 +303,7 @@ namespace Eppo
         group->m_Version.store(version + 2, std::memory_order_seq_cst);
     }
 
-    auto ThreadPool::UpdateTaskGroup(const Ref<TaskGroupSnapshot>& group, const TaskStatus status) -> void
+    auto ThreadPool::UpdateTaskGroup(Ref<TaskGroupSnapshot> group, const TaskStatus status) -> void
     {
         if (!group)
             return;
@@ -353,7 +353,7 @@ namespace Eppo
         group->m_Version.store(version + 2, std::memory_order_seq_cst);
     }
 
-    auto ThreadPool::FinalizeTask(const Ref<Task>& task, const TaskStatus status) -> void
+    auto ThreadPool::FinalizeTask(Ref<Task> task, const TaskStatus status) -> void
     {
         std::vector<Ref<Task>> dependents;
         {
@@ -366,7 +366,7 @@ namespace Eppo
 
         std::vector<Ref<Task>> readyTasks;
         readyTasks.reserve(dependents.size());
-        for (const auto& dependent : dependents)
+        for (Ref<Task> dependent : dependents)
         {
             const auto remaining = dependent->RemainingDeps.fetch_sub(1, std::memory_order_acq_rel);
             EP_ASSERT(remaining > 0, "Task dependency counter underflowed!");
@@ -390,7 +390,7 @@ namespace Eppo
         }
     }
 
-    auto ThreadPool::CompleteTask(const Ref<Task>& task, const TaskStatus status) -> void
+    auto ThreadPool::CompleteTask(Ref<Task> task, const TaskStatus status) -> void
     {
         UpdateTaskGroup(task->Group, status);
 
@@ -487,7 +487,7 @@ namespace Eppo
             std::scoped_lock lock(m_PendingMutex);
 
             cancelledTasks.reserve(m_AllTasks.size());
-            for (const auto& [taskId, task] : m_AllTasks)
+            for (auto [taskId, task] : m_AllTasks)
             {
                 auto expected = TaskStatus::Pending;
                 if (task->Status.compare_exchange_strong(expected, TaskStatus::Cancelled, std::memory_order_relaxed))
@@ -511,7 +511,7 @@ namespace Eppo
             if (cancelPending)
             {
                 cancelledTasks.reserve(m_AllTasks.size());
-                for (const auto& [taskId, task] : m_AllTasks)
+                for (auto [taskId, task] : m_AllTasks)
                 {
                     auto expected = TaskStatus::Pending;
                     if (task->Status.compare_exchange_strong(expected, TaskStatus::Cancelled, std::memory_order_relaxed))

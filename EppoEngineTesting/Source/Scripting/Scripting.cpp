@@ -78,7 +78,7 @@ namespace
 
     // A live, playing script instance for the harness class on a fresh entity.
     // Keeps the owning scene alive via the out-param so the entity stays valid.
-    auto MakeLiveEntity(const Ref<Scene>& scene) -> Entity
+    auto MakeLiveEntity(Ref<Scene> scene) -> Entity
     {
         Entity entity = scene->CreateEntity("Scripted");
         entity.AddComponent<ScriptComponent>(std::string(kUserClass));
@@ -90,7 +90,7 @@ namespace
     // context so the Entity/Component internal calls (ScriptGlue) can resolve
     // the entity's UUID back to a live entity. Needed by every script that
     // touches the component API.
-    auto MakeContextEntity(const Ref<Scene>& scene) -> Entity
+    auto MakeContextEntity(Ref<Scene> scene) -> Entity
     {
         ScriptEngine::Get().SetSceneContext(scene);
         return MakeLiveEntity(scene);
@@ -99,7 +99,7 @@ namespace
     // A dynamic, scripted rigid body for the runtime-lifecycle tests. The
     // collider gives it mass, so the impulse LifecycleScript applies from
     // OnCreate produces a readable velocity.
-    auto MakeLifecycleBody(const Ref<Scene>& scene) -> Entity
+    auto MakeLifecycleBody(Ref<Scene> scene) -> Entity
     {
         Entity entity = scene->CreateEntity("LifecycleOwner");
         entity.AddComponent<ScriptComponent>(std::string(kLifecycleClass));
@@ -108,7 +108,7 @@ namespace
         return entity;
     }
 
-    auto HasEntityNamed(const Ref<Scene>& scene, const std::string& name) -> bool
+    auto HasEntityNamed(Ref<Scene> scene, const std::string& name) -> bool
     {
         bool found = false;
         scene->ForEachEntity(
@@ -224,7 +224,7 @@ TEST(Scripting, ScriptEngine_UnknownClass_ProducesNoInstance)
     EXPECT_TRUE(!engine.IsValidScriptClass("EppoTesting.NoSuchClass"));
     EXPECT_EQ(-1, engine.FindClassIndex("EppoTesting.NoSuchClass"));
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Bad");
     entity.AddComponent<ScriptComponent>(std::string("EppoTesting.NoSuchClass"));
 
@@ -244,7 +244,7 @@ TEST(Scripting, ScriptEngine_CreateAndUpdate_RunManagedCode)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeLiveEntity(scene);
 
@@ -273,7 +273,7 @@ TEST(Scripting, ScriptEngine_DestroyEntity_UnregistersInstance)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeLiveEntity(scene);
     EXPECT_TRUE(engine.GetEntityInstance(entity.GetUUID()) != nullptr);
@@ -288,7 +288,7 @@ TEST(Scripting, ScriptClass_InvokeMethod_MarshalsArgsAndReturn)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Scripted");
     entity.AddComponent<ScriptComponent>(std::string(kUserClass));
 
@@ -314,7 +314,7 @@ TEST(Scripting, ScriptClass_ManagedException_DoesNotCrashHost)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Scripted");
     entity.AddComponent<ScriptComponent>(std::string(kUserClass));
 
@@ -339,7 +339,7 @@ TEST(Scripting, Entity_NullEquality_IsSafe)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Scripted");
     entity.AddComponent<ScriptComponent>(std::string(kUserClass));
 
@@ -364,7 +364,7 @@ TEST(Scripting, ScriptInstance_IntField_MarshalsValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeLiveEntity(scene);
 
@@ -397,7 +397,7 @@ TEST(Scripting, ScriptInstance_Vector3Field_IsTypedAndMarshals)
     EP_REQUIRE(posIndex >= 0);
     EXPECT_TRUE(c->GetFields()[posIndex].Type == ScriptFieldType::Vector3);
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeLiveEntity(scene);
     ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
@@ -426,7 +426,7 @@ TEST(Scripting, ScriptInstance_EntityField_IsTypedAndMarshals)
     EP_REQUIRE(targetIndex >= 0);
     EXPECT_TRUE(c->GetFields()[targetIndex].Type == ScriptFieldType::Entity);
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeLiveEntity(scene);
     ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
@@ -455,7 +455,7 @@ TEST(Scripting, ScriptInstance_BoolAndDoubleFields_Marshal)
     EXPECT_TRUE(c->GetFields()[enabledIndex].Type == ScriptFieldType::Bool);
     EXPECT_TRUE(c->GetFields()[ratioIndex].Type == ScriptFieldType::Double);
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeLiveEntity(scene);
     ScriptInstance* instance = engine.GetEntityInstance(entity.GetUUID());
@@ -482,7 +482,7 @@ TEST(Scripting, ScriptEngine_EditorFieldValues_PushedOnCreate)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = scene->CreateEntity("Scripted");
     entity.AddComponent<ScriptComponent>(std::string(kUserClass));
@@ -513,7 +513,7 @@ TEST(Scripting, ScriptEngine_LiveFieldEdits_DiscardedOnReplay)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = scene->CreateEntity("Scripted");
     entity.AddComponent<ScriptComponent>(std::string(kUserClass));
@@ -563,7 +563,7 @@ TEST(Scripting, Scene_OnRuntimeStart_RunsOnCreateWithSceneAndPhysicsContext)
     // Scene must publish the context itself; don't inherit one from a prior test.
     ScriptEngine::Get().SetSceneContext(nullptr);
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = MakeLifecycleBody(scene);
 
     scene->OnRuntimeStart();
@@ -587,7 +587,7 @@ TEST(Scripting, Scene_OnRuntimeStop_RunsOnDestroyWithSceneAndPhysicsContext)
 
     ScriptEngine::Get().SetSceneContext(nullptr);
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = MakeLifecycleBody(scene);
 
     scene->OnRuntimeStart();
@@ -918,7 +918,7 @@ public class ProbeScript : Entity
 
     EP_REQUIRE(ReloadProjectAssemblyAndWait());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Scripted");
     entity.AddComponent<ScriptComponent>(std::string("EppoTesting.ProbeScript"));
     ScriptEngine::Get().OnCreateEntity(entity);
@@ -989,7 +989,7 @@ public class ProbeScript : Entity
 
     EP_REQUIRE(ReloadProjectAssemblyAndWait());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Scripted");
     entity.AddComponent<ScriptComponent>(std::string("EppoTesting.ProbeScript"));
 
@@ -1091,7 +1091,7 @@ TEST(Scripting, Scene_ScriptSpawnsScriptedEntitiesFromLifecycleHooks_Succeeds)
 
     ScriptEngine::Get().SetSceneContext(nullptr);
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Spawner");
     entity.AddComponent<ScriptComponent>(std::string("EppoTesting.SpawningScript"));
 
@@ -1124,7 +1124,7 @@ TEST(Scripting, Scene_OnRuntimeStop_ClearsSceneContext)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     MakeLifecycleBody(scene);
 
     scene->OnRuntimeStart();
@@ -1143,7 +1143,7 @@ TEST(Scripting, MeshComponent_SetMeshHandle_AssignsPrimitiveHandle)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<MeshComponent>();
@@ -1167,7 +1167,7 @@ TEST(Scripting, MeshComponent_SetPrimitive_MapsEnumToReservedHandle)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<MeshComponent>();
@@ -1191,7 +1191,7 @@ TEST(Scripting, MeshComponent_SetMeshHandle_UnknownHandle_LeavesComponentUnchang
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<MeshComponent>();
@@ -1217,7 +1217,7 @@ TEST(Scripting, MeshComponent_SetMeshHandle_ZeroClearsAssignment)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<MeshComponent>();
@@ -1244,7 +1244,7 @@ TEST(Scripting, Scene_CreateEntity_WithPrimitiveMesh_IsVisibleFromScript)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
 
@@ -1268,7 +1268,7 @@ TEST(Scripting, LogMessage_NativeCallback_DoesNotCrashHost)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeLiveEntity(scene);
 
@@ -1287,7 +1287,7 @@ TEST(Scripting, Entity_HasComponent_ReflectsScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
 
@@ -1312,7 +1312,7 @@ TEST(Scripting, Entity_AddComponent_AddsToScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     EXPECT_TRUE(!entity.HasComponent<PointLightComponent>());
@@ -1332,7 +1332,7 @@ TEST(Scripting, Entity_RemoveComponent_RemovesFromScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<PointLightComponent>();
@@ -1354,7 +1354,7 @@ TEST(Scripting, Entity_GetName_MarshalsStringToManaged)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     // The harness forwarder compares the native name against this exact string.
@@ -1383,7 +1383,7 @@ TEST(Scripting, TransformComponent_GetTranslation_ReturnsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.GetComponent<TransformComponent>().Translation = glm::vec3(1.0f, 2.0f, 3.0f);
@@ -1404,7 +1404,7 @@ TEST(Scripting, TransformComponent_SetTranslation_MutatesScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
 
@@ -1428,7 +1428,7 @@ TEST(Scripting, MeshComponent_GetMeshHandle_ReturnsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<MeshComponent>(AssetHandle(0x1234ull));
@@ -1449,7 +1449,7 @@ TEST(Scripting, PointLightComponent_SetColor_MutatesScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<PointLightComponent>();
@@ -1474,7 +1474,7 @@ TEST(Scripting, PointLightComponent_GetColor_ReturnsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<PointLightComponent>().Color = glm::vec3(0.1f, 0.2f, 0.3f);
@@ -1495,7 +1495,7 @@ TEST(Scripting, PointLightComponent_SetIntensity_MutatesScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<PointLightComponent>();
@@ -1516,7 +1516,7 @@ TEST(Scripting, PointLightComponent_GetIntensity_ReturnsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<PointLightComponent>().Intensity = 7.25f;
@@ -1537,7 +1537,7 @@ TEST(Scripting, RelationshipComponent_SetParent_MutatesScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity parent = MakeContextEntity(scene);
     Entity child = MakeContextEntity(scene); // CreateEntity gives it a RelationshipComponent
@@ -1560,7 +1560,7 @@ TEST(Scripting, RelationshipComponent_GetParent_ReturnsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity parent = MakeContextEntity(scene);
     Entity child = MakeContextEntity(scene);
@@ -1583,7 +1583,7 @@ TEST(Scripting, RigidBodyComponent_GetType_ReturnsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Kinematic;
@@ -1604,7 +1604,7 @@ TEST(Scripting, RigidBodyComponent_SetType_MutatesScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
@@ -1626,7 +1626,7 @@ TEST(Scripting, BoxColliderComponent_Getters_ReturnSceneValues)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& box = entity.AddComponent<BoxColliderComponent>();
@@ -1676,7 +1676,7 @@ TEST(Scripting, BoxColliderComponent_Setters_MutateScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& box = entity.AddComponent<BoxColliderComponent>();
@@ -1721,7 +1721,7 @@ TEST(Scripting, SphereColliderComponent_Getters_ReturnSceneValues)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& sphere = entity.AddComponent<SphereColliderComponent>();
@@ -1771,7 +1771,7 @@ TEST(Scripting, SphereColliderComponent_Setters_MutateScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& sphere = entity.AddComponent<SphereColliderComponent>();
@@ -1816,7 +1816,7 @@ TEST(Scripting, CapsuleColliderComponent_Getters_ReturnSceneValues)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& capsule = entity.AddComponent<CapsuleColliderComponent>();
@@ -1873,7 +1873,7 @@ TEST(Scripting, CapsuleColliderComponent_Setters_MutateScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& capsule = entity.AddComponent<CapsuleColliderComponent>();
@@ -1924,7 +1924,7 @@ TEST(Scripting, CylinderColliderComponent_GettersAndSetters_RoundTripSceneValues
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& cylinder = entity.AddComponent<CylinderColliderComponent>();
@@ -2018,13 +2018,13 @@ TEST(Scripting, RigidBodyComponent_GetLinearVelocity_ReturnsWorldValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
     rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
-    const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f)); // gravity-free
+    Ref<PhysicsWorld> world = Ref<PhysicsWorld>::Create(glm::vec3(0.0f)); // gravity-free
     const auto& tc = entity.GetComponent<TransformComponent>();
     world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
     world->SetLinearVelocity(entity.GetUUID(), glm::vec3(1.0f, 2.0f, 3.0f));
@@ -2046,13 +2046,13 @@ TEST(Scripting, RigidBodyComponent_SetLinearVelocity_MutatesWorld)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
     rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
-    const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
+    Ref<PhysicsWorld> world = Ref<PhysicsWorld>::Create(glm::vec3(0.0f));
     const auto& tc = entity.GetComponent<TransformComponent>();
     world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
     engine.SetActivePhysicsWorld(world);
@@ -2074,13 +2074,13 @@ TEST(Scripting, Physics_ApplyLinearImpulse_AddsVelocity)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
     rb.Type = RigidBodyComponent::BodyType::Dynamic;
 
-    const Ref<PhysicsWorld> world = CreateRef<PhysicsWorld>(glm::vec3(0.0f));
+    Ref<PhysicsWorld> world = Ref<PhysicsWorld>::Create(glm::vec3(0.0f));
     const auto& tc = entity.GetComponent<TransformComponent>();
     world->CreateBody(entity.GetUUID(), rb, tc.Translation, glm::quat(tc.Rotation), { ColliderData{} });
     engine.SetActivePhysicsWorld(world);
@@ -2101,7 +2101,7 @@ TEST(Scripting, TransformComponent_Rotation_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& tc = entity.GetComponent<TransformComponent>();
@@ -2129,7 +2129,7 @@ TEST(Scripting, TransformComponent_Scale_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& tc = entity.GetComponent<TransformComponent>();
@@ -2157,7 +2157,7 @@ TEST(Scripting, RigidBodyComponent_GravityScale_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
@@ -2185,7 +2185,7 @@ TEST(Scripting, RigidBodyComponent_LinearDamping_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
@@ -2213,7 +2213,7 @@ TEST(Scripting, RigidBodyComponent_AngularDamping_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
@@ -2241,7 +2241,7 @@ TEST(Scripting, RigidBodyComponent_MotionLockGetters_FalseValuesMarshalAcrossNat
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     entity.AddComponent<RigidBodyComponent>();
@@ -2269,7 +2269,7 @@ TEST(Scripting, RigidBodyComponent_MotionLocks_RoundTripSceneValues)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& rb = entity.AddComponent<RigidBodyComponent>();
@@ -2318,7 +2318,7 @@ TEST(Scripting, Entity_SetName_MutatesScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
 
@@ -2338,7 +2338,7 @@ TEST(Scripting, RelationshipComponent_GetChildren_ReturnsSceneChildren)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity parent = MakeContextEntity(scene); // scripted invoker
     Entity first = scene->CreateEntity("First");
@@ -2375,7 +2375,7 @@ TEST(Scripting, CameraComponent_VerticalFov_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& camera = entity.AddComponent<CameraComponent>();
@@ -2403,7 +2403,7 @@ TEST(Scripting, CameraComponent_NearClip_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& camera = entity.AddComponent<CameraComponent>();
@@ -2431,7 +2431,7 @@ TEST(Scripting, CameraComponent_FarClip_RoundTripsSceneValue)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     auto& camera = entity.AddComponent<CameraComponent>();
@@ -2459,7 +2459,7 @@ TEST(Scripting, Scene_CreateEntity_AddsEntityToScene)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity invoker = MakeContextEntity(scene);
 
@@ -2484,7 +2484,7 @@ TEST(Scripting, Scene_DestroyEntity_DefersUntilFrameEnd)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity invoker = MakeContextEntity(scene);
     Entity doomed = scene->CreateEntity("Doomed");
@@ -2511,7 +2511,7 @@ TEST(Scripting, Scene_DestroyEntity_TearsDownScriptInstance)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity entity = MakeContextEntity(scene);
     const Eppo::UUID id = entity.GetUUID();
@@ -2528,7 +2528,7 @@ TEST(Scripting, Scene_DestroyEntity_SelfDuringUpdate_IsSafe)
 {
     EP_REQUIRE(EnsureRuntime());
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& engine = ScriptEngine::Get();
     Entity selfDestruct = MakeContextEntity(scene);
     Entity survivor = MakeContextEntity(scene); // a second entity in the script view
@@ -2758,7 +2758,7 @@ TEST(ScriptReloadGraphical, ScriptEngine_VerifyRuntime_DoesNotReloadDuringPlayMo
     const Testing::TempDir projectDirectory(Project::GetProjectsDirectory());
     const auto scriptFile = StageProbeProject(projectDirectory);
 
-    const Ref<Scene> playScene = CreateRef<Scene>();
+    Ref<Scene> playScene = Ref<Scene>::Create();
     ScriptEngine::Get().SetSceneContext(playScene);
 
     EP_REQUIRE(FS::WriteText(scriptFile, kReplacementScriptSource, true));
@@ -2806,7 +2806,7 @@ TEST(ScriptReloadGraphical, ScriptEngine_VerifyRuntime_BuildFailureLeavesPreviou
     const bool validAfterFailure = ScriptEngine::IsUserAssemblyValid();
     const bool previousClassValid = ScriptEngine::Get().IsValidScriptClass("EppoTesting.ProbeScript");
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("RetainedAssembly");
     entity.AddComponent<ScriptComponent>(std::string("EppoTesting.ProbeScript"));
     ScriptEngine::Get().OnCreateEntity(entity);

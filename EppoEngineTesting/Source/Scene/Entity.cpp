@@ -19,7 +19,7 @@ TEST(Scene, Entity_DefaultConstructorCreatesInvalidEntity)
 
 TEST(Scene, Entity_ParamConstructorCreatesValidEntity)
 {
-    const auto scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     EP_REQUIRE(scene);
 
     // Because we trigger the constructor through the scene,
@@ -31,7 +31,7 @@ TEST(Scene, Entity_ParamConstructorCreatesValidEntity)
 
 TEST(Scene, Entity_HasComponent)
 {
-    const auto scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     EP_REQUIRE(scene);
 
     auto entity = scene->CreateEntity();
@@ -46,7 +46,7 @@ TEST(Scene, Entity_HasComponent)
 
 TEST(Scene, Entity_AddComponent)
 {
-    const auto scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     EP_REQUIRE(scene);
 
     auto entity = scene->CreateEntity();
@@ -58,7 +58,7 @@ TEST(Scene, Entity_AddComponent)
 
 TEST(Scene, Entity_TryAddComponent_ReturnsExistingComponent)
 {
-    const auto scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     EP_REQUIRE(scene);
 
     auto entity = scene->CreateEntity();

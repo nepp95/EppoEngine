@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-    class UniformBuffer
+    class UniformBuffer : public RefCtr
     {
     public:
         explicit UniformBuffer(uint64_t size, std::string debugName = "UniformBuffer");

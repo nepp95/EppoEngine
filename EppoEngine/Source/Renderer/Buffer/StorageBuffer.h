@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-    class StorageBuffer
+    class StorageBuffer : public RefCtr
     {
     public:
         StorageBuffer(uint32_t structStride, uint64_t initialSize = 0, std::string debugName = "StorageBuffer");

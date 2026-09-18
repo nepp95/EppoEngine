@@ -12,7 +12,7 @@ namespace Eppo
         bool IsOpen = false;
     };
 
-    class PanelManager
+    class PanelManager : public RefCtr
     {
     public:
         auto RenderGui() -> void;
@@ -22,7 +22,7 @@ namespace Eppo
         auto AddPanel(const std::string& panelName, bool isOpen) -> void
         {
             const PanelData data{
-                .Panel = CreateRef<T>(),
+                .Panel = Ref<T>::Create(),
                 .IsOpen = isOpen,
             };
 
@@ -35,7 +35,7 @@ namespace Eppo
         auto GetPanel(const std::string& panelName) -> Ref<T>
         {
             if (const auto it = m_PanelData.find(panelName); it != m_PanelData.end())
-                return std::static_pointer_cast<T>(it->second.Panel);
+                return it->second.Panel.As<T>();
 
             return nullptr;
         }

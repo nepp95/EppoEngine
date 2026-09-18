@@ -47,7 +47,7 @@ namespace Eppo
         std::string DebugName;
     };
 
-    class Framebuffer
+    class Framebuffer : public RefCtr
     {
     public:
         explicit Framebuffer(FramebufferSpecification spec);

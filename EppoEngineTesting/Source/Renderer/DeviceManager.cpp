@@ -11,7 +11,7 @@ TEST(Renderer, DeviceManager_UnderHarness_ExposesLiveDevice)
 	if (!Testing::AppHarness::IsAvailable())
 		return;
 
-	const auto& dm = DeviceManager::Get();
+	Ref<DeviceManager> dm = DeviceManager::Get();
 	EP_REQUIRE(dm);
 	EXPECT_TRUE(dm->GetDevice());
 	EXPECT_TRUE(dm->GetRenderer());
@@ -22,11 +22,11 @@ TEST(Renderer, PhysicalDevice_ReportsAllRequiredFeatures)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto& dm = DeviceManager::Get();
+    Ref<DeviceManager> dm = DeviceManager::Get();
     if (dm->GetParams().API != RendererAPI::Vulkan)
         GTEST_SKIP() << "This case checks Vulkan physical-device features.";
 
-    const auto* deviceManager = dynamic_cast<DeviceManagerVK*>(dm.get());
+    const auto* deviceManager = dynamic_cast<DeviceManagerVK*>(dm.Raw());
     EP_REQUIRE(deviceManager);
     EP_REQUIRE(deviceManager->GetPhysicalDevice());
     EXPECT_TRUE(deviceManager->GetPhysicalDevice()->SupportsRequiredFeatures());

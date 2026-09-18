@@ -64,7 +64,7 @@ namespace Eppo
         // pump window events, update layers, render, and present. Run() is just a
         // loop over this with a wall-clock timestep; a test harness can instead
         // drive frames deterministically (fixed timestep, controlled count).
-        auto StepFrame(float timestep) const -> void;
+        auto StepFrame(float timestep) -> void;
 
         [[nodiscard]] auto IsRunning() const -> bool { return m_IsRunning; }
 
@@ -74,7 +74,7 @@ namespace Eppo
             requires(std::derived_from<T, Layer>)
         auto PushLayer(Args&&... args) -> Ref<T>
         {
-            Ref<T> layer = CreateRef<T>(std::forward<Args>(args)...);
+            Ref<T> layer = Ref<T>::Create(std::forward<Args>(args)...);
             m_LayerStack.emplace_back(layer);
             layer->OnAttach();
             return layer;

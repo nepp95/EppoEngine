@@ -34,7 +34,9 @@ TEST(Renderer, Swapchain_ResizePreservesFrameCycleUntilNextResize)
     const auto [width, height] = application->GetWindow()->GetFramebufferSize();
     EXPECT_EQ(width, swapchain->GetWidth());
     EXPECT_EQ(height, swapchain->GetHeight());
-    const WeakRef<Framebuffer> framebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer;
+    Ref<Framebuffer> framebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer;
+    Framebuffer* rawFramebuffer = framebuffer.Raw();
+    framebuffer.Reset();
     auto expectedFrameIndex = swapchain->GetCurrentFrameIndex();
     const auto frameCount = swapchain->GetMaxFramesInFlight() * 3;
     for (uint32_t frame = 0; frame < frameCount; frame++)
@@ -42,11 +44,15 @@ TEST(Renderer, Swapchain_ResizePreservesFrameCycleUntilNextResize)
         context.AdvanceFrames(1);
         expectedFrameIndex = (expectedFrameIndex + 1) % swapchain->GetMaxFramesInFlight();
         EXPECT_EQ(expectedFrameIndex, swapchain->GetCurrentFrameIndex());
-        EXPECT_FALSE(framebuffer.expired());
+#ifdef EP_DEBUG
+        EXPECT_TRUE(IsLive(rawFramebuffer));
+#endif
         EXPECT_LT(swapchain->GetCurrentBackBufferIndex(), swapchain->GetImageCount());
     }
 
     glfwSetWindowSize(window, originalWidth, originalHeight);
     context.AdvanceFrames(1);
-    EXPECT_TRUE(framebuffer.expired());
+#ifdef EP_DEBUG
+    EXPECT_FALSE(IsLive(rawFramebuffer));
+#endif
 }

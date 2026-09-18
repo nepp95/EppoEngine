@@ -25,7 +25,7 @@ namespace Eppo
         float SlopeScaledDepthBias = 0.f;
     };
 
-    class Pipeline
+    class Pipeline : public RefCtr
     {
     public:
         Pipeline(PipelineSpecification spec, const nvrhi::FramebufferInfo& framebufferInfo);

@@ -11,10 +11,10 @@ namespace Eppo
         ~DX12GpuProfiler() override;
 
         auto
-        BeginZone(const Ref<RenderCommandBuffer>& commandBuffer, const char* name, const char* function, const char* file, uint32_t line)
+        BeginZone(Ref<RenderCommandBuffer> commandBuffer, const char* name, const char* function, const char* file, uint32_t line)
             -> void override;
         auto EndZone() -> void override;
-        auto Collect(const Ref<RenderCommandBuffer>& commandBuffer) -> void override;
+        auto Collect(Ref<RenderCommandBuffer> commandBuffer) -> void override;
 
     private:
 #if defined(TRACY_ENABLE)

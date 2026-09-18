@@ -23,7 +23,7 @@ namespace Eppo
         {
             if (Index != std::numeric_limits<uint32_t>::max())
             {
-                if (const auto manager = Manager.lock())
+                if (const auto& manager = Manager)
                     manager->Release(HeapType, Index);
             }
 
@@ -39,7 +39,7 @@ namespace Eppo
     {
         if (Index == std::numeric_limits<uint32_t>::max())
             return;
-        if (const auto manager = Manager.lock())
+        if (const auto& manager = Manager)
             manager->Release(HeapType, Index);
     }
 
@@ -75,26 +75,6 @@ namespace Eppo
         m_SamplerHeap->DescriptorTable = device->createDescriptorTable(m_SamplerHeap->BindingLayout);
         m_SamplerHeap->Capacity = initialHeapSize;
         device->resizeDescriptorTable(m_SamplerHeap->DescriptorTable, initialHeapSize, false);
-    }
-
-    auto DescriptorManager::Register(const Ref<Sampler>& resource) -> BindlessHandle
-    {
-        const auto& dm = DeviceManager::Get();
-        const auto device = dm->GetDevice();
-
-        const std::scoped_lock lock(m_SamplerHeap->Mutex);
-
-        // Resize if full
-        const uint32_t slot = GetNextSlot(device, m_SamplerHeap);
-        if (slot == std::numeric_limits<uint32_t>::max())
-            return {};
-
-        // Write to table
-        const auto item = nvrhi::BindingSetItem::Sampler(slot, resource->GetSampler());
-        EP_ASSERT(m_SamplerHeap->DescriptorTable->getCapacity() > slot);
-        device->writeDescriptorTable(m_SamplerHeap->DescriptorTable, item);
-
-        return { shared_from_this(), slot, BindlessHeapType::Sampler };
     }
 
     auto DescriptorManager::GetResourceDT() const -> nvrhi::DescriptorTableHandle

@@ -25,7 +25,7 @@ namespace Eppo
         uint8_t m_SourceMask = 0xFF;
         ImGuiTextFilter m_TextFilter;
 
-        Ref<LogSink> m_Sink;
+        spdlog::sink_ptr m_Sink;
         std::vector<LogEntry> m_Entries;
         std::vector<uint32_t> m_FilteredIndices;
         uint64_t m_Version = 0;

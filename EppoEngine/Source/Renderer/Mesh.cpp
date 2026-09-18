@@ -238,7 +238,7 @@ namespace Eppo
         const auto vb = VertexBuffer::GeneratePrimitive(type);
         const auto ib = IndexBuffer::GeneratePrimitive(type);
 
-        Ref<Material> material = CreateRef<Material>();
+        Ref<Material> material = Ref<Material>::Create();
 
         Primitive primitive{
             .VertexCount = vb->GetSize() / sizeof(Vertex),
@@ -254,7 +254,7 @@ namespace Eppo
             .LocalTransform = glm::mat4(1.0f),
         };
 
-        Ref<Mesh> mesh = CreateRef<Mesh>();
+        Ref<Mesh> mesh = Ref<Mesh>::Create();
         mesh->m_Submeshes.emplace_back(submesh);
         mesh->m_Materials.emplace_back(material);
         mesh->m_Name = MeshPrimitiveTypeToString(type);
@@ -418,8 +418,8 @@ namespace Eppo
                 p.Material = m_Materials.at(mp.material);
         }
 
-        data.VertexBuffer = CreateRef<VertexBuffer>(vertices.data(), static_cast<uint64_t>(vertices.size() * sizeof(Vertex)));
-        data.IndexBuffer = CreateRef<IndexBuffer>(indices.data(), static_cast<uint64_t>(indices.size() * sizeof(uint32_t)));
+        data.VertexBuffer = Ref<VertexBuffer>::Create(vertices.data(), static_cast<uint64_t>(vertices.size() * sizeof(Vertex)));
+        data.IndexBuffer = Ref<IndexBuffer>::Create(indices.data(), static_cast<uint64_t>(indices.size() * sizeof(uint32_t)));
 
         // Accumulate mesh-local bounds: vertices are in submesh space, so
         // transform by the submesh's LocalTransform to reach the space the
@@ -438,7 +438,7 @@ namespace Eppo
         for (uint32_t i = 0; i < model.materials_count; i++)
         {
             const auto& material = model.materials[i];
-            auto newMat = CreateRef<Material>();
+            auto newMat = Ref<Material>::Create();
 
             newMat->BaseColor = glm::make_vec4(material.pbr_metallic_roughness.base_color_factor);
             newMat->Roughness = static_cast<float>(material.pbr_metallic_roughness.roughness_factor);
@@ -664,7 +664,7 @@ namespace Eppo
         std::vector<nvrhi::CommandListHandle> cmdLists(m_Images.size());
         std::vector<TaskId> imageTasks;
         imageTasks.reserve(m_Images.size());
-        const auto& threadPool = Application::Get().GetThreadPool();
+        Ref<ThreadPool> threadPool = Application::Get().GetThreadPool();
 
         for (size_t i = 0; i < m_Images.size(); i++)
         {
@@ -748,7 +748,7 @@ namespace Eppo
                         if (!rawCmds.empty())
                             device->executeCommandLists(rawCmds.data(), rawCmds.size());
 
-                        const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+                        Ref<DescriptorManager> descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
                         std::vector<Ref<BindlessHandle>> imageHandles(images.size());
                         for (uint32_t i = 0; i < images.size(); i++)
                         {
@@ -757,7 +757,7 @@ namespace Eppo
 
                             auto handle = descriptorManager->Register<Image>(images[i]);
                             if (handle.Index != std::numeric_limits<uint32_t>::max())
-                                imageHandles[i] = CreateRef<BindlessHandle>(std::move(handle));
+                                imageHandles[i] = Ref<BindlessHandle>::Create(std::move(handle));
                         }
 
                         const auto GetHandle = [&imageHandles](const int32_t imageIndex) -> Ref<BindlessHandle>
@@ -776,7 +776,7 @@ namespace Eppo
                             material->EmissiveMap = GetHandle(source.Emissive);
                         }
 
-                        for (const auto& image : images)
+                        for (Ref<Image> image : images)
                         {
                             if (image && image->GetTexture())
                                 image->IsLoaded.store(true, std::memory_order_release);

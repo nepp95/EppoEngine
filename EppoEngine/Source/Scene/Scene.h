@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "Physics/PhysicsWorld.h"
 #include "Renderer/Camera/EditorCamera.h"
 #include "Scene/Components.h"
 
@@ -14,7 +15,6 @@ namespace Eppo
     using EntityHandle = entt::entity;
     class Entity;
     class SceneRenderer;
-    class PhysicsWorld;
     class SceneSerializer;
 
     struct EnvironmentSettings
@@ -43,7 +43,7 @@ namespace Eppo
         float Intensity = 1.0f;
     };
 
-    class Scene : public Asset, public std::enable_shared_from_this<Scene>
+    class Scene : public Asset
     {
     public:
         Scene() = default;
@@ -57,8 +57,8 @@ namespace Eppo
         auto OnRuntimeStop() -> void;
         auto OnUpdateRuntime(float timestep) -> void;
 
-        auto OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& camera) -> void;
-        auto OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer) -> void;
+        auto OnRenderEditor(Ref<SceneRenderer> sceneRenderer, const EditorCamera& camera) -> void;
+        auto OnRenderRuntime(Ref<SceneRenderer> sceneRenderer) -> void;
 
         [[nodiscard]] auto GetPrimaryCameraEntity() -> Entity;
 
@@ -108,7 +108,7 @@ namespace Eppo
         CopyComponent(entt::registry& srcRegistry, entt::registry& dstRegistry, const std::unordered_map<UUID, EntityHandle>& entityMap)
             -> void;
 
-        static auto Copy(const Ref<Scene>& scene) -> Ref<Scene>;
+        static auto Copy(Ref<Scene> scene) -> Ref<Scene>;
 
         [[nodiscard]] auto GetEnvironmentSettings() -> EnvironmentSettings& { return m_EnvironmentSettings; }
         [[nodiscard]] auto GetEnvironmentSettings() const -> const EnvironmentSettings& { return m_EnvironmentSettings; }
@@ -122,7 +122,7 @@ namespace Eppo
         [[nodiscard]] auto GetColliderlessRigidBodies() const -> const std::vector<std::string>& { return m_ColliderlessRigidBodies; }
 
     private:
-        auto RenderScene(const Ref<SceneRenderer>& sceneRenderer) -> void;
+        auto RenderScene(Ref<SceneRenderer> sceneRenderer) -> void;
 
         // Destroys an entity and its descendants (caller detaches the subtree root).
         auto DestroyEntityHierarchy(Entity entity) -> void;

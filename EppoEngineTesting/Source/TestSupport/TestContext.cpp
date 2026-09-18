@@ -21,7 +21,7 @@ namespace Eppo::Testing
 
             if (app != owner)
             {
-                layer = app->PushLayer<ScenarioLayer>().get();
+                layer = app->PushLayer<ScenarioLayer>().Raw();
                 owner = app;
             }
 
@@ -30,7 +30,7 @@ namespace Eppo::Testing
     }
 
     TestContext::TestContext()
-        : m_Scene(CreateRef<Scene>())
+        : m_Scene(Ref<Scene>::Create())
     {
         // Boot the shared app (no-op if already up).
         (void)AppHarness::Get();

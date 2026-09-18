@@ -21,6 +21,8 @@
 #include "Core/Buffer/Buffer.h"
 #include "Core/Buffer/BufferReader.h"
 #include "Core/Buffer/BufferWriter.h"
+#include "Core/Buffer/FileStreamReader.h"
+#include "Core/Buffer/FileStreamWriter.h"
 #include "Core/Hash.h"
 #include "Core/UUID.h"
 #include "Utility/Filesystem.h"

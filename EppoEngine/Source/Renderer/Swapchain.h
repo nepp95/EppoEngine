@@ -12,7 +12,7 @@ namespace Eppo
         Ref<Framebuffer> Framebuffer = nullptr;
     };
 
-    class Swapchain
+    class Swapchain : public RefCtr
     {
     public:
         virtual ~Swapchain() = default;

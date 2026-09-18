@@ -141,7 +141,7 @@ namespace Eppo
                     );
                 }
 
-                return CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
+                return Ref<VertexBuffer>::Create(vertices.data(), vertices.size() * sizeof(Vertex));
             }
 
             case MeshPrimitiveType::Cube:
@@ -173,7 +173,7 @@ namespace Eppo
                     Vertex{ { -1.0f, -1.0f, 1.0f },  { 0.0f, -1.0f, 0.0f } },
                 };
 
-                return CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
+                return Ref<VertexBuffer>::Create(vertices.data(), vertices.size() * sizeof(Vertex));
             }
 
             case MeshPrimitiveType::Cylinder:
@@ -256,7 +256,7 @@ namespace Eppo
                     );
                 }
 
-                return CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
+                return Ref<VertexBuffer>::Create(vertices.data(), vertices.size() * sizeof(Vertex));
             }
 
             case MeshPrimitiveType::Sphere:
@@ -286,7 +286,7 @@ namespace Eppo
                     }
                 }
 
-                return CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
+                return Ref<VertexBuffer>::Create(vertices.data(), vertices.size() * sizeof(Vertex));
             }
 
             case MeshPrimitiveType::Capsule:
@@ -324,7 +324,7 @@ namespace Eppo
                 for (uint32_t i = 0; i <= hemiStacks; i++) // Bottom hemisphere: lat 0 -> -PI/2
                     addRing(-halfHeight, -static_cast<float>(i) * (pi / 2.0f / hemiStacks));
 
-                return CreateRef<VertexBuffer>(vertices.data(), vertices.size() * sizeof(Vertex));
+                return Ref<VertexBuffer>::Create(vertices.data(), vertices.size() * sizeof(Vertex));
             }
         }
     }

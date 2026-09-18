@@ -6,9 +6,11 @@ namespace Eppo
 {
     class PanelManager;
 
-    class Panel
+    class Panel : public RefCtr
     {
     public:
+        virtual ~Panel() = default;
+
         auto SetPanelManager(PanelManager* panelManager) -> void;
 
         virtual auto RenderGui() -> void = 0;

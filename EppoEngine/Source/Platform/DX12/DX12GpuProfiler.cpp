@@ -9,7 +9,7 @@ namespace Eppo
     DX12GpuProfiler::DX12GpuProfiler()
     {
 #if defined(TRACY_ENABLE)
-        const auto dm = std::static_pointer_cast<DeviceManagerDX12>(DeviceManager::Get());
+        const auto dm = DeviceManager::Get().As<DeviceManagerDX12>();
         m_Context = TracyD3D12Context(dm->GetDxDevice(), dm->GetGraphicsQueue());
 #endif
     }
@@ -23,7 +23,7 @@ namespace Eppo
     }
 
     auto DX12GpuProfiler::BeginZone(
-        [[maybe_unused]] const Ref<RenderCommandBuffer>& commandBuffer, [[maybe_unused]] const char* name,
+        [[maybe_unused]] Ref<RenderCommandBuffer> commandBuffer, [[maybe_unused]] const char* name,
         [[maybe_unused]] const char* function, [[maybe_unused]] const char* file, [[maybe_unused]] const uint32_t line
     ) -> void
     {
@@ -42,7 +42,7 @@ namespace Eppo
 #endif
     }
 
-    auto DX12GpuProfiler::Collect([[maybe_unused]] const Ref<RenderCommandBuffer>& commandBuffer) -> void
+    auto DX12GpuProfiler::Collect([[maybe_unused]] Ref<RenderCommandBuffer> commandBuffer) -> void
     {
 #if defined(TRACY_ENABLE)
         TracyD3D12Collect(m_Context);

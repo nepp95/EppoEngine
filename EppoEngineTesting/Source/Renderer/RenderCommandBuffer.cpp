@@ -110,7 +110,7 @@ TEST(Renderer, RenderCommandBuffer_TimingIsReadableAfterFrameSlotReuse)
     const uint32_t maxFramesInFlight = app->GetDeviceManager()->GetMaxFramesInFlight();
     EP_REQUIRE(maxFramesInFlight > 0);
 
-    const auto state = CreateRef<RenderCommandBufferTimingState>();
+    const auto state = Ref<RenderCommandBufferTimingState>::Create();
     app->PushLayer<RenderCommandBufferTimingLayer>(state);
     Testing::AppHarness::AdvanceFrames(maxFramesInFlight + 1);
 

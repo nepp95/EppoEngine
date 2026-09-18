@@ -77,7 +77,7 @@ namespace Eppo
         std::vector<const char*> RequiredVulkanInstanceExtensions;
     };
 
-    class DeviceManager
+    class DeviceManager : public RefCtr
     {
     public:
         DeviceManager(const DeviceManager&) = delete;
@@ -85,14 +85,14 @@ namespace Eppo
         virtual ~DeviceManager() = default;
 
         // Lifecycle
-        [[nodiscard]] static auto Create(const Ref<Window>& window, const DeviceParams& params) -> ScopedPtr<DeviceManager>;
+        [[nodiscard]] static auto Create(const Ref<Window>& window, const DeviceParams& params) -> Ref<DeviceManager>;
         virtual auto Init() -> void = 0;
         virtual auto Shutdown() -> void = 0;
 
         // Frame
         auto BeginFrame() -> bool { return m_Swapchain->BeginFrame(); }
         auto Present() -> bool { return m_Swapchain->Present(); }
-        [[nodiscard]] auto WaitIdle() const -> bool;
+        auto WaitIdle() const -> bool;
 
         // Renderer
         auto InitRenderer() -> void;

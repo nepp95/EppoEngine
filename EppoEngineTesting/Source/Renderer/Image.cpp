@@ -13,7 +13,7 @@ using namespace Eppo;
 
 namespace
 {
-    auto WaitForImage(const Ref<Image>& image) -> bool
+    auto WaitForImage(Ref<Image> image) -> bool
     {
         for (uint32_t frame = 0; frame < 120 && !image->IsLoaded.load(std::memory_order_acquire); frame++)
         {
@@ -63,7 +63,7 @@ namespace
         return path;
     }
 
-    [[nodiscard]] auto ReadFloatPixels(const Ref<Image>& image) -> std::array<float, 4>
+    [[nodiscard]] auto ReadFloatPixels(Ref<Image> image) -> std::array<float, 4>
     {
         const auto device = Testing::AppHarness::Get()->GetDeviceManager()->GetDevice();
         const auto stagingTexture = device->createStagingTexture(image->GetTexture()->getDesc(), nvrhi::CpuAccessMode::Read);
@@ -87,7 +87,7 @@ namespace
         return pixels;
     }
 
-    [[nodiscard]] auto ReadRgba8Pixels(const Ref<Image>& image, const uint32_t mipLevel) -> std::vector<uint8_t>
+    [[nodiscard]] auto ReadRgba8Pixels(Ref<Image> image, const uint32_t mipLevel) -> std::vector<uint8_t>
     {
         const auto device = Testing::AppHarness::Get()->GetDeviceManager()->GetDevice();
         const auto stagingTexture = device->createStagingTexture(image->GetTexture()->getDesc(), nvrhi::CpuAccessMode::Read);
@@ -134,7 +134,7 @@ namespace
 
     auto CheckUploadedImage(const ImageSource& source) -> void
     {
-        const Ref<Image> image = Image::Create(
+        Ref<Image> image = Image::Create(
             ImageSpecification{
                 .ImageFormat = nvrhi::Format::RGBA32_FLOAT,
                 .DebugName = "Image HDR upload test",
@@ -212,7 +212,7 @@ TEST(Renderer, Image_LinearMipChainUploadsEveryLevel)
         return;
 
     const std::vector<uint8_t> rgba(4 * 2 * 4, 64);
-    const Ref<Image> image = CreateMipmappedImage(4, 2, rgba, MipGenerationMode::Linear);
+    Ref<Image> image = CreateMipmappedImage(4, 2, rgba, MipGenerationMode::Linear);
 
     EP_REQUIRE(WaitForImage(image));
     EXPECT_EQ(3u, image->GetMipLevels());
@@ -233,7 +233,7 @@ TEST(Renderer, Image_SrgbMipFilteringUsesLinearLight)
     const std::vector<uint8_t> rgba{
         0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255, 255, 255, 255, 255,
     };
-    const Ref<Image> image = CreateMipmappedImage(2, 2, rgba, MipGenerationMode::ColorSRGB);
+    Ref<Image> image = CreateMipmappedImage(2, 2, rgba, MipGenerationMode::ColorSRGB);
 
     EP_REQUIRE(WaitForImage(image));
     const std::vector<uint8_t> pixels = ReadRgba8Pixels(image, 1);
@@ -250,7 +250,7 @@ TEST(Renderer, Image_NormalMapMipsRemainNormalized)
     const std::vector<uint8_t> rgba{
         255, 128, 128, 255, 128, 255, 128, 255, 255, 128, 128, 255, 128, 255, 128, 255,
     };
-    const Ref<Image> image = CreateMipmappedImage(2, 2, rgba, MipGenerationMode::NormalMap);
+    Ref<Image> image = CreateMipmappedImage(2, 2, rgba, MipGenerationMode::NormalMap);
 
     EP_REQUIRE(WaitForImage(image));
     const std::vector<uint8_t> pixels = ReadRgba8Pixels(image, 1);
@@ -265,7 +265,7 @@ TEST(Renderer, Image_CubemapRenderTargetCreatesSixSlicesAndRequestedMips)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> image = Image::Create(ImageSpecification{
+    Ref<Image> image = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 128u,
         .Height = 128u,
@@ -289,7 +289,7 @@ TEST(Renderer, Image_FallbackImageUploadsAndRegistersBindlessIndex)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> image = Image::GenerateFallbackImage();
+    Ref<Image> image = Image::GenerateFallbackImage();
 
     EP_REQUIRE(image != nullptr);
     EP_REQUIRE(image->GetTexture() != nullptr);
@@ -304,7 +304,7 @@ TEST(Renderer, DescriptorManager_CubemapRegistersAsResource)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> image = Image::Create(ImageSpecification{
+    Ref<Image> image = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 16u,
         .Height = 16u,
@@ -312,7 +312,7 @@ TEST(Renderer, DescriptorManager_CubemapRegistersAsResource)
         .IsRenderTarget = true,
         .DebugName = "Bindless cubemap test",
     });
-    const Ref<DescriptorManager> descriptorManager =
+    Ref<DescriptorManager> descriptorManager =
         Testing::AppHarness::Get()->GetDeviceManager()->GetRenderer()->GetDescriptorManager();
 
     const BindlessHandle handle = descriptorManager->Register(image);

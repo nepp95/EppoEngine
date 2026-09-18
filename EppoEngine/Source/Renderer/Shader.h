@@ -48,7 +48,7 @@ namespace Eppo
         std::map<std::string, std::string> Includes;
     };
 
-    class Shader
+    class Shader : public RefCtr
     {
     public:
         explicit Shader(ShaderSpecification spec);

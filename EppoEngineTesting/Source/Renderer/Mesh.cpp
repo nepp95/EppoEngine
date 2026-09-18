@@ -97,7 +97,7 @@ namespace
         return path;
     }
 
-    auto ReadVertices(const Ref<VertexBuffer>& vertexBuffer) -> std::vector<Vertex>
+    auto ReadVertices(Ref<VertexBuffer> vertexBuffer) -> std::vector<Vertex>
     {
         const auto device = DeviceManager::Get()->GetDevice();
         const uint64_t size = vertexBuffer->GetSize();
@@ -342,7 +342,7 @@ TEST(Renderer, Material_DefaultTextureHandlesProduceInvalidIndices)
 
 TEST(Renderer, Material_SharedTextureHandleProducesSameGlobalIndex)
 {
-	const auto handle = CreateRef<BindlessHandle>();
+	const auto handle = Ref<BindlessHandle>::Create();
 	handle->Index = 42;
 
 	Material first;
@@ -430,7 +430,7 @@ TEST(Renderer, Mesh_EmbeddedImageLoadsAndAssignsMaterialHandle)
 
     EP_REQUIRE(mesh.IsValid());
     EP_REQUIRE_EQ(1u, static_cast<uint32_t>(mesh.GetImages().size()));
-    const Ref<Image>& image = mesh.GetImage(0);
+    Ref<Image> image = mesh.GetImage(0);
     EP_REQUIRE(image != nullptr);
     EXPECT_FALSE(image->IsLoaded.load(std::memory_order_acquire));
 
@@ -458,9 +458,9 @@ TEST(Renderer, Mesh_GltfMaterial_ImportsAlphaModeCutoffAndDoubleSided)
     EP_REQUIRE(mesh.IsValid());
     EP_REQUIRE_EQ(3u, static_cast<uint32_t>(mesh.GetSubmeshes().front().Primitives.size()));
 
-    const Ref<Material>& opaque = mesh.GetMaterial(0);
-    const Ref<Material>& mask = mesh.GetMaterial(1);
-    const Ref<Material>& blend = mesh.GetMaterial(2);
+    Ref<Material> opaque = mesh.GetMaterial(0);
+    Ref<Material> mask = mesh.GetMaterial(1);
+    Ref<Material> blend = mesh.GetMaterial(2);
     EP_REQUIRE(opaque != nullptr);
     EP_REQUIRE(mask != nullptr);
     EP_REQUIRE(blend != nullptr);

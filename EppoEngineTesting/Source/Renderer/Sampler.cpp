@@ -11,7 +11,7 @@ TEST(Renderer, Sampler_OwnsItsBindlessHandle)
 	if (!Testing::AppHarness::IsAvailable())
 		return;
 
-	const auto descriptorManager = CreateRef<DescriptorManager>();
+	const auto descriptorManager = Ref<DescriptorManager>::Create();
 	const auto sampler = Sampler::Create({}, descriptorManager);
 
 	EXPECT_EQ(0u, sampler->GetBindlessIndex());
@@ -23,7 +23,7 @@ TEST(Renderer, Sampler_CreateAppliesIndependentAddressModes)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto descriptorManager = CreateRef<DescriptorManager>();
+    const auto descriptorManager = Ref<DescriptorManager>::Create();
     const auto sampler = Sampler::Create(
         {
             .AddressModeU = nvrhi::SamplerAddressMode::Wrap,

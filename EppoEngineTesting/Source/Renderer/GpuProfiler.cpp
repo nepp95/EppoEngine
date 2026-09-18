@@ -42,18 +42,18 @@ TEST(Renderer, GpuProfiler_NestedZonesSurviveFrameReuseAndCollection)
     Testing::TestContext context;
     ASSERT_TRUE(context.IsAvailable());
 
-    const auto deviceManager = DeviceManager::Get();
+    Ref<DeviceManager> deviceManager = DeviceManager::Get();
 #if defined(EP_PLATFORM_WINDOWS)
     ComPtr<ID3D12InfoQueue> infoQueue;
     if (s_EnableValidationLayers && deviceManager->GetParams().API == RendererAPI::DX12)
     {
-        const auto dxDeviceManager = std::static_pointer_cast<DeviceManagerDX12>(deviceManager);
+        const auto dxDeviceManager = deviceManager.As<DeviceManagerDX12>();
         ASSERT_TRUE(SUCCEEDED(dxDeviceManager->GetDxDevice()->QueryInterface(IID_PPV_ARGS(&infoQueue))));
     }
     const auto firstMessage = infoQueue ? infoQueue->GetNumStoredMessagesAllowedByRetrievalFilter() : 0;
 #endif
 
-    const auto commandBuffer = CreateRef<RenderCommandBuffer>();
+    Ref<RenderCommandBuffer> commandBuffer = Ref<RenderCommandBuffer>::Create();
     const auto frameCount = deviceManager->GetMaxFramesInFlight() * 4;
     uint32_t submittedFrames = 0;
     context.AdvanceFrames(frameCount, [&](float) -> void

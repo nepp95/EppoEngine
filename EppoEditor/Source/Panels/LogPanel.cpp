@@ -45,7 +45,7 @@ namespace Eppo
     }
 
     LogPanel::LogPanel()
-        : m_Sink(CreateRef<LogSink>(LOG_BUFFER_CAPACITY))
+        : m_Sink(std::make_shared<LogSink>(LOG_BUFFER_CAPACITY))
     {
         Log::AddSink(m_Sink);
     }

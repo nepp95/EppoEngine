@@ -49,11 +49,11 @@ namespace Eppo
         UUID EntityId = 0;
     };
 
-    class PhysicsWorld
+    class PhysicsWorld : public RefCtr
     {
     public:
         explicit PhysicsWorld(const glm::vec3& gravity);
-        ~PhysicsWorld();
+        virtual ~PhysicsWorld();
 
         PhysicsWorld(const PhysicsWorld&) = delete;
         PhysicsWorld& operator=(const PhysicsWorld&) = delete;

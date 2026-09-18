@@ -18,7 +18,7 @@ namespace Eppo
         s_Instance = this;
 
         // Create window
-        m_Window = CreateRef<Window>(WindowSpecification{
+        m_Window = Ref<Window>::Create(WindowSpecification{
             .Title = m_Params.Title,
             .Width = m_Params.Width,
             .Height = m_Params.Height,
@@ -42,7 +42,7 @@ namespace Eppo
         m_DeviceManager = DeviceManager::Create(m_Window, deviceParams);
         m_DeviceManager->Init();
 
-        m_ThreadPool = CreateRef<ThreadPool>();
+        m_ThreadPool = Ref<ThreadPool>::Create();
 
         m_DeviceManager->InitRenderer();
 
@@ -61,11 +61,11 @@ namespace Eppo
 
         m_ThreadPool->Shutdown(true);
         m_DeviceManager->WaitIdle();
-        m_ImGuiLayer.reset();
+        m_ImGuiLayer.Reset();
 
         for (auto it = m_LayerStack.begin(); it != m_LayerStack.end();)
         {
-            const auto layer = *it;
+            Ref<Layer> layer = *it;
             layer->OnDetach();
             it = m_LayerStack.erase(it);
         }
@@ -92,7 +92,7 @@ namespace Eppo
         m_DeviceManager->GetDevice()->waitForIdle();
     }
 
-    auto Application::StepFrame(const float timestep) const -> void
+    auto Application::StepFrame(const float timestep) -> void
     {
         EP_PROFILE_FN("Application::StepFrame")
 
@@ -102,7 +102,7 @@ namespace Eppo
         if (!m_IsMinimized && m_DeviceManager->BeginFrame())
         {
             // Run layer updates - possibly enqueuing render commands
-            for (const auto& layer : m_LayerStack)
+            for (Ref<Layer> layer : m_LayerStack)
                 layer->OnUpdate(timestep);
 
             // Enqueue imgui render
@@ -110,7 +110,7 @@ namespace Eppo
             {
                 m_ImGuiLayer->PrepareRender();
 
-                for (const auto& layer : m_LayerStack)
+                for (Ref<Layer> layer : m_LayerStack)
                     layer->OnUIRender();
 
                 m_ImGuiLayer->Render();
@@ -133,7 +133,7 @@ namespace Eppo
         dispatcher.Dispatch<WindowCloseEvent>(std::bind_front(&Application::OnWindowClose, this));
         dispatcher.Dispatch<WindowResizeEvent>(std::bind_front(&Application::OnWindowResize, this));
 
-        for (const auto& layer : m_LayerStack)
+        for (Ref<Layer> layer : m_LayerStack)
         {
             if (e.Handled)
                 break;

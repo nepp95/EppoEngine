@@ -100,6 +100,10 @@ namespace Eppo
         if (!s_Instance)
             return;
 
+        // Release the scene contexts before the engine itself dies, so a scene
+        // destroyed by the release still sees a live ScriptEngine in its destructor.
+        s_Instance->m_SceneContext.Reset();
+        s_Instance->m_ActivePhysicsWorld.Reset();
         s_Instance->m_CoreAssembly.reset();
         s_Instance.reset();
     }
@@ -189,7 +193,7 @@ namespace Eppo
         const auto outputDirectory = Project::GetCacheDirectory() / "Scripts";
 
         // Queue async build if needed
-        const auto& threadPool = Application::Get().GetThreadPool();
+        Ref<ThreadPool> threadPool = Application::Get().GetThreadPool();
 
         if (m_BuildTaskId != 0)
         {
@@ -204,10 +208,10 @@ namespace Eppo
             }
         }
 
-        auto result = CreateRef<TaskResult<int32_t>>();
+        auto result = Ref<TaskResult<int32_t>>::Create();
         m_BuildTaskId = threadPool->QueueTask(
             "Compiling .NET Runtime",
-            [result, projectFile, outputDirectory]() -> void
+            [result, projectFile, outputDirectory]() mutable -> void
             {
                 const auto tempDir = outputDirectory / "Temp";
 
@@ -219,7 +223,7 @@ namespace Eppo
                       "-p:CoreManagedDll=" + (FS::GetExecutableDirectory() / "EppoScriptCore.dll").string(), "--nologo" }
                 );
 
-                *result = exitCode;
+                result->Result.emplace(exitCode);
             },
             [this, result, name, outputDirectory, project](const TaskStatus status) -> void
             {
@@ -245,7 +249,7 @@ namespace Eppo
                     return;
                 }
 
-                const int32_t exitCode = result->has_value() ? result->value() : -1;
+                const int32_t exitCode = result->Result.has_value() ? result->Result.value() : -1;
 
                 if (exitCode != 0)
                 {
@@ -321,14 +325,14 @@ namespace Eppo
     auto ScriptEngine::SetSceneContext(const Ref<Scene>& scene) -> void
     {
         if (!scene)
-            m_SceneContext.reset();
+            m_SceneContext.Reset();
         else
             m_SceneContext = scene;
     }
 
     auto ScriptEngine::GetSceneContext() const -> Ref<Scene>
     {
-        return m_SceneContext.lock();
+        return m_SceneContext;
     }
 
     auto ScriptEngine::IsRuntimeLoaded() const -> bool

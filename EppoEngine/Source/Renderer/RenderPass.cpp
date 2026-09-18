@@ -15,7 +15,7 @@ namespace Eppo
         : m_Specification(std::move(spec))
     {}
 
-    auto RenderPass::Resize(const uint32_t width, const uint32_t height) const -> void
+    auto RenderPass::Resize(const uint32_t width, const uint32_t height) -> void
     {
         if (m_Specification.OwnsFramebuffer)
             m_Specification.Framebuffer->Resize(width, height);
@@ -86,7 +86,7 @@ namespace Eppo
                     {
                         case nvrhi::ResourceType::Texture_SRV:
                         {
-                            const auto* image = static_cast<const Image*>(input.Owner.get());
+                            const auto* image = static_cast<const Image*>(input.Owner.Raw());
                             desc.bindings.push_back(
                                 nvrhi::BindingSetItem::Texture_SRV(input.Binding, image->GetTexture(), image->GetFormat())
                             );
@@ -94,19 +94,19 @@ namespace Eppo
                         }
                         case nvrhi::ResourceType::Sampler:
                         {
-                            const auto* sampler = static_cast<const Sampler*>(input.Owner.get());
+                            const auto* sampler = static_cast<const Sampler*>(input.Owner.Raw());
                             desc.bindings.push_back(nvrhi::BindingSetItem::Sampler(input.Binding, sampler->GetSampler()));
                             break;
                         }
                         case nvrhi::ResourceType::StructuredBuffer_SRV:
                         {
-                            const auto* storageBuffer = static_cast<const StorageBuffer*>(input.Owner.get());
+                            const auto* storageBuffer = static_cast<const StorageBuffer*>(input.Owner.Raw());
                             desc.bindings.push_back(nvrhi::BindingSetItem::StructuredBuffer_SRV(input.Binding, storageBuffer->GetBuffer()));
                             break;
                         }
                         case nvrhi::ResourceType::ConstantBuffer:
                         {
-                            const auto* uniformBuffer = static_cast<const UniformBuffer*>(input.Owner.get());
+                            const auto* uniformBuffer = static_cast<const UniformBuffer*>(input.Owner.Raw());
                             desc.bindings.push_back(nvrhi::BindingSetItem::ConstantBuffer(input.Binding, uniformBuffer->GetBuffer()));
                             break;
                         }
@@ -174,7 +174,7 @@ namespace Eppo
             if (input.Binding != binding || input.Type != type)
                 continue;
 
-            if (input.Owner.get() == resource.get())
+            if (input.Owner.Raw() == resource.Raw())
                 return;
 
             input.Owner = resource;

@@ -198,7 +198,7 @@ namespace Eppo
                 if (component.MeshHandle)
                 {
                     const auto& assetManager = Project::GetActive()->GetAssetManager();
-                    const auto& mesh = assetManager->GetOrLoadAsset<Mesh>(component.MeshHandle);
+                    const auto& mesh = assetManager->GetOrLoadAsset(component.MeshHandle).As<Mesh>();
 
                     ImGui::TextDisabled("%s", mesh->GetName().c_str());
                     ImGui::SameLine();

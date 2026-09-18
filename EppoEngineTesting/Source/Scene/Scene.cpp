@@ -33,7 +33,7 @@ namespace
 
 TEST(Scene, Scene_CreateEntity_DoesNotAddRelationshipComponent)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     const Entity entity = scene->CreateEntity("Root");
 
     EXPECT_TRUE(!entity.HasComponent<RelationshipComponent>());
@@ -41,7 +41,7 @@ TEST(Scene, Scene_CreateEntity_DoesNotAddRelationshipComponent)
 
 TEST(Scene, Scene_BloomSettings_UseHdrDefaults)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     const auto& bloom = scene->GetBloomSettings();
 
     EXPECT_NEAR(0.5f, bloom.Threshold, 1e-5f);
@@ -52,7 +52,7 @@ TEST(Scene, Scene_BloomSettings_UseHdrDefaults)
 
 TEST(Scene, SceneSerializer_BloomSettings_RoundTripsFields)
 {
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     auto& bloom = authoring->GetBloomSettings();
     bloom.Threshold = 0.35f;
     bloom.Knee = 0.15f;
@@ -63,7 +63,7 @@ TEST(Scene, SceneSerializer_BloomSettings_RoundTripsFields)
     const auto path = dir.File("bloom-settings.epscene");
     EP_REQUIRE(SceneSerializer(authoring).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
     const auto& loadedBloom = loaded->GetBloomSettings();
     EXPECT_NEAR(0.35f, loadedBloom.Threshold, 1e-5f);
@@ -74,14 +74,14 @@ TEST(Scene, SceneSerializer_BloomSettings_RoundTripsFields)
 
 TEST(Scene, Scene_Copy_CarriesBloomSettings)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     auto& bloom = scene->GetBloomSettings();
     bloom.Threshold = 0.35f;
     bloom.Knee = 0.15f;
     bloom.Intensity = 0.55f;
     bloom.Radius = 2.5f;
 
-    const Ref<Scene> copy = Scene::Copy(scene);
+    Ref<Scene> copy = Scene::Copy(scene);
     const auto& copied = copy->GetBloomSettings();
     EXPECT_NEAR(0.35f, copied.Threshold, 1e-5f);
     EXPECT_NEAR(0.15f, copied.Knee, 1e-5f);
@@ -91,7 +91,7 @@ TEST(Scene, Scene_Copy_CarriesBloomSettings)
 
 TEST(Scene, Scene_SetParent_AddsAndRemovesSparseRelationshipComponents)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     const Entity parent = scene->CreateEntity("Parent");
     const Entity child = scene->CreateEntity("Child");
 
@@ -108,7 +108,7 @@ TEST(Scene, Scene_SetParent_AddsAndRemovesSparseRelationshipComponents)
 
 TEST(Scene, Scene_GetWorldRotation_ComposesHierarchyWithoutScale)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     const Entity parent = scene->CreateEntity("Parent");
     const Entity child = scene->CreateEntity("Child");
     scene->SetParent(child, parent);
@@ -132,7 +132,7 @@ TEST(Scene, SceneSerializer_Deserialize_DetachesChildWhoseParentDoesNotListIt)
     // Build the asymmetric link directly (child points up, parent never points down)
     // and round-trip it: the serializer emits only the child's Parent, reproducing a
     // one-directional stored link.
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     authoring->CreateEntityWithUUID(parentId, "Parent");
     Entity child = authoring->CreateEntityWithUUID(childId, "Child");
     child.AddComponent<RelationshipComponent>().Parent = parentId;
@@ -141,7 +141,7 @@ TEST(Scene, SceneSerializer_Deserialize_DetachesChildWhoseParentDoesNotListIt)
     const auto path = dir.File("orphan.epscene");
     EP_REQUIRE(SceneSerializer(authoring).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     Entity loadedChild = loaded->GetEntityByUUID(childId);
@@ -155,7 +155,7 @@ TEST(Scene, SceneSerializer_Deserialize_DetachPreservesWorldTransform)
 {
     const UUID parentId;
     const UUID childId;
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     Entity parent = authoring->CreateEntityWithUUID(parentId, "Parent");
     parent.GetComponent<TransformComponent>().Translation = { 4.0f, 3.0f, -2.0f };
     parent.GetComponent<TransformComponent>().Rotation = { 0.0f, glm::half_pi<float>(), 0.0f };
@@ -170,7 +170,7 @@ TEST(Scene, SceneSerializer_Deserialize_DetachPreservesWorldTransform)
     const auto path = dir.File("orphan-transform.epscene");
     EP_REQUIRE(SceneSerializer(authoring).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     Entity loadedChild = loaded->GetEntityByUUID(childId);
@@ -187,7 +187,7 @@ TEST(Scene, SceneSerializer_Deserialize_KeepsConsistentHierarchy)
     const UUID parentId;
     const UUID childId;
 
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     Entity parent = authoring->CreateEntityWithUUID(parentId, "Parent");
     Entity child = authoring->CreateEntityWithUUID(childId, "Child");
     authoring->SetParent(child, parent); // both sides maintained
@@ -196,7 +196,7 @@ TEST(Scene, SceneSerializer_Deserialize_KeepsConsistentHierarchy)
     const auto path = dir.File("consistent.epscene");
     EP_REQUIRE(SceneSerializer(authoring).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     Entity loadedParent = loaded->GetEntityByUUID(parentId);
@@ -214,7 +214,7 @@ TEST(Scene, SceneSerializer_Deserialize_ColliderWithMissingParentBecomesRoot)
     const UUID parentId;
     const UUID childId;
 
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     Entity child = authoring->CreateEntityWithUUID(childId, "Child");
     child.AddComponent<BoxColliderComponent>();
     child.AddComponent<RelationshipComponent>().Parent = parentId;
@@ -223,7 +223,7 @@ TEST(Scene, SceneSerializer_Deserialize_ColliderWithMissingParentBecomesRoot)
     const auto path = dir.File("orphan-collider.epscene");
     EP_REQUIRE(SceneSerializer(authoring).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     // The collider entity is repaired, not deleted: still present, still owns its
@@ -237,7 +237,7 @@ TEST(Scene, SceneSerializer_Deserialize_ColliderWithMissingParentBecomesRoot)
 TEST(Scene, SceneSerializer_Deserialize_InvalidParentPreservesValidChildren)
 {
     const UUID missingParentId;
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     Entity child = authoring->CreateEntity("Child");
     child.AddComponent<RelationshipComponent>().Parent = missingParentId;
     Entity grandchild = authoring->CreateEntity("Grandchild");
@@ -247,7 +247,7 @@ TEST(Scene, SceneSerializer_Deserialize_InvalidParentPreservesValidChildren)
     const auto path = dir.File("nested-orphan.epscene");
     EP_REQUIRE(SceneSerializer(authoring).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     Entity loadedChild = loaded->GetEntityByUUID(child.GetUUID());
@@ -259,7 +259,7 @@ TEST(Scene, SceneSerializer_Deserialize_InvalidParentPreservesValidChildren)
 
 TEST(Scene, SceneSerializer_Deserialize_DeduplicatesChildren)
 {
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     Entity parent = authoring->CreateEntity("Parent");
     Entity child = authoring->CreateEntity("Child");
     authoring->SetParent(child, parent);
@@ -269,7 +269,7 @@ TEST(Scene, SceneSerializer_Deserialize_DeduplicatesChildren)
     const auto path = dir.File("duplicate-child.epscene");
     EP_REQUIRE(SceneSerializer(authoring).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     EXPECT_EQ(1u, ChildCount(loaded->GetEntityByUUID(parent.GetUUID())));
@@ -277,7 +277,7 @@ TEST(Scene, SceneSerializer_Deserialize_DeduplicatesChildren)
 
 TEST(Scene, Scene_DestroyEntity_CanDeleteTreeDuringEntityEnumeration)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     const Entity root = scene->CreateEntity("Root");
     const Entity child = scene->CreateEntity("Child");
     const Entity leaf = scene->CreateEntity("Leaf");
@@ -300,7 +300,7 @@ TEST(Scene, Scene_DestroyEntity_CanDeleteTreeDuringEntityEnumeration)
 
 TEST(Scene, Scene_DuplicateEntity_ClonesDescendantTree)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     const Entity parent = scene->CreateEntity("Parent");
     const Entity root = scene->CreateEntity("Root");
     const Entity child = scene->CreateEntity("Child");
@@ -336,7 +336,7 @@ TEST(Scene, SceneSerializer_HarnessScene_LoadsThreeEntities)
     const auto scenePath = FS::GetExecutableDirectory() / "TestData" / "Scenes" / "harness.epscene";
     EP_REQUIRE(FS::Exists(scenePath));
 
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(scene).Deserialize(scenePath));
 
     const Testing::TempDir dir;
@@ -357,7 +357,7 @@ TEST(Scene, SceneSerializer_HarnessScene_LoadsThreeEntities)
 TEST(Scene, SceneSerializer_DirectionalLightComponent_RoundTripsFieldsWithoutDirection)
 {
     const UUID sunId;
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
     Entity sun = authoring->CreateEntityWithUUID(sunId, "Sun");
     auto& light = sun.AddComponent<DirectionalLightComponent>();
     light.Color = { 0.9f, 0.4f, 0.1f };
@@ -373,7 +373,7 @@ TEST(Scene, SceneSerializer_DirectionalLightComponent_RoundTripsFieldsWithoutDir
     const auto& serializedLight = data["Scene"]["Entities"][0]["DirectionalLightComponent"];
     EXPECT_TRUE(!serializedLight.contains("Direction"));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     Entity loadedSun = loaded->GetEntityByUUID(sunId);
@@ -387,7 +387,7 @@ TEST(Scene, SceneSerializer_DirectionalLightComponent_RoundTripsFieldsWithoutDir
 
 TEST(Scene, Scene_DuplicateEntity_CarriesDirectionalLightComponent)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity sun = scene->CreateEntity("Sun");
     auto& light = sun.AddComponent<DirectionalLightComponent>();
     light.Color = { 0.9f, 0.4f, 0.1f };
@@ -405,13 +405,13 @@ TEST(Scene, Scene_DuplicateEntity_CarriesDirectionalLightComponent)
 TEST(Scene, Scene_Copy_CarriesDirectionalLightComponent)
 {
     const UUID sunId;
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity sun = scene->CreateEntityWithUUID(sunId, "Sun");
     auto& light = sun.AddComponent<DirectionalLightComponent>();
     light.Color = { 0.9f, 0.4f, 0.1f };
     light.Intensity = 2.5f;
 
-    const Ref<Scene> copy = Scene::Copy(scene);
+    Ref<Scene> copy = Scene::Copy(scene);
     Entity copiedSun = copy->GetEntityByUUID(sunId);
     EP_REQUIRE(static_cast<bool>(copiedSun));
     EP_REQUIRE(copiedSun.HasComponent<DirectionalLightComponent>());

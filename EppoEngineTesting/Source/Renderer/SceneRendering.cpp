@@ -53,7 +53,7 @@ namespace
     {
     public:
         PrimitiveProjectFixture()
-            : m_Previous(Project::GetActive()), m_ProjectDirectory(m_Directory.File("Project")), m_AssetManager(CreateRef<AssetManager>())
+            : m_Previous(Project::GetActive()), m_ProjectDirectory(m_Directory.File("Project")), m_AssetManager(Ref<AssetManager>::Create())
         {
             std::filesystem::create_directories(m_ProjectDirectory / "Assets");
             Project::New(ProjectSpecification{ .Name = "PrimitiveRendering", .ProjectDirectory = m_ProjectDirectory }, m_AssetManager);
@@ -66,13 +66,13 @@ namespace
             const std::filesystem::path path = m_ProjectDirectory / "Assets" / filename;
             EP_REQUIRE(FS::WriteText(path, source, true));
 
-            const Ref<Asset> asset = CreateRef<Asset>();
+            Ref<Asset> asset = Ref<Asset>::Create();
             asset->Handle = AssetHandle(handle);
             EP_REQUIRE(m_AssetManager->CreateAsset(path, asset));
             return asset->Handle;
         }
 
-        [[nodiscard]] auto Manager() const -> const Ref<AssetManager>& { return m_AssetManager; }
+        [[nodiscard]] auto Manager() const -> Ref<AssetManager> { return m_AssetManager; }
 
     private:
         Ref<Project> m_Previous;
@@ -182,7 +182,7 @@ namespace
         })";
     }
 
-    [[nodiscard]] auto ReadRgba8(const Ref<Image>& image) -> Rgba8Readback
+    [[nodiscard]] auto ReadRgba8(Ref<Image> image) -> Rgba8Readback
     {
         EP_REQUIRE(image != nullptr);
         EP_REQUIRE(image->GetFormat() == nvrhi::Format::RGBA8_UNORM);
@@ -306,8 +306,8 @@ TEST(Renderer, SceneRenderer_HdrSceneDisplayConvertsBeforeDepthAwareWireframes)
     if (!ctx.IsAvailable())
         return;
 
-    const Ref<Scene> scene = ctx.GetScene();
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 64u, .Height = 64u });
+    Ref<Scene> scene = ctx.GetScene();
+    Ref<SceneRenderer> sceneRenderer = Ref<SceneRenderer>::Create(scene, SceneRendererSpecification{ .Width = 64u, .Height = 64u });
     Entity overlay = scene->CreateEntity("Depth-aware wireframe");
     overlay.AddComponent<BoxColliderComponent>();
     sceneRenderer->SetDebugRenderingEnabled(true);
@@ -331,7 +331,7 @@ TEST(Renderer, SceneRenderer_HdrSceneDisplayConvertsBeforeDepthAwareWireframes)
         }
     );
 
-    const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
+    Ref<Image> finalImage = sceneRenderer->GetFinalImage();
     EP_REQUIRE(finalImage != nullptr);
     EXPECT_TRUE(finalImage->GetFormat() == nvrhi::Format::RGBA8_UNORM);
     EXPECT_EQ(96u, finalImage->GetWidth());
@@ -347,12 +347,12 @@ TEST(Renderer, SceneRenderer_DoubleSidedMaterialRendersFromBothSides)
 
     PrimitiveProjectFixture project;
     const AssetHandle triangleHandle = project.RegisterMesh(700u, "DoubleSidedTriangle.gltf", MakeDoubleSidedTriangleGltf());
-    const Ref<Mesh> triangleMesh = project.Manager()->GetOrLoadAsset<Mesh>(triangleHandle);
+    Ref<Mesh> triangleMesh = project.Manager()->GetOrLoadAsset(triangleHandle).As<Mesh>();
     EP_REQUIRE(triangleMesh != nullptr);
-    const Ref<Material>& material = triangleMesh->GetMaterial(0);
+    Ref<Material> material = triangleMesh->GetMaterial(0);
     EP_REQUIRE(material != nullptr);
 
-    const Ref<Scene> scene = ctx.GetScene();
+    Ref<Scene> scene = ctx.GetScene();
     auto& environment = scene->GetEnvironmentSettings();
     environment.ZenithColor = glm::vec3(0.0f);
     environment.HorizonColor = glm::vec3(0.0f);
@@ -367,7 +367,7 @@ TEST(Renderer, SceneRenderer_DoubleSidedMaterialRendersFromBothSides)
     triangle.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f);
 
     constexpr uint32_t size = 128u;
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    Ref<SceneRenderer> sceneRenderer = Ref<SceneRenderer>::Create(scene, SceneRendererSpecification{ .Width = size, .Height = size });
     EditorCamera frontCamera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     EditorCamera backCamera(glm::vec3(0.0f, 0.0f, -4.0f), 0.0f, 90.0f);
     frontCamera.SetViewportSize(size, size);
@@ -406,7 +406,7 @@ TEST(Renderer, SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)
         return;
 
     PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
+    Ref<Scene> scene = ctx.GetScene();
     scene->GetEnvironmentSettings().ZenithColor = glm::vec3(0.0f);
     scene->GetEnvironmentSettings().HorizonColor = glm::vec3(0.0f);
     scene->GetEnvironmentSettings().GroundColor = glm::vec3(0.0f);
@@ -417,7 +417,7 @@ TEST(Renderer, SceneRenderer_DebugDirectionalLightArrowFollowsTransformRotation)
     sun.GetComponent<TransformComponent>().Scale = glm::vec3(2.0f, 0.0f, -3.0f);
 
     constexpr uint32_t size = 256u;
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(
+    Ref<SceneRenderer> sceneRenderer = Ref<SceneRenderer>::Create(
         scene,
         SceneRendererSpecification{
             .Width = size,
@@ -466,21 +466,21 @@ TEST(Renderer, SceneRenderer_EquirectangularSkyMapsTopToPositiveY)
     const Testing::TempDir dir;
     const auto projectDirectory = dir.File("Project");
     std::filesystem::create_directories(projectDirectory / "Assets" / "Textures");
-    const Ref<AssetManager> assetManager = CreateRef<AssetManager>();
+    Ref<AssetManager> assetManager = Ref<AssetManager>::Create();
     Project::New(ProjectSpecification{ .Name = "SkyOrientation", .ProjectDirectory = projectDirectory }, assetManager);
 
     const auto hdrPath = projectDirectory / "Assets" / "Textures" / "latitude.hdr";
     EP_REQUIRE(FS::WriteBytes(hdrPath, MakeLatitudeHdr(8u, 4u), true));
-    const Ref<Asset> asset = CreateRef<Asset>();
+    Ref<Asset> asset = Ref<Asset>::Create();
     asset->Handle = AssetHandle(801);
     EP_REQUIRE(assetManager->CreateAsset(hdrPath, asset));
 
-    const Ref<Scene> scene = ctx.GetScene();
+    Ref<Scene> scene = ctx.GetScene();
     scene->GetEnvironmentSettings().SkyboxHandle = AssetHandle(801);
     scene->GetBloomSettings().Intensity = 0.0f;
 
     constexpr uint32_t size = 64u;
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    Ref<SceneRenderer> sceneRenderer = Ref<SceneRenderer>::Create(scene, SceneRendererSpecification{ .Width = size, .Height = size });
     EditorCamera upward(glm::vec3(0.0f), 89.0f, 0.0f);
     upward.SetViewportSize(size, size);
     ctx.AdvanceFrames(
@@ -561,13 +561,14 @@ TEST(Renderer, Renderer_CompositeToSwapchain_SurvivesImageCyclingAndResize)
         return;
 
     Application* app = Testing::AppHarness::Get();
-    const Ref<Scene> scene = ctx.GetScene();
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
+    Ref<Scene> scene = ctx.GetScene();
+    Ref<SceneRenderer> sceneRenderer = Ref<SceneRenderer>::Create(scene, SceneRendererSpecification{ .Width = 256u, .Height = 256u });
     const EditorCamera camera(glm::vec3(0.0f, 2.0f, 6.0f), 0.0f, 0.0f);
     const uint32_t imageCount = app->GetDeviceManager()->GetBackBufferCount();
     uint32_t renderedFrames = 0;
 
-    app->GetImGuiLayer()->SetClearMainSwapchainTarget(false);
+    Ref<ImGuiLayer> imguiLayer = app->GetImGuiLayer();
+    imguiLayer->SetClearMainSwapchainTarget(false);
     ctx.AdvanceFrames(
         imageCount + 2,
         [&](float)
@@ -603,15 +604,15 @@ TEST(Renderer, SceneRenderer_ForwardFrameRendersSceneGeometry)
         return;
 
     PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
+    Ref<Scene> scene = ctx.GetScene();
     auto& environment = scene->GetEnvironmentSettings();
     environment.ZenithColor = glm::vec3(0.0f);
     environment.HorizonColor = glm::vec3(0.0f);
     environment.GroundColor = glm::vec3(0.0f);
     environment.AmbientIntensity = 0.0f;
 
-    const auto& assetManager = Project::GetActive()->GetAssetManager();
-    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+    Ref<AssetManager> assetManager = Project::GetActive()->GetAssetManager();
+    Ref<Mesh> mesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cube)).As<Mesh>();
     EP_REQUIRE(mesh != nullptr);
     mesh->GetMaterial(0)->EmissiveFactor = glm::vec3(2.0f, 1.0f, 0.5f);
 
@@ -619,7 +620,7 @@ TEST(Renderer, SceneRenderer_ForwardFrameRendersSceneGeometry)
     cube.AddComponent<MeshComponent>().MeshHandle = static_cast<uint64_t>(MeshPrimitiveType::Cube);
 
     constexpr uint32_t size = 128u;
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = size, .Height = size });
+    Ref<SceneRenderer> sceneRenderer = Ref<SceneRenderer>::Create(scene, SceneRendererSpecification{ .Width = size, .Height = size });
     EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     camera.SetViewportSize(size, size);
 
@@ -646,15 +647,15 @@ TEST(Renderer, SceneRenderer_ForwardTargetsRebindAfterResize)
         return;
 
     PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
+    Ref<Scene> scene = ctx.GetScene();
     auto& environment = scene->GetEnvironmentSettings();
     environment.ZenithColor = glm::vec3(0.0f);
     environment.HorizonColor = glm::vec3(0.0f);
     environment.GroundColor = glm::vec3(0.0f);
     environment.AmbientIntensity = 0.0f;
 
-    const auto& assetManager = Project::GetActive()->GetAssetManager();
-    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+    Ref<AssetManager> assetManager = Project::GetActive()->GetAssetManager();
+    Ref<Mesh> mesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cube)).As<Mesh>();
     EP_REQUIRE(mesh != nullptr);
     mesh->GetMaterial(0)->EmissiveFactor = glm::vec3(2.0f, 1.0f, 0.5f);
 
@@ -663,8 +664,8 @@ TEST(Renderer, SceneRenderer_ForwardTargetsRebindAfterResize)
 
     constexpr uint32_t initialWidth = 64u;
     constexpr uint32_t initialHeight = 64u;
-    const Ref<SceneRenderer> sceneRenderer =
-        CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
+    Ref<SceneRenderer> sceneRenderer =
+        Ref<SceneRenderer>::Create(scene, SceneRendererSpecification{ .Width = initialWidth, .Height = initialHeight });
     EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     camera.SetViewportSize(initialWidth, initialHeight);
 
@@ -692,7 +693,7 @@ TEST(Renderer, SceneRenderer_ForwardTargetsRebindAfterResize)
 
         // The cube must still come through the rebound forward/display-conversion
         // targets, not a cleared framebuffer.
-        const Ref<Image>& finalImage = sceneRenderer->GetFinalImage();
+        Ref<Image> finalImage = sceneRenderer->GetFinalImage();
         EP_REQUIRE(finalImage != nullptr);
         EXPECT_EQ(resizedWidth, finalImage->GetWidth());
         EXPECT_EQ(resizedHeight, finalImage->GetHeight());
@@ -712,20 +713,20 @@ TEST(Renderer, SceneRenderer_SetSceneInvalidatesOnlyOnIdentityChange)
         return;
 
     PrimitiveProjectFixture project;
-    const Ref<Scene> scene = ctx.GetScene();
-    const Ref<Scene> otherScene = CreateRef<Scene>();
+    Ref<Scene> scene = ctx.GetScene();
+    Ref<Scene> otherScene = Ref<Scene>::Create();
     auto& environment = scene->GetEnvironmentSettings();
     environment.ZenithColor = glm::vec3(0.0f);
     environment.HorizonColor = glm::vec3(0.0f);
     environment.GroundColor = glm::vec3(0.0f);
     environment.AmbientIntensity = 0.0f;
 
-    const auto& assetManager = Project::GetActive()->GetAssetManager();
-    const Ref<Mesh> mesh = assetManager->GetOrLoadAsset<Mesh>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
+    Ref<AssetManager> assetManager = Project::GetActive()->GetAssetManager();
+    Ref<Mesh> mesh = assetManager->GetOrLoadAsset(static_cast<uint64_t>(MeshPrimitiveType::Cube)).As<Mesh>();
     EP_REQUIRE(mesh != nullptr);
     mesh->GetMaterial(0)->EmissiveFactor = glm::vec3(2.0f, 1.0f, 0.5f);
 
-    const Ref<SceneRenderer> sceneRenderer = CreateRef<SceneRenderer>(scene, SceneRendererSpecification{ .Width = 128u, .Height = 128u });
+    Ref<SceneRenderer> sceneRenderer = Ref<SceneRenderer>::Create(scene, SceneRendererSpecification{ .Width = 128u, .Height = 128u });
     EditorCamera camera(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, -90.0f);
     camera.SetViewportSize(128u, 128u);
 

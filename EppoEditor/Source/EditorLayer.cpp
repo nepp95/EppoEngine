@@ -22,7 +22,7 @@ namespace Eppo
 
     auto EditorLayer::OnAttach() -> void
     {
-        m_PanelManager = CreateRef<PanelManager>();
+        m_PanelManager = Ref<PanelManager>::Create();
         m_PanelManager->AddPanel<PropertyPanel>(PROPERTY_PANEL, true);
         m_PanelManager->AddPanel<SceneHierarchyPanel>(SCENE_HIERARCHY_PANEL, true);
         m_PanelManager->AddPanel<ContentBrowserPanel>(CONTENT_BROWSER_PANEL, true);
@@ -76,7 +76,7 @@ namespace Eppo
         if (!OpenProject(startupProject))
             NewProject("Test");
 
-        m_SceneRenderer = CreateRef<SceneRenderer>(
+        m_SceneRenderer = Ref<SceneRenderer>::Create(
             m_ActiveScene,
             SceneRendererSpecification{
                 .Width = m_ViewportWidth,
@@ -548,7 +548,7 @@ namespace Eppo
 
         SaveProject();
 
-        auto scene = CreateRef<Scene>();
+        auto scene = Ref<Scene>::Create();
 
         m_PanelManager->SetSceneContext(scene);
 
@@ -737,7 +737,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("EditorLayer::NewScene");
 
-        m_EditorScene = CreateRef<Scene>();
+        m_EditorScene = Ref<Scene>::Create();
         m_ActiveScene = m_EditorScene;
         m_ActiveScenePath = std::filesystem::path();
         m_PanelManager->SetSceneContext(m_ActiveScene);
@@ -766,8 +766,8 @@ namespace Eppo
             return false;
         }
 
-        const auto scene = CreateRef<Scene>();
         const SceneSerializer serializer(scene);
+        const auto scene = Ref<Scene>::Create();
 
         if (serializer.Deserialize(path))
         {
@@ -790,7 +790,7 @@ namespace Eppo
         EP_PROFILE_FN("EditorLayer::OpenScene");
 
         const auto& assetManager = Project::GetActive()->GetAssetManager();
-        m_EditorScene = std::static_pointer_cast<Scene>(assetManager->GetOrLoadAsset(handle));
+        m_EditorScene = assetManager->GetOrLoadAsset(handle).As<Scene>();
         m_ActiveScene = m_EditorScene;
         m_ActiveScenePath = Project::GetAssetFilepath(assetManager->GetMetadata(handle).Filepath);
 

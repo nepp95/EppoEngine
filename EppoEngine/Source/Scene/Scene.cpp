@@ -151,7 +151,8 @@ namespace Eppo
             if (!project || !project->GetAssetManager())
                 return false;
 
-            const Ref<Mesh> mesh = project->GetAssetManager()->GetOrLoadAsset<Mesh>(meshHandle);
+            Ref<AssetManager> assetManager = project->GetAssetManager();
+            const Ref<Mesh> mesh = assetManager->GetOrLoadAsset(meshHandle).As<Mesh>();
             if (!mesh || !mesh->GetBounds().IsValid())
                 return false;
 
@@ -176,7 +177,7 @@ namespace Eppo
             Log::Warn("Scene has no primary camera entity; nothing will be rendered in play mode.");
 
         // Build the physics world regardless of scripting so it simulates even with no scripts.
-        m_PhysicsWorld = CreateRef<PhysicsWorld>(s_DefaultGravity);
+        m_PhysicsWorld = Ref<PhysicsWorld>::Create(s_DefaultGravity);
         m_ColliderlessRigidBodies.clear();
         {
             for (const auto view = m_Registry.view<RigidBodyComponent, TransformComponent>(); const auto e : view)
@@ -211,7 +212,7 @@ namespace Eppo
 
         // Both contexts must be published before OnCreate: every internal call
         // resolves through them.
-        scriptEngine.SetSceneContext(shared_from_this());
+        scriptEngine.SetSceneContext(Ref<Scene>(this));
 
         // Snapshot: OnCreate can spawn or destroy scripted entities, mutating the
         // storage this walks. Hence the per-entity validity re-check too.
@@ -246,14 +247,16 @@ namespace Eppo
                 scriptEngine.OnDestroyEntity(entity);
             }
 
-            // Only release a context this scene published, so stopping one scene can't
-            // yank it from another that is still running.
-            if (scriptEngine.GetSceneContext() == shared_from_this())
+            // Only release contexts this scene published, so stopping one scene can't
+            // yank them from another that is still running.
+            if (scriptEngine.GetSceneContext().Raw() == this)
                 scriptEngine.SetSceneContext(nullptr);
+
+            if (scriptEngine.GetActivePhysicsWorld().Raw() == m_PhysicsWorld.Raw())
+                scriptEngine.SetActivePhysicsWorld(nullptr);
         }
 
-        // The script engine's WeakRef expires with this reset.
-        m_PhysicsWorld.reset();
+        m_PhysicsWorld.Reset();
         m_ColliderlessRigidBodies.clear();
     }
 
@@ -345,7 +348,7 @@ namespace Eppo
         FlushDestroyQueue();
     }
 
-    auto Scene::OnRenderEditor(const Ref<SceneRenderer>& sceneRenderer, const EditorCamera& camera) -> void
+    auto Scene::OnRenderEditor(Ref<SceneRenderer> sceneRenderer, const EditorCamera& camera) -> void
     {
         EP_PROFILE_FN("Scene::OnRenderEditor");
 
@@ -354,7 +357,7 @@ namespace Eppo
         sceneRenderer->EndScene();
     }
 
-    auto Scene::OnRenderRuntime(const Ref<SceneRenderer>& sceneRenderer) -> void
+    auto Scene::OnRenderRuntime(Ref<SceneRenderer> sceneRenderer) -> void
     {
         EP_PROFILE_FN("Scene::OnRenderRuntime");
 
@@ -743,11 +746,11 @@ namespace Eppo
         }
     }
 
-    auto Scene::Copy(const Ref<Scene>& scene) -> Ref<Scene>
+    auto Scene::Copy(Ref<Scene> scene) -> Ref<Scene>
     {
         EP_PROFILE_FN("Scene::Copy");
 
-        Ref<Scene> newScene = CreateRef<Scene>();
+        Ref<Scene> newScene = Ref<Scene>::Create();
 
         auto& srcRegistry = scene->m_Registry;
         auto& dstRegistry = newScene->m_Registry;
@@ -791,7 +794,7 @@ namespace Eppo
         return newScene;
     }
 
-    auto Scene::RenderScene(const Ref<SceneRenderer>& sceneRenderer) -> void
+    auto Scene::RenderScene(Ref<SceneRenderer> sceneRenderer) -> void
     {
         EP_PROFILE_FN("Scene::RenderScene");
 

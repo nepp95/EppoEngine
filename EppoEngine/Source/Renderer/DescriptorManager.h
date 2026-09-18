@@ -18,9 +18,9 @@ namespace Eppo
         Sampler,
     };
 
-    struct BindlessHandle
+    struct BindlessHandle : public RefCtr
     {
-        WeakRef<DescriptorManager> Manager;
+        Ref<DescriptorManager> Manager;
         uint32_t Index = std::numeric_limits<uint32_t>::max();
         BindlessHeapType HeapType = BindlessHeapType::Resource;
 
@@ -34,9 +34,10 @@ namespace Eppo
     };
 
     template<typename T>
-    concept ResourceType = std::same_as<T, Image> || std::same_as<T, UniformBuffer> || std::same_as<T, StorageBuffer>;
+    concept ResourceType =
+        std::same_as<T, Image> || std::same_as<T, Sampler> || std::same_as<T, StorageBuffer> || std::same_as<T, UniformBuffer>;
 
-    class DescriptorManager : public std::enable_shared_from_this<DescriptorManager>
+    class DescriptorManager : public RefCtr
     {
     public:
         explicit DescriptorManager();
@@ -77,7 +78,7 @@ namespace Eppo
             EP_ASSERT(m_ResourceHeap->DescriptorTable->getCapacity() > slot);
             device->writeDescriptorTable(m_ResourceHeap->DescriptorTable, item);
 
-            return { shared_from_this(), slot, BindlessHeapType::Resource };
+            return { Ref<DescriptorManager>(this), slot, BindlessHeapType::Resource };
         }
 
         [[nodiscard]] auto Register(const Ref<Sampler>& resource) -> BindlessHandle;

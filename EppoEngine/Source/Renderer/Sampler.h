@@ -29,7 +29,7 @@ namespace Eppo
         }
     };
 
-    class Sampler
+    class Sampler : public RefCtr
     {
     public:
         [[nodiscard]] static auto

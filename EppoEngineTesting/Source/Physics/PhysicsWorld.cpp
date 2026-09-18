@@ -34,7 +34,7 @@ namespace
     }
 
     // Steps a scene's runtime physics for a fixed number of frames.
-    auto StepScene(const Ref<Scene>& scene, const int frames) -> void
+    auto StepScene(Ref<Scene> scene, const int frames) -> void
     {
         for (int i = 0; i < frames; ++i)
             scene->OnUpdateRuntime(1.0f / 60.0f);
@@ -705,7 +705,7 @@ TEST(Physics, PhysicsWorld_OverlapsSphere_MatchesOnlyTargetBody)
 
 TEST(Physics, Scene_RuntimeDynamicBody_FallsUnderGravity)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Falling");
     entity.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, 0.0f };
     entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
@@ -721,7 +721,7 @@ TEST(Physics, Scene_RuntimeDynamicBody_FallsUnderGravity)
 
 TEST(Physics, Scene_RuntimeStaticBody_StaysPut)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Ground");
     entity.GetComponent<TransformComponent>().Translation = { 0.0f, 5.0f, 0.0f };
     entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Static;
@@ -737,7 +737,7 @@ TEST(Physics, Scene_RuntimeStaticBody_StaysPut)
 
 TEST(Physics, Scene_RuntimeScaledBoxCollider_UsesEntityScale)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity ground = scene->CreateEntity("Scaled ground");
     ground.GetComponent<TransformComponent>().Scale = { 1.0f, 4.0f, 1.0f };
@@ -759,13 +759,13 @@ TEST(Physics, Scene_RuntimeScaledBoxCollider_UsesEntityScale)
 
 TEST(Physics, Scene_RuntimeBodyWithoutCollider_StillFalls)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("NoCollider");
     entity.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, 0.0f };
     entity.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
 
     scene->OnRuntimeStart();
-    const Ref<PhysicsWorld> physics = scene->GetPhysicsWorld();
+    Ref<PhysicsWorld> physics = scene->GetPhysicsWorld();
     EXPECT_TRUE(physics->HasBody(entity.GetUUID()));
     EXPECT_EQ(0, physics->GetShapeCount(entity.GetUUID()));
     EXPECT_EQ(1, scene->GetColliderlessRigidBodies().size());
@@ -779,7 +779,7 @@ TEST(Physics, Scene_RuntimeBodyWithoutCollider_StillFalls)
 
 TEST(Physics, Scene_FitBoxColliderToMesh_UsesPrimitiveBounds)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Cube");
     entity.AddComponent<MeshComponent>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
 
@@ -792,7 +792,7 @@ TEST(Physics, Scene_FitBoxColliderToMesh_UsesPrimitiveBounds)
 
 TEST(Physics, Scene_FitSphereColliderToMesh_UsesPrimitiveBounds)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Cube");
     entity.AddComponent<MeshComponent>(static_cast<uint64_t>(MeshPrimitiveType::Cube));
 
@@ -805,7 +805,7 @@ TEST(Physics, Scene_FitSphereColliderToMesh_UsesPrimitiveBounds)
 
 TEST(Physics, Scene_FitCapsuleColliderToMesh_UsesPrimitiveBounds)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Capsule");
     entity.AddComponent<MeshComponent>(static_cast<uint64_t>(MeshPrimitiveType::Capsule));
 
@@ -819,7 +819,7 @@ TEST(Physics, Scene_FitCapsuleColliderToMesh_UsesPrimitiveBounds)
 
 TEST(Physics, Scene_FitCylinderColliderToMesh_UsesPrimitiveBounds)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     Entity entity = scene->CreateEntity("Cylinder");
     entity.AddComponent<MeshComponent>(static_cast<uint64_t>(MeshPrimitiveType::Cylinder));
 
@@ -833,7 +833,7 @@ TEST(Physics, Scene_FitCylinderColliderToMesh_UsesPrimitiveBounds)
 
 TEST(Physics, Scene_RuntimeChildCollider_BecomesShapeOnRootBody)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity root = scene->CreateEntity("Root");
     root.GetComponent<TransformComponent>().Translation = { 0.0f, 10.0f, 0.0f };
@@ -846,7 +846,7 @@ TEST(Physics, Scene_RuntimeChildCollider_BecomesShapeOnRootBody)
     child.AddComponent<BoxColliderComponent>();
 
     scene->OnRuntimeStart();
-    const Ref<PhysicsWorld> physics = scene->GetPhysicsWorld();
+    Ref<PhysicsWorld> physics = scene->GetPhysicsWorld();
     EXPECT_TRUE(physics->HasBody(root.GetUUID()));
     EXPECT_TRUE(!physics->HasBody(child.GetUUID()));
     EXPECT_EQ(2, physics->GetShapeCount(root.GetUUID()));
@@ -855,7 +855,7 @@ TEST(Physics, Scene_RuntimeChildCollider_BecomesShapeOnRootBody)
 
 TEST(Physics, Scene_RuntimeMultipleChildBoxColliders_EachContributesShape)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity root = scene->CreateEntity("Root");
     root.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
@@ -877,7 +877,7 @@ TEST(Physics, Scene_RuntimeMultipleChildBoxColliders_EachContributesShape)
 
 TEST(Physics, Scene_RuntimeChildColliderOffsets_CollideAtWorldPose)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     // Two narrow pads under x = -2 and x = 2 only; nothing under the root
     // center, so a body whose shapes ignore the child offsets falls through.
@@ -912,7 +912,7 @@ TEST(Physics, Scene_RuntimeChildColliderOffsets_CollideAtWorldPose)
 
 TEST(Physics, Scene_RuntimeRotatedChildBoxCollider_CollidesAtRotatedPose)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity root = scene->CreateEntity("Root");
     root.AddComponent<RigidBodyComponent>();
@@ -939,7 +939,7 @@ TEST(Physics, Scene_RuntimeRotatedChildBoxCollider_CollidesAtRotatedPose)
 
 TEST(Physics, Scene_RuntimeNestedScaledChain_ScalesColliderShape)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity root = scene->CreateEntity("Root");
     root.AddComponent<RigidBodyComponent>();
@@ -976,7 +976,7 @@ TEST(Physics, Scene_RuntimeNestedScaledChain_ScalesColliderShape)
 
 TEST(Physics, Scene_RuntimeMirroredScale_MirrorsColliderOffset)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity platform = scene->CreateEntity("Mirrored platform");
     platform.GetComponent<TransformComponent>().Scale = { -1.0f, 1.0f, 1.0f };
@@ -999,7 +999,7 @@ TEST(Physics, Scene_RuntimeMirroredScale_MirrorsColliderOffset)
 
 TEST(Physics, Scene_RuntimeNestedRotatedChain_RotatesColliderOffset)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity root = scene->CreateEntity("Root");
     root.AddComponent<RigidBodyComponent>();
@@ -1033,7 +1033,7 @@ TEST(Physics, Scene_RuntimeNestedRotatedChain_RotatesColliderOffset)
 
 TEST(Physics, Scene_RuntimeNestedRigidBody_StartsOwnBodyAndBoundsGathering)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity root = scene->CreateEntity("Root");
     root.GetComponent<TransformComponent>().Translation = { 3.0f, 0.0f, 0.0f };
@@ -1052,7 +1052,7 @@ TEST(Physics, Scene_RuntimeNestedRigidBody_StartsOwnBodyAndBoundsGathering)
     grandchild.AddComponent<BoxColliderComponent>();
 
     scene->OnRuntimeStart();
-    const Ref<PhysicsWorld> physics = scene->GetPhysicsWorld();
+    Ref<PhysicsWorld> physics = scene->GetPhysicsWorld();
 
     EXPECT_TRUE(physics->HasBody(root.GetUUID()));
     EXPECT_TRUE(physics->HasBody(child.GetUUID()));
@@ -1070,7 +1070,7 @@ TEST(Physics, Scene_CopiedThenRun_GathersChildCollidersOntoRootBody)
 {
     // Mirrors the editor Play flow: the authoring scene is copied and the
     // copy is simulated, so the hierarchy must survive Scene::Copy.
-    const Ref<Scene> authoring = CreateRef<Scene>();
+    Ref<Scene> authoring = Ref<Scene>::Create();
 
     Entity vehicle = authoring->CreateEntity("Vehicle");
     vehicle.AddComponent<RigidBodyComponent>().Type = RigidBodyComponent::BodyType::Dynamic;
@@ -1084,7 +1084,7 @@ TEST(Physics, Scene_CopiedThenRun_GathersChildCollidersOntoRootBody)
     sensor.GetComponent<TransformComponent>().Translation = { 0.0f, 0.0f, 2.0f };
     sensor.AddComponent<SphereColliderComponent>();
 
-    const Ref<Scene> runtime = Scene::Copy(authoring);
+    Ref<Scene> runtime = Scene::Copy(authoring);
     Entity runtimeVehicle = runtime->GetEntityByUUID(vehicle.GetUUID());
 
     runtime->OnRuntimeStart();
@@ -1097,7 +1097,7 @@ TEST(Physics, Scene_CopiedThenRun_GathersChildCollidersOntoRootBody)
 
 TEST(Physics, Scene_RuntimeParentedDynamicRoot_SyncsWithoutDoubleParentTransform)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity holder = scene->CreateEntity("Holder");
 
@@ -1131,7 +1131,7 @@ TEST(Physics, Scene_RuntimeParentedDynamicRoot_SyncsWithoutDoubleParentTransform
 
 TEST(Physics, Scene_RuntimeChildBodyUnderMovingParent_KeepsWorldPose)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     // Parent created first: entt views visit newest-first, so the child body
     // is synced before its parent — the order that exposes a conversion
@@ -1163,7 +1163,7 @@ TEST(Physics, Scene_RuntimeChildBodyUnderMovingParent_KeepsWorldPose)
 
 TEST(Physics, Scene_RuntimeColliderWithoutRigidBodyAncestor_GetsNoBody)
 {
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
 
     Entity orphan = scene->CreateEntity("Orphan");
     orphan.GetComponent<TransformComponent>().Translation = { 0.0f, 5.0f, 0.0f };
@@ -1181,7 +1181,7 @@ TEST(Physics, Scene_RuntimeColliderWithoutRigidBodyAncestor_GetsNoBody)
 TEST(Physics, SceneSerializer_PhysicsComponents_SurviveSaveAndLoad)
 {
     const UUID id;
-    const Ref<Scene> scene = CreateRef<Scene>();
+    Ref<Scene> scene = Ref<Scene>::Create();
     {
         Entity entity = scene->CreateEntityWithUUID(id, "Body");
 
@@ -1229,7 +1229,7 @@ TEST(Physics, SceneSerializer_PhysicsComponents_SurviveSaveAndLoad)
     const auto path = dir.File("physics.epscene");
     EP_REQUIRE(SceneSerializer(scene).Serialize(path));
 
-    const Ref<Scene> loaded = CreateRef<Scene>();
+    Ref<Scene> loaded = Ref<Scene>::Create();
     EP_REQUIRE(SceneSerializer(loaded).Deserialize(path));
 
     Entity entity = loaded->GetEntityByUUID(id);

@@ -16,6 +16,7 @@ namespace Eppo
     {
     public:
         Renderer();
+        ~Renderer() = default;
 
         auto Init() -> void;
         // With packed shaders the engine set is compiled from those and their includes; without them, from disk.
@@ -25,8 +26,8 @@ namespace Eppo
         static auto Submit(RenderCommand command) -> void;
         static auto ExecuteRenderCommands() -> void;
 
-        static auto BeginRenderPass(const Ref<RenderCommandBuffer>& commandBuffer, const Ref<RenderPass>& renderPass) -> void;
-        static auto EndRenderPass(const Ref<RenderCommandBuffer>& commandBuffer) -> void;
+        static auto BeginRenderPass(Ref<RenderCommandBuffer> commandBuffer, const Ref<RenderPass>& renderPass) -> void;
+        static auto EndRenderPass(Ref<RenderCommandBuffer> commandBuffer) -> void;
         auto CompositeToSwapchain(const Ref<Image>& image) -> void;
         auto ReleaseSwapchainResources() -> void;
 

@@ -79,7 +79,7 @@ namespace Eppo
         EP_PROFILE_FN("Swapchain::Present");
         EP_ASSERT(m_FrameActive, "Present was called without an active swapchain frame!");
 
-        const auto& dm = std::static_pointer_cast<DeviceManagerDX12>(DeviceManager::Get());
+        Ref<DeviceManagerDX12> dm = DeviceManager::Get().As<DeviceManagerDX12>();
         nvrhi::d3d12::IDevice* dxNvrhiDevice = dm->GetDevice()->getNativeObject(nvrhi::ObjectTypes::Nvrhi_D3D12_Device);
         const DeviceParams& params = dm->GetParams();
 
@@ -108,7 +108,7 @@ namespace Eppo
 
     auto DX12Swapchain::CreateSwapchain(uint32_t width, uint32_t height) -> void
     {
-        const auto& dm = std::static_pointer_cast<DeviceManagerDX12>(DeviceManager::Get());
+        Ref<DeviceManagerDX12> dm = DeviceManager::Get().As<DeviceManagerDX12>();
         const DeviceParams& params = dm->GetParams();
 
         if (width == 0 || height == 0)
@@ -223,7 +223,7 @@ namespace Eppo
                 .DebugName = std::format("Swapchain Framebuffer {}", i),
             };
 
-            image.Framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+            image.Framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
         }
 
         m_SwapchainImageIndex = m_Swapchain->GetCurrentBackBufferIndex();

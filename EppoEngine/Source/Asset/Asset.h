@@ -7,7 +7,7 @@ namespace Eppo
 {
     using AssetHandle = UUID;
 
-    struct Asset
+    struct Asset : public RefCtr
     {
         Asset() = default;
         virtual ~Asset() = default;

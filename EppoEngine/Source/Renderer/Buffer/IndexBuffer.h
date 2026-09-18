@@ -6,7 +6,7 @@ namespace Eppo
 {
     enum class MeshPrimitiveType;
 
-    class IndexBuffer
+    class IndexBuffer : public RefCtr
     {
     public:
         // This creates a buffer with CPU write access

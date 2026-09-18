@@ -27,7 +27,7 @@ namespace Eppo
         Cancelled,
     };
 
-    struct TaskGroupSnapshot
+    struct TaskGroupSnapshot : RefCtr
     {
         TaskGroupSnapshot() = default;
         TaskGroupSnapshot(const TaskGroupSnapshot& other);
@@ -56,16 +56,19 @@ namespace Eppo
     };
 
     template<typename T>
-    using TaskResult = std::optional<T>;
+    struct TaskResult : public RefCtr
+    {
+        std::optional<T> Result = std::nullopt;
+    };
 
     using TaskFn = std::function<void()>;
     using CompletionFn = std::function<void(TaskStatus)>;
 
-    class ThreadPool
+    class ThreadPool : public RefCtr
     {
     public:
         ThreadPool();
-        ~ThreadPool();
+        virtual ~ThreadPool();
 
         // Callable: All threads
         auto QueueTask(TaskFn taskFn, CompletionFn completionFn, TaskPriority priority = TaskPriority::Medium) -> TaskId;
@@ -97,7 +100,7 @@ namespace Eppo
         [[nodiscard]] auto GetPendingTasksCount() const -> uint32_t;
 
     private:
-        struct Task
+        struct Task : RefCtr
         {
             TaskId Id = 0;
             std::string Name;
@@ -118,10 +121,10 @@ namespace Eppo
         auto QueueTaskInternal(
             std::string name, TaskFn taskFn, CompletionFn completionFn, const std::vector<TaskId>& dependencies, TaskPriority priority
         ) -> TaskId;
-        auto AddTaskToGroup(const Ref<Task>& task, const Ref<TaskGroupSnapshot>& group) -> void;
-        auto UpdateTaskGroup(const Ref<TaskGroupSnapshot>& group, TaskStatus status) -> void;
-        auto FinalizeTask(const Ref<Task>& task, TaskStatus status) -> void;
-        auto CompleteTask(const Ref<Task>& task, TaskStatus status) -> void;
+        auto AddTaskToGroup(Ref<Task> task, Ref<TaskGroupSnapshot> group) -> void;
+        auto UpdateTaskGroup(Ref<TaskGroupSnapshot> group, TaskStatus status) -> void;
+        auto FinalizeTask(Ref<Task> task, TaskStatus status) -> void;
+        auto CompleteTask(Ref<Task> task, TaskStatus status) -> void;
         auto WorkerLoop(uint32_t index) -> void;
         [[nodiscard]] auto HasPendingTasks() const -> bool;
         [[nodiscard]] auto GetNextTask() -> Ref<Task>;

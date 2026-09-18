@@ -1128,7 +1128,7 @@ TEST(Core, ThreadPool_TaskResult_IsEmptyUntilWorkerProducesPayload)
 {
     const TaskResult<int32_t> result;
 
-    EXPECT_FALSE(result.has_value());
+    EXPECT_FALSE(result.Result.has_value());
 }
 
 TEST(Core, ThreadPool_TaskResult_HandsWorkerPayloadToCompletion)
@@ -1139,7 +1139,7 @@ TEST(Core, ThreadPool_TaskResult_HandsWorkerPayloadToCompletion)
         std::string Text;
     };
 
-    const auto result = Eppo::CreateRef<TaskResult<Payload>>();
+    Eppo::Ref<TaskResult<Payload>> result = Eppo::Ref<TaskResult<Payload>>::Create();
     std::atomic<bool> completionFired = false;
     TaskStatus reported = TaskStatus::Pending;
     Payload captured;
@@ -1147,15 +1147,15 @@ TEST(Core, ThreadPool_TaskResult_HandsWorkerPayloadToCompletion)
 
     pool.QueueTask(
         "StructProbe",
-        [result]() -> void
+        [result]() mutable -> void
         {
-            result->emplace(Payload{ .Value = 42, .Text = "worker payload" });
+            result->Result.emplace(Payload{ .Value = 42, .Text = "worker payload" });
         },
         [&completionFired, &reported, &captured, result](const TaskStatus status) -> void
         {
             reported = status;
-            if (result->has_value())
-                captured = result->value();
+            if (result->Result.has_value())
+                captured = *result->Result;
             completionFired.store(true);
         }
     );
@@ -1175,16 +1175,16 @@ TEST(Core, ThreadPool_TaskResult_HandsWorkerPayloadToCompletion)
 
 TEST(Core, ThreadPool_TaskResult_DoesNotEncodeTaskOutcome)
 {
-    const auto result = Eppo::CreateRef<TaskResult<std::string>>();
+    Eppo::Ref<TaskResult<std::string>> result = Eppo::Ref<TaskResult<std::string>>::Create();
     std::atomic<bool> completionFired = false;
     TaskStatus reported = TaskStatus::Pending;
     ThreadPool pool;
 
     pool.QueueTask(
         "FailureProbe",
-        [result]() -> void
+        [result]() mutable -> void
         {
-            result->emplace("diagnostic payload");
+            result->Result.emplace("diagnostic payload");
             throw std::runtime_error("expected");
         },
         [&completionFired, &reported](const TaskStatus status) -> void
@@ -1202,8 +1202,8 @@ TEST(Core, ThreadPool_TaskResult_DoesNotEncodeTaskOutcome)
         }
     ));
 
-    ASSERT_TRUE(result->has_value());
-    EXPECT_EQ("diagnostic payload", result->value());
+    ASSERT_TRUE(result->Result.has_value());
+    EXPECT_EQ("diagnostic payload", *result->Result);
     EXPECT_EQ(TaskStatus::Failed, reported);
 }
 

@@ -31,7 +31,7 @@ namespace Eppo
         return true;
     }
 
-    auto ProjectSerializer::Deserialize(const std::filesystem::path& path) const -> bool
+    auto ProjectSerializer::Deserialize(const std::filesystem::path& path) -> bool
     {
         EP_PROFILE_FN("ProjectSerializer::Deserialize");
 

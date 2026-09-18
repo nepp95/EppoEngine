@@ -113,7 +113,7 @@ namespace Eppo
 
     auto DeviceManagerDX12::CreateSwapchain(GLFWwindow* window, const uint32_t width, const uint32_t height) -> Ref<Swapchain>
     {
-        Ref<DX12Swapchain> swapchain = CreateRef<DX12Swapchain>(window);
+        Ref<DX12Swapchain> swapchain = Ref<DX12Swapchain>::Create(window);
         swapchain->CreateSwapchain(width, height);
         return swapchain;
     }

@@ -47,7 +47,7 @@ namespace Eppo
             return nullptr;
         }
 
-        Ref<Mesh> mesh = CreateRef<Mesh>(path.string());
+        Ref<Mesh> mesh = Ref<Mesh>::Create(path.string());
         if (!mesh->IsValid())
         {
             // Caching an unrenderable mesh would hide the failure until draw time.
@@ -85,10 +85,10 @@ namespace Eppo
     {
         EP_PROFILE_FN("AssetImporter::ImportScene");
 
-        Ref<Scene> scene = CreateRef<Scene>();
+        Ref<Scene> scene = Ref<Scene>::Create();
         scene->Handle = handle;
 
-        if (const SceneSerializer serializer(scene); !serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath)))
+        if (SceneSerializer serializer(scene); !serializer.Deserialize(Project::GetAssetFilepath(metadata.Filepath)))
             return nullptr;
 
         return scene;
@@ -111,10 +111,10 @@ namespace Eppo
     {
         EP_PROFILE_FN("AssetImporter::ImportPackedScene");
 
-        Ref<Scene> scene = CreateRef<Scene>();
+        Ref<Scene> scene = Ref<Scene>::Create();
         scene->Handle = handle;
 
-        if (const SceneSerializer serializer(scene); !serializer.Deserialize(payload))
+        if (SceneSerializer serializer(scene); !serializer.Deserialize(payload))
             return nullptr;
 
         return scene;
@@ -145,7 +145,7 @@ namespace Eppo
     {
         EP_PROFILE_FN("AssetImporter::ExportMesh");
 
-        const Ref<Mesh>& mesh = std::static_pointer_cast<Mesh>(asset);
+        const Ref<Mesh>& mesh = asset.As<Mesh>();
 
         return false;
     }
@@ -154,12 +154,12 @@ namespace Eppo
     {
         EP_PROFILE_FN("AssetImporter::ExportScene");
 
-        const Ref<Scene>& scene = std::static_pointer_cast<Scene>(asset);
+        const Ref<Scene>& scene = asset.As<Scene>();
 
         if (SceneSerializer serializer(scene); !serializer.Serialize(Project::GetAssetFilepath(path)))
             return false;
 
-        const auto& assetManager = Project::GetActive()->GetAssetManager();
+        Ref<AssetManager> assetManager = Project::GetActive()->GetAssetManager();
         if (!assetManager->HasAssetData(scene->Handle))
         {
             if (assetManager->CreateAsset(path, scene))

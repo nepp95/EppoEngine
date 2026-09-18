@@ -17,7 +17,7 @@ TEST(Renderer, Framebuffer_CreatedWithExplicitSize_HasMatchingDimensionsAndHandl
 		.DebugName = "Framebuffer RendererTest",
 	};
 
-	const auto framebuffer = CreateRef<Framebuffer>(spec);
+	const auto framebuffer = Ref<Framebuffer>::Create(spec);
 
 	EXPECT_TRUE(framebuffer->GetFramebuffer());
 	EXPECT_EQ(256, framebuffer->GetWidth());
@@ -31,7 +31,7 @@ TEST(Renderer, Framebuffer_DepthOnlyTargetHasOneD32Attachment)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+    Ref<Framebuffer> framebuffer = Ref<Framebuffer>::Create(FramebufferSpecification{
         .Width = 2048u,
         .Height = 2048u,
         .Attachments = { nvrhi::Format::D32 },
@@ -54,7 +54,7 @@ TEST(Renderer, Framebuffer_ExistingCubemapIsUsedAsColorAttachment)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> cubemap = Image::Create(ImageSpecification{
+    Ref<Image> cubemap = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 64u,
         .Height = 64u,
@@ -64,7 +64,7 @@ TEST(Renderer, Framebuffer_ExistingCubemapIsUsedAsColorAttachment)
         .DebugName = "Framebuffer existing cubemap",
     });
 
-    const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+    Ref<Framebuffer> framebuffer = Ref<Framebuffer>::Create(FramebufferSpecification{
         .Width = 64u,
         .Height = 64u,
         .Attachments = { FramebufferTextureSpecification(cubemap) },
@@ -87,7 +87,7 @@ TEST(Renderer, Framebuffer_ExistingCubemapMipTarget_AttachesChosenMipAndAllFaces
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> cubemap = Image::Create(ImageSpecification{
+    Ref<Image> cubemap = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 128u,
         .Height = 128u,
@@ -97,7 +97,7 @@ TEST(Renderer, Framebuffer_ExistingCubemapMipTarget_AttachesChosenMipAndAllFaces
         .DebugName = "Framebuffer mip cubemap",
     });
 
-    const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+    Ref<Framebuffer> framebuffer = Ref<Framebuffer>::Create(FramebufferSpecification{
         .Width = 128u,
         .Height = 128u,
         .Attachments = { FramebufferTextureSpecification(cubemap) },
@@ -127,7 +127,7 @@ TEST(Renderer, Framebuffer_MixedOwnedAndSuppliedAttachmentsKeepListOrder)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const Ref<Image> supplied = Image::Create(ImageSpecification{
+    Ref<Image> supplied = Image::Create(ImageSpecification{
         .ImageFormat = nvrhi::Format::RGBA16_FLOAT,
         .Width = 32u,
         .Height = 32u,
@@ -136,7 +136,7 @@ TEST(Renderer, Framebuffer_MixedOwnedAndSuppliedAttachmentsKeepListOrder)
     });
 
     // An owned attachment declared first, a supplied image second: attachments keep list order.
-    const Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(FramebufferSpecification{
+    Ref<Framebuffer> framebuffer = Ref<Framebuffer>::Create(FramebufferSpecification{
         .Width = 32u,
         .Height = 32u,
         .Attachments = { nvrhi::Format::RGBA8_UNORM, FramebufferTextureSpecification(supplied) },

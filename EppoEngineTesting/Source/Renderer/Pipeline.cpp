@@ -22,7 +22,7 @@ TEST(Renderer, Pipeline_GeometryBindingLayoutsAreInSetOrder)
 		.DebugName = "Framebuffer PipelineTest",
 	};
 
-	const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+	const auto framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
 	const PipelineSpecification pipelineSpec{
 		.Shader = renderer->GetShader("geometry"),
@@ -31,7 +31,7 @@ TEST(Renderer, Pipeline_GeometryBindingLayoutsAreInSetOrder)
 		.DepthWriteEnable = true,
 	};
 
-	const auto pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
+	const auto pipeline = Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
 	const auto& shaderLayouts = pipeline->GetSpecification().Shader->GetBindingLayouts();
 	const auto& pipelineLayouts = pipeline->GetPipeline()->getDesc().bindingLayouts;
 
@@ -55,7 +55,7 @@ TEST(Renderer, Pipeline_CustomBlendStateCreatesValidHandle)
 		.DebugName = "Framebuffer BlendTest",
 	};
 
-	const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+	const auto framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
 	nvrhi::BlendState blendState;
 	blendState.targets[0].blendEnable = true;
@@ -68,6 +68,6 @@ TEST(Renderer, Pipeline_CustomBlendStateCreatesValidHandle)
 		.BlendState = blendState,
 	};
 
-	const auto pipeline = CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
+	const auto pipeline = Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
 	EXPECT_TRUE(pipeline->GetPipeline());
 }

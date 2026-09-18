@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Threading/ThreadPool.h"
+#include "Physics/PhysicsWorld.h"
 #include "Scene/Entity.h"
 #include "Scripting/Assembly.h"
 #include "Scripting/ScriptClass.h"
@@ -10,8 +11,6 @@
 
 namespace Eppo
 {
-    class PhysicsWorld;
-
     [[nodiscard]] auto ScriptFieldTypeSize(ScriptFieldType type) -> uint32_t;
 
     class ScriptEngine
@@ -59,9 +58,9 @@ namespace Eppo
         auto OnDestroyEntity(Entity entity) -> void;
         auto InvokeMethod(Entity entity, const ScriptMethod& method, const void* args = nullptr, void* ret = nullptr) const -> void;
 
-        // The physics world the script physics callbacks act on. Held weakly: it
-        // expires when the scene drops the world on stop, so callbacks no-op safely.
-        [[nodiscard]] auto GetActivePhysicsWorld() const -> Ref<PhysicsWorld> { return m_ActivePhysicsWorld.lock(); }
+        // The physics world the script physics callbacks act on. Held by the scene:
+        // the scene releases it on stop, so callbacks no-op safely afterwards.
+        [[nodiscard]] auto GetActivePhysicsWorld() const -> Ref<PhysicsWorld> { return m_ActivePhysicsWorld; }
         auto SetActivePhysicsWorld(const Ref<PhysicsWorld>& world) -> void { m_ActivePhysicsWorld = world; }
 
         [[nodiscard]] auto GetEntityInstance(const UUID& entityId) -> ScriptInstance*;
@@ -86,8 +85,8 @@ namespace Eppo
         bool m_ReloadPending = false;
         TaskId m_BuildTaskId = 0;
 
-        WeakRef<PhysicsWorld> m_ActivePhysicsWorld;
-        WeakRef<Scene> m_SceneContext;
+        Ref<PhysicsWorld> m_ActivePhysicsWorld;
+        Ref<Scene> m_SceneContext;
 
         std::unordered_map<UUID, ScriptInstance> m_EntityInstances;
         ScriptFieldStorage m_FieldStorage;

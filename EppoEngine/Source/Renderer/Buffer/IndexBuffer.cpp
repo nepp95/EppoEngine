@@ -108,7 +108,7 @@ namespace Eppo
                     indices.emplace_back(capRingStart + j + 1);
                 }
 
-                return CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+                return Ref<IndexBuffer>::Create(indices.data(), indices.size() * sizeof(uint32_t));
             }
 
             case MeshPrimitiveType::Cube:
@@ -116,7 +116,7 @@ namespace Eppo
                 constexpr std::array indices = { 0,  1,  2,  0,  2,  3,  4,  5,  6,  4,  6,  7,  8,  9,  10, 8,  10, 11,
                                                  12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23 };
 
-                return CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+                return Ref<IndexBuffer>::Create(indices.data(), indices.size() * sizeof(uint32_t));
             }
 
             case MeshPrimitiveType::Cylinder:
@@ -165,7 +165,7 @@ namespace Eppo
                     indices.emplace_back(topCapRingStart + j);
                 }
 
-                return CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+                return Ref<IndexBuffer>::Create(indices.data(), indices.size() * sizeof(uint32_t));
             }
 
             case MeshPrimitiveType::Sphere:
@@ -199,7 +199,7 @@ namespace Eppo
                     }
                 }
 
-                return CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+                return Ref<IndexBuffer>::Create(indices.data(), indices.size() * sizeof(uint32_t));
             }
 
             case MeshPrimitiveType::Capsule:
@@ -236,7 +236,7 @@ namespace Eppo
                     }
                 }
 
-                return CreateRef<IndexBuffer>(indices.data(), indices.size() * sizeof(uint32_t));
+                return Ref<IndexBuffer>::Create(indices.data(), indices.size() * sizeof(uint32_t));
             }
         }
     }

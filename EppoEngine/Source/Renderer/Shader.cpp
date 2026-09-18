@@ -432,15 +432,15 @@ namespace Eppo
 
     auto Shader::Create(ShaderSpecification spec) -> Ref<Shader>
     {
-        switch (const auto& dm = DeviceManager::Get(); dm->GetParams().API)
+        switch (Ref<DeviceManager> dm = DeviceManager::Get(); dm->GetParams().API)
         {
 #if defined(EP_PLATFORM_WINDOWS)
             case RendererAPI::DX12:
-                return CreateRef<DX12Shader>(std::move(spec));
+                return Ref<DX12Shader>::Create(std::move(spec));
 #endif
 
             case RendererAPI::Vulkan:
-                return CreateRef<VulkanShader>(std::move(spec));
+                return Ref<VulkanShader>::Create(std::move(spec));
 
             default:
             {

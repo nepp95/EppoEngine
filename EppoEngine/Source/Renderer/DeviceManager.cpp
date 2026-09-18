@@ -16,7 +16,7 @@ namespace Eppo
         return Application::Get().GetDeviceManager();
     }
 
-    auto DeviceManager::Create(const Ref<Window>& window, const DeviceParams& params) -> ScopedPtr<DeviceManager>
+    auto DeviceManager::Create(const Ref<Window>& window, const DeviceParams& params) -> Ref<DeviceManager>
     {
         EP_ASSERT(params.API != RendererAPI::None, "No renderer api selected!");
 #if !defined(EP_PLATFORM_WINDOWS)
@@ -30,14 +30,14 @@ namespace Eppo
             case RendererAPI::DX12:
             {
                 Log::Info("Creating DirectX 12 device");
-                return CreateScopedPtr<DeviceManagerDX12>(window, params);
+                return Ref<DeviceManagerDX12>::Create(window, params);
             }
 #endif
 
             case RendererAPI::Vulkan:
             {
                 Log::Info("Creating Vulkan device");
-                return CreateScopedPtr<DeviceManagerVK>(window, params);
+                return Ref<DeviceManagerVK>::Create(window, params);
             }
 
             default:

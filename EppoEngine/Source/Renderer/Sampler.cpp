@@ -24,8 +24,8 @@ namespace Eppo
 
     auto Sampler::Create(const SamplerSpecification& specification, const Ref<DescriptorManager>& descriptorManager) -> Ref<Sampler>
     {
-        const auto sampler = Ref<Sampler>(new Sampler(specification));
-        const auto& manager = descriptorManager ? descriptorManager : DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+        Ref<Sampler> sampler = Ref<Sampler>(new Sampler(specification));
+        Ref<DescriptorManager> manager = descriptorManager ? descriptorManager : DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
         sampler->m_BindlessHandle = manager->Register(sampler);
         return sampler;
     }

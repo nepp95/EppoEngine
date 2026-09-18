@@ -68,12 +68,13 @@ public:
 
     auto OnAttach() -> void override
     {
-        Application::Get().GetThreadPool()->QueueTask(
+        Ref<ThreadPool> threadPool = Application::Get().GetThreadPool();
+        threadPool->QueueTask(
             "Teardown order",
             []() -> void
             {
             },
-            [state = m_State](TaskStatus) -> void
+            [state = m_State](TaskStatus) mutable -> void
             {
                 state->CompletionCalled = true;
                 state->CompletionBeforeDetach = !state->Detached;
@@ -107,7 +108,7 @@ public:
     {
         m_State->UpdateCompleted = true;
         Renderer::Submit(
-            [state = m_State]() -> void
+            [state = m_State]() mutable -> void
             {
                 state->CommandExecuted = true;
                 state->ExecutedAfterUpdate = state->UpdateCompleted;
@@ -196,7 +197,8 @@ TEST(App, Application_CustomWindowAndVSyncParameters_AreHonored)
     EXPECT_EQ(std::string("Parameter Test"), app->GetWindow()->GetSpecification().Title);
     EXPECT_EQ(1024, app->GetWindow()->GetWidth());
     EXPECT_EQ(640, app->GetWindow()->GetHeight());
-    EXPECT_TRUE(app->GetDeviceManager()->GetParams().VSync);
+    Ref<DeviceManager> deviceManager = app->GetDeviceManager();
+    EXPECT_TRUE(deviceManager->GetParams().VSync);
 }
 
 TEST(App, ImGuiLayer_PlayModeCanSuspendMouseAndReceiveEscape)
@@ -206,25 +208,27 @@ TEST(App, ImGuiLayer_PlayModeCanSuspendMouseAndReceiveEscape)
     EP_REQUIRE(app != nullptr);
     EP_REQUIRE(app->GetImGuiLayer() != nullptr);
 
-    app->GetImGuiLayer()->SetMouseInputEnabled(false);
+    Ref<ImGuiLayer> imGuiLayer = app->GetImGuiLayer();
+
+    imGuiLayer->SetMouseInputEnabled(false);
     EXPECT_TRUE((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) != 0);
 
     ImGuiIO& io = ImGui::GetIO();
     const bool previousWantCaptureKeyboard = io.WantCaptureKeyboard;
     io.WantCaptureKeyboard = true;
 
-    app->GetImGuiLayer()->BlockEvents(true);
+    imGuiLayer->BlockEvents(true);
     KeyPressedEvent blockedEscape{ Key::Escape };
-    app->GetImGuiLayer()->OnEvent(blockedEscape);
+    imGuiLayer->OnEvent(blockedEscape);
     EXPECT_TRUE(blockedEscape.Handled);
 
-    app->GetImGuiLayer()->BlockEvents(false);
+    imGuiLayer->BlockEvents(false);
     KeyPressedEvent playModeEscape{ Key::Escape };
-    app->GetImGuiLayer()->OnEvent(playModeEscape);
+    imGuiLayer->OnEvent(playModeEscape);
     EXPECT_TRUE(!playModeEscape.Handled);
 
     io.WantCaptureKeyboard = previousWantCaptureKeyboard;
-    app->GetImGuiLayer()->SetMouseInputEnabled(true);
+    imGuiLayer->SetMouseInputEnabled(true);
     EXPECT_TRUE((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) == 0);
 }
 
@@ -239,7 +243,7 @@ TEST(App, Application_WithoutImGui_UpdatesLayersWithoutUIRender)
     EP_REQUIRE(app != nullptr);
     EXPECT_TRUE(app->GetImGuiLayer() == nullptr);
 
-    const Ref<UITrackingLayer> layer = app->PushLayer<UITrackingLayer>();
+    Ref<UITrackingLayer> layer = app->PushLayer<UITrackingLayer>();
     Testing::AppHarness::AdvanceFrames(3);
     EXPECT_TRUE(layer->UpdateCalled);
     EXPECT_TRUE(!layer->UIRenderCalled);
@@ -270,7 +274,7 @@ TEST(App, Application_WindowResizePropagatesToLayers)
         return;
 
     Application* app = Testing::AppHarness::Get();
-    const Ref<UITrackingLayer> layer = app->PushLayer<UITrackingLayer>();
+    Ref<UITrackingLayer> layer = app->PushLayer<UITrackingLayer>();
     WindowResizeEvent event(1280, 720);
     app->OnEvent(event);
 
@@ -289,7 +293,7 @@ TEST(App, Application_ShutdownFlushesTaskCompletionsBeforeDetachingLayers)
     Application* app = Testing::AppHarness::Get(std::move(params));
     EP_REQUIRE(app != nullptr);
 
-    const auto state = CreateRef<ThreadPoolTeardownState>();
+    const auto state = Ref<ThreadPoolTeardownState>::Create();
     app->PushLayer<ThreadPoolTeardownLayer>(state);
 
     Testing::AppHarness::Shutdown();
@@ -305,7 +309,7 @@ TEST(App, Application_StepFrame_ExecutesSubmittedRenderCommandsAfterUI)
     Application* app = Testing::AppHarness::Get();
     EP_REQUIRE(app != nullptr);
 
-    const auto state = CreateRef<RenderCommandTrackingState>();
+    const auto state = Ref<RenderCommandTrackingState>::Create();
     app->PushLayer<RenderCommandTrackingLayer>(state);
 
     Testing::AppHarness::AdvanceFrames(1);
@@ -327,7 +331,7 @@ TEST(App, Application_StepFrame_ExecutesSubmittedRenderCommandsWithoutImGui)
     Application* app = Testing::AppHarness::Get(std::move(params));
     EP_REQUIRE(app != nullptr);
 
-    const auto state = CreateRef<RenderCommandTrackingState>();
+    const auto state = Ref<RenderCommandTrackingState>::Create();
     app->PushLayer<RenderCommandTrackingLayer>(state);
 
     Testing::AppHarness::AdvanceFrames(1);
@@ -349,7 +353,7 @@ TEST(App, DeviceManager_FrameAndBackBufferCounts_AreValidIndependentRanges)
     Application* app = Testing::AppHarness::Get(std::move(params));
     EP_REQUIRE(app != nullptr);
 
-    const auto& deviceManager = app->GetDeviceManager();
+    Ref<DeviceManager> deviceManager = app->GetDeviceManager();
     const uint32_t backBufferCount = deviceManager->GetBackBufferCount();
     const uint32_t expectedFramesInFlight = std::min(deviceManager->GetParams().MaxFramesInFlight, backBufferCount);
 
@@ -373,7 +377,7 @@ TEST(App, DeviceManager_CurrentFrameIndex_RotatesAcrossFramesInFlight)
     const uint32_t maxFramesInFlight = deviceManager->GetMaxFramesInFlight();
     EP_REQUIRE(maxFramesInFlight > 0);
 
-    const auto state = CreateRef<FrameIndexTrackingState>();
+    const auto state = Ref<FrameIndexTrackingState>::Create();
     app->PushLayer<FrameIndexTrackingLayer>(state);
     Testing::AppHarness::AdvanceFrames(maxFramesInFlight * 2 + 1);
 
@@ -388,6 +392,11 @@ TEST(App, DeviceManager_CurrentFrameIndex_RotatesAcrossFramesInFlight)
     }
 }
 
+struct RenderCaptureState : RefCtr
+{
+    uint32_t Value = 0;
+};
+
 TEST(App, Application_Shutdown_ReleasesPendingRenderCommandCaptures)
 {
     Testing::AppHarness::Shutdown();
@@ -398,15 +407,20 @@ TEST(App, Application_Shutdown_ReleasesPendingRenderCommandCaptures)
     Application* app = Testing::AppHarness::Get(std::move(params));
     EP_REQUIRE(app != nullptr);
 
-    auto capturedState = CreateRef<uint32_t>(42);
-    const WeakRef<uint32_t> weakState = capturedState;
+    auto capturedState = Ref<RenderCaptureState>::Create();
+    capturedState->Value = 42;
+    RenderCaptureState* rawState = capturedState.Raw();
 
     Renderer::Submit([capturedState]() -> void {});
-    capturedState.reset();
+    capturedState.Reset();
 
-    EXPECT_FALSE(weakState.expired());
+#ifdef EP_DEBUG
+    EXPECT_TRUE(IsLive(rawState));
+#endif
 
     Testing::AppHarness::Shutdown();
 
-    EXPECT_TRUE(weakState.expired());
+#ifdef EP_DEBUG
+    EXPECT_FALSE(IsLive(rawState));
+#endif
 }

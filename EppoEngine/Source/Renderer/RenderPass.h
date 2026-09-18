@@ -50,7 +50,7 @@ namespace Eppo
         uint32_t StencilClearValue = 0;
     };
 
-    class RenderPass
+    class RenderPass : public RefCtr
     {
     public:
         RenderPass() = default;
@@ -62,7 +62,7 @@ namespace Eppo
         RenderPass(RenderPass&&) noexcept = default;
         auto operator=(RenderPass&&) noexcept -> RenderPass& = default;
 
-        auto Resize(uint32_t width, uint32_t height) const -> void;
+        auto Resize(uint32_t width, uint32_t height) -> void;
 
         auto SetFramebuffer(const Ref<Framebuffer>& framebuffer) -> void;
         auto SetSubresources(const nvrhi::TextureSubresourceSet& subresources) -> void { m_Specification.Subresources = subresources; }

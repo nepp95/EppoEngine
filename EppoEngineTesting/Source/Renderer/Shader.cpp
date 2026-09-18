@@ -35,7 +35,7 @@ namespace
         FS::RemoveAll(FS::GetShaderCacheDirectory() / std::format("{}.{}.hash", name, extension));
 	}
 
-    auto CheckMeshVertexLayout(const Ref<Shader>& shader) -> void
+    auto CheckMeshVertexLayout(Ref<Shader> shader) -> void
     {
         EP_REQUIRE(shader != nullptr);
 
@@ -62,7 +62,7 @@ namespace
     }
 
     [[nodiscard]] auto HasResource(
-        const Ref<Shader>& shader, const uint32_t set, const uint32_t binding, const nvrhi::ResourceType type
+        Ref<Shader> shader, const uint32_t set, const uint32_t binding, const nvrhi::ResourceType type
     ) -> bool
     {
         const auto& resources = shader->GetShaderResources();
@@ -89,7 +89,7 @@ TEST(Renderer, Shader_PackedSourcesResolveIncludesFromThePack)
 	const auto include = std::string("Includes/only-in-pack.hlsli");
 	EP_REQUIRE(!FS::Exists(FS::GetResourcesDirectory() / "Shaders" / include));
 
-	const Ref<Shader> shader = Shader::Create(ShaderSpecification{
+	Ref<Shader> shader = Shader::Create(ShaderSpecification{
 		.Name = name,
 		.Source = SourceRequiring(include),
 		.Includes = { { include, "float4 PackedValue(float3 position) { return float4(position, 1.0); }" } },
@@ -111,7 +111,7 @@ TEST(Renderer, Shader_PackedIncludesShadowTheSameFileOnDisk)
 	const auto include = std::string("Includes/platform.hlsli");
 	EP_REQUIRE(FS::Exists(FS::GetResourcesDirectory() / "Shaders" / include));
 
-	const Ref<Shader> shader = Shader::Create(ShaderSpecification{
+	Ref<Shader> shader = Shader::Create(ShaderSpecification{
 		.Name = name,
 		.Source = SourceRequiring(include),
 		.Includes = { { include, "float4 PackedValue(float3 position) { return float4(position, 1.0); }" } },
@@ -151,7 +151,7 @@ TEST(Renderer, Shader_ShadowDepthReflectsMeshLayoutAndBindings)
         return;
 
     const auto& renderer = DeviceManager::Get()->GetRenderer();
-    const Ref<Shader>& shadowDepth = renderer->GetShader("shadowDepth");
+    Ref<Shader> shadowDepth = renderer->GetShader("shadowDepth");
     CheckMeshVertexLayout(shadowDepth);
 
     EXPECT_TRUE(HasResource(shadowDepth, 0, 0, nvrhi::ResourceType::StructuredBuffer_SRV));

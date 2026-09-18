@@ -4,7 +4,7 @@
 
 namespace Eppo
 {
-    class Layer
+    class Layer : public RefCtr
     {
     public:
         Layer() = default;

@@ -21,7 +21,7 @@ namespace
         explicit ExportProjectFixture(std::string name = "ExportGame")
             : PreviousProject(Project::GetActive()),
               ProjectDirectory(Directory.File("Project")),
-              AssetManagerInstance(CreateRef<AssetManager>())
+              AssetManagerInstance(Ref<AssetManager>::Create())
         {
             std::filesystem::create_directories(ProjectDirectory / "Assets" / "Scenes");
             ProjectInstance = Project::New(
@@ -37,7 +37,7 @@ namespace
 
         auto AddScene(const uint64_t handle, const std::string& filename, const bool primaryCamera = true) -> Ref<Scene>
         {
-            const Ref<Scene> scene = CreateRef<Scene>();
+            Ref<Scene> scene = Ref<Scene>::Create();
             scene->Handle = AssetHandle(handle);
             Entity camera = scene->CreateEntity("Camera");
             if (primaryCamera)
@@ -55,7 +55,7 @@ namespace
             const auto path = ProjectDirectory / "Assets" / filename;
             const std::vector<char> bytes{ 't', 'e', 'x' };
             EXPECT_TRUE(FS::WriteBytes(path, bytes, true));
-            const Ref<Asset> asset = CreateRef<Asset>();
+            Ref<Asset> asset = Ref<Asset>::Create();
             asset->Handle = AssetHandle(handle);
             EXPECT_TRUE(AssetManagerInstance->CreateAsset(path, asset));
             return path;
@@ -107,9 +107,9 @@ TEST(ProjectExport, ProjectExporter_ExportsAssetsAndPackedScenes)
     EXPECT_EQ(3u, static_cast<uint32_t>(gameData.AssetRegistry.size()));
     EXPECT_EQ(2u, static_cast<uint32_t>(gameData.PackedAssets.size()));
 
-    const Ref<AssetManager> packedManager =
-        CreateRef<AssetManager>(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
-    const Ref<Scene> scene = packedManager->GetOrLoadAsset<Scene>(AssetHandle(500));
+    Ref<AssetManager> packedManager =
+        Ref<AssetManager>::Create(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
+    Ref<Scene> scene = packedManager->GetOrLoadAsset(AssetHandle(500)).As<Scene>();
     EP_REQUIRE(scene != nullptr);
     EXPECT_TRUE(scene->GetPrimaryCameraEntity());
 }

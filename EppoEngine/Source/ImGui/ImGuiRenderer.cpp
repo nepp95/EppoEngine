@@ -345,14 +345,14 @@ namespace Eppo
         EP_PROFILE_FN("ImGuiRenderer::GetOrCreateRenderPass")
 
         const auto& swapchainFramebuffer = swapchain->GetCurrentSwapchainImage().Framebuffer;
-        Ref<RenderPass>& renderPass = m_RenderPassCache[swapchain.get()];
+        Ref<RenderPass>& renderPass = m_RenderPassCache[swapchain.Raw()];
 
         // One pipeline is compatible with every backbuffer of this swapchain, so only the target framebuffer is swapped per frame.
         if (!renderPass)
         {
-            renderPass = CreateRef<RenderPass>(RenderPassSpecification{
+            renderPass = Ref<RenderPass>::Create(RenderPassSpecification{
                 .Name = "ImGui",
-                .Pipeline = CreateRef<Pipeline>(m_PipelineSpecTemplate, swapchainFramebuffer->GetFramebuffer()->getFramebufferInfo()),
+                .Pipeline = Ref<Pipeline>::Create(m_PipelineSpecTemplate, swapchainFramebuffer->GetFramebuffer()->getFramebufferInfo()),
                 .Framebuffer = swapchainFramebuffer,
                 .OwnsFramebuffer = false,
             });

@@ -52,7 +52,7 @@ namespace Eppo
         bool IsHdr = false;
     };
 
-    class Image : public Asset, public std::enable_shared_from_this<Image>
+    class Image : public Asset
     {
     public:
         ~Image() override = default;

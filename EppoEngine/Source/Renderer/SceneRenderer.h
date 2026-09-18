@@ -20,7 +20,7 @@ namespace Eppo
         bool EnableDebugRendering = false;
     };
 
-    class SceneRenderer
+    class SceneRenderer : public RefCtr
     {
     public:
         explicit SceneRenderer(const Ref<Scene>& scene, const SceneRendererSpecification& specification);
@@ -63,15 +63,15 @@ namespace Eppo
         auto UploadRenderData() -> void;
 
         auto OpaqueForwardPass() -> void;
-        auto SkyPass() const -> void;
-        auto DisplayConversionPass() const -> void;
-        auto WireframePass() const -> void;
+        auto SkyPass() -> void;
+        auto DisplayConversionPass() -> void;
+        auto WireframePass() -> void;
 
         auto EnsureIblResources() -> void;
         auto BakeEnvironmentMap(const Ref<Image>& equirect) -> void;
         auto RecordIblPass(
             const Ref<Shader>& shader, const Ref<Image>& source, const Ref<Sampler>& sampler, const Ref<Image>& target,
-            const Ref<UniformBuffer>& facesUB, const Ref<RenderCommandBuffer>& cmdBuffer, uint32_t mipLevel, float roughness = 0.0f,
+            const Ref<UniformBuffer>& facesUB, Ref<RenderCommandBuffer> cmdBuffer, uint32_t mipLevel, float roughness = 0.0f,
             float envMapSize = 0.0f
         ) -> void;
 

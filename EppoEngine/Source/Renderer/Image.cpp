@@ -143,7 +143,7 @@ namespace Eppo
     Image::Image(const ImageSpecification& spec, void* existingImage)
         : m_Specification(spec), m_Width(spec.Width), m_Height(spec.Height)
     {
-        const auto& dm = DeviceManager::Get();
+        Ref<DeviceManager> dm = DeviceManager::Get();
         const auto device = dm->GetDevice();
 
         const nvrhi::TextureDesc textureDesc{
@@ -251,8 +251,8 @@ namespace Eppo
         if (m_BindlessHandles.contains(resolved))
             return m_BindlessHandles.at(resolved)->Index;
 
-        const auto& descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
-        m_BindlessHandles.emplace(resolved, CreateRef<BindlessHandle>(descriptorManager->Register(shared_from_this(), resolved)));
+        Ref<DescriptorManager> descriptorManager = DeviceManager::Get()->GetRenderer()->GetDescriptorManager();
+        m_BindlessHandles.emplace(resolved, Ref<BindlessHandle>::Create(descriptorManager->Register(Ref<Image>(this), resolved)));
 
         return m_BindlessHandles.at(resolved)->Index;
     }
@@ -326,28 +326,28 @@ namespace Eppo
         EP_ASSERT(sourcePath || sourceBuffer);
 
         ImageSource taskSource = sourcePath ? ImageSource(*sourcePath) : ImageSource(Buffer::Copy(*sourceBuffer));
-        const auto& threadPool = Application::Get().GetThreadPool();
-        auto result = CreateRef<TaskResult<ImageTaskResult>>();
+        Ref<ThreadPool> threadPool = Application::Get().GetThreadPool();
+        auto result = Ref<TaskResult<ImageTaskResult>>::Create();
 
         image->m_LoadTaskId = threadPool->QueueTask(
-            [result, taskSource, mipMode = spec.MipMode]()
+            [result, taskSource, mipMode = spec.MipMode]() mutable -> void
             {
                 ImageTaskResult taskResult;
                 DecodeImageData(taskSource, mipMode, taskResult);
-                result->emplace(std::move(taskResult));
+                result->Result.emplace(std::move(taskResult));
             },
-            [image, result, taskSource, cmdList](const TaskStatus status) mutable
+            [image, result, taskSource, cmdList](const TaskStatus status) mutable -> void
             {
                 if (auto* buffer = std::get_if<Buffer>(&taskSource))
                     buffer->Release();
 
-                if (status != TaskStatus::Completed || !result->has_value())
+                if (status != TaskStatus::Completed || !result->Result.has_value())
                     return;
 
                 Renderer::Submit(
-                    [image, result, cmdList]()
+                    [image, result, cmdList]() mutable
                     {
-                        const auto& taskResult = result->value();
+                        const auto& taskResult = result->Result.value();
                         EP_ASSERT(!taskResult.Mips.empty());
                         image->m_Width = taskResult.Mips.front().Width;
                         image->m_Height = taskResult.Mips.front().Height;

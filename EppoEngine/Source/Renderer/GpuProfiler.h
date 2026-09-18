@@ -35,10 +35,10 @@ namespace Eppo
         [[nodiscard]] static auto Get() -> GpuProfiler*;
 
         virtual auto
-        BeginZone(const Ref<RenderCommandBuffer>& commandBuffer, const char* name, const char* function, const char* file, uint32_t line)
+        BeginZone(Ref<RenderCommandBuffer> commandBuffer, const char* name, const char* function, const char* file, uint32_t line)
             -> void = 0;
         virtual auto EndZone() -> void = 0;
-        virtual auto Collect(const Ref<RenderCommandBuffer>& commandBuffer) -> void = 0;
+        virtual auto Collect(Ref<RenderCommandBuffer> commandBuffer) -> void = 0;
 
     protected:
         GpuProfiler() = default;

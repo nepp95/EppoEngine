@@ -28,7 +28,7 @@ namespace
             .DebugName = "Framebuffer RenderPassTest",
         };
 
-        const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+        Ref<Framebuffer> framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
         const PipelineSpecification pipelineSpec{
             .Shader = renderer->GetShader("geometry"),
@@ -37,7 +37,7 @@ namespace
             .DepthWriteEnable = true,
         };
 
-        return CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
+        return Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
     }
 
     auto MakeCompositePipeline() -> Ref<Pipeline>
@@ -51,14 +51,14 @@ namespace
             .DebugName = "Framebuffer CompositeRenderPassTest",
         };
 
-        const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+        Ref<Framebuffer> framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
         const PipelineSpecification pipelineSpec{
             .Shader = renderer->GetShader("composite"),
             .CullMode = nvrhi::RasterCullMode::None,
         };
 
-        return CreateRef<Pipeline>(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
+        return Ref<Pipeline>::Create(pipelineSpec, framebuffer->GetFramebuffer()->getFramebufferInfo());
     }
 
     auto MakeSharedBindingPipeline() -> Ref<Pipeline>
@@ -100,9 +100,9 @@ return float4(1.0, 1.0, 1.0, 1.0);
             .DebugName = "Framebuffer SharedLogicalBindingRenderPassTest",
         };
 
-        const auto framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+        Ref<Framebuffer> framebuffer = Ref<Framebuffer>::Create(framebufferSpec);
 
-        return CreateRef<Pipeline>(
+        return Ref<Pipeline>::Create(
             PipelineSpecification{
                 .Shader = shader,
                 .CullMode = nvrhi::RasterCullMode::None,
@@ -111,10 +111,10 @@ return float4(1.0, 1.0, 1.0, 1.0);
         );
     }
 
-    auto SetGeometryInputs(RenderPass& pass, const Ref<UniformBuffer>& camera, const Ref<StorageBuffer>& instances) -> void
+    auto SetGeometryInputs(RenderPass& pass, Ref<UniformBuffer> camera, Ref<StorageBuffer> instances) -> void
     {
-        const auto drawData = CreateRef<StorageBuffer>(80, 80, "TestSB Draw Data");
-        const auto materialData = CreateRef<StorageBuffer>(96, 96, "TestSB Material Data");
+        Ref<StorageBuffer> drawData = Ref<StorageBuffer>::Create(80, 80, "TestSB Draw Data");
+        Ref<StorageBuffer> materialData = Ref<StorageBuffer>::Create(96, 96, "TestSB Material Data");
         pass.SetInput(0, 0, instances);
         pass.SetInput(0, 1, drawData);
         pass.SetInput(0, 2, camera);
@@ -192,8 +192,8 @@ TEST(Renderer, RenderPass_BakeMergesBoundAndBindlessSetsWithoutGaps)
         return;
 
     const auto pipeline = MakeGeometryPipeline();
-    const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
+    Ref<UniformBuffer> camera = Ref<UniformBuffer>::Create(4096, "TestCB Camera");
+    Ref<StorageBuffer> instances = Ref<StorageBuffer>::Create(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
     SetGeometryInputs(pass, camera, instances);
@@ -216,8 +216,8 @@ TEST(Renderer, RenderPass_BakeDerivesPushConstantsFromShaderReflection)
         return;
 
     const auto pipeline = MakeGeometryPipeline();
-    const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
+    Ref<UniformBuffer> camera = Ref<UniformBuffer>::Create(4096, "TestCB Camera");
+    Ref<StorageBuffer> instances = Ref<StorageBuffer>::Create(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = pipeline });
     SetGeometryInputs(pass, camera, instances);
@@ -235,8 +235,8 @@ TEST(Renderer, RenderPass_InputsPersistAcrossForcedRebake)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
+    Ref<UniformBuffer> camera = Ref<UniformBuffer>::Create(4096, "TestCB Camera");
+    Ref<StorageBuffer> instances = Ref<StorageBuffer>::Create(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
     SetGeometryInputs(pass, camera, instances);
@@ -257,8 +257,8 @@ TEST(Renderer, RenderPass_BakeRebuildsWhenStorageBufferGrows)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "TestSSBO Instances");
+    Ref<UniformBuffer> camera = Ref<UniformBuffer>::Create(4096, "TestCB Camera");
+    Ref<StorageBuffer> instances = Ref<StorageBuffer>::Create(sizeof(glm::mat4), sizeof(glm::mat4), "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
     SetGeometryInputs(pass, camera, instances);
@@ -280,8 +280,8 @@ TEST(Renderer, RenderPass_SetInputBuildsBufferItemsMatchingResourceType)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto instances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Instances");
+    Ref<UniformBuffer> camera = Ref<UniformBuffer>::Create(4096, "TestCB Camera");
+    Ref<StorageBuffer> instances = Ref<StorageBuffer>::Create(sizeof(glm::mat4), 4096, "TestSSBO Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
     SetGeometryInputs(pass, camera, instances);
@@ -371,9 +371,9 @@ TEST(Renderer, RenderPass_SetInputReplacesMatchingBindingAndType)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto camera = CreateRef<UniformBuffer>(4096, "TestCB Camera");
-    const auto firstInstances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO First Instances");
-    const auto secondInstances = CreateRef<StorageBuffer>(sizeof(glm::mat4), 4096, "TestSSBO Second Instances");
+    Ref<UniformBuffer> camera = Ref<UniformBuffer>::Create(4096, "TestCB Camera");
+    Ref<StorageBuffer> firstInstances = Ref<StorageBuffer>::Create(sizeof(glm::mat4), 4096, "TestSSBO First Instances");
+    Ref<StorageBuffer> secondInstances = Ref<StorageBuffer>::Create(sizeof(glm::mat4), 4096, "TestSSBO Second Instances");
 
     RenderPass pass(RenderPassSpecification{ .Name = "Geometry", .Pipeline = MakeGeometryPipeline() });
     SetGeometryInputs(pass, camera, firstInstances);
@@ -400,8 +400,8 @@ TEST(Renderer, RenderPass_DistinctResourceTypesAtTheSameBindingCoexist)
     if (!Testing::AppHarness::IsAvailable())
         return;
 
-    const auto constants = CreateRef<UniformBuffer>(sizeof(glm::mat4), "TestCB Constants");
-    const auto transforms = CreateRef<StorageBuffer>(sizeof(glm::mat4), sizeof(glm::mat4), "TestSSBO Transforms");
+    Ref<UniformBuffer> constants = Ref<UniformBuffer>::Create(sizeof(glm::mat4), "TestCB Constants");
+    Ref<StorageBuffer> transforms = Ref<StorageBuffer>::Create(sizeof(glm::mat4), sizeof(glm::mat4), "TestSSBO Transforms");
     RenderPass pass(RenderPassSpecification{ .Name = "SharedLogicalBinding", .Pipeline = MakeSharedBindingPipeline() });
     pass.SetInput(0, 0, constants);
     pass.SetInput(0, 0, transforms);
@@ -418,14 +418,16 @@ TEST(Renderer, RenderPass_InputKeepsResourceAliveAfterCallerDropsRef)
         return;
 
     auto image = MakeTestImage();
-    const WeakRef<Image> weakImage = image;
+    Image* rawImage = image.Raw();
     const auto sampler = Sampler::Create();
     RenderPass pass(RenderPassSpecification{ .Name = "Composite", .Pipeline = MakeCompositePipeline() });
     pass.SetInput(0, 0, image);
     pass.SetInput(0, 0, sampler);
-    image.reset();
+    image.Reset();
     pass.Bake();
 
-    EXPECT_TRUE(!weakImage.expired());
+#ifdef EP_DEBUG
+    EXPECT_TRUE(IsLive(rawImage));
+#endif
     EXPECT_TRUE(pass.GetBindingSets().at(0) != nullptr);
 }

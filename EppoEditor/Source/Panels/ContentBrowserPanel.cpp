@@ -233,7 +233,7 @@ namespace Eppo
 			if (ImGui::MenuItem("New Scene"))
 			{
 				const auto path = MakeUniquePath(m_CurrentDirectory / "New Scene.epscene");
-				const auto scene = CreateRef<Scene>();
+				const auto scene = Ref<Scene>::Create();
 				SceneSerializer(scene).Serialize(path);
 				assetManager->CreateAsset(path, scene);
 			}

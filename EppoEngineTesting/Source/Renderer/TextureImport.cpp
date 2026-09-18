@@ -16,7 +16,7 @@ using namespace Eppo;
 // so this rides the graphical Renderer suite.
 namespace
 {
-    auto WaitForImage(const Ref<Image>& image) -> bool
+    auto WaitForImage(Ref<Image> image) -> bool
     {
         for (uint32_t frame = 0; frame < 120 && !image->IsLoaded.load(std::memory_order_acquire); frame++)
         {
@@ -65,7 +65,7 @@ namespace
     public:
         TextureProjectFixture()
             : m_Previous(Project::GetActive()), m_ProjectDirectory(m_Directory.File("Project")),
-              m_AssetManager(CreateRef<AssetManager>())
+              m_AssetManager(Ref<AssetManager>::Create())
         {
             std::filesystem::create_directories(m_ProjectDirectory / "Assets" / "Textures");
             Project::New(ProjectSpecification{ .Name = "TextureImport", .ProjectDirectory = m_ProjectDirectory }, m_AssetManager);
@@ -77,13 +77,13 @@ namespace
         {
             const auto path = m_ProjectDirectory / "Assets" / "Textures" / filename;
             EP_REQUIRE(FS::WriteBytes(path, bytes, true));
-            const Ref<Asset> asset = CreateRef<Asset>();
+            Ref<Asset> asset = Ref<Asset>::Create();
             asset->Handle = AssetHandle(handle);
             EP_REQUIRE(m_AssetManager->CreateAsset(path, asset));
             return AssetHandle(handle);
         }
 
-        [[nodiscard]] auto Manager() const -> const Ref<AssetManager>& { return m_AssetManager; }
+        [[nodiscard]] auto Manager() const -> Ref<AssetManager> { return m_AssetManager; }
 
     private:
         Ref<Project> m_Previous;
@@ -101,7 +101,7 @@ TEST(Renderer, ImportTexture_LdrFile_LoadsAsSrgbaImageWithExpectedDimensions)
     TextureProjectFixture fixture;
     const AssetHandle handle = fixture.Register(700, "ldr.tga", MakeTgaBytes());
 
-    const Ref<Image> image = fixture.Manager()->GetOrLoadAsset<Image>(handle);
+    Ref<Image> image = fixture.Manager()->GetOrLoadAsset(handle).As<Image>();
 
     EP_REQUIRE(image != nullptr);
     EP_REQUIRE(WaitForImage(image));
@@ -120,7 +120,7 @@ TEST(Renderer, ImportTexture_GrayscaleLdrFile_ExpandsToSrgbaImage)
     TextureProjectFixture fixture;
     const AssetHandle handle = fixture.Register(702, "grayscale.tga", MakeGrayscaleTgaBytes());
 
-    const Ref<Image> image = fixture.Manager()->GetOrLoadAsset<Image>(handle);
+    Ref<Image> image = fixture.Manager()->GetOrLoadAsset(handle).As<Image>();
 
     EP_REQUIRE(image != nullptr);
     EP_REQUIRE(WaitForImage(image));
@@ -137,7 +137,7 @@ TEST(Renderer, ImportTexture_HdrFile_LoadsAsFloatImage)
     TextureProjectFixture fixture;
     const AssetHandle handle = fixture.Register(701, "sky.hdr", MakeHdrBytes());
 
-    const Ref<Image> image = fixture.Manager()->GetOrLoadAsset<Image>(handle);
+    Ref<Image> image = fixture.Manager()->GetOrLoadAsset(handle).As<Image>();
 
     EP_REQUIRE(image != nullptr);
     EP_REQUIRE(WaitForImage(image));

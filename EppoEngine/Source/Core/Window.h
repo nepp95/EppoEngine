@@ -22,13 +22,13 @@ namespace Eppo
         bool Decorated = true;
     };
 
-    class Window
+    class Window : public RefCtr
     {
     public:
         using EventCallbackFn = std::function<void(Event&)>;
 
         explicit Window(WindowSpecification specification);
-        ~Window() = default;
+        virtual ~Window() = default;
 
         auto Shutdown() -> void;
 

@@ -24,7 +24,7 @@ TEST(CoreGraphical, Window_Boot_EchoesHarnessSpec)
     if (!app)
         return;
 
-    const Ref<Window>& window = app->GetWindow();
+    Ref<Window> window = app->GetWindow();
     EP_REQUIRE(window != nullptr);
 
     EXPECT_TRUE(window->GetNative() != nullptr);
@@ -43,7 +43,7 @@ TEST(CoreGraphical, Window_SetCursorMode_EveryModeDoesNotCrash)
     if (!app)
         return;
 
-    const Ref<Window>& window = app->GetWindow();
+    Ref<Window> window = app->GetWindow();
     EP_REQUIRE(window != nullptr);
 
     window->SetCursorMode(CursorMode::Hidden);
@@ -58,7 +58,7 @@ TEST(CoreGraphical, Window_SetIcon_DecodableImageSucceeds)
     if (!app)
         return;
 
-    const Ref<Window>& window = app->GetWindow();
+    Ref<Window> window = app->GetWindow();
     EP_REQUIRE(window != nullptr);
 
     // The runner chdirs to EppoEditor, so this editor resource resolves.
@@ -72,7 +72,7 @@ TEST(CoreGraphical, Window_SetIcon_MissingImageIsNoOp)
     if (!app)
         return;
 
-    const Ref<Window>& window = app->GetWindow();
+    Ref<Window> window = app->GetWindow();
     EP_REQUIRE(window != nullptr);
 
     window->SetIcon("Resources/Icons/DefinitelyNotAFile.png");
