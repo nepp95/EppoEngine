@@ -107,8 +107,7 @@ TEST(ProjectExport, ProjectExporter_ExportsAssetsAndPackedScenes)
     EXPECT_EQ(3u, static_cast<uint32_t>(gameData.AssetRegistry.size()));
     EXPECT_EQ(2u, static_cast<uint32_t>(gameData.PackedAssets.size()));
 
-    const Ref<AssetManager> packedManager =
-        CreateRef<AssetManager>(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
+    const Ref<AssetManager> packedManager = CreateRef<AssetManager>(std::move(gameData.AssetRegistry), std::move(gameData.PackedAssets));
     const Ref<Scene> scene = packedManager->GetOrLoadAsset<Scene>(AssetHandle(500));
     EP_REQUIRE(scene != nullptr);
     EXPECT_TRUE(scene->GetPrimaryCameraEntity());
@@ -129,7 +128,7 @@ TEST(ProjectExport, ProjectExporter_PacksEngineShadersInsteadOfShippingThemLoose
 
     GameData gameData;
     EP_REQUIRE(gameData.Deserialize(result.OutputPath / "Debug" / GameData::Filename));
-    for (const auto* name : { "composite", "geometry", "imgui", "shadowDepth", "skybox", "tonemap", "wireframe" })
+    for (const auto* name : { "geometry", "skybox", "composite", "imgui", "wireframe" })
     {
         EP_REQUIRE(gameData.PackedShaders.contains(name));
         EXPECT_TRUE(!gameData.PackedShaders.at(name).empty());
@@ -138,7 +137,7 @@ TEST(ProjectExport, ProjectExporter_PacksEngineShadersInsteadOfShippingThemLoose
     // Every #include the engine shaders name must travel with them.
     EP_REQUIRE(!gameData.PackedShaderIncludes.empty());
     EXPECT_TRUE(gameData.PackedShaderIncludes.contains("Includes/platform.hlsli"));
-    EXPECT_TRUE(gameData.PackedShaderIncludes.contains("Includes/lighting.hlsli"));
+    EXPECT_TRUE(gameData.PackedShaderIncludes.contains("Includes/fullscreen.hlsli"));
     for (const auto& source : gameData.PackedShaderIncludes | std::views::values)
         EXPECT_TRUE(!source.empty());
 
@@ -331,7 +330,9 @@ TEST(ProjectExport, ProjectExporter_CopiesRelocatableRuntimeDeployment)
         EXPECT_TRUE(FS::Exists(outputDirectory / "runtimeconfig.json"));
         // Engine resources are carried by Game.eppak; the runtime never reads them from disk.
         EXPECT_TRUE(!FS::Exists(outputDirectory / "Resources"));
-        EXPECT_TRUE(FS::ReadText(outputDirectory / "EppoScriptCore.deps.json").find(fixture.ProjectDirectory.string()) == std::string::npos);
+        EXPECT_TRUE(
+            FS::ReadText(outputDirectory / "EppoScriptCore.deps.json").find(fixture.ProjectDirectory.string()) == std::string::npos
+        );
     }
 #if defined(EP_PLATFORM_WINDOWS)
     EXPECT_TRUE(FS::Exists(result.OutputPath / "Debug" / "EppoRuntime.pdb"));
