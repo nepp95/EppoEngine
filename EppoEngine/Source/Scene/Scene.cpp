@@ -796,22 +796,6 @@ namespace Eppo
         EP_PROFILE_FN("Scene::RenderScene");
 
         sceneRenderer->SubmitEnvironmentSettings(m_EnvironmentSettings);
-        sceneRenderer->SubmitBloomSettings(m_BloomSettings);
-        sceneRenderer->SubmitSsaoSettings(m_SsaoSettings);
-
-        for (const auto view = m_Registry.view<DirectionalLightComponent, TransformComponent>(); const auto& entity : view)
-        {
-            const auto& lightComponent = view.get<DirectionalLightComponent>(entity);
-            const glm::vec3 direction = GetWorldRotation(Entity(entity, this)) * glm::vec3(0.0f, -1.0f, 0.0f);
-            sceneRenderer->SubmitDirectionalLight(direction, lightComponent.Color, lightComponent.Intensity);
-        }
-
-        for (const auto view = m_Registry.view<PointLightComponent, TransformComponent>(); const auto& entity : view)
-        {
-            const auto& lightComponent = view.get<PointLightComponent>(entity);
-            const auto worldPosition = glm::vec3(GetWorldTransform(Entity(entity, this))[3]);
-            sceneRenderer->SubmitPointLight(worldPosition, lightComponent.Color, lightComponent.Intensity, lightComponent.Range);
-        }
 
         for (const auto view = m_Registry.view<MeshComponent, TransformComponent>(); const auto& entity : view)
         {
