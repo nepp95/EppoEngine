@@ -286,7 +286,6 @@ jobs:
           }
 
   check-for-successful-tests:
-    name: ${{ matrix.system }} / ${{ matrix.configuration }} / requirechecks
     needs: [build-test]
     runs-on: ${{ matrix.runner }}
     if: ${{ success() || failure() }}
