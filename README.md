@@ -1,5 +1,7 @@
 # EppoEngine
 
+[![CI](https://github.com/nepp95/EppoEngine/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/nepp95/EppoEngine/actions/workflows/ci.yml)
+
 EppoEngine is a C++20 game engine and editor I am building as a hobby, mostly to learn more about various related subjects.
 
 ## Prerequisites
