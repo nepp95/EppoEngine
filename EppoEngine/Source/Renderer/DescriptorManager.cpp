@@ -6,6 +6,16 @@
 
 namespace Eppo
 {
+    namespace
+    {
+        // NVRHI's resizeDescriptorTable returns void; a DX12 device-side failure that returns poisons getFirstDescriptorIndexInHeap() to ~0u - used as the failure signal.
+        auto ResizeDescriptorTable(nvrhi::IDevice* device, const nvrhi::DescriptorTableHandle& table, const uint32_t size, const bool keepContents) -> bool
+        {
+            device->resizeDescriptorTable(table, size, keepContents);
+            return table->getFirstDescriptorIndexInHeap() != std::numeric_limits<uint32_t>::max();
+        }
+    }
+
     BindlessHandle::BindlessHandle(const Ref<DescriptorManager>& manager, const uint32_t index, const BindlessHeapType heapType)
         : Manager(manager), Index(index), HeapType(heapType)
     {}
@@ -65,7 +75,8 @@ namespace Eppo
         m_ResourceHeap->BindingLayout = device->createBindlessLayout(desc);
         m_ResourceHeap->DescriptorTable = device->createDescriptorTable(m_ResourceHeap->BindingLayout);
         m_ResourceHeap->Capacity = initialHeapSize;
-        device->resizeDescriptorTable(m_ResourceHeap->DescriptorTable, initialHeapSize, false);
+        if (!ResizeDescriptorTable(device, m_ResourceHeap->DescriptorTable, initialHeapSize, false))
+            Log::Warn("Failed to resize the resource descriptor heap to {} slots at construction; the table is unusable.", initialHeapSize);
 
         // Setup sampler heap
         desc.maxCapacity = s_MaxSamplerSlots;
@@ -74,7 +85,8 @@ namespace Eppo
         m_SamplerHeap->BindingLayout = device->createBindlessLayout(desc);
         m_SamplerHeap->DescriptorTable = device->createDescriptorTable(m_SamplerHeap->BindingLayout);
         m_SamplerHeap->Capacity = initialHeapSize;
-        device->resizeDescriptorTable(m_SamplerHeap->DescriptorTable, initialHeapSize, false);
+        if (!ResizeDescriptorTable(device, m_SamplerHeap->DescriptorTable, initialHeapSize, false))
+            Log::Warn("Failed to resize the sampler descriptor heap to {} slots at construction; the table is unusable.", initialHeapSize);
     }
 
     auto DescriptorManager::Register(const Ref<Sampler>& resource) -> BindlessHandle
@@ -136,6 +148,10 @@ namespace Eppo
                 heap->BindingLayout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv
                 ? s_MaxSlots
                 : s_MaxSamplerSlots;
+            const char* heapName =
+                heap->BindingLayout->getBindlessDesc()->layoutType == nvrhi::BindlessLayoutDesc::LayoutType::MutableSrvUavCbv
+                ? "Resource"
+                : "Sampler";
 
             if (newSize > maxSize)
             {
@@ -148,11 +164,22 @@ namespace Eppo
 
             if (newSize == maxSize && heap->NextFreeSlot == newSize)
             {
-                Log::Warn("Trying to resize descriptor heap to a size that is the same as the current size: {}", newSize);
+                Log::Warn(
+                    "{} descriptor heap is full (current capacity {}, requested size {}); returning an invalid slot.",
+                    heapName, heap->Capacity, newSize
+                );
                 return std::numeric_limits<uint32_t>::max();
             }
 
-            device->resizeDescriptorTable(heap->DescriptorTable, newSize, true);
+            if (!ResizeDescriptorTable(device, heap->DescriptorTable, newSize, true))
+            {
+                Log::Warn(
+                    "{} descriptor heap resize failed (current capacity {}, requested size {}); returning an invalid slot.",
+                    heapName, heap->Capacity, newSize
+                );
+                return std::numeric_limits<uint32_t>::max();
+            }
+
             heap->Capacity = newSize;
         }
 

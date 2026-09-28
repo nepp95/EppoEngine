@@ -134,6 +134,7 @@ namespace Eppo
             .pGraphicsCommandQueue = m_GraphicsQueue.Get(),
             .pComputeCommandQueue = m_ComputeQueue.Get(),
             .pCopyCommandQueue = m_TransferQueue.Get(),
+            .samplerHeapSize = 2048, // Limited by DX12
             .enableHeapDirectlyIndexed = true,
         };
 

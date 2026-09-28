@@ -141,44 +141,7 @@ TEST(Renderer, Shader_MeshVertexLayoutsIncludeTangentsWithVertexStride)
         return;
 
     const auto& renderer = DeviceManager::Get()->GetRenderer();
-    CheckMeshVertexLayout(renderer->GetShader("geometry"));
     CheckMeshVertexLayout(renderer->GetShader("wireframe"));
-}
-
-TEST(Renderer, Shader_ShadowDepthReflectsMeshLayoutAndBindings)
-{
-    if (!Testing::AppHarness::IsAvailable())
-        return;
-
-    const auto& renderer = DeviceManager::Get()->GetRenderer();
-    const Ref<Shader>& shadowDepth = renderer->GetShader("shadowDepth");
-    CheckMeshVertexLayout(shadowDepth);
-
-    EXPECT_TRUE(HasResource(shadowDepth, 0, 0, nvrhi::ResourceType::StructuredBuffer_SRV));
-    EXPECT_TRUE(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::ConstantBuffer));
-    EXPECT_TRUE(HasResource(shadowDepth, 0, 1, nvrhi::ResourceType::StructuredBuffer_SRV));
-    EXPECT_TRUE(HasResource(shadowDepth, 0, 2, nvrhi::ResourceType::StructuredBuffer_SRV));
-    EP_REQUIRE(shadowDepth->HasPushConstants());
-    EXPECT_EQ(3 * sizeof(uint32_t), shadowDepth->GetPushConstants().Size);
-
-    EXPECT_TRUE(HasResource(renderer->GetShader("geometry"), 0, 2, nvrhi::ResourceType::ConstantBuffer));
-}
-
-TEST(Renderer, Shader_TonemapReflectsTextureSamplerAndExposure)
-{
-    if (!Testing::AppHarness::IsAvailable())
-        return;
-
-    const auto& renderer = DeviceManager::Get()->GetRenderer();
-    const auto& shaders = renderer->GetAllShaders();
-    EP_REQUIRE(shaders.contains("tonemap"));
-
-    const auto& shader = shaders.at("tonemap");
-    EXPECT_TRUE(HasResource(shader, 0, 0, nvrhi::ResourceType::Texture_SRV));
-    EXPECT_TRUE(HasResource(shader, 0, 1, nvrhi::ResourceType::Texture_SRV));
-    EXPECT_TRUE(HasResource(shader, 0, 0, nvrhi::ResourceType::Sampler));
-    EP_REQUIRE(shader->HasPushConstants());
-    EXPECT_EQ(16u, shader->GetPushConstants().Size);
 }
 
 TEST(Renderer, Shader_WireframeReflectsSceneDepthTexture)

@@ -24,7 +24,7 @@ namespace
         const FramebufferSpecification framebufferSpec{
             .Width = 256,
             .Height = 256,
-            .Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::RGBA16_FLOAT, nvrhi::Format::RGBA16_FLOAT, nvrhi::Format::D32 },
+            .Attachments = { nvrhi::Format::RGBA8_UNORM, nvrhi::Format::D32 },
             .DebugName = "Framebuffer RenderPassTest",
         };
 

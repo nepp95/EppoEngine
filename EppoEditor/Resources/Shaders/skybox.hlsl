@@ -1,9 +1,5 @@
 #include "Includes/fullscreen.hlsli"
 
-// Procedural gradient sky. Reconstructs a world-space view ray per pixel and
-// shades a vertical zenith->horizon->ground gradient. This is the fallback until
-// an equirectangular HDR skybox is sampled (Environment.Params.y flags that).
-
 struct Camera
 {
     float4x4 View;
@@ -21,9 +17,6 @@ struct Environment
     float4 ZenithColor;
     float4 HorizonColor;
     float4 GroundColor;
-    float4 Params; // x = ambient intensity, y = has skybox
-    uint4 IBL0;    // x = env cube, y = irradiance, z = prefilter, w = BRDF LUT bindless indices
-    uint4 IBL1;    // x = IBL sampler index
 };
 ConstantBuffer<Environment> uEnvironment : register(b3, space0);
 
@@ -42,20 +35,12 @@ float4 PSMain(FullscreenVaryings input) : SV_Target
 
     const float2 ndc = input.TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0);
 
-    // Reconstruct the world-space ray direction through this pixel by unprojecting
-    // the near and far clip points and taking their difference.
+    // Reconstruct the world-space ray by unprojecting the near and far clip points.
     float4 worldNear = mul(uCamera.InverseViewProjection, float4(ndc, 0.0, 1.0));
     float4 worldFar = mul(uCamera.InverseViewProjection, float4(ndc, 1.0, 1.0));
     float3 dir = normalize(worldFar.xyz / worldFar.w - worldNear.xyz / worldNear.w);
 
-    if (uEnvironment.Params.y > 0.5)
-    {
-        TextureCube envMap = ResourceDescriptorHeap[uEnvironment.IBL0.x];
-        SamplerState samp = SamplerDescriptorHeap[uEnvironment.IBL1.x];
-        return float4(envMap.SampleLevel(samp, dir, 0).rgb, 1.0);
-    }
-
-    float t = dir.y;
+    const float t = dir.y;
     float3 color;
     if (t > 0.0)
         color = lerp(uEnvironment.HorizonColor.rgb, uEnvironment.ZenithColor.rgb, pow(saturate(t), 0.5));
