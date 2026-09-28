@@ -282,6 +282,8 @@ jobs:
               $path = Join-Path $vcpkgRoot $directory
               if (Test-Path $path) {
                   Remove-Item -LiteralPath $path -Recurse -Force
+              }
+          }
 
   check-for-successful-tests:
     name: ${{ matrix.system }} / ${{ matrix.configuration }} / requirechecks
