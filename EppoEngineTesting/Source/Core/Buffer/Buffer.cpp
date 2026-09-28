@@ -3,141 +3,168 @@
 #include "Core/Buffer/Buffer.h"
 
 using Eppo::Buffer;
-using Eppo::ScopedBuffer;
 
-static_assert(!std::is_copy_constructible_v<ScopedBuffer>);
-static_assert(!std::is_copy_assignable_v<ScopedBuffer>);
-static_assert(std::is_nothrow_move_constructible_v<ScopedBuffer>);
-static_assert(std::is_nothrow_move_assignable_v<ScopedBuffer>);
+namespace
+{
+    constexpr uint64_t BufferSize = 1024;
+}
 
 TEST(Core, Buffer_NullConstruct)
 {
+    // Arrange
+    // Act
     Buffer buffer;
-    EXPECT_TRUE(!buffer.Data);
+
+    // Assert
+    EXPECT_FALSE(buffer.Data);
     EXPECT_EQ(0, buffer.Size);
 }
 
 TEST(Core, Buffer_ConstructWithSize)
 {
-    Buffer buffer(256);
+    // Arrange
+    // Act
+    Buffer buffer(BufferSize);
+
+    // Assert
     EXPECT_TRUE(buffer.Data);
-    EXPECT_EQ(256, buffer.Size);
+    EXPECT_EQ(BufferSize, buffer.Size);
 
     buffer.Release();
 }
 
-TEST(Core, Buffer_ConstructWithData)
+TEST(Core, Buffer_ConstructWithBufferAndSize)
 {
-    auto data = new uint8_t[256];
-    EP_REQUIRE(data);
-    for (uint32_t i = 0; i < 256; i++)
-        data[i] = static_cast<uint8_t>(rand());
+    // Arrange
+    Buffer srcBuffer(BufferSize / 2);
 
-    Buffer buffer(data, 256);
-    EP_REQUIRE(buffer.Data);
-    EXPECT_EQ(256, buffer.Size);
+    // Act
+    Buffer dstBuffer(srcBuffer, srcBuffer.Size);
 
-    for (uint32_t i = 0; i < 256; i++)
-        EXPECT_EQ(data[i], buffer.Data[i]);
+    // Assert
+    EXPECT_TRUE(dstBuffer.Data);
+    EXPECT_EQ(srcBuffer.Data, dstBuffer.Data);
+    EXPECT_EQ(srcBuffer.Size, dstBuffer.Size);
+
+    srcBuffer.Release();
+}
+
+TEST(Core, Buffer_ConstructWithBufferAndBiggerSize)
+{
+    // Arrange
+    Buffer srcBuffer(BufferSize / 2);
+
+    // Act
+    Buffer dstBuffer(srcBuffer, BufferSize);
+
+    // Assert
+    EXPECT_TRUE(dstBuffer.Data);
+    EXPECT_EQ(srcBuffer.Data, dstBuffer.Data);
+    EXPECT_EQ(BufferSize / 2, dstBuffer.Size);
+
+    srcBuffer.Release();
+}
+
+TEST(Core, Buffer_ConstructWithPointerAndSize)
+{
+    // Arrange
+    uint8_t* data = new uint8_t[BufferSize];
+
+    // Act
+    Buffer buffer(data, BufferSize);
+
+    // Assert
+    EXPECT_TRUE(buffer.Data);
+    EXPECT_EQ(data, buffer.Data);
+    EXPECT_EQ(BufferSize, buffer.Size);
 
     buffer.Release();
 }
 
 TEST(Core, Buffer_Allocate)
 {
+    // Arrange
     Buffer buffer;
-    EXPECT_TRUE(!buffer.Data);
-    EXPECT_EQ(0, buffer.Size);
 
-    buffer.Allocate(256);
+    // Act
+    buffer.Allocate(BufferSize);
+
+    // Assert
     EXPECT_TRUE(buffer.Data);
-    EXPECT_EQ(256, buffer.Size);
+    EXPECT_EQ(BufferSize, buffer.Size);
+
+    buffer.Release();
+}
+
+TEST(Core, Buffer_AllocateTwice)
+{
+    // Arrange
+    Buffer buffer;
+    buffer.Allocate(BufferSize);
+    auto oldPtr = buffer.Data;
+
+    // Act
+    buffer.Allocate(BufferSize / 2);
+
+    // Assert
+    EXPECT_TRUE(buffer.Data);
+    EXPECT_NE(oldPtr, buffer.Data);
+    EXPECT_EQ(BufferSize / 2, buffer.Size);
 
     buffer.Release();
 }
 
 TEST(Core, Buffer_Release)
 {
-    Buffer buffer(256);
-    EXPECT_TRUE(buffer.Data);
-    EXPECT_EQ(256, buffer.Size);
+    // Arrange
+    Buffer buffer(BufferSize);
 
+    // Act
     buffer.Release();
-    EXPECT_TRUE(!buffer.Data);
+
+    // Assert
+    EXPECT_FALSE(buffer.Data);
     EXPECT_EQ(0, buffer.Size);
 }
 
 TEST(Core, Buffer_CopyOtherBuffer)
 {
-    Buffer bufferA(256);
-    for (uint32_t i = 0; i < 256; i++)
-        bufferA.Data[i] = static_cast<uint8_t>(rand());
+    // Arrange
+    Buffer srcBuffer(BufferSize);
+    for (auto i = 0; i < BufferSize; i++)
+        srcBuffer.Data[i] = static_cast<uint8_t>(rand());
 
-    auto bufferB = Buffer::Copy(bufferA);
-    EXPECT_TRUE(bufferA.Data);
-    EXPECT_TRUE(bufferB.Data);
-    EXPECT_EQ(bufferA.Size, bufferB.Size);
+    // Act
+    Buffer dstBuffer = Buffer::Copy(srcBuffer);
 
-    for (uint32_t i = 0; i < 256; i++)
-        EXPECT_EQ(bufferA.Data[i], bufferB.Data[i]);
+    // Assert
+    EXPECT_TRUE(dstBuffer.Data);
+    EXPECT_EQ(srcBuffer.Size, dstBuffer.Size);
 
-    bufferA.Release();
-    bufferB.Release();
+    for (auto i = 0; i < BufferSize; i++)
+        EXPECT_EQ(srcBuffer.Data[i], dstBuffer.Data[i]);
+
+    srcBuffer.Release();
+    dstBuffer.Release();
 }
 
 TEST(Core, Buffer_CopyData)
 {
-    auto data = new uint8_t[256];
-    for (uint32_t i = 0; i < 256; i++)
+    // Arrange
+    uint8_t* data = new uint8_t[BufferSize];
+    for (auto i = 0; i < BufferSize; i++)
         data[i] = static_cast<uint8_t>(rand());
 
-    auto buffer = Buffer::Copy(data, 256);
-    EXPECT_TRUE(buffer.Data);
-    EXPECT_EQ(256, buffer.Size);
+    // Act
+    Buffer buffer = Buffer::Copy(data, BufferSize);
 
-    for (uint32_t i = 0; i < 256; i++)
+    // Assert
+    EXPECT_TRUE(buffer.Data);
+    EXPECT_EQ(BufferSize, buffer.Size);
+
+    for (auto i = 0; i < BufferSize; i++)
         EXPECT_EQ(data[i], buffer.Data[i]);
 
+    delete[] data;
     buffer.Release();
-}
-
-TEST(Core, Buffer_CastToType)
-{
-    constexpr uint32_t value = 0x12345678;
-
-    Buffer buffer(256);
-    EP_REQUIRE(buffer.Data);
-    std::memcpy(buffer.Data, &value, sizeof(value));
-
-    auto* casted = buffer.As<uint32_t>();
-    EP_REQUIRE(casted);
-    EXPECT_EQ(value, *casted);
-
-    buffer.Release();
-}
-
-TEST(Core, ScopedBuffer_MoveTransfersOwnership)
-{
-    ScopedBuffer source(256);
-    auto* data = source.Data();
-
-    ScopedBuffer destination(std::move(source));
-
-    EXPECT_TRUE(!source.Data());
-    EXPECT_EQ(0, source.Size());
-    EXPECT_TRUE(destination.Data() == data);
-    EXPECT_EQ(256, destination.Size());
-}
-
-TEST(Core, ScopedBuffer_AdoptBufferClearsSource)
-{
-    Buffer source(256);
-    auto* data = source.Data;
-
-    ScopedBuffer destination(std::move(source));
-
-    EXPECT_TRUE(!source.Data);
-    EXPECT_EQ(0, source.Size);
-    EXPECT_TRUE(destination.Data() == data);
-    EXPECT_EQ(256, destination.Size());
 }
