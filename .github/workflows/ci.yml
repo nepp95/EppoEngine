@@ -291,8 +291,9 @@ jobs:
     if: always()
     steps:
       - name: Check outcomes
-        run: if [[ ${{ contains(needs.*.result, 'failure') }} == "true" ]]; then
-               exit 1
-             else
-               exit 0
-             fi
+        run: |
+          if [[ ${{ contains(needs.*.result, 'failure') }} == "true" ]]; then
+              exit 1
+            else
+              exit 0
+          fi
