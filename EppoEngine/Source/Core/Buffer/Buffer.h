@@ -20,8 +20,15 @@ namespace Eppo
 
         explicit Buffer(const Buffer& other, const uint64_t size)
             : Data(other.Data), Size(size)
-        {}
+        {
+            if (size > other.Size)
+            {
+                Log::Warn("Trying to create non owning buffer with another buffer whilst passing a bigger size!");
+                Size = other.Size;
+            }
+        }
 
+        // NOTE: If an incorrect size is supplied, this WILL leak memory!
         explicit Buffer(uint8_t* data, const uint64_t size)
             : Data(data), Size(size)
         {}
