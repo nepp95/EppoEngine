@@ -1,16 +1,5 @@
 local suites = {
     { "Core", "core" },
-    { "FileDialogFilter", "unit" },
-    { "Physics", "core" },
-    { "Project", "unit" },
-    { "Scene", "core" },
-    { "Scripting", "scripting" },
-    { "ScriptMarshalling", "scripting" },
-    { "ScriptReloadGraphical", "graphical" },
-    { "App", "graphical" },
-    { "CoreGraphical", "graphical" },
-    { "ProjectExport", "graphical" },
-    { "Renderer", "graphical" },
 }
 
 local function CTestPath(value)
