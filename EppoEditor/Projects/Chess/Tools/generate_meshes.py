@@ -496,7 +496,7 @@ def catalogue():
     meshes["BoardFrame"] = (frame, material("BoardFrame", (0.09, 0.045, 0.02), 0.45))
     meshes["Table"] = (table, material("Table", (0.10, 0.11, 0.12), 0.8))
 
-    meshes["MarkerLastMove"] = (lambda: overlay(0.004), material("MarkerLastMove", (0.75, 0.62, 0.15), 0.6, emissive=(0.25, 0.20, 0.03)))
+    meshes["MarkerLastMove"] = (lambda: overlay(0.004), material("MarkerLastMove", (0.62, 0.54, 0.24), 0.6, emissive=(0.05, 0.04, 0.0)))
     meshes["MarkerSelected"] = (lambda: overlay(0.008), material("MarkerSelected", (0.25, 0.65, 0.25), 0.6, emissive=(0.10, 0.45, 0.10)))
     meshes["MarkerCheck"] = (lambda: overlay(0.006), material("MarkerCheck", (0.80, 0.10, 0.08), 0.6, emissive=(0.90, 0.08, 0.05)))
     meshes["MarkerHover"] = (lambda: outline(0.014, inner=0.86), material("MarkerHover", (0.95, 0.90, 0.55), 0.5, emissive=(0.90, 0.80, 0.30)))
