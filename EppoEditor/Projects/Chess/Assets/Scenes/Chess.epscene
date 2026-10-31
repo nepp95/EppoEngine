@@ -1,0 +1,201 @@
+{
+    "Scene": {
+        "Name": "Chess",
+        "Handle": 4127730592718273451,
+        "Bloom": {
+            "Intensity": 0.4,
+            "Knee": 0.25,
+            "Radius": 1.0,
+            "Threshold": 0.8
+        },
+        "Ssao": {
+            "Bias": 0.025,
+            "Intensity": 1.0,
+            "Power": 1.5,
+            "Radius": 0.5
+        },
+        "Environment": {
+            "SkyboxHandle": 0,
+            "AmbientIntensity": 0.35,
+            "Exposure": 1.0,
+            "ZenithColor": [
+                0.16,
+                0.18,
+                0.24
+            ],
+            "HorizonColor": [
+                0.36,
+                0.34,
+                0.33
+            ],
+            "GroundColor": [
+                0.12,
+                0.1,
+                0.09
+            ]
+        },
+        "Entities": [
+            {
+                "IDComponent": {
+                    "ID": 2001
+                },
+                "TagComponent": {
+                    "Tag": "Camera"
+                },
+                "TransformComponent": {
+                    "Translation": [
+                        0,
+                        9.0,
+                        7.0
+                    ],
+                    "Rotation": [
+                        -0.909,
+                        0,
+                        0
+                    ],
+                    "Scale": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "CameraComponent": {
+                    "FarClip": 200.0,
+                    "NearClip": 0.1,
+                    "Primary": true,
+                    "VerticalFov": 45.0
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 2002
+                },
+                "TagComponent": {
+                    "Tag": "Sun"
+                },
+                "TransformComponent": {
+                    "Translation": [
+                        0,
+                        12,
+                        0
+                    ],
+                    "Rotation": [
+                        -0.75,
+                        0.5,
+                        0
+                    ],
+                    "Scale": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "DirectionalLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.95,
+                        0.86
+                    ],
+                    "Intensity": 2.2
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 2003
+                },
+                "TagComponent": {
+                    "Tag": "Fill Light White"
+                },
+                "TransformComponent": {
+                    "Translation": [
+                        -5,
+                        6,
+                        7
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Scale": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        1.0,
+                        0.85,
+                        0.65
+                    ],
+                    "Intensity": 12.0,
+                    "Range": 20.0
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 2004
+                },
+                "TagComponent": {
+                    "Tag": "Fill Light Black"
+                },
+                "TransformComponent": {
+                    "Translation": [
+                        5,
+                        6,
+                        -7
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Scale": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "PointLightComponent": {
+                    "Color": [
+                        0.65,
+                        0.75,
+                        1.0
+                    ],
+                    "Intensity": 10.0,
+                    "Range": 20.0
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 2005
+                },
+                "TagComponent": {
+                    "Tag": "Game"
+                },
+                "TransformComponent": {
+                    "Translation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Scale": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "ScriptComponent": {
+                    "ClassName": "Chess.ChessGame",
+                    "Fields": []
+                }
+            }
+        ]
+    }
+}
