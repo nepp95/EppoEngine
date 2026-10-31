@@ -53,6 +53,30 @@ namespace EppoScriptCore.Core
             ((delegate* unmanaged[Cdecl]<Vector2*, void>)Get("Input_GetMousePosition"))(&position);
             return position;
         }
+
+        internal static Vector2 Input_GetViewportMousePosition()
+        {
+            Vector2 position = default;
+            ((delegate* unmanaged[Cdecl]<Vector2*, void>)Get("Input_GetViewportMousePosition"))(&position);
+            return position;
+        }
+
+        internal static Vector2 Input_GetViewportSize()
+        {
+            Vector2 size = default;
+            ((delegate* unmanaged[Cdecl]<Vector2*, void>)Get("Input_GetViewportSize"))(&size);
+            return size;
+        }
+
+        internal static void Input_SetCursorMode(byte mode)
+        {
+            ((delegate* unmanaged[Cdecl]<byte, void>)Get("Input_SetCursorMode"))(mode);
+        }
+
+        internal static byte Input_GetCursorMode()
+        {
+            return ((delegate* unmanaged[Cdecl]<byte>)Get("Input_GetCursorMode"))();
+        }
         #endregion
 
         #region Physics
@@ -281,6 +305,16 @@ namespace EppoScriptCore.Core
         internal static void CameraComponent_SetFarClip(ulong id, float farClip)
         {
             ((delegate* unmanaged[Cdecl]<ulong, float, void>)Get("CameraComponent_SetFarClip"))(id, farClip);
+        }
+
+        internal static bool CameraComponent_ScreenPointToRay(ulong id, ref Vector2 viewportPosition, out Vector3 origin, out Vector3 direction)
+        {
+            origin = default;
+            direction = default;
+            fixed (Vector2* p = &viewportPosition)
+            fixed (Vector3* o = &origin)
+            fixed (Vector3* d = &direction)
+                return ((delegate* unmanaged[Cdecl]<ulong, Vector2*, Vector3*, Vector3*, byte>)Get("CameraComponent_ScreenPointToRay"))(id, p, o, d) != 0;
         }
 
         internal static Vector3 DirectionalLightComponent_GetColor(ulong id)

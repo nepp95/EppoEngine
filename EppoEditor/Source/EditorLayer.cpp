@@ -349,6 +349,19 @@ namespace Eppo
             ImVec2(static_cast<float>(m_ViewportWidth), static_cast<float>(m_ViewportHeight))
         );
 
+        // Hand the image rect to Input so scripts can map the cursor into the viewport.
+        // ImGui works in OS screen space (multi-viewports are on); the cursor is reported
+        // relative to the main window's client area, so rebase onto the main viewport.
+        {
+            const ImVec2 mainPos = ImGui::GetMainViewport()->Pos;
+            const ImVec2 imageMin = ImGui::GetItemRectMin();
+            const ImVec2 imageMax = ImGui::GetItemRectMax();
+            Input::SetViewportBounds(
+                { imageMin.x - mainPos.x, imageMin.y - mainPos.y },
+                { imageMax.x - mainPos.x, imageMax.y - mainPos.y }
+            );
+        }
+
         // Imguizmo
         UpdateImGuizmo();
 
@@ -478,11 +491,14 @@ namespace Eppo
         if (!ScriptEngine::IsInitialized() || !ScriptEngine::Get().IsRuntimeLoaded())
             Log::Warn("Scripting backend not initialized, not running scripts.");
 
-        m_ActiveScene->OnRuntimeStart();
+        // Capture the cursor before starting the runtime so a script's OnCreate can
+        // still override the mode (e.g. a mouse-driven game wanting a visible cursor).
         const auto& app = Application::Get();
         app.GetImGuiLayer()->BlockEvents(false);
         app.GetImGuiLayer()->SetMouseInputEnabled(false);
         app.GetWindow()->SetCursorMode(CursorMode::Disabled);
+
+        m_ActiveScene->OnRuntimeStart();
     }
 
     auto EditorLayer::OnSceneStop() -> void

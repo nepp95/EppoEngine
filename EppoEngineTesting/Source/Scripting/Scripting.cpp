@@ -4,6 +4,7 @@
 #include "TestSupport/AppHarness.h"
 #include "Asset/Asset.h"
 #include "Asset/AssetManager.h"
+#include "Core/Input.h"
 #include "Physics/PhysicsWorld.h"
 #include "Project/Project.h"
 #include "Scene/Components.h"
@@ -2451,6 +2452,73 @@ TEST(Scripting, CameraComponent_FarClip_RoundTripsSceneValue)
     EP_REQUIRE(setFar != nullptr);
     c->InvokeMethod(entity, *setFar, &next, nullptr);
     EXPECT_NEAR(250.0f, camera.Camera.GetPerspectiveFarClip(), 1e-3f);
+
+    engine.OnDestroyEntity(entity);
+}
+
+TEST(Scripting, Input_GetViewportSize_ReportsViewportBounds)
+{
+    EP_REQUIRE(EnsureRuntime());
+
+    const Ref<Scene> scene = CreateRef<Scene>();
+    auto& engine = ScriptEngine::Get();
+    Entity entity = MakeContextEntity(scene);
+
+    Input::SetViewportBounds({ 100.0f, 50.0f }, { 900.0f, 650.0f });
+
+    const ScriptClass* c = FindClass(kUserClass);
+    EP_REQUIRE(c != nullptr);
+    const ScriptMethod* getSize = c->GetMethod("Input_GetViewportSize");
+    EP_REQUIRE(getSize != nullptr);
+
+    float size[2] = {};
+    c->InvokeMethod(entity, *getSize, nullptr, size);
+    EXPECT_NEAR(800.0f, size[0], 1e-4f);
+    EXPECT_NEAR(600.0f, size[1], 1e-4f);
+
+    engine.OnDestroyEntity(entity);
+}
+
+TEST(Scripting, CameraComponent_ScreenPointToRay_FollowsCameraTransform)
+{
+    EP_REQUIRE(EnsureRuntime());
+
+    const Ref<Scene> scene = CreateRef<Scene>();
+    auto& engine = ScriptEngine::Get();
+    Entity entity = MakeContextEntity(scene);
+    auto& camera = entity.AddComponent<CameraComponent>();
+    camera.Camera.SetPerspectiveVerticalFov(90.0f);
+    camera.Camera.SetViewportSize(800, 600);
+    entity.GetComponent<TransformComponent>().Translation = { 1.0f, 2.0f, 3.0f };
+
+    Input::SetViewportBounds({ 0.0f, 0.0f }, { 800.0f, 600.0f });
+
+    const ScriptClass* c = FindClass(kUserClass);
+    EP_REQUIRE(c != nullptr);
+    const ScriptMethod* getOrigin = c->GetMethod("CameraComponent_ScreenPointToRayOrigin");
+    const ScriptMethod* getDirection = c->GetMethod("CameraComponent_ScreenPointToRayDirection");
+    EP_REQUIRE(getOrigin != nullptr);
+    EP_REQUIRE(getDirection != nullptr);
+
+    // Viewport centre looks straight down the camera's forward axis (-Z).
+    const float centre[2] = { 400.0f, 300.0f };
+    float origin[3] = {};
+    float direction[3] = {};
+    c->InvokeMethod(entity, *getOrigin, centre, origin);
+    c->InvokeMethod(entity, *getDirection, centre, direction);
+    EXPECT_NEAR(1.0f, origin[0], 1e-4f);
+    EXPECT_NEAR(2.0f, origin[1], 1e-4f);
+    EXPECT_NEAR(3.0f, origin[2], 1e-4f);
+    EXPECT_NEAR(0.0f, direction[0], 1e-4f);
+    EXPECT_NEAR(0.0f, direction[1], 1e-4f);
+    EXPECT_NEAR(-1.0f, direction[2], 1e-4f);
+
+    // Top-centre sits on the upper frustum plane: 45 degrees up with a 90 degree FOV.
+    const float top[2] = { 400.0f, 0.0f };
+    c->InvokeMethod(entity, *getDirection, top, direction);
+    EXPECT_NEAR(0.0f, direction[0], 1e-4f);
+    EXPECT_NEAR(0.70710678f, direction[1], 1e-4f);
+    EXPECT_NEAR(-0.70710678f, direction[2], 1e-4f);
 
     engine.OnDestroyEntity(entity);
 }

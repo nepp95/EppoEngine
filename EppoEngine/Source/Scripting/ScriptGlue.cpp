@@ -96,6 +96,61 @@ namespace Eppo
         {
             *outPosition = Input::GetMousePosition();
         }
+
+        auto Input_GetViewportMousePosition(glm::vec2* outPosition) -> void
+        {
+            *outPosition = Input::GetViewportMousePosition();
+        }
+
+        auto Input_GetViewportSize(glm::vec2* outSize) -> void
+        {
+            *outSize = Input::GetViewportSize();
+        }
+
+        // Managed CursorMode is a compact 0..2 enum; native mirrors the GLFW constants.
+        auto Input_SetCursorMode(const uint8_t mode) -> void
+        {
+            switch (mode)
+            {
+                case 0:
+                {
+                    Input::SetCursorMode(CursorMode::Normal);
+                    break;
+                }
+
+                case 1:
+                {
+                    Input::SetCursorMode(CursorMode::Hidden);
+                    break;
+                }
+
+                case 2:
+                {
+                    Input::SetCursorMode(CursorMode::Disabled);
+                    break;
+                }
+
+                default:
+                {
+                    Log::Error(LogSource::Script, "Unknown cursor mode {}", mode);
+                    break;
+                }
+            }
+        }
+
+        auto Input_GetCursorMode() -> uint8_t
+        {
+            switch (Input::GetCursorMode())
+            {
+                case CursorMode::Hidden:
+                    return 1;
+                case CursorMode::Disabled:
+                    return 2;
+                case CursorMode::Normal:
+                default:
+                    return 0;
+            }
+        }
 #pragma endregion
 
 #pragma region Physics
@@ -516,6 +571,40 @@ namespace Eppo
                 return;
 
             entity.GetComponent<CameraComponent>().Camera.SetPerspectiveFarClip(farClip);
+        }
+
+        // World-space ray through a point in the viewport (pixels, origin top-left, the
+        // space Input_GetViewportMousePosition reports in). Returns 0 and leaves the
+        // outputs untouched when the entity has no camera or the viewport is empty.
+        auto CameraComponent_ScreenPointToRay(const uint64_t id, const glm::vec2* viewportPosition, glm::vec3* outOrigin, glm::vec3* outDirection) -> uint8_t
+        {
+            const Entity entity = GetEntity(id);
+            if (!entity || !entity.HasComponent<CameraComponent>())
+                return false;
+
+            const glm::vec2 viewportSize = Input::GetViewportSize();
+            if (viewportSize.x <= 0.0f || viewportSize.y <= 0.0f)
+                return false;
+
+            const auto scene = GetScene();
+            const glm::mat4 world = scene->GetWorldTransform(entity);
+            const glm::mat4& projection = entity.GetComponent<CameraComponent>().Camera.GetProjectionMatrix();
+            const glm::mat4 inverseViewProjection = glm::inverse(projection * glm::inverse(world));
+
+            // The projection is unflipped (Y up in clip space), so screen Y is inverted.
+            const glm::vec2 ndc(
+                2.0f * viewportPosition->x / viewportSize.x - 1.0f,
+                1.0f - 2.0f * viewportPosition->y / viewportSize.y
+            );
+
+            // Any depth strictly inside the frustum works for the direction.
+            glm::vec4 point = inverseViewProjection * glm::vec4(ndc, 0.5f, 1.0f);
+            point /= point.w;
+
+            const glm::vec3 origin(world[3]);
+            *outOrigin = origin;
+            *outDirection = glm::normalize(glm::vec3(point) - origin);
+            return true;
         }
 
         auto DirectionalLightComponent_GetColor(const uint64_t id, glm::vec3* outColor) -> void
@@ -1237,6 +1326,10 @@ namespace Eppo
             { "Input_IsKeyPressed",                       reinterpret_cast<void*>(&Input_IsKeyPressed)                       },
             { "Input_IsMouseButtonPressed",               reinterpret_cast<void*>(&Input_IsMouseButtonPressed)               },
             { "Input_GetMousePosition",                   reinterpret_cast<void*>(&Input_GetMousePosition)                   },
+            { "Input_GetViewportMousePosition",           reinterpret_cast<void*>(&Input_GetViewportMousePosition)           },
+            { "Input_GetViewportSize",                    reinterpret_cast<void*>(&Input_GetViewportSize)                    },
+            { "Input_SetCursorMode",                      reinterpret_cast<void*>(&Input_SetCursorMode)                      },
+            { "Input_GetCursorMode",                      reinterpret_cast<void*>(&Input_GetCursorMode)                      },
             { "Physics_ApplyLinearImpulse",               reinterpret_cast<void*>(&Physics_ApplyLinearImpulse)               },
             { "Physics_GetLinearVelocity",                reinterpret_cast<void*>(&Physics_GetLinearVelocity)                },
             { "Physics_SetLinearVelocity",                reinterpret_cast<void*>(&Physics_SetLinearVelocity)                },
@@ -1266,6 +1359,7 @@ namespace Eppo
             { "CameraComponent_SetNearClip",              reinterpret_cast<void*>(&CameraComponent_SetNearClip)              },
             { "CameraComponent_GetFarClip",               reinterpret_cast<void*>(&CameraComponent_GetFarClip)               },
             { "CameraComponent_SetFarClip",               reinterpret_cast<void*>(&CameraComponent_SetFarClip)               },
+            { "CameraComponent_ScreenPointToRay",         reinterpret_cast<void*>(&CameraComponent_ScreenPointToRay)         },
             { "DirectionalLightComponent_GetColor",       reinterpret_cast<void*>(&DirectionalLightComponent_GetColor)       },
             { "DirectionalLightComponent_SetColor",       reinterpret_cast<void*>(&DirectionalLightComponent_SetColor)       },
             { "DirectionalLightComponent_GetIntensity",   reinterpret_cast<void*>(&DirectionalLightComponent_GetIntensity)   },
