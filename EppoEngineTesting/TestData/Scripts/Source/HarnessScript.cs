@@ -53,6 +53,7 @@ namespace EppoTesting
         public bool Input_IsKeyPressed() => InternalCalls.Input_IsKeyPressed((ushort)KeyCode.Space);
         public bool Input_IsMouseButtonPressed() => InternalCalls.Input_IsMouseButtonPressed((ushort)MouseCode.ButtonRight);
         public Vector2 Input_GetMousePosition() => InternalCalls.Input_GetMousePosition();
+        public Vector2 Input_GetViewportSize() => InternalCalls.Input_GetViewportSize();
 
         // The public Input facade rather than the raw internal call: GetMouseX/Y are
         // derived C#-side from GetMousePosition, so they need their own cover.
@@ -93,6 +94,16 @@ namespace EppoTesting
         public void CameraComponent_SetNearClip(float v) => InternalCalls.CameraComponent_SetNearClip(ID, v);
         public float CameraComponent_GetFarClip() => InternalCalls.CameraComponent_GetFarClip(ID);
         public void CameraComponent_SetFarClip(float v) => InternalCalls.CameraComponent_SetFarClip(ID, v);
+        public Vector3 CameraComponent_ScreenPointToRayOrigin(Vector2 p)
+        {
+            InternalCalls.CameraComponent_ScreenPointToRay(ID, ref p, out Vector3 origin, out _);
+            return origin;
+        }
+        public Vector3 CameraComponent_ScreenPointToRayDirection(Vector2 p)
+        {
+            InternalCalls.CameraComponent_ScreenPointToRay(ID, ref p, out _, out Vector3 direction);
+            return direction;
+        }
         public Vector3 PointLightComponent_GetColor() => InternalCalls.PointLightComponent_GetColor(ID);
         public void PointLightComponent_SetColor(Vector3 c) => InternalCalls.PointLightComponent_SetColor(ID, ref c);
         public float PointLightComponent_GetIntensity() => InternalCalls.PointLightComponent_GetIntensity(ID);
