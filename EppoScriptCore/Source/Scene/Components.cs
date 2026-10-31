@@ -70,6 +70,11 @@ namespace EppoScriptCore.Scene
             get => InternalCalls.CameraComponent_GetFarClip(Entity.ID);
             set => InternalCalls.CameraComponent_SetFarClip(Entity.ID, value);
         }
+
+        // World-space ray through a viewport pixel (see Input.GetViewportMousePosition).
+        // Returns false when the viewport has no size yet.
+        public bool ScreenPointToRay(Vector2 viewportPosition, out Vector3 origin, out Vector3 direction)
+            => InternalCalls.CameraComponent_ScreenPointToRay(Entity.ID, ref viewportPosition, out origin, out direction);
     }
 
     public class DirectionalLightComponent : Component
