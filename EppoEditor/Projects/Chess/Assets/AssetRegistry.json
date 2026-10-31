@@ -1,6 +1,116 @@
 {
     "Assets": [
         {
+            "Filepath": "Meshes\\BlackBishop.glb",
+            "Handle": 17218600845963057162,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\BlackKing.glb",
+            "Handle": 281441963838481000,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\BlackKnight.glb",
+            "Handle": 6176762810346195654,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\BlackPawn.glb",
+            "Handle": 13159680683065469889,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\BlackQueen.glb",
+            "Handle": 16255294763793648799,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\BlackRook.glb",
+            "Handle": 4836528221794098406,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\BoardFrame.glb",
+            "Handle": 7264520753009154645,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\MarkerCapture.glb",
+            "Handle": 4007237281371845104,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\MarkerCheck.glb",
+            "Handle": 6342532863388700738,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\MarkerHover.glb",
+            "Handle": 9054436499726908644,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\MarkerLastMove.glb",
+            "Handle": 13710118817332664387,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\MarkerMove.glb",
+            "Handle": 2698995328653388415,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\MarkerSelected.glb",
+            "Handle": 18095479677543386539,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\SquareDark.glb",
+            "Handle": 17188738972498558399,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\SquareLight.glb",
+            "Handle": 10191817121443502401,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\Table.glb",
+            "Handle": 4078037483078379628,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\WhiteBishop.glb",
+            "Handle": 5233008556982752952,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\WhiteKing.glb",
+            "Handle": 2370729822928726582,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\WhiteKnight.glb",
+            "Handle": 16975409202398343612,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\WhitePawn.glb",
+            "Handle": 16279386144484161611,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\WhiteQueen.glb",
+            "Handle": 2431506530300335497,
+            "Type": "Mesh"
+        },
+        {
+            "Filepath": "Meshes\\WhiteRook.glb",
+            "Handle": 9086571368429086184,
+            "Type": "Mesh"
+        },
+        {
             "Filepath": "Scenes\\Chess.epscene",
             "Handle": 4127730592718273451,
             "Type": "Scene"
