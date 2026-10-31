@@ -195,6 +195,62 @@
                     "ClassName": "Chess.ChessGame",
                     "Fields": []
                 }
+            },
+            {
+                "IDComponent": {
+                    "ID": 2006
+                },
+                "TagComponent": {
+                    "Tag": "Board Frame"
+                },
+                "TransformComponent": {
+                    "Translation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Scale": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "MeshComponent": {
+                    "MeshHandle": 7264520753009154645
+                }
+            },
+            {
+                "IDComponent": {
+                    "ID": 2007
+                },
+                "TagComponent": {
+                    "Tag": "Table"
+                },
+                "TransformComponent": {
+                    "Translation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Scale": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "MeshComponent": {
+                    "MeshHandle": 4078037483078379628
+                }
             }
         ]
     }
